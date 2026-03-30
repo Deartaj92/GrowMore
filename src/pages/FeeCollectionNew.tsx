@@ -850,8 +850,6 @@ const FeeCollectionNew: React.FC = () => {
   const [feeArrears, setFeeArrears] = useState<any[]>([]);
   const [feeLoading, setFeeLoading] = useState(false);
   const [feeError, setFeeError] = useState<string | null>(null);
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [currentSession, setCurrentSession] = useState<any>(null);
 
   // Payment-related state
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -936,7 +934,7 @@ const FeeCollectionNew: React.FC = () => {
       const start = Date.now();
 
       const dataPromise = (async () => {
-        const [studentsData, classesData, sectionsData, sessionsData, usersData, accountsData, accountTypesData] = await Promise.all([
+        const [studentsData, classesData, sectionsData, usersData, accountsData, accountTypesData] = await Promise.all([
           fetchAllRows(async (from, to) => {
             return await supabase.from('students')
               .select('id, name, father_name, class_id, section_id, picture_url, roll_number')
@@ -954,13 +952,6 @@ const FeeCollectionNew: React.FC = () => {
             return await supabase.from('sections')
               .select('id, name')
               .eq('school_id', user.school_id)
-              .range(from, to);
-          }),
-          fetchAllRows(async (from, to) => {
-            return await supabase.from('sessions')
-              .select('id, name, is_active')
-              .eq('school_id', user.school_id)
-              .order('is_active', { ascending: false })
               .range(from, to);
           }),
           fetchAllRows(async (from, to) => {
@@ -989,11 +980,6 @@ const FeeCollectionNew: React.FC = () => {
         setStudents(studentsData);
         setClasses(classesData);
         if (sectionsData) setSections(sectionsData);
-        if (sessionsData) {
-          setSessions(sessionsData);
-          const activeSession = sessionsData.find((s: any) => s.is_active);
-          if (activeSession) setCurrentSession(activeSession);
-        }
         if (usersData) setUsers(usersData);
         if (accountsData) setAccounts(accountsData);
         if (accountTypesData) setAccountTypes(accountTypesData);
@@ -1203,11 +1189,101 @@ const FeeCollectionNew: React.FC = () => {
     return totalFeeAmount - totalNetPaidAmount;
   }, [totalFeeAmount, totalNetPaidAmount]);
 
+  const paymentHistoryWithBalances = useMemo(() => {
+    const getPaymentSortTime = (payment: any) => {
+      const primaryDate = payment.payment_date ? new Date(payment.payment_date).getTime() : 0;
+      const createdAtTime = payment.created_at ? new Date(payment.created_at).getTime() : 0;
+      return Math.max(primaryDate, createdAtTime);
+    };
+
+    const paymentsAscending = [...paymentHistory].sort((a: any, b: any) => {
+      return getPaymentSortTime(a) - getPaymentSortTime(b);
+    });
+
+    let cumulativePaid = 0;
+    const enrichedPayments = paymentsAscending.map((payment: any) => {
+      const netAmount = Number(payment.net_amount || payment.amount || 0);
+      cumulativePaid += netAmount;
+
+      return {
+        ...payment,
+        total_remaining_before_payment: netAmount + Math.max(0, totalFeeAmount - cumulativePaid),
+        remaining_after_payment: Math.max(0, totalFeeAmount - cumulativePaid),
+      };
+    });
+
+    return enrichedPayments.sort((a: any, b: any) => {
+      return getPaymentSortTime(b) - getPaymentSortTime(a);
+    });
+  }, [paymentHistory, totalFeeAmount]);
+
   const formatCurrency = (value: number): string => {
     if (value % 1 === 0) {
       return String(value);
     }
     return value.toFixed(2);
+  };
+
+  const fetchStudentFeeChallans = async (studentId: number, schoolId: number) => {
+    return await fetchAllRows(async (from, to) => {
+      return await supabase
+        .from('fee_challans')
+        .select(`
+          id,
+          student_id,
+          session_id,
+          month,
+          year,
+          total_amount,
+          status,
+          due_date,
+          created_at,
+          fee_challans_items (
+            id,
+            fee_head_id,
+            amount,
+            fee_heads (
+              id,
+              name,
+              description
+            )
+          )
+        `)
+        .eq('student_id', studentId)
+        .eq('school_id', schoolId)
+        .order('year', { ascending: false })
+        .order('month', { ascending: false })
+        .range(from, to);
+    });
+  };
+
+  const fetchStudentFeeArrears = async (studentId: number, schoolId: number) => {
+    const { data, error } = await supabase
+      .from('fee_arrears')
+      .select(`
+        id,
+        student_id,
+        session_id,
+        fee_head_id,
+        amount,
+        due_date,
+        remarks,
+        status,
+        created_at,
+        fee_heads (
+          id,
+          name,
+          description
+        )
+      `)
+      .eq('student_id', studentId)
+      .eq('school_id', schoolId)
+      .in('status', ['unpaid', 'partial'])
+      .order('due_date', { ascending: true })
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
   };
 
   // Helper function to format date as dd-mmm-yyyy
@@ -1383,57 +1459,17 @@ const FeeCollectionNew: React.FC = () => {
       // Calculate total paid across ALL payments (including previous ones)
       // Get all payment items for this student to calculate total paid
       let totalPaidAllPayments = 0;
-      if (selectedStudent && currentSession) {
+      if (selectedStudent) {
         try {
-          // First, get all challans for this student and session
-          const { data: challansData } = await supabase
-            .from('fee_challans')
-            .select('id')
+          const { data: allPaymentsData } = await supabase
+            .from('fee_payments')
+            .select(`
+              id,
+              amount,
+              discount_amount
+            `)
             .eq('student_id', selectedStudent.id)
-            .eq('session_id', currentSession.id)
             .eq('school_id', user?.school_id || 0);
-
-          const challanIds = challansData?.map(c => c.id) || [];
-
-          let challanItemIds: number[] = [];
-          if (challanIds.length > 0) {
-            // Then get all challan item IDs from those challans
-            const { data: challanItemsData } = await supabase
-              .from('fee_challans_items')
-              .select('id')
-              .in('challan_id', challanIds);
-
-            challanItemIds = challanItemsData?.map(item => item.id) || [];
-          }
-
-          let allPaymentsData: any[] = [];
-          if (challanItemIds.length > 0) {
-            // Get payment item IDs that reference these challan items
-            const { data: paymentItemsData } = await supabase
-              .from('fee_payment_items')
-              .select('payment_id')
-              .in('fee_challan_item_id', challanItemIds);
-
-            const paymentIds = Array.from(new Set(paymentItemsData?.map(item => item.payment_id) || []));
-
-            if (paymentIds.length > 0) {
-              // Now fetch payments with their items
-              const { data: paymentsData } = await supabase
-                .from('fee_payments')
-                .select(`
-                  id,
-                  amount,
-                  discount_amount,
-                  fee_payment_items (
-                    amount
-                  )
-                `)
-                .in('id', paymentIds)
-                .eq('school_id', user?.school_id || 0);
-
-              allPaymentsData = paymentsData || [];
-            }
-          }
 
           if (allPaymentsData && allPaymentsData.length > 0) {
             // Sum all payment amounts (including discounts)
@@ -2216,104 +2252,39 @@ const FeeCollectionNew: React.FC = () => {
     }
   };
 
-  // Fetch fee invoices when student is selected
+  // Fetch fee data across all sessions when student is selected
   useEffect(() => {
-    if (!user?.school_id || !selectedStudent || !currentSession) {
+    if (!user?.school_id || !selectedStudent) {
       setFeeChallans([]);
+      setFeeArrears([]);
       setFeeError(null);
       return;
     }
 
-    const fetchFeeChallans = async () => {
+    const schoolId = user.school_id;
+
+    const fetchFeeData = async () => {
       setFeeLoading(true);
       setFeeError(null);
       try {
-        const { data: challansData, error } = await supabase
-          .from('fee_challans')
-          .select(`
-            id,
-            student_id,
-            session_id,
-            month,
-            year,
-            total_amount,
-            status,
-            due_date,
-            created_at,
-            fee_challans_items (
-              id,
-              fee_head_id,
-              amount,
-              fee_heads (
-                id,
-                name,
-                description
-              )
-            )
-          `)
-          .eq('student_id', selectedStudent.id)
-          .eq('session_id', currentSession.id)
-          .eq('school_id', user.school_id)
-          .order('year', { ascending: false })
-          .order('month', { ascending: false });
+        const [challansData, arrearsData] = await Promise.all([
+          fetchStudentFeeChallans(selectedStudent.id, schoolId),
+          fetchStudentFeeArrears(selectedStudent.id, schoolId)
+        ]);
 
-        if (error) throw error;
         setFeeChallans(challansData || []);
+        setFeeArrears(arrearsData || []);
       } catch (err: any) {
-        setFeeError('Failed to fetch fee challans: ' + (err.message || 'Unknown error'));
+        setFeeError('Failed to fetch fee data: ' + (err.message || 'Unknown error'));
         setFeeChallans([]);
+        setFeeArrears([]);
       } finally {
         setFeeLoading(false);
       }
     };
 
-    fetchFeeChallans();
-  }, [selectedStudent, currentSession, user?.school_id]);
-
-  // Fetch fee arrears when student is selected
-  useEffect(() => {
-    if (!user?.school_id || !selectedStudent || !currentSession) {
-      setFeeArrears([]);
-      return;
-    }
-
-    const fetchFeeArrears = async () => {
-      try {
-        const { data: arrearsData, error } = await supabase
-          .from('fee_arrears')
-          .select(`
-            id,
-            student_id,
-            session_id,
-            fee_head_id,
-            amount,
-            due_date,
-            remarks,
-            status,
-            created_at,
-            fee_heads (
-              id,
-              name,
-              description
-            )
-          `)
-          .eq('student_id', selectedStudent.id)
-          .eq('session_id', currentSession.id)
-          .eq('school_id', user.school_id)
-          .in('status', ['unpaid', 'partial'])
-          .order('due_date', { ascending: true })
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        setFeeArrears(arrearsData || []);
-      } catch (err: any) {
-        console.error('Failed to fetch fee arrears:', err);
-        setFeeArrears([]);
-      }
-    };
-
-    fetchFeeArrears();
-  }, [selectedStudent, currentSession, user?.school_id]);
+    fetchFeeData();
+  }, [selectedStudent, user?.school_id]);
 
   // Fetch payment history when student is selected
   useEffect(() => {
@@ -2735,64 +2706,10 @@ const FeeCollectionNew: React.FC = () => {
         // Refresh all data to update the summary
         const refreshAllData = async () => {
           try {
-            // Refresh fee challans
-            const challansData = await fetchAllRows(async (from, to) => {
-              return await supabase
-                .from('fee_challans')
-                .select(`
-                  id,
-                  student_id,
-                  session_id,
-                  month,
-                  year,
-                  total_amount,
-                  status,
-                  due_date,
-                  created_at,
-                  fee_challans_items (
-                    id,
-                    fee_head_id,
-                    amount,
-                    fee_heads (
-                      id,
-                      name,
-                      description
-                    )
-                  )
-                `)
-                .eq('student_id', selectedStudent.id)
-                .eq('session_id', currentSession.id)
-                .eq('school_id', user?.school_id || 0)
-                .order('year', { ascending: false })
-                .order('month', { ascending: false })
-                .range(from, to);
-            });
-
-            // Refresh fee arrears
-            const { data: arrearsData, error: arrearsError } = await supabase
-              .from('fee_arrears')
-              .select(`
-                id,
-                student_id,
-                session_id,
-                fee_head_id,
-                amount,
-                due_date,
-                remarks,
-                status,
-                created_at,
-                fee_heads (
-                  id,
-                  name,
-                  description
-                )
-              `)
-              .eq('student_id', selectedStudent.id)
-              .eq('session_id', currentSession.id)
-              .eq('school_id', user?.school_id || 0)
-              .in('status', ['unpaid', 'partial'])
-              .order('due_date', { ascending: true })
-              .order('created_at', { ascending: false });
+            const [challansData, arrearsData] = await Promise.all([
+              fetchStudentFeeChallans(selectedStudent.id, user?.school_id || 0),
+              fetchStudentFeeArrears(selectedStudent.id, user?.school_id || 0)
+            ]);
 
             // Refresh payment history using student_id (simplified approach)
             const { data: paymentsData } = await supabase
@@ -2928,64 +2845,10 @@ const FeeCollectionNew: React.FC = () => {
         try {
           if (!selectedStudent) return;
 
-          // Refresh fee challans
-          const challansData = await fetchAllRows(async (from, to) => {
-            return await supabase
-              .from('fee_challans')
-              .select(`
-                id,
-                student_id,
-                session_id,
-                month,
-                year,
-                total_amount,
-                status,
-                due_date,
-                created_at,
-                fee_challans_items (
-                  id,
-                  fee_head_id,
-                  amount,
-                  fee_heads (
-                    id,
-                    name,
-                    description
-                  )
-                )
-              `)
-              .eq('student_id', selectedStudent.id)
-              .eq('session_id', currentSession.id)
-              .eq('school_id', user?.school_id || 0)
-              .order('year', { ascending: false })
-              .order('month', { ascending: false })
-              .range(from, to);
-          });
-
-          // Refresh fee arrears
-          const { data: arrearsData } = await supabase
-            .from('fee_arrears')
-            .select(`
-              id,
-              student_id,
-              session_id,
-              fee_head_id,
-              amount,
-              due_date,
-              remarks,
-              status,
-              created_at,
-              fee_heads (
-                id,
-                name,
-                description
-              )
-            `)
-            .eq('student_id', selectedStudent.id)
-            .eq('session_id', currentSession.id)
-            .eq('school_id', user?.school_id || 0)
-            .in('status', ['unpaid', 'partial'])
-            .order('due_date', { ascending: true })
-            .order('created_at', { ascending: false });
+          const [challansData, arrearsData] = await Promise.all([
+            fetchStudentFeeChallans(selectedStudent.id, user?.school_id || 0),
+            fetchStudentFeeArrears(selectedStudent.id, user?.school_id || 0)
+          ]);
 
           // Refresh payment history using student_id (simplified approach)
           const { data: paymentsData } = await supabase
@@ -3682,11 +3545,13 @@ const FeeCollectionNew: React.FC = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHeaderCell>Payment ID</TableHeaderCell>
-                        <TableHeaderCell>Date</TableHeaderCell>
+                        <TableHeaderCell style={{ width: '90px', whiteSpace: 'nowrap' }}>Payment ID</TableHeaderCell>
+                        <TableHeaderCell style={{ width: '100px', whiteSpace: 'nowrap' }}>Date</TableHeaderCell>
+                        <TableHeaderCell>Total Rem.</TableHeaderCell>
                         <TableHeaderCell>Amount</TableHeaderCell>
                         <TableHeaderCell>Discount</TableHeaderCell>
                         <TableHeaderCell>Net Amount</TableHeaderCell>
+                        <TableHeaderCell>Remaining</TableHeaderCell>
                         <TableHeaderCell>Method</TableHeaderCell>
                         <TableHeaderCell>Received By</TableHeaderCell>
                         <TableHeaderCell>Remarks</TableHeaderCell>
@@ -3694,23 +3559,20 @@ const FeeCollectionNew: React.FC = () => {
                       </TableRow>
                     </TableHeader>
                     <tbody>
-                      {[...paymentHistory]
-                        .sort((a: any, b: any) => {
-                          // Use payment_date first, then created_at as fallback
-                          const aDate = a.payment_date || a.created_at;
-                          const bDate = b.payment_date || b.created_at;
-                          const aTime = aDate ? new Date(aDate).getTime() : 0;
-                          const bTime = bDate ? new Date(bDate).getTime() : 0;
-                          return bTime - aTime; // most recent first (descending order)
-                        })
+                      {paymentHistoryWithBalances
                         .map((payment: any, idx: number) => (
                           <TableRow key={payment.id || idx}>
-                            <TableCell style={{ fontWeight: '600' }}>{getPaymentDisplayId(payment.id)}</TableCell>
-                            <TableCell>{formatDate(payment.payment_date)}</TableCell>
-                            <TableCell>Rs. {formatCurrency(Number(payment.amount || 0))}</TableCell>
+                            <TableCell style={{ fontWeight: '600', width: '90px', whiteSpace: 'nowrap' }}>{getPaymentDisplayId(payment.id)}</TableCell>
+                            <TableCell style={{ width: '100px', whiteSpace: 'nowrap' }}>{formatDate(payment.payment_date)}</TableCell>
+                            <TableCell style={{ fontWeight: '600' }}>
+                              Rs. {formatCurrency(Number(payment.total_remaining_before_payment || 0))}
+                            </TableCell>
+                            <TableCell style={{ color: '#16a34a', fontWeight: 700 }}>
+                              Rs. {formatCurrency(Number(payment.amount || 0))}
+                            </TableCell>
                             <TableCell>
                               {Number(payment.discount_amount || 0) > 0 ? (
-                                <span style={{ color: '#f59e0b', fontWeight: '500' }}>
+                                <span style={{ color: '#f59e0b', fontWeight: 700 }}>
                                   Rs. {formatCurrency(Number(payment.discount_amount || 0))}
                                 </span>
                               ) : (
@@ -3719,6 +3581,9 @@ const FeeCollectionNew: React.FC = () => {
                             </TableCell>
                             <TableCell style={{ fontWeight: '600' }}>
                               Rs. {formatCurrency(Number(payment.net_amount || payment.amount || 0))}
+                            </TableCell>
+                            <TableCell style={{ fontWeight: 700, color: '#dc2626' }}>
+                              Rs. {formatCurrency(Number(payment.remaining_after_payment || 0))}
                             </TableCell>
                             <TableCell>
                               <div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, memo, useCallback, useContext } from 'react';
+import ReactDOM from 'react-dom';
 import styled, { useTheme, css, keyframes } from 'styled-components';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
@@ -24,6 +25,7 @@ import { useProgress, ThemeContext } from '../components/Layout';
 import { useLoading } from '../contexts/LoadingContext';
 import NoStudentsFound from '../components/NoStudentsFound';
 import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
+import { fetchAllRows } from '../utils/paginationHelper';
 
 import Loader from '../components/Loader';
 import {
@@ -1688,6 +1690,9 @@ const StudentStatusManager: React.FC = () => {
   const [historyStudent, setHistoryStudent] = useState<any>(null);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [withdrawBalanceLoading, setWithdrawBalanceLoading] = useState(false);
+  const [withdrawFeeRemaining, setWithdrawFeeRemaining] = useState<number | null>(null);
+  const [withdrawFineRemaining, setWithdrawFineRemaining] = useState<number | null>(null);
   const [showReadmitModal, setShowReadmitModal] = useState(false);
   const [readmitStudent, setReadmitStudent] = useState<any>(null);
   const [readmitClass, setReadmitClass] = useState('');
@@ -1726,6 +1731,13 @@ const StudentStatusManager: React.FC = () => {
   }), [isMobile]);
 
   const totalPages = Math.ceil(filteredStudents.length / perPage);
+  const formatCurrency = useCallback((value: number) => {
+    if (!Number.isFinite(value)) return '0';
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(value);
+  }, []);
 
   // Optimized pagination - always paginate, even when searching
   const paginated = useMemo(() => {
@@ -1840,6 +1852,126 @@ const StudentStatusManager: React.FC = () => {
       setFooterContent(null);
     }
   }, [filteredStudents.length, page, perPage, paginated.length, totalPages, isMobile, theme, setFooterContent, handlePageChange]);
+
+  useEffect(() => {
+    if (!showModal || modalType !== 'withdraw' || !selectedStudent?.id || !user?.school_id) {
+      setWithdrawBalanceLoading(false);
+      setWithdrawFeeRemaining(null);
+      setWithdrawFineRemaining(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchWithdrawBalances = async () => {
+      setWithdrawBalanceLoading(true);
+
+      try {
+        const studentId = Number(selectedStudent.id);
+        const schoolId = Number(user.school_id);
+
+        const [feeChallans, feeArrears, feePayments, attendanceRows, fineSettings, finePayments] = await Promise.all([
+          fetchAllRows(async (from, to) => {
+            return await supabase
+              .from('fee_challans')
+              .select('id, total_amount')
+              .eq('student_id', studentId)
+              .eq('school_id', schoolId)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase
+              .from('fee_arrears')
+              .select('id, amount')
+              .eq('student_id', studentId)
+              .eq('school_id', schoolId)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase
+              .from('fee_payments')
+              .select('id, net_amount')
+              .eq('student_id', studentId)
+              .eq('school_id', schoolId)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase
+              .from('attendance_records')
+              .select('date, status, class_id')
+              .eq('student_id', studentId)
+              .eq('school_id', schoolId)
+              .in('status', ['absent', 'late'])
+              .order('date', { ascending: false })
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase
+              .from('fines')
+              .select('class_id, absent_fine, late_fine, effective_from')
+              .eq('school_id', schoolId)
+              .order('effective_from', { ascending: true })
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase
+              .from('fine_payments')
+              .select('amount, remission')
+              .eq('student_id', studentId)
+              .eq('school_id', schoolId)
+              .range(from, to);
+          })
+        ]);
+
+        if (cancelled) return;
+
+        const totalFeeAmount =
+          (feeChallans || []).reduce((sum: number, challan: any) => sum + Number(challan.total_amount || 0), 0) +
+          (feeArrears || []).reduce((sum: number, arrear: any) => sum + Number(arrear.amount || 0), 0);
+        const totalNetPaidAmount = (feePayments || []).reduce((sum: number, payment: any) => sum + Number(payment.net_amount || 0), 0);
+        const remainingFee = Math.max(0, totalFeeAmount - totalNetPaidAmount);
+
+        const totalFineAmount = (attendanceRows || []).reduce((sum: number, record: any) => {
+          const classIdFromRecord = record.class_id || selectedStudent.class_id;
+          const classFineSettings = (fineSettings || []).filter((fine: any) => fine.class_id === classIdFromRecord);
+
+          let matchedFine = classFineSettings.length > 0 ? classFineSettings[0] : null;
+          for (const fine of classFineSettings) {
+            if (fine.effective_from <= record.date) {
+              matchedFine = fine;
+            }
+          }
+
+          const fineAmount = matchedFine
+            ? (record.status === 'absent' ? Number(matchedFine.absent_fine || 0) : Number(matchedFine.late_fine || 0))
+            : 0;
+
+          return sum + fineAmount;
+        }, 0);
+
+        const totalFinePaid = (finePayments || []).reduce((sum: number, payment: any) => sum + Number(payment.amount || 0), 0);
+        const totalFineRemission = (finePayments || []).reduce((sum: number, payment: any) => sum + Number(payment.remission || 0), 0);
+        const remainingFine = Math.max(0, totalFineAmount - (totalFinePaid + totalFineRemission));
+
+        setWithdrawFeeRemaining(remainingFee);
+        setWithdrawFineRemaining(remainingFine);
+      } catch (error) {
+        if (cancelled) return;
+        setWithdrawFeeRemaining(null);
+        setWithdrawFineRemaining(null);
+      } finally {
+        if (!cancelled) {
+          setWithdrawBalanceLoading(false);
+        }
+      }
+    };
+
+    fetchWithdrawBalances();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showModal, modalType, selectedStudent, user?.school_id]);
 
   const handleClassFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setClassFilter(e.target.value);
@@ -2907,7 +3039,7 @@ const StudentStatusManager: React.FC = () => {
         )}
       </ContentArea>
 
-      {showModal && selectedStudent && (
+      {showModal && selectedStudent && ReactDOM.createPortal(
         <ModalOverlay>
           <ModalBox
             tabIndex={0}
@@ -3020,11 +3152,50 @@ const StudentStatusManager: React.FC = () => {
               )}
 
               {modalType === 'withdraw' && (
-                <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <ModalText>
                     Are you sure you want to withdraw <strong>{selectedStudent.name}</strong>?
                     This action will permanently remove the student from active status.
                   </ModalText>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: window.innerWidth <= 700 ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+                      gap: '12px',
+                      marginTop: '2px'
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: '12px 14px',
+                        borderRadius: 12,
+                        border: '1px solid rgba(34, 197, 94, 0.18)',
+                        background: 'rgba(34, 197, 94, 0.08)'
+                      }}
+                    >
+                      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#166534', marginBottom: 4 }}>
+                        Remaining Fee
+                      </div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#16a34a' }}>
+                        {withdrawBalanceLoading ? 'Loading...' : `Rs. ${formatCurrency(Number(withdrawFeeRemaining || 0))}`}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        padding: '12px 14px',
+                        borderRadius: 12,
+                        border: '1px solid rgba(239, 68, 68, 0.18)',
+                        background: 'rgba(239, 68, 68, 0.08)'
+                      }}
+                    >
+                      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#991b1b', marginBottom: 4 }}>
+                        Remaining Fine
+                      </div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#dc2626' }}>
+                        {withdrawBalanceLoading ? 'Loading...' : `Rs. ${formatCurrency(Number(withdrawFineRemaining || 0))}`}
+                      </div>
+                    </div>
+                  </div>
                   <ModalFormGroup>
                     <ModalLabel htmlFor="reason">Enter reason for withdrawal (required):</ModalLabel>
                     <ModalInput
@@ -3049,7 +3220,7 @@ const StudentStatusManager: React.FC = () => {
                       max="2100-12-31"
                     />
                   </ModalFormGroup>
-                </>
+                </div>
               )}
 
               {modalType === 'promote' && (
@@ -3146,10 +3317,11 @@ const StudentStatusManager: React.FC = () => {
               </ModalButton>
             </ModalFooter>
           </ModalBox>
-        </ModalOverlay>
+        </ModalOverlay>,
+        document.body
       )}
 
-      {showHistoryModal && historyStudent && (
+      {showHistoryModal && historyStudent && ReactDOM.createPortal(
         <ModalOverlay>
           <ModalBox style={{ width: '90vw', maxWidth: 600, maxHeight: '90vh' }}>
             <ModalHeader>
@@ -3258,10 +3430,11 @@ const StudentStatusManager: React.FC = () => {
               </ModalButton>
             </ModalFooter>
           </ModalBox>
-        </ModalOverlay>
+        </ModalOverlay>,
+        document.body
       )}
 
-      {showReadmitModal && readmitStudent && (
+      {showReadmitModal && readmitStudent && ReactDOM.createPortal(
         <ModalOverlay>
           <ModalBox
             tabIndex={0}
@@ -3369,7 +3542,8 @@ const StudentStatusManager: React.FC = () => {
               </ModalButton>
             </ModalFooter>
           </ModalBox>
-        </ModalOverlay>
+        </ModalOverlay>,
+        document.body
       )}
     </PageContainer>
   );

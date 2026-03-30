@@ -299,12 +299,18 @@ const TableCell = styled.td`
 const FamilyInfo = styled.div`
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.8rem;
   margin-bottom: 1rem;
   padding: 0.75rem;
   background: ${({ theme }) => theme.FIELD_BG};
   border-radius: 6px;
   border: 1px solid ${({ theme }) => theme.BORDER};
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 `;
 
 const FamilyAvatar = styled.div<{ $bg: string }>`
@@ -326,6 +332,18 @@ const FamilyDetails = styled.div`
   min-width: 0;
 `;
 
+const FamilyHeaderMain = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex: 1;
+  min-width: 0;
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
+`;
+
 const FamilyName = styled.div`
   font-size: 1rem;
   font-weight: 600;
@@ -337,6 +355,37 @@ const FamilyInfoText = styled.div`
   font-size: 0.8rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   margin-bottom: 0.2rem;
+`;
+
+const FamilyRemainingSummary = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    align-items: flex-start;
+  }
+`;
+
+const FamilyRemainingLabel = styled.div`
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+`;
+
+const FamilyRemainingValue = styled.div`
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #dc2626;
+  line-height: 1.1;
+
+  @media (max-width: 768px) {
+    font-size: 1.35rem;
+  }
 `;
 
 const EmptyState = styled.div`
@@ -585,6 +634,25 @@ const FamilyFeeCollection: React.FC = () => {
     return color;
   };
 
+  const getStudentHistoryColor = (student: any, fallbackId?: number) => {
+    const palette = [
+      '#2563eb',
+      '#0891b2',
+      '#16a34a',
+      '#7c3aed',
+      '#ea580c',
+      '#0f766e',
+      '#4338ca',
+      '#ca8a04'
+    ];
+    const key = `${student?.id || fallbackId || 0}-${student?.name || 'student'}`;
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+      hash = key.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return palette[Math.abs(hash) % palette.length];
+  };
+
   const fetchActiveSession = async () => {
     if (!user?.school_id) return;
     const { data: sessionsData } = await supabase
@@ -780,9 +848,6 @@ const FamilyFeeCollection: React.FC = () => {
         .in('student_id', studentIds)
         .eq('school_id', user.school_id);
 
-      if (activeSessionId) {
-        challanQuery.eq('session_id', activeSessionId);
-      }
 
       const arrearsQuery = supabase
         .from('fee_arrears')
@@ -939,6 +1004,44 @@ const FamilyFeeCollection: React.FC = () => {
     return Object.values(studentPayMap).reduce((sum, v) => sum + Number(v || 0), 0);
   }, [studentPayMap]);
 
+  const paymentHistoryWithBalances = useMemo(() => {
+    const totalDueByStudent = new Map<number, number>();
+    familySummary.forEach((row) => {
+      totalDueByStudent.set(row.student.id, Number(row.totalDue || 0));
+    });
+
+    const getPaymentSortTime = (payment: any) => {
+      const paymentDateTime = payment.payment_date ? new Date(payment.payment_date).getTime() : 0;
+      const createdAtTime = payment.created_at ? new Date(payment.created_at).getTime() : 0;
+      return Math.max(paymentDateTime, createdAtTime);
+    };
+
+    const paymentsAscending = [...paymentHistory].sort((a: any, b: any) => {
+      return getPaymentSortTime(a) - getPaymentSortTime(b);
+    });
+
+    const paidByStudent = new Map<number, number>();
+    const enrichedPayments = paymentsAscending.map((payment: any) => {
+      const studentId = Number(payment.student_id || 0);
+      const totalDue = totalDueByStudent.get(studentId) || 0;
+      const netAmount = Number(payment.net_amount || payment.amount || 0);
+      const alreadyPaid = paidByStudent.get(studentId) || 0;
+      const remainingAfterPayment = Math.max(0, totalDue - alreadyPaid - netAmount);
+
+      paidByStudent.set(studentId, alreadyPaid + netAmount);
+
+      return {
+        ...payment,
+        total_remaining_before_payment: Math.max(0, totalDue - alreadyPaid),
+        remaining_after_payment: remainingAfterPayment,
+      };
+    });
+
+    return enrichedPayments.sort((a: any, b: any) => {
+      return getPaymentSortTime(b) - getPaymentSortTime(a);
+    });
+  }, [paymentHistory, familySummary]);
+
   const toggleStudentSelection = (studentId: number) => {
     setSelectedStudentIds((prev) =>
       prev.includes(studentId) ? prev.filter((id) => id !== studentId) : [...prev, studentId]
@@ -966,9 +1069,6 @@ const FamilyFeeCollection: React.FC = () => {
       .eq('student_id', studentId)
       .eq('school_id', user.school_id);
 
-    if (activeSessionId) {
-      challanQuery.eq('session_id', activeSessionId);
-    }
 
     const arrearsQuery = supabase
       .from('fee_arrears')
@@ -1285,8 +1385,8 @@ const FamilyFeeCollection: React.FC = () => {
                     <SuggestionName theme={themeObj}>{family.name}</SuggestionName>
                     <SuggestionDetails theme={themeObj}>
                       ID: {getFamilyDisplayId(family.id)}
-                      {family.contact_person ? ` � ${family.contact_person}` : ''}
-                      {family.contact_number ? ` � ${family.contact_number}` : ''}
+                      {family.contact_person ? ` Â· ${family.contact_person}` : ''}
+                      {family.contact_number ? ` Â· ${family.contact_number}` : ''}
                     </SuggestionDetails>
                   </SuggestionInfo>
                 </SuggestionItem>
@@ -1313,30 +1413,38 @@ const FamilyFeeCollection: React.FC = () => {
             {selectedFamily ? (
               <>
                 <FamilyInfo theme={themeObj}>
-                  <FamilyAvatar $bg={stringToColor(selectedFamily.name || 'F')}>
-                    {selectedFamily.avatar_url ? (
-                      <img
-                        src={selectedFamily.avatar_url}
-                        alt="Family"
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
-                    ) : (
-                      (selectedFamily.name || 'F').charAt(0).toUpperCase()
-                    )}
-                  </FamilyAvatar>
-                  <FamilyDetails>
-                    <FamilyName theme={themeObj}>{selectedFamily.name}</FamilyName>
-                    <FamilyInfoText theme={themeObj}>ID: {getFamilyDisplayId(selectedFamily.id)}</FamilyInfoText>
-                    {selectedFamily.contact_person && (
-                      <FamilyInfoText theme={themeObj}>Contact: {selectedFamily.contact_person}</FamilyInfoText>
-                    )}
-                    {selectedFamily.contact_number && (
-                      <FamilyInfoText theme={themeObj}>Phone: {selectedFamily.contact_number}</FamilyInfoText>
-                    )}
-                    {selectedFamily.address && (
-                      <FamilyInfoText theme={themeObj}>Address: {selectedFamily.address}</FamilyInfoText>
-                    )}
-                  </FamilyDetails>
+                  <FamilyHeaderMain>
+                    <FamilyAvatar $bg={stringToColor(selectedFamily.name || 'F')}>
+                      {selectedFamily.avatar_url ? (
+                        <img
+                          src={selectedFamily.avatar_url}
+                          alt="Family"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        (selectedFamily.name || 'F').charAt(0).toUpperCase()
+                      )}
+                    </FamilyAvatar>
+                    <FamilyDetails>
+                      <FamilyName theme={themeObj}>{selectedFamily.name}</FamilyName>
+                      <FamilyInfoText theme={themeObj}>ID: {getFamilyDisplayId(selectedFamily.id)}</FamilyInfoText>
+                      {selectedFamily.contact_person && (
+                        <FamilyInfoText theme={themeObj}>Contact: {selectedFamily.contact_person}</FamilyInfoText>
+                      )}
+                      {selectedFamily.contact_number && (
+                        <FamilyInfoText theme={themeObj}>Phone: {selectedFamily.contact_number}</FamilyInfoText>
+                      )}
+                      {selectedFamily.address && (
+                        <FamilyInfoText theme={themeObj}>Address: {selectedFamily.address}</FamilyInfoText>
+                      )}
+                    </FamilyDetails>
+                  </FamilyHeaderMain>
+                  <FamilyRemainingSummary>
+                    <FamilyRemainingLabel theme={themeObj}>Total Remaining</FamilyRemainingLabel>
+                    <FamilyRemainingValue>
+                      Rs. {formatCurrency(familyTotals.totalRemaining)}
+                    </FamilyRemainingValue>
+                  </FamilyRemainingSummary>
                 </FamilyInfo>
 
                 <CardTitle theme={themeObj} style={{ marginTop: 0 }}>
@@ -1683,30 +1791,55 @@ const FamilyFeeCollection: React.FC = () => {
                 <Table>
                   <TableHeader theme={themeObj}>
                     <TableRow>
-                      <TableHeaderCell theme={themeObj}>Payment ID</TableHeaderCell>
-                      <TableHeaderCell theme={themeObj}>Date</TableHeaderCell>
-                      <TableHeaderCell theme={themeObj}>Student</TableHeaderCell>
+                      <TableHeaderCell theme={themeObj} style={{ width: '90px', whiteSpace: 'nowrap' }}>Payment ID</TableHeaderCell>
+                      <TableHeaderCell theme={themeObj} style={{ width: '100px', whiteSpace: 'nowrap' }}>Date</TableHeaderCell>
+                      <TableHeaderCell theme={themeObj} style={{ minWidth: '240px' }}>Student</TableHeaderCell>
+                      <TableHeaderCell theme={themeObj}>Total Rem.</TableHeaderCell>
                       <TableHeaderCell theme={themeObj}>Amount</TableHeaderCell>
                       <TableHeaderCell theme={themeObj}>Discount</TableHeaderCell>
                       <TableHeaderCell theme={themeObj}>Net</TableHeaderCell>
+                      <TableHeaderCell theme={themeObj}>Remaining</TableHeaderCell>
                       <TableHeaderCell theme={themeObj}>Method</TableHeaderCell>
                       <TableHeaderCell theme={themeObj}>Remarks</TableHeaderCell>
                     </TableRow>
                   </TableHeader>
                   <tbody>
-                    {paymentHistory.map((payment: any) => {
+                    {paymentHistoryWithBalances.map((payment: any) => {
                       const student = studentMap.get(payment.student_id);
                       const method = payment.accounts
                         ? `${payment.payment_mode} - ${payment.accounts.name}`
                         : payment.payment_mode;
                       return (
                         <TableRow key={payment.id}>
-                          <TableCell theme={themeObj} style={{ fontWeight: 600 }}>{payment.id}</TableCell>
-                          <TableCell theme={themeObj}>{formatDate(payment.payment_date || payment.created_at)}</TableCell>
-                          <TableCell theme={themeObj}>{student ? `${getStudentDisplayId(student)} - ${student.name}` : payment.student_id}</TableCell>
-                          <TableCell theme={themeObj}>Rs. {formatCurrency(Number(payment.amount || 0))}</TableCell>
-                          <TableCell theme={themeObj}>Rs. {formatCurrency(Number(payment.discount_amount || 0))}</TableCell>
+                          <TableCell theme={themeObj} style={{ fontWeight: 600, width: '90px', whiteSpace: 'nowrap' }}>{payment.id}</TableCell>
+                          <TableCell theme={themeObj} style={{ width: '100px', whiteSpace: 'nowrap' }}>{formatDate(payment.payment_date || payment.created_at)}</TableCell>
+                          <TableCell theme={themeObj}>
+                            {student ? (
+                              <span
+                                style={{
+                                  color: getStudentHistoryColor(student, payment.student_id),
+                                  fontWeight: 700
+                                }}
+                              >
+                                {getStudentDisplayId(student)} - {student.name}
+                              </span>
+                            ) : (
+                              payment.student_id
+                            )}
+                          </TableCell>
+                          <TableCell theme={themeObj} style={{ fontWeight: 600 }}>
+                            Rs. {formatCurrency(Number(payment.total_remaining_before_payment || 0))}
+                          </TableCell>
+                          <TableCell theme={themeObj} style={{ color: '#16a34a', fontWeight: 700 }}>
+                            Rs. {formatCurrency(Number(payment.amount || 0))}
+                          </TableCell>
+                          <TableCell theme={themeObj} style={{ color: '#f59e0b', fontWeight: 700 }}>
+                            Rs. {formatCurrency(Number(payment.discount_amount || 0))}
+                          </TableCell>
                           <TableCell theme={themeObj}>Rs. {formatCurrency(Number(payment.net_amount || payment.amount || 0))}</TableCell>
+                          <TableCell theme={themeObj} style={{ fontWeight: 700, color: '#dc2626' }}>
+                            Rs. {formatCurrency(Number(payment.remaining_after_payment || 0))}
+                          </TableCell>
                           <TableCell theme={themeObj}>{method || '-'}</TableCell>
                           <TableCell theme={themeObj}>{payment.remarks || '-'}</TableCell>
                         </TableRow>
@@ -1837,5 +1970,6 @@ const FamilyFeeCollection: React.FC = () => {
   );
 };
 
-export default FamilyFeeCollection;
+export default FamilyFeeCollection;
+
 

@@ -817,6 +817,18 @@ const UserManagement: React.FC = () => {
   const [passwordUser, setPasswordUser] = useState<User | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showParentEditModal, setShowParentEditModal] = useState(false);
+  const [selectedParent, setSelectedParent] = useState<Parent | null>(null);
+  const [parentForm, setParentForm] = useState({
+    name: '',
+    contact_person: '',
+    contact_number: '',
+    address: ''
+  });
+  const [showParentPasswordModal, setShowParentPasswordModal] = useState(false);
+  const [parentPassword, setParentPassword] = useState('');
+  const [parentNewPassword, setParentNewPassword] = useState('');
+  const [showParentPassword, setShowParentPassword] = useState(false);
   const [hoveredAvatar, setHoveredAvatar] = useState<{ url: string; x: number; y: number } | null>(null);
   const [activeTab, setActiveTab] = useState(0);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -1302,6 +1314,155 @@ const UserManagement: React.FC = () => {
     setShowForm(true);
   };
 
+  const handleEditParent = (parent: Parent) => {
+    setSelectedParent(parent);
+    setParentForm({
+      name: parent.name || '',
+      contact_person: parent.contact_person || '',
+      contact_number: parent.contact_number || '',
+      address: parent.address || ''
+    });
+    setShowParentEditModal(true);
+  };
+
+  const handleCloseParentEditModal = () => {
+    setShowParentEditModal(false);
+    setSelectedParent(null);
+    setParentForm({
+      name: '',
+      contact_person: '',
+      contact_number: '',
+      address: ''
+    });
+  };
+
+  const handleUpdateParent = async () => {
+    if (!user?.school_id || !selectedParent) {
+      toast.showToast('User school information not found', 'error');
+      return;
+    }
+
+    if (!parentForm.name.trim()) {
+      toast.showToast('Family name is required', 'error');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('families')
+        .update({
+          name: parentForm.name.trim(),
+          contact_person: parentForm.contact_person.trim(),
+          contact_number: parentForm.contact_number.trim(),
+          address: parentForm.address.trim()
+        })
+        .eq('id', selectedParent.id)
+        .eq('school_id', user.school_id);
+
+      if (error) throw error;
+
+      setParents((prevParents) =>
+        prevParents.map((parent) =>
+          parent.id === selectedParent.id
+            ? {
+              ...parent,
+              name: parentForm.name.trim(),
+              contact_person: parentForm.contact_person.trim(),
+              contact_number: parentForm.contact_number.trim(),
+              address: parentForm.address.trim()
+            }
+            : parent
+        )
+      );
+
+      toast.showToast('Parent updated successfully', 'success');
+      handleCloseParentEditModal();
+    } catch (error) {
+      toast.showToast('Failed to update parent', 'error');
+    }
+  };
+
+  const handleViewParentPassword = async (parent: Parent) => {
+    if (!user?.school_id) {
+      toast.showToast('User school information not found', 'error');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('families')
+        .select('password')
+        .eq('id', parent.id)
+        .eq('school_id', user.school_id)
+        .single();
+
+      if (error) throw error;
+      setSelectedParent(parent);
+      setParentPassword(data?.password || '12345');
+      setParentNewPassword('');
+      setShowParentPassword(false);
+      setShowParentPasswordModal(true);
+    } catch (error) {
+      toast.showToast('Failed to fetch parent password', 'error');
+    }
+  };
+
+  const handleChangeParentPassword = async () => {
+    if (!selectedParent || !user?.school_id) {
+      toast.showToast('Parent information not found', 'error');
+      return;
+    }
+    if (!parentNewPassword.trim()) {
+      toast.showToast('Password cannot be empty', 'error');
+      return;
+    }
+    try {
+      const trimmedPassword = parentNewPassword.trim();
+      const { error } = await supabase
+        .from('families')
+        .update({ password: trimmedPassword })
+        .eq('id', selectedParent.id)
+        .eq('school_id', user.school_id);
+
+      if (error) throw error;
+      setParentPassword(trimmedPassword);
+      toast.showToast('Password updated successfully', 'success');
+      setShowParentPasswordModal(false);
+      setParentNewPassword('');
+      setSelectedParent(null);
+      fetchParents();
+    } catch (error) {
+      toast.showToast('Failed to update parent password', 'error');
+    }
+  };
+
+  const handleResetParentPassword = async () => {
+    if (!selectedParent || !user?.school_id) {
+      toast.showToast('Parent information not found', 'error');
+      return;
+    }
+    if (!window.confirm(`Reset ${selectedParent.name}'s password to the default (12345)?`)) {
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('families')
+        .update({ password: '12345' })
+        .eq('id', selectedParent.id)
+        .eq('school_id', user.school_id);
+
+      if (error) throw error;
+      toast.showToast('Password reset to default (12345)', 'success');
+      setShowParentPasswordModal(false);
+      setParentPassword('');
+      setParentNewPassword('');
+      setSelectedParent(null);
+      fetchParents();
+    } catch (error) {
+      toast.showToast('Failed to reset parent password', 'error');
+    }
+  };
+
   const handleFormSuccess = () => {
     fetchUsers();
   };
@@ -1472,7 +1633,7 @@ const UserManagement: React.FC = () => {
         .single();
 
       if (error) throw error;
-      setStudentPassword(data?.password || 'aa');
+      setStudentPassword(data?.password || '12345');
       setSelectedStudent(student);
       setShowStudentPasswordModal(true);
       setShowStudentPassword(false);
@@ -1513,14 +1674,17 @@ const UserManagement: React.FC = () => {
       toast.showToast('Student information not found', 'error');
       return;
     }
+    if (!window.confirm(`Reset ${selectedStudent.name}'s password to the default (12345)?`)) {
+      return;
+    }
     try {
       const { error } = await supabase
         .from('students')
-        .update({ password: 'aa' })
+        .update({ password: '12345' })
         .eq('id', selectedStudent.id)
         .eq('school_id', user.school_id);
       if (error) throw error;
-      toast.showToast('Password reset to default (aa)', 'success');
+      toast.showToast('Password reset to default (12345)', 'success');
       setShowStudentPasswordModal(false);
       setSelectedStudent(null);
       setStudentNewPassword('');
@@ -1624,6 +1788,22 @@ const UserManagement: React.FC = () => {
         fileName = `All_Parents_Export_${new Date().toISOString().split('T')[0]}.pdf`;
 
         head = [['S.No', 'ID', 'Name', 'Father Name', 'Mobile', 'Username/ID', 'Password']];
+
+        let parentPasswordMap: Record<number, string> = {};
+        if (user?.school_id && parents.length > 0) {
+          const parentIds = parents.map(parent => parent.id);
+          const { data: parentPasswordData } = await supabase
+            .from('families')
+            .select('id, password')
+            .eq('school_id', user.school_id)
+            .in('id', parentIds);
+
+          if (parentPasswordData) {
+            parentPasswordData.forEach((parent: any) => {
+              parentPasswordMap[parent.id] = parent.password || '-';
+            });
+          }
+        }
         
         body = parents.map((parent, idx: number) => {
           const familyId = getFamilyDisplayId(parent.id);
@@ -1634,7 +1814,7 @@ const UserManagement: React.FC = () => {
             '-', // Parents don't have father name
             parent.contact_number || '-',
             familyId, // Using family ID as username/ID
-            '-' // Parents don't have passwords in users table
+            parentPasswordMap[parent.id] || '-'
           ];
         });
       } else {
@@ -2075,7 +2255,10 @@ const UserManagement: React.FC = () => {
                       )}
                     </StatusInfo>
                     <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                      <CardActionButton onClick={() => {/* TODO: Edit parent */ }} title="Edit Parent">
+                      <CardActionButton onClick={() => handleViewParentPassword(parent)} title="View/Change Password">
+                        <Lock />
+                      </CardActionButton>
+                      <CardActionButton onClick={() => handleEditParent(parent)} title="Edit Parent">
                         <Edit />
                       </CardActionButton>
                       <CardActionButton $variant="danger" onClick={() => {/* TODO: Delete parent */ }} title="Delete Parent">
@@ -2378,7 +2561,7 @@ const UserManagement: React.FC = () => {
       </TabPanel>
 
       {/* Password Modal */}
-      {showPasswordModal && passwordUser && (
+      {showPasswordModal && passwordUser && ReactDOM.createPortal(
         <PasswordModal onClick={() => setShowPasswordModal(false)}>
           <PasswordFormContainer onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
             <PasswordTitle>View / Change Password</PasswordTitle>
@@ -2418,10 +2601,11 @@ const UserManagement: React.FC = () => {
               <PasswordButton type="button" variant="secondary" onClick={() => setShowPasswordModal(false)}>Cancel</PasswordButton>
             </PasswordButtonGroup>
           </PasswordFormContainer>
-        </PasswordModal>
+        </PasswordModal>,
+        document.body
       )}
 
-      {showForm && (
+      {showForm && ReactDOM.createPortal(
         <UserForm
           user={selectedUser}
           onClose={() => {
@@ -2429,7 +2613,133 @@ const UserManagement: React.FC = () => {
             setSelectedUser(undefined);
           }}
           onSuccess={handleFormSuccess}
-        />
+        />,
+        document.body
+      )}
+
+      {showParentEditModal && selectedParent && ReactDOM.createPortal(
+        <PasswordModal onClick={handleCloseParentEditModal}>
+          <PasswordFormContainer onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
+            <PasswordTitle>Edit Parent</PasswordTitle>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Family Name</label>
+                <PasswordInput
+                  type="text"
+                  value={parentForm.name}
+                  onChange={(e) => setParentForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Enter family name"
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Contact Person</label>
+                <PasswordInput
+                  type="text"
+                  value={parentForm.contact_person}
+                  onChange={(e) => setParentForm(prev => ({ ...prev, contact_person: e.target.value }))}
+                  placeholder="Enter contact person"
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Contact Number</label>
+                <PasswordInput
+                  type="text"
+                  value={parentForm.contact_number}
+                  onChange={(e) => setParentForm(prev => ({ ...prev, contact_number: e.target.value }))}
+                  placeholder="Enter contact number"
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>Address</label>
+                <textarea
+                  value={parentForm.address}
+                  onChange={(e) => setParentForm(prev => ({ ...prev, address: e.target.value }))}
+                  placeholder="Enter address"
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: '1.5px solid rgba(148, 163, 184, 0.35)',
+                    background: 'transparent',
+                    color: 'inherit',
+                    resize: 'vertical',
+                    fontFamily: 'inherit',
+                    fontSize: '14px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            </div>
+            <PasswordButtonGroup>
+              <PasswordButton type="button" onClick={handleUpdateParent}>Save Changes</PasswordButton>
+              <PasswordButton type="button" variant="secondary" onClick={handleCloseParentEditModal}>Cancel</PasswordButton>
+            </PasswordButtonGroup>
+          </PasswordFormContainer>
+        </PasswordModal>,
+        document.body
+      )}
+
+      {showParentPasswordModal && selectedParent && ReactDOM.createPortal(
+        <PasswordModal onClick={() => {
+          setShowParentPasswordModal(false);
+          setSelectedParent(null);
+          setParentNewPassword('');
+        }}>
+          <PasswordFormContainer onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
+            <PasswordTitle>Manage Parent Password</PasswordTitle>
+            <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Avatar src={selectedParent.avatar_url}>
+                {!selectedParent.avatar_url && selectedParent.name.charAt(0).toUpperCase()}
+              </Avatar>
+              <div>
+                <strong>Parent:</strong> {selectedParent.name}
+                <div style={{ opacity: 0.8, fontSize: '0.9rem' }}>
+                  {selectedParent.contact_person || selectedParent.contact_number || `ID: ${getFamilyDisplayId(selectedParent.id)}`}
+                </div>
+              </div>
+            </div>
+            <PasswordFormGroup>
+              <PasswordLabel>Current Password</PasswordLabel>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <PasswordInput
+                  type={showParentPassword ? 'text' : 'password'}
+                  value={parentPassword}
+                  readOnly
+                  style={{ flex: 1 }}
+                />
+                <CardActionButton type="button" onClick={() => setShowParentPassword(v => !v)}>
+                  {showParentPassword ? <VisibilityOff /> : <Visibility />}
+                </CardActionButton>
+              </div>
+            </PasswordFormGroup>
+            <PasswordFormGroup>
+              <PasswordLabel>New Password</PasswordLabel>
+              <PasswordInput
+                type="password"
+                value={parentNewPassword}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setParentNewPassword(e.target.value)}
+                placeholder="Enter new password"
+              />
+            </PasswordFormGroup>
+            <PasswordButtonGroup>
+              <PasswordButton type="button" variant="secondary" onClick={handleResetParentPassword}>Reset to 12345</PasswordButton>
+              <PasswordButton type="button" onClick={handleChangeParentPassword}>Change Password</PasswordButton>
+              <PasswordButton
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setShowParentPasswordModal(false);
+                  setSelectedParent(null);
+                  setParentNewPassword('');
+                }}
+              >
+                Cancel
+              </PasswordButton>
+            </PasswordButtonGroup>
+          </PasswordFormContainer>
+        </PasswordModal>,
+        document.body
       )}
 
       {/* Student Password Modal */}
@@ -2466,7 +2776,7 @@ const UserManagement: React.FC = () => {
               <PasswordDisplayWrapper>
                 <PasswordInput
                   type={showStudentPassword ? 'text' : 'password'}
-                  value={studentPassword || 'aa'}
+                  value={studentPassword || '12345'}
                   readOnly
                   style={{ flex: 1 }}
                 />
@@ -2487,7 +2797,7 @@ const UserManagement: React.FC = () => {
             </PasswordFormGroup>
             <PasswordButtonGroup>
               <PasswordButton variant="secondary" onClick={() => {
-                setStudentNewPassword('aa');
+                setStudentNewPassword('12345');
                 handleResetStudentPassword();
               }}>
                 <Refresh style={{ fontSize: 16, marginRight: 4 }} />

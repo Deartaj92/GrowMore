@@ -356,6 +356,12 @@ const ProfileHeader = muiStyled(Box)(({ theme }) => ({
     inset: 0,
     borderRadius: 'inherit',
     transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+    pointerEvents: 'none',
+  },
+
+  '& > *': {
+    position: 'relative',
+    zIndex: 2,
   },
 
   '&::before': {
@@ -2653,6 +2659,106 @@ const AttendanceContentSkeleton: React.FC = () => {
   );
 };
 
+const OverviewAttendanceCardSkeleton: React.FC = () => {
+  return (
+    <Box sx={{ position: 'relative', zIndex: 1 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+        <Skeleton variant="circular" width={180} height={180} />
+      </Box>
+      <Grid container spacing={2}>
+        {[1, 2, 3, 4].map((item) => (
+          <Grid item xs={6} key={`attendance-overview-skeleton-${item}`}>
+            <Box sx={{ p: 1.5, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Skeleton variant="rounded" width={32} height={32} />
+                <Box sx={{ flex: 1 }}>
+                  <Skeleton variant="text" width="70%" height={24} />
+                  <Skeleton variant="text" width="90%" height={16} />
+                </Box>
+              </Box>
+            </Box>
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
+  );
+};
+
+const OverviewSummaryCardSkeleton: React.FC = () => {
+  return (
+    <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        mb: 2,
+        pb: 1.5,
+        borderBottom: '1px solid',
+        borderColor: 'divider'
+      }}>
+        <Skeleton variant="text" width={110} height={20} />
+        <Skeleton variant="text" width={56} height={34} />
+      </Box>
+      <Grid container spacing={0.5} sx={{ mb: 1 }}>
+        {[1, 2, 3].map((item) => (
+          <Grid item xs={4} key={`overview-summary-skeleton-${item}`}>
+            <Box sx={{ p: 1, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 0.5 }}>
+                <Skeleton variant="circular" width={16} height={16} />
+              </Box>
+              <Skeleton variant="text" width="80%" height={22} sx={{ mx: 'auto' }} />
+              <Skeleton variant="text" width="65%" height={14} sx={{ mx: 'auto' }} />
+            </Box>
+          </Grid>
+        ))}
+      </Grid>
+      <Box sx={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        borderTop: '1px solid',
+        borderColor: 'divider',
+        pt: 1.5
+      }}>
+        <Skeleton variant="text" width={110} height={16} sx={{ mb: 1 }} />
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {[1, 2, 3].map((item) => (
+            <Skeleton key={`overview-summary-line-${item}`} variant="rounded" height={38} />
+          ))}
+        </Box>
+      </Box>
+    </Box>
+  );
+};
+
+const OverviewReportCardSkeleton: React.FC = () => {
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Box>
+          <Skeleton variant="text" width={120} height={24} />
+          <Skeleton variant="text" width={88} height={18} />
+        </Box>
+        <Skeleton variant="rounded" width={110} height={32} />
+      </Box>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+        {[1, 2, 3].map((item) => (
+          <Box
+            key={`overview-report-skeleton-${item}`}
+            sx={{ p: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}
+          >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Skeleton variant="text" width="48%" height={22} />
+              <Skeleton variant="rounded" width={52} height={20} />
+            </Box>
+            <Skeleton variant="text" width="72%" height={16} />
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+};
+
 export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfile = false }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -2720,9 +2826,16 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   const [attendanceSessions, setAttendanceSessions] = useState<any[]>([]);
   const [testSessionLoading, setTestSessionLoading] = useState(false);
   const [attendanceSessionLoading, setAttendanceSessionLoading] = useState(false);
+  const [reportCardLoading, setReportCardLoading] = useState(false);
+  const [homeworkDiaryLoading, setHomeworkDiaryLoading] = useState(false);
+  const [examinationSessionLoading, setExaminationSessionLoading] = useState(false);
   const { startProgress, setProgress, completeProgress } = useProgress();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const progressRef = useRef({ startProgress, setProgress, completeProgress });
+  const testSessionRequestRef = useRef(0);
+  const attendanceSessionRequestRef = useRef(0);
+  const examinationRequestRef = useRef(0);
+  const homeworkDiaryRequestRef = useRef(0);
   const emptyTestSummaryData = {
     totalSubjects: 0,
     totalTests: 0,
@@ -2731,6 +2844,208 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
     totalPercentage: 0,
     subjectSummaries: []
   };
+  const resetTestSessionState = useCallback(() => {
+    setTestSessionData([]);
+    setTestSubjects([]);
+    setTestSummaryData(emptyTestSummaryData);
+    setExpandedTestCards(new Set());
+  }, []);
+  const loadReportOverviewData = useCallback(async (studentId: number | string) => {
+    const normalizedStudentId = typeof studentId === 'number' ? studentId : Number(studentId);
+    setReportCardLoading(true);
+
+    try {
+      const reportsCountResult = await supabase
+        .from('reports')
+        .select('id, status, created_at, severity, category:report_categories(id, name), reporter:staff!reports_reported_by_fkey(id, name)')
+        .eq('student_id', normalizedStudentId)
+        .order('created_at', { ascending: false });
+
+      if (!reportsCountResult.error && reportsCountResult.data) {
+        setReports(reportsCountResult.data.map((r: any) => ({
+          id: r.id.toString(),
+          created_at: r.created_at || '',
+          description: '',
+          status: r.status,
+          severity: (r.severity || 'low') as 'low' | 'medium' | 'high' | 'urgent',
+          category: r.category,
+          reporter: r.reporter
+        })));
+
+        const categoryMap = new Map<string, ReportCategory>();
+        reportsCountResult.data.forEach((report: any) => {
+          if (report.category) {
+            const existing = categoryMap.get(report.category.id);
+            if (existing) {
+              existing.count++;
+            } else {
+              categoryMap.set(report.category.id, {
+                id: report.category.id,
+                name: report.category.name,
+                count: 1
+              });
+            }
+          }
+        });
+        setReportCategories(Array.from(categoryMap.values()));
+      } else {
+        setReports([]);
+        setReportCategories([]);
+      }
+    } catch (error) {
+      setReports([]);
+      setReportCategories([]);
+    } finally {
+      setReportCardLoading(false);
+    }
+  }, []);
+  const loadExaminationOverviewData = useCallback(async (
+    studentId: number | string,
+    schoolId: number,
+    sessionValue: number | 'all' | null
+  ) => {
+    const requestId = ++examinationRequestRef.current;
+    const effectiveSessionId = typeof sessionValue === 'number' ? sessionValue : null;
+    const normalizedStudentId = typeof studentId === 'number' ? studentId : Number(studentId);
+    const studentView = (() => {
+      try {
+        return !!localStorage.getItem('studentSession');
+      } catch {
+        return false;
+      }
+    })();
+
+    setExaminationSessionLoading(true);
+
+    try {
+      const { data: examinationSummaries } = await supabase
+        .from('examination_summaries')
+        .select(`
+          examination_id,
+          total_marks,
+          obtained_marks,
+          percentage,
+          grade,
+          status,
+          examinations!inner(
+            id,
+            name,
+            exam_type,
+            status,
+            session_id
+          )
+        `)
+        .eq('student_id', normalizedStudentId)
+        .eq('school_id', schoolId)
+        .order('examination_id', { ascending: false });
+
+      let filteredSummaries = examinationSummaries || [];
+      if (effectiveSessionId) {
+        filteredSummaries = filteredSummaries.filter((summary: any) => {
+          const examination = Array.isArray(summary.examinations) ? summary.examinations[0] : summary.examinations;
+          return examination?.session_id === effectiveSessionId;
+        });
+      }
+
+      filteredSummaries = filteredSummaries.filter((summary: any) => {
+        const examination = Array.isArray(summary.examinations) ? summary.examinations[0] : summary.examinations;
+        return studentView
+          ? examination?.status === 'archived'
+          : examination?.status === 'archived' || examination?.status === 'published';
+      });
+
+      if (filteredSummaries.length > 0) {
+        if (requestId !== examinationRequestRef.current) return;
+
+        setExamSummaries(filteredSummaries.map((summary: any) => {
+          const examination = Array.isArray(summary.examinations) ? summary.examinations[0] : summary.examinations;
+          return {
+            exam_id: summary.examination_id,
+            exam_name: examination?.name || `Exam ${summary.examination_id}`,
+            exam_type: examination?.exam_type || 'Examination',
+            total_subjects: 0,
+            total_marks: summary.total_marks || 0,
+            obtained_marks: summary.obtained_marks || 0,
+            percentage: summary.percentage || 0,
+            grade: summary.grade,
+            status: (summary.status as 'pass' | 'fail') || (summary.percentage >= 40 ? 'pass' as const : 'fail' as const),
+            subjects: []
+          } as ExamSummary;
+        }));
+        return;
+      }
+
+      const examResultsData = await examinationService.getExamResults(
+        { student_id: normalizedStudentId },
+        schoolId
+      );
+
+      if (requestId !== examinationRequestRef.current) return;
+
+      if (!examResultsData || examResultsData.length === 0) {
+        setExamSummaries([]);
+        return;
+      }
+
+      const examIds = Array.from(new Set(examResultsData.map((result: any) => result.exam_id)));
+      const { data: examsData } = await supabase
+        .from('examinations')
+        .select('id, name, exam_type, status, session_id')
+        .in('id', examIds)
+        .eq('school_id', schoolId);
+
+      if (requestId !== examinationRequestRef.current) return;
+
+      let filteredExams = examsData || [];
+      if (effectiveSessionId) {
+        filteredExams = filteredExams.filter((exam: any) => exam.session_id === effectiveSessionId);
+      }
+
+      filteredExams = filteredExams.filter((exam: any) => (
+        studentView
+          ? exam.status === 'archived'
+          : exam.status === 'archived' || exam.status === 'published'
+      ));
+
+      if (filteredExams.length === 0) {
+        setExamSummaries([]);
+        return;
+      }
+
+      const filteredExamIds = new Set(filteredExams.map((exam: any) => exam.id));
+      const summaries = examIds
+        .filter((examId: number) => filteredExamIds.has(examId))
+        .map((examId: number) => {
+          const exam = filteredExams.find((item: any) => item.id === examId);
+          const filteredResults = examResultsData.filter((result: any) => result.exam_id === examId);
+          const totalMarks = filteredResults.reduce((sum: number, result: any) => sum + (result.max_marks || 0), 0);
+          const obtainedMarks = filteredResults.reduce((sum: number, result: any) => sum + (result.obtained_marks || 0), 0);
+          const percentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
+
+          return {
+            exam_id: examId,
+            exam_name: exam?.name || 'Unknown',
+            exam_type: exam?.exam_type || 'unknown',
+            total_subjects: filteredResults.length,
+            total_marks: totalMarks,
+            obtained_marks: obtainedMarks,
+            percentage,
+            status: percentage >= 40 ? 'pass' as const : 'fail' as const,
+            subjects: []
+          } as ExamSummary;
+        });
+
+      if (requestId !== examinationRequestRef.current) return;
+      setExamSummaries(summaries);
+    } catch (error) {
+      if (requestId !== examinationRequestRef.current) return;
+      setExamSummaries([]);
+    } finally {
+      if (requestId === examinationRequestRef.current) {
+        setExaminationSessionLoading(false);
+      }
+    }
+  }, []);
   useEffect(() => {
     progressRef.current = { startProgress, setProgress, completeProgress };
   }, [startProgress, setProgress, completeProgress]);
@@ -2789,6 +3104,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
     const targetSession = sessionId ?? selectedTestSession;
     if (!student) return;
 
+    const requestId = ++testSessionRequestRef.current;
     setTestSessionLoading(true);
     try {
       // Use school_id from student object directly
@@ -2828,7 +3144,10 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
         const { data, error } = await query.range(page * pageSize, (page + 1) * pageSize - 1);
 
         if (error) {
-          setTestSessionLoading(false);
+          if (requestId === testSessionRequestRef.current) {
+            resetTestSessionState();
+            setTestSessionLoading(false);
+          }
           return;
         }
 
@@ -2842,17 +3161,10 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
       }
 
       if (!testResults || testResults.length === 0) {
-        setTestSessionData([]);
-        setTestSubjects([]);
-        setTestSummaryData({
-          totalSubjects: 0,
-          totalTests: 0,
-          totalObtainedMarks: 0,
-          totalMaxMarks: 0,
-          totalPercentage: 0,
-          subjectSummaries: []
-        });
-        setTestSessionLoading(false);
+        if (requestId === testSessionRequestRef.current) {
+          resetTestSessionState();
+          setTestSessionLoading(false);
+        }
         return;
       }
 
@@ -2989,23 +3301,28 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
 
       const totalPercentage = totalMaxMarks > 0 ? (totalObtainedMarks / totalMaxMarks) * 100 : 0;
 
-      setTestSummaryData({
-        totalSubjects,
-        totalTests,
-        totalObtainedMarks,
-        totalMaxMarks,
-        totalPercentage,
-        subjectSummaries
-      });
+      if (requestId === testSessionRequestRef.current) {
+        setTestSummaryData({
+          totalSubjects,
+          totalTests,
+          totalObtainedMarks,
+          totalMaxMarks,
+          totalPercentage,
+          subjectSummaries
+        });
 
-      setTestSessionData(sessionData);
-      setTestSubjects(sortedDates);
-      setTestSessionLoading(false);
+        setTestSessionData(sessionData);
+        setTestSubjects(sortedDates);
+        setTestSessionLoading(false);
+      }
 
     } catch (error) {
-      setTestSessionLoading(false);
+      if (requestId === testSessionRequestRef.current) {
+        resetTestSessionState();
+        setTestSessionLoading(false);
+      }
     }
-  }, [selectedTestSession, student, id]);
+  }, [selectedTestSession, student, id, resetTestSessionState]);
 
   const calculateTestGrade = (percentage: number): string => {
     if (percentage >= 90) return 'A+';
@@ -3020,11 +3337,18 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
 
   // Load attendance data for a specific session with recursive fetching
   const loadAttendanceData = useCallback(async (sessionId: number | null) => {
-    if (!student) return;
+    if (!student) {
+      setAttendanceSessionLoading(false);
+      return;
+    }
 
     const session = sessionId ? attendanceSessions.find(s => s.id === sessionId) : null;
-    if (sessionId && !session) return;
+    if (sessionId && !session) {
+      setAttendanceSessionLoading(false);
+      return;
+    }
 
+    const requestId = ++attendanceSessionRequestRef.current;
     setAttendanceSessionLoading(true);
     try {
       // Recursively fetch ALL attendance records within session dates
@@ -3072,6 +3396,8 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
       }
 
       const { data: halfLeavesData } = await halfLeavesQuery;
+
+      if (requestId !== attendanceSessionRequestRef.current) return;
 
       (halfLeavesData || []).forEach((hl: any) => {
         hlMap.set(hl.date, {
@@ -3146,9 +3472,13 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
         setFineHistory(recordsWithFines);
       }
 
-      setAttendanceSessionLoading(false);
+      if (requestId === attendanceSessionRequestRef.current) {
+        setAttendanceSessionLoading(false);
+      }
     } catch (error) {
-      setAttendanceSessionLoading(false);
+      if (requestId === attendanceSessionRequestRef.current) {
+        setAttendanceSessionLoading(false);
+      }
     }
   }, [student, attendanceSessions]);
 
@@ -3175,14 +3505,16 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   }, [selectedSessionId]);
 
   const handleSessionChange = (value: number | 'all' | null) => {
-    setLoading(true);
+    setTestSessionLoading(true);
+    setAttendanceSessionLoading(true);
+    setReportCardLoading(!isStudent);
+    setHomeworkDiaryLoading(isStudent);
+    setExaminationSessionLoading(true);
+    setExamSummaries([]);
     setSelectedSessionId(value);
     setSelectedTestSession(typeof value === 'number' ? value : null);
     setSelectedAttendanceSession(typeof value === 'number' ? value : null);
-    setTestSessionData([]);
-    setTestSubjects([]);
-    setTestSummaryData(emptyTestSummaryData);
-    setExpandedTestCards(new Set());
+    resetTestSessionState();
     setAttendanceStats(null);
     setMonthlyStats([]);
     setWeeklyAttendance([]);
@@ -3192,12 +3524,13 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
     setFineHistory([]);
     setHomeworkDiaryEntries([]);
     setTabDataLoaded({});
+    setTabDataLoading({});
   };
 
   // Process test records when session changes
   useEffect(() => {
-    if (selectedTestSession && student) {
-      processTestRecords(selectedTestSession);
+    if (student) {
+      processTestRecords(selectedTestSession ?? null);
     }
   }, [selectedTestSession, student, processTestRecords]);
 
@@ -3273,6 +3606,25 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
             }
           } catch (e) {
             // Error parsing session
+          }
+        }
+
+        if (!schoolId && id) {
+          const numericRouteId = parseInt(String(id), 10);
+          if (!Number.isNaN(numericRouteId) && !/^[Ss]\d+-\d+$/.test(String(id))) {
+            try {
+              const { data: studentByIdForSchool } = await supabase
+                .from('students')
+                .select('id, school_id')
+                .eq('id', numericRouteId)
+                .single();
+
+              if (studentByIdForSchool?.school_id) {
+                schoolId = studentByIdForSchool.school_id;
+              }
+            } catch (e) {
+              // Ignore error and continue to existing fallback behavior
+            }
           }
         }
         
@@ -3378,17 +3730,22 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
 
         let effectiveSessionId: number | null = typeof selectedSessionId === 'number' ? selectedSessionId : null;
         if (sessionsData && sessionsData.length > 0) {
-          setSessions(sessionsData);
-          setAttendanceSessions(sessionsData);
+          const normalizedSessions = sessionsData.map((session: any) => ({
+            ...session,
+            id: Number(session.id)
+          }));
+
+          setSessions(normalizedSessions);
+          setAttendanceSessions(normalizedSessions);
 
           const keepAllSessions = selectedSessionId === 'all';
           const sessionExists = effectiveSessionId
-            ? sessionsData.some((session: any) => session.id === effectiveSessionId)
+            ? normalizedSessions.some((session: any) => session.id === effectiveSessionId)
             : false;
 
           if (!keepAllSessions && !sessionExists) {
-            const activeSession = sessionsData.find((s: any) => s.is_active);
-            effectiveSessionId = activeSession ? activeSession.id : sessionsData[0].id;
+            const activeSession = normalizedSessions.find((session: any) => session.is_active);
+            effectiveSessionId = activeSession ? activeSession.id : normalizedSessions[0].id;
           }
 
           setSelectedSessionId(keepAllSessions ? 'all' : effectiveSessionId);
@@ -3485,46 +3842,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
           schoolId = studentData.school_id;
         }
 
-        // Load reports count for summary cards
-        try {
-          const reportsCountResult = await supabase
-            .from('reports')
-            .select('id, status, created_at, severity, category:report_categories(id, name), reporter:staff!reports_reported_by_fkey(id, name)')
-            .eq('student_id', studentId)
-            .order('created_at', { ascending: false });
-
-          if (!reportsCountResult.error && reportsCountResult.data) {
-            // Set reports data for summary cards (minimal data for counts)
-            setReports(reportsCountResult.data.map((r: any) => ({
-              id: r.id.toString(),
-              created_at: r.created_at || '',
-              description: '',
-              status: r.status,
-              severity: (r.severity || 'low') as 'low' | 'medium' | 'high' | 'urgent',
-              category: r.category,
-              reporter: r.reporter
-            })));
-
-            // Calculate report categories for summary card
-            const categoryMap = new Map<string, ReportCategory>();
-            reportsCountResult.data.forEach((report: any) => {
-              if (report.category) {
-                const existing = categoryMap.get(report.category.id);
-                if (existing) {
-                  existing.count++;
-                } else {
-                  categoryMap.set(report.category.id, {
-                    id: report.category.id,
-                    name: report.category.name,
-                    count: 1
-                  });
-                }
-              }
-            });
-            setReportCategories(Array.from(categoryMap.values()));
-          }
-        } catch (error) {
-        }
+        await loadReportOverviewData(studentId);
 
         // Load exam summaries count for summary cards
         try {
@@ -3820,6 +4138,10 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
     };
 
     // For my-profile route, we need studentIdFromSession; for regular route, we need id
+    if (authLoading) {
+      return;
+    }
+
     if (isMyProfile) {
       if (studentIdFromSession) {
       fetchStudentData();
@@ -3836,13 +4158,18 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
       setLoading(false);
       progressRef.current.completeProgress();
     }
-  }, [id, isMyProfile, studentIdFromSession, selectedSessionId]);
+  }, [id, isMyProfile, studentIdFromSession, authLoading, loadReportOverviewData]);
 
   // Fetch homework diary entries when date changes (for students only)
   useEffect(() => {
     const fetchHomeworkDiary = async () => {
-      if (!isStudent || !student || !selectedHomeworkDate) return;
+      if (!isStudent || !student || !selectedHomeworkDate) {
+        setHomeworkDiaryLoading(false);
+        return;
+      }
 
+      const requestId = ++homeworkDiaryRequestRef.current;
+      setHomeworkDiaryLoading(true);
       try {
         // Get school_id from student data if not directly available
         let schoolId = (student as any).school_id;
@@ -3856,6 +4183,10 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
         }
 
         if (!schoolId) {
+          if (requestId === homeworkDiaryRequestRef.current) {
+            setHomeworkDiaryEntries([]);
+            setHomeworkDiaryLoading(false);
+          }
           return;
         }
 
@@ -3872,14 +4203,40 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
           schoolId
         );
 
-        setHomeworkDiaryEntries(homeworkResponse.data || []);
+        if (requestId === homeworkDiaryRequestRef.current) {
+          setHomeworkDiaryEntries(homeworkResponse.data || []);
+          setHomeworkDiaryLoading(false);
+        }
       } catch (homeworkError) {
-        setHomeworkDiaryEntries([]);
+        if (requestId === homeworkDiaryRequestRef.current) {
+          setHomeworkDiaryEntries([]);
+          setHomeworkDiaryLoading(false);
+        }
       }
     };
 
     fetchHomeworkDiary();
   }, [isStudent, student, selectedHomeworkDate, id, selectedSessionId]);
+
+  useEffect(() => {
+    if (!student || !(student as any).school_id || activeTab === 2) {
+      return;
+    }
+
+    loadExaminationOverviewData(
+      student.id,
+      (student as any).school_id,
+      selectedSessionId
+    );
+  }, [student, selectedSessionId, activeTab, loadExaminationOverviewData]);
+
+  useEffect(() => {
+    if (!student || isStudent || activeTab === 1) {
+      return;
+    }
+
+    loadReportOverviewData(student.id);
+  }, [student, selectedSessionId, activeTab, isStudent, loadReportOverviewData]);
 
   // Calculate and update student score when attendance stats, reports, exam summaries, test results, or half leaves change
   useEffect(() => {
@@ -3957,7 +4314,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
   // Lazy load tab-specific data when tab is accessed
   useEffect(() => {
     const loadTabData = async (tabIndex: number) => {
-      if (tabDataLoaded[tabIndex] || tabDataLoading[tabIndex] || !student || !id) return;
+      if (tabDataLoaded[tabIndex] || tabDataLoading[tabIndex] || !student) return;
 
       setTabDataLoading(prev => ({ ...prev, [tabIndex]: true }));
 
@@ -4027,6 +4384,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
 
           case 2: // Examinations tab
             try {
+              const requestId = ++examinationRequestRef.current;
               const examResultsData = await examinationService.getExamResults({
                 student_id: studentId
               });
@@ -4055,6 +4413,8 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                     }
                   })
                 );
+
+                if (requestId !== examinationRequestRef.current) return;
 
                 setExamResults(enrichedExamResults);
 
@@ -4138,7 +4498,9 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                     })
                   );
 
+                  if (requestId !== examinationRequestRef.current) return;
                   setExamSummaries(examSummariesData);
+                  setExaminationSessionLoading(false);
                 } else {
                   // Fallback calculation
                   const examIds = Array.from(new Set(enrichedExamResults.map(result => result.exam_id)));
@@ -4192,13 +4554,18 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                     exam.status = exam.percentage >= 33 ? 'pass' : 'fail';
                   });
 
+                  if (requestId !== examinationRequestRef.current) return;
                   setExamSummaries(Array.from(examMap.values()));
+                  setExaminationSessionLoading(false);
                 }
               } else {
+                if (requestId !== examinationRequestRef.current) return;
                 setExamSummaries([]);
+                setExaminationSessionLoading(false);
               }
             } catch (examError) {
               setExamSummaries([]);
+              setExaminationSessionLoading(false);
             }
             break;
 
@@ -4831,192 +5198,195 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                 zIndex: 0,
               }
             }}>
-              {/* Main Content */}
-              <Box sx={{ position: 'relative', zIndex: 1 }}>
-                {/* Progress Ring */}
-                <Box sx={{
-                  position: 'relative',
-                  width: '180px', // Reduced from original size
-                  height: '180px', // Reduced from original size
-                  margin: '0 auto',
-                  mb: 3
-                }}>
+              {attendanceSessionLoading ? (
+                <OverviewAttendanceCardSkeleton />
+              ) : (
+                <Box sx={{ position: 'relative', zIndex: 1 }}>
+                  {/* Progress Ring */}
                   <Box sx={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
+                    position: 'relative',
+                    width: '180px', // Reduced from original size
+                    height: '180px', // Reduced from original size
+                    margin: '0 auto',
+                    mb: 3
                   }}>
-                    {/* Background Circle */}
                     <Box sx={{
                       position: 'absolute',
+                      top: 0,
+                      left: 0,
                       width: '100%',
                       height: '100%',
-                      borderRadius: '50%',
-                      border: theme => `10px solid ${alpha(theme.palette.divider, 0.08)}`, // Reduced border width
-                    }} />
-
-                    {/* Progress Circle */}
-                    <Box sx={{
-                      position: 'absolute',
-                      width: '100%',
-                      height: '100%',
-                      borderRadius: '50%',
-                      border: theme => `10px solid ${  // Reduced border width
-                        attendancePercentage >= 75 ? theme.palette.success.main :
-                          attendancePercentage >= 65 ? theme.palette.warning.main :
-                            theme.palette.error.main
-                        }`,
-                      borderTop: 'none',
-                      borderLeft: 'none',
-                      transform: `rotate(${45 + (attendancePercentage * 1.8)}deg)`,
-                      transition: 'all 0.5s ease-out',
-                    }} />
-
-                    {/* Center Content */}
-                    <Box sx={{
-                      position: 'relative',
-                      textAlign: 'center'
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}>
-                      <Typography variant="h3" sx={{
-                        fontWeight: 700,
-                        color: theme =>
+                      {/* Background Circle */}
+                      <Box sx={{
+                        position: 'absolute',
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '50%',
+                        border: theme => `10px solid ${alpha(theme.palette.divider, 0.08)}`, // Reduced border width
+                      }} />
+
+                      {/* Progress Circle */}
+                      <Box sx={{
+                        position: 'absolute',
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '50%',
+                        border: theme => `10px solid ${  // Reduced border width
                           attendancePercentage >= 75 ? theme.palette.success.main :
                             attendancePercentage >= 65 ? theme.palette.warning.main :
-                              theme.palette.error.main,
-                        mb: 0.5,
-                        fontSize: '2.5rem' // Reduced font size
+                              theme.palette.error.main
+                          }`,
+                        borderTop: 'none',
+                        borderLeft: 'none',
+                        transform: `rotate(${45 + (attendancePercentage * 1.8)}deg)`,
+                        transition: 'all 0.5s ease-out',
+                      }} />
+
+                      {/* Center Content */}
+                      <Box sx={{
+                        position: 'relative',
+                        textAlign: 'center'
                       }}>
-                        {attendancePercentage}%
-                      </Typography>
-                      <Typography variant="caption" sx={{
-                        color: 'text.secondary',
-                        display: 'block',
-                        fontSize: '0.75rem',
-                        letterSpacing: '0.5px',
-                        textTransform: 'uppercase'
-                      }}>
-                        Attendance
-                      </Typography>
+                        <Typography variant="h3" sx={{
+                          fontWeight: 700,
+                          color: theme =>
+                            attendancePercentage >= 75 ? theme.palette.success.main :
+                              attendancePercentage >= 65 ? theme.palette.warning.main :
+                                theme.palette.error.main,
+                          mb: 0.5,
+                          fontSize: '2.5rem' // Reduced font size
+                        }}>
+                          {attendancePercentage}%
+                        </Typography>
+                        <Typography variant="caption" sx={{
+                          color: 'text.secondary',
+                          display: 'block',
+                          fontSize: '0.75rem',
+                          letterSpacing: '0.5px',
+                          textTransform: 'uppercase'
+                        }}>
+                          Attendance
+                        </Typography>
+                      </Box>
                     </Box>
                   </Box>
-                </Box>
 
-                {/* Stats Grid */}
-                <Grid container spacing={2}>
-                  {([
-                    {
-                      label: 'Present',
-                      value: attendanceStats?.present || 0,
-                      icon: <CheckCircle />,
-                      color: 'success' as ColorKey
-                    },
-                    {
-                      label: 'Late',
-                      value: attendanceStats?.late || 0,
-                      icon: <Timer />,
-                      color: 'warning' as ColorKey
-                    },
-                    {
-                      label: 'Absent / Leave',
-                      value: (attendanceStats?.absent || 0) + (attendanceStats?.leave || 0),
-                      icon: <Cancel />,
-                      color: 'error' as ColorKey,
-                      showSeparateCounts: true,
-                      absentCount: attendanceStats?.absent || 0,
-                      leaveCount: attendanceStats?.leave || 0
-                    },
-                    {
-                      label: 'Half Leaves',
-                      value: halfLeavesMap.size,
-                      icon: <AccessTime />,
-                      color: 'secondary' as ColorKey,
-                      customColor: '#ec4899'
-                    }
-                  ] as any[]).map((stat, index) => (
-                    <Grid item xs={6} key={index}>
-                      <Box sx={{
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: '1px solid',
-                        borderColor: stat.customColor
-                          ? alpha(stat.customColor, 0.2)
-                          : theme => {
-                            const paletteColor = (theme.palette as any)[stat.color] as { main: string } | undefined;
-                            return alpha(paletteColor?.main || theme.palette.primary.main, 0.2);
-                          },
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
-                        position: 'relative'
-                      }}>
+                  {/* Stats Grid */}
+                  <Grid container spacing={2}>
+                    {([
+                      {
+                        label: 'Present',
+                        value: attendanceStats?.present || 0,
+                        icon: <CheckCircle />,
+                        color: 'success' as ColorKey
+                      },
+                      {
+                        label: 'Late',
+                        value: attendanceStats?.late || 0,
+                        icon: <Timer />,
+                        color: 'warning' as ColorKey
+                      },
+                      {
+                        label: 'Absent / Leave',
+                        value: (attendanceStats?.absent || 0) + (attendanceStats?.leave || 0),
+                        icon: <Cancel />,
+                        color: 'error' as ColorKey,
+                        showSeparateCounts: true,
+                        absentCount: attendanceStats?.absent || 0,
+                        leaveCount: attendanceStats?.leave || 0
+                      },
+                      {
+                        label: 'Half Leaves',
+                        value: halfLeavesMap.size,
+                        icon: <AccessTime />,
+                        color: 'secondary' as ColorKey,
+                        customColor: '#ec4899'
+                      }
+                    ] as any[]).map((stat, index) => (
+                      <Grid item xs={6} key={index}>
                         <Box sx={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: '8px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          bgcolor: stat.customColor
-                            ? alpha(stat.customColor, 0.1)
+                          p: 1.5,
+                          borderRadius: 1,
+                          border: '1px solid',
+                          borderColor: stat.customColor
+                            ? alpha(stat.customColor, 0.2)
                             : theme => {
                               const paletteColor = (theme.palette as any)[stat.color] as { main: string } | undefined;
-                              return alpha(paletteColor?.main || theme.palette.primary.main, 0.1);
+                              return alpha(paletteColor?.main || theme.palette.primary.main, 0.2);
                             },
-                          color: stat.customColor || `${stat.color}.main`,
-                          flexShrink: 0
-                        }}>
-                          {stat.icon}
-                        </Box>
-                        <Box sx={{
-                          flex: 1,
                           display: 'flex',
-                          flexDirection: 'column',
                           alignItems: 'center',
-                          justifyContent: 'center',
-                          textAlign: 'center'
+                          gap: 1,
+                          position: 'relative'
                         }}>
-                          <Typography variant="h6" sx={{
-                            color: stat.customColor || `${stat.color}.main`,
-                            fontWeight: 600,
-                            lineHeight: 1,
-                            fontSize: '1.25rem',
+                          <Box sx={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: '8px',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 0.5,
-                            justifyContent: 'center'
+                            justifyContent: 'center',
+                            bgcolor: stat.customColor
+                              ? alpha(stat.customColor, 0.1)
+                              : theme => {
+                                const paletteColor = (theme.palette as any)[stat.color] as { main: string } | undefined;
+                                return alpha(paletteColor?.main || theme.palette.primary.main, 0.1);
+                              },
+                            color: stat.customColor || `${stat.color}.main`,
+                            flexShrink: 0
                           }}>
-                            {stat.showSeparateCounts ? (
-                              <>
-                                <Box component="span" sx={{ color: theme => theme.palette.error.main }}>
-                                  {stat.absentCount}
-                                </Box>
-                                <Box component="span" sx={{ color: 'text.secondary', fontSize: '0.9em' }}>+</Box>
-                                <Box component="span" sx={{ color: theme => theme.palette.info.main }}>
-                                  {stat.leaveCount}
-                                </Box>
-                              </>
-                            ) : (
-                              stat.value
-                            )}
-                          </Typography>
-                          <Typography variant="caption" sx={{
-                            color: 'text.secondary',
-                            fontSize: '0.7rem',
-                            letterSpacing: '0.4px'
+                            {stat.icon}
+                          </Box>
+                          <Box sx={{
+                            flex: 1,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            textAlign: 'center'
                           }}>
-                            {stat.label}
-                          </Typography>
+                            <Typography variant="h6" sx={{
+                              color: stat.customColor || `${stat.color}.main`,
+                              fontWeight: 600,
+                              lineHeight: 1,
+                              fontSize: '1.25rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.5,
+                              justifyContent: 'center'
+                            }}>
+                              {stat.showSeparateCounts ? (
+                                <>
+                                  <Box component="span" sx={{ color: theme => theme.palette.error.main }}>
+                                    {stat.absentCount}
+                                  </Box>
+                                  <Box component="span" sx={{ color: 'text.secondary', fontSize: '0.9em' }}>+</Box>
+                                  <Box component="span" sx={{ color: theme => theme.palette.info.main }}>
+                                    {stat.leaveCount}
+                                  </Box>
+                                </>
+                              ) : (
+                                stat.value
+                              )}
+                            </Typography>
+                            <Typography variant="caption" sx={{
+                              color: 'text.secondary',
+                              fontSize: '0.7rem',
+                              letterSpacing: '0.4px'
+                            }}>
+                              {stat.label}
+                            </Typography>
+                          </Box>
                         </Box>
-                      </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              )}
             </StatCard>
           </Grid>
 
@@ -5044,8 +5414,10 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                 zIndex: 0,
               }
             }}>
-              {/* Main Content */}
-              <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+              {testSessionLoading ? (
+                <OverviewSummaryCardSkeleton />
+              ) : (
+                <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
                 {/* Header with Title and Average Score */}
                 <Box sx={{
                   display: 'flex',
@@ -5253,7 +5625,8 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                     </Box>
                   </Box>
                 )}
-              </Box>
+                </Box>
+              )}
             </StatCard>
           </Grid>
 
@@ -5282,8 +5655,10 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                   zIndex: 0,
                 }
               }}>
-                {/* Main Content */}
-                <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                {testSessionLoading ? (
+                  <OverviewSummaryCardSkeleton />
+                ) : (
+                  <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
                   {/* Header with Title and Average Score */}
                   <Box sx={{
                     display: 'flex',
@@ -5491,7 +5866,8 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                       </Box>
                     </Box>
                   )}
-                </Box>
+                  </Box>
+                )}
               </StatCard>
             </Grid>
           )}
@@ -5520,8 +5896,10 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                 zIndex: 0,
               }
             }}>
-              {/* Main Content */}
-              <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+              {examinationSessionLoading ? (
+                <OverviewSummaryCardSkeleton />
+              ) : (
+                <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
                 {/* Header with Title and Average Score */}
                 <Box sx={{
                   display: 'flex',
@@ -5733,7 +6111,8 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                     </Box>
                   </Box>
                 )}
-              </Box>
+                </Box>
+              )}
             </StatCard>
           </Grid>
 
@@ -5791,7 +6170,14 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                 </LocalizationProvider>
 
                 <ReportsList>
-                  {homeworkDiaryEntries.length === 0 ? (
+                  {homeworkDiaryLoading ? (
+                    <EmptyReportState>
+                      <CircularProgress size={28} />
+                      <Typography className="message">
+                        Loading homework diary...
+                      </Typography>
+                    </EmptyReportState>
+                  ) : homeworkDiaryEntries.length === 0 ? (
                     <EmptyReportState>
                       <Box className="emoji">📚</Box>
                       <Typography className="message">
@@ -5906,7 +6292,9 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                 </ReportsHeader>
 
                 <ReportsList>
-                  {reportCategories.length === 0 ? (
+                  {reportCardLoading ? (
+                    <OverviewReportCardSkeleton />
+                  ) : reportCategories.length === 0 ? (
                     <EmptyReportState>
                       <Box className="emoji">🌟</Box>
                       <Typography className="message">
@@ -6958,7 +7346,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
           </CustomTabPanel>
 
           <CustomTabPanel value={activeTab} index={2}>
-            {tabDataLoading[2] ? (
+            {examinationSessionLoading || tabDataLoading[2] || !tabDataLoaded[2] ? (
               <ExaminationsSkeleton />
             ) : (
               <>
