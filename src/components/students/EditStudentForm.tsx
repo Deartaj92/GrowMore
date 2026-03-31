@@ -16,7 +16,8 @@ import {
   styled as muiStyled,
   SelectChangeEvent,
   Typography,
-  Divider
+  Divider,
+  CircularProgress
 } from '@mui/material';
 import { Close as CloseIcon, AccountCircle, CloudUpload as CloudUploadIcon } from '@mui/icons-material';
 import { supabase } from '../../supabaseClient';
@@ -336,6 +337,7 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
   const formRef = useRef<HTMLFormElement>(null);
   const avatarFileRef = useRef<File | null>(null); // Store File object in ref to preserve it
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
   const [selectedClassHasSections, setSelectedClassHasSections] = useState<boolean>(true);
 
   // Update form data when initialData changes (when editing different students)
@@ -420,12 +422,14 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
     }
 
     try {
+      setIsCompressing(true);
       let file = e.target.files[0];
       
       // Validate file type
       if (!file.type.startsWith('image/')) {
         showToast('Please select a valid image file', 'error');
         if (fileInputRef.current) fileInputRef.current.value = '';
+        setIsCompressing(false);
         return;
       }
 
@@ -433,9 +437,11 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
       if (file.size > 100 * 1024) {
         try {
           file = await imageCompression(file, {
-            maxSizeMB: 0.09, // Stricter: target < 100KB
-            maxWidthOrHeight: 300, // Smaller avatar size
+            maxSizeMB: 0.25,
+            maxWidthOrHeight: 300, // Adjusted for perfect 4x downscaling on 80px containers to kill jaggedness (Moiré)
             useWebWorker: true,
+            fileType: 'image/jpeg',
+            initialQuality: 0.88
           });
         } catch (err) {
           showToast('Failed to compress image', 'error');
@@ -468,6 +474,8 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
     } catch (error: any) {
       showToast('Error processing image: ' + (error?.message || 'Unknown error'), 'error');
       if (fileInputRef.current) fileInputRef.current.value = '';
+    } finally {
+      setIsCompressing(false);
     }
   };
 
@@ -489,7 +497,8 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
       // Get the actual File object from ref (preserves File instance)
       const submitData = {
         ...formData,
-        _newAvatarFile: avatarFileRef.current || formData._newAvatarFile
+        _newAvatarFile: avatarFileRef.current || formData._newAvatarFile,
+        _newAvatarBase64: editAvatar
       };
       
       await onSubmit(submitData);
@@ -514,13 +523,15 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
         >
       <DialogHeader>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <ImageBox onClick={() => fileInputRef.current?.click()}>
-            {(editAvatar || formData.picture_url) ? (
+          <ImageBox onClick={() => !isCompressing && fileInputRef.current?.click()}>
+            {isCompressing ? (
+              <CircularProgress size={32} />
+            ) : (editAvatar || formData.picture_url) ? (
               <img src={editAvatar || formData.picture_url || ''} alt="Student" />
             ) : (
               <AccountCircle sx={{ fontSize: '3rem', color: 'text.secondary' }} />
             )}
-            {(editAvatar || formData.picture_url) && (
+            {!isCompressing && (editAvatar || formData.picture_url) && (
               <RemoveButton onClick={handleRemoveAvatar} size="small">
                 <CloseIcon />
               </RemoveButton>
@@ -1008,7 +1019,7 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
               type="submit"
               variant="contained"
               size="small"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isCompressing}
             >
               {isSubmitting ? 'Saving...' : 'Save'}
             </Button>

@@ -1633,9 +1633,11 @@ const StudentAdmissionForm: React.FC = () => {
       if (file.size > 100 * 1024) {
         try {
           file = await imageCompression(file, {
-            maxSizeMB: 0.09, // Stricter: target < 100KB
-            maxWidthOrHeight: 400, // Stricter: smaller dimensions
+            maxSizeMB: 0.25,
+            maxWidthOrHeight: 800,
             useWebWorker: true,
+            fileType: 'image/jpeg',
+            initialQuality: 0.85
           });
         } catch (err) {
           showToast('Failed to compress image', 'error');

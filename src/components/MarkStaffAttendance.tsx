@@ -305,6 +305,8 @@ interface StaffMember {
   picture_url?: string;
   remarks?: string;
   isOnHoliday?: boolean;
+  rfid_uid?: string | null;
+  isOnLeave?: boolean;
 }
 
 // Add a hook to detect mobile
@@ -387,7 +389,33 @@ const SegmentedInput = styled.input<{ pill?: boolean }>`
     &:first-child {
       border-top-left-radius: 11px;
       border-bottom-left-radius: 11px;
-    }
+  }
+`;
+
+const SegmentedSelect = styled.select<{ first?: boolean; last?: boolean }>`
+  ${SegmentedBase}
+  padding: 0 1.12em;
+  background: ${({ theme }) => theme.BG === '#252525' ? '#444' : '#f3f4f6'};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+  cursor: pointer;
+  
+  &:focus {
+    outline: none;
+    border-color: ${({ theme }) => theme.ACCENT};
+  }
+
+  ${({ first }) => first && `
+    border-top-left-radius: 11px;
+    border-bottom-left-radius: 11px;
+  `}
+  ${({ last }) => last && `
+    border-top-right-radius: 11px;
+    border-bottom-right-radius: 11px;
+  `}
+  &:last-child {
+    border-top-right-radius: 11px;
+    border-bottom-right-radius: 11px;
   }
 `;
 
@@ -464,6 +492,7 @@ const MarkStaffAttendance: React.FC = () => {
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'manual_only' | 'rfid_ready' | 'on_leave'>('all');
   const [hoveredAvatar, setHoveredAvatar] = useState<{ id: number; x: number; y: number; url: string } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -644,7 +673,7 @@ const MarkStaffAttendance: React.FC = () => {
       // Fetch all staff members first
       const { data: staffData, error: staffError } = await supabase
         .from('staff')
-        .select('id, name, role, picture_url')
+        .select('id, name, role, picture_url, rfid_uid')
         .eq('school_id', user.school_id);
 
       if (staffError) {
@@ -759,23 +788,38 @@ const MarkStaffAttendance: React.FC = () => {
         // Don't throw error for attendance records as table might not exist yet
       }
 
+      const staffIds = (staffData || []).map((staff: any) => staff.id);
+      const { data: leaveData } = await supabase
+        .from('leave_requests')
+        .select('staff_id')
+        .eq('school_id', user.school_id)
+        .eq('session_id', sessionId)
+        .eq('status', 'approved')
+        .in('staff_id', staffIds)
+        .lte('start_date', date)
+        .gte('end_date', date);
+
       // Merge attendance status into all staff (including those on holiday)
       const attendanceMap = new Map();
       (attendanceData || []).forEach((rec: any) => {
         attendanceMap.set(rec.staff_id, { status: rec.status, remarks: rec.remarks });
       });
+      const approvedLeaveSet = new Set((leaveData || []).map((leave: any) => leave.staff_id));
       
       const formattedStaff = staffData.map((staff: any) => {
         const att = attendanceMap.get(staff.id);
         const isOnHoliday = staffOnHoliday.has(staff.id);
+        const isOnLeave = approvedLeaveSet.has(staff.id);
         return {
           id: staff.id,
           name: staff.name,
           role: staff.role,
-          status: att ? att.status : undefined,
+          status: att ? att.status : (isOnLeave ? 'leave' : undefined),
           picture_url: staff.picture_url,
           remarks: att ? att.remarks || '' : '',
           isOnHoliday: isOnHoliday,
+          rfid_uid: staff.rfid_uid,
+          isOnLeave,
         };
       }).sort((a, b) => {
         // First, sort by holiday status (non-holiday first)
@@ -810,15 +854,23 @@ const MarkStaffAttendance: React.FC = () => {
     setTimeout(() => setStatusBounce(null), 600);
   };
 
-  const handleBulkMark = useCallback((status: 'present' | 'absent') => {
+  const handleBulkMark = useCallback((status: 'present' | 'absent' | 'leave') => {
     setStaffMembers(prev =>
       prev.map(staff => ({ ...staff, status }))
     );
   }, []);
 
   const filteredStaff = staffMembers.filter(staff =>
-    staff.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    staff.role.toLowerCase().includes(searchTerm.toLowerCase())
+    (
+      staff.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      staff.role.toLowerCase().includes(searchTerm.toLowerCase())
+    ) &&
+    (
+      attendanceFilter === 'all' ||
+      (attendanceFilter === 'manual_only' && !staff.rfid_uid) ||
+      (attendanceFilter === 'rfid_ready' && !!staff.rfid_uid) ||
+      (attendanceFilter === 'on_leave' && !!staff.isOnLeave)
+    )
   );
 
   useEffect(() => {
@@ -1071,6 +1123,14 @@ const MarkStaffAttendance: React.FC = () => {
             </SegmentedButton>
             <SegmentedButton
               theme={themeObj}
+              onClick={() => handleBulkMark('leave')}
+              style={{ minWidth: 70, padding: '0.3rem 0.6em', fontSize: isMobile ? '0.7em' : '0.85em', minHeight: 28, justifyContent: 'center' }}
+              disabled={allStaffOnHoliday || staffMembers.length === 0 || selectedRows.length === 0}
+            >
+              Leave All
+            </SegmentedButton>
+            <SegmentedButton
+              theme={themeObj}
               onClick={handleDeleteClick}
               disabled={allStaffOnHoliday || staffMembers.length === 0 || selectedRows.length === 0 || !date || deleting}
               style={{ minWidth: 90, padding: '0.3rem 0.6em', fontSize: '0.9em', color: '#fff', background: '#dc2626', borderColor: '#dc2626', minHeight: 28, opacity: 0.93 }}
@@ -1189,6 +1249,17 @@ const MarkStaffAttendance: React.FC = () => {
             }}
             style={{ minWidth: 180 }}
           />
+          <SegmentedSelect
+            theme={theme === 'dark' ? darkTheme : lightTheme}
+            value={attendanceFilter}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAttendanceFilter(e.target.value as any)}
+            style={{ minWidth: 130 }}
+          >
+            <option value="all">All</option>
+            <option value="manual_only">No Card</option>
+            <option value="rfid_ready">Has Card</option>
+            <option value="on_leave">On Leave</option>
+          </SegmentedSelect>
         </SegmentedGroup>
       </Header>
       
@@ -1261,6 +1332,8 @@ const MarkStaffAttendance: React.FC = () => {
                     <StaffName style={{ opacity: isOnHoliday ? 0.6 : 1 }}>
                       {staff.name}
                       {isOnHoliday && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#f59e42', fontWeight: 600 }}>(Holiday)</span>}
+                      {!staff.rfid_uid && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#f59e42', fontWeight: 600 }}>(No Card)</span>}
+                      {staff.isOnLeave && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#4a6cf7', fontWeight: 600 }}>(Leave)</span>}
                     </StaffName>
                     <StaffRole style={{ opacity: isOnHoliday ? 0.6 : 1 }}>{staff.role}</StaffRole>
                   </NameBlock>

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import styled, { keyframes, css } from 'styled-components';
 
 // Add NDEFReader types for TypeScript
@@ -630,33 +631,210 @@ const ModalOverlay = styled.div`
   align-items: center;
   justify-content: center;
   animation: ${fadeIn} 0.2s ease;
+  padding: 1rem;
+  box-sizing: border-box;
+
+  @media (max-width: 640px) {
+    align-items: flex-end;
+    padding: 0.5rem;
+  }
 `;
 
 const ModalContent = styled.div`
   ${clayCardStyle}
   width: 90%;
-  max-width: 450px;
-  padding: 2rem;
+  max-width: 820px;
+  padding: 1rem 1.1rem;
+  max-height: min(90vh, 860px);
+  overflow-y: auto;
+  box-sizing: border-box;
+
+  @media (max-width: 900px) {
+    width: min(94vw, 720px);
+  }
+
+  @media (max-width: 640px) {
+    width: 100%;
+    max-width: none;
+    max-height: 88vh;
+    padding: 0.85rem 0.85rem 1rem;
+    border-radius: 18px 18px 12px 12px;
+  }
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+
+  @media (max-width: 640px) {
+    margin-bottom: 0.7rem;
+    padding-bottom: 0.55rem;
+  }
+`;
+
+const ModalTitleBlock = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+
+  h2 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-size: 1.3rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: ${({ theme }) => getDashboardPalette(theme).subtleText};
+  }
+
+  @media (max-width: 640px) {
+    h2 {
+      font-size: 1.08rem;
+    }
+
+    p {
+      font-size: 0.74rem;
+    }
+  }
+`;
+
+const SettingsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem 0.85rem;
+  align-items: start;
+
+  @media (max-width: 900px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
 `;
 
 const FormGroup = styled.div`
-  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  min-width: 0;
+`;
+
+const WideFormGroup = styled(FormGroup)`
+  grid-column: 1 / -1;
+`;
+
+const InputHint = styled.span`
+  font-size: 0.74rem;
+  line-height: 1.3;
+  color: ${({ theme }) => getDashboardPalette(theme).subtleText};
 `;
 
 const Label = styled.label`
   display: block;
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: ${({ theme }) => getDashboardPalette(theme).subtleText};
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.15rem;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.35px;
 `;
 
 const TimeInput = styled.input`
   ${clayInputStyle}
   width: 100%;
+  font-size: 0.95rem;
+  min-height: 44px;
+  padding: 0.72rem 0.9rem;
+  box-sizing: border-box;
+
+  @media (max-width: 640px) {
+    min-height: 42px;
+    font-size: 0.92rem;
+    padding: 0.66rem 0.8rem;
+  }
+`;
+
+const SettingsActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1rem;
+
+  @media (max-width: 640px) {
+    flex-direction: column-reverse;
+    gap: 0.65rem;
+
+    button {
+      width: 100%;
+      min-width: 0 !important;
+    }
+  }
+`;
+
+const ToggleCard = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  background: ${({ theme }) => theme.FIELD_BG};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+
+  @media (max-width: 640px) {
+    padding: 0.72rem 0.8rem;
+  }
+`;
+
+const StatusPanel = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.55rem;
+  margin-bottom: 0.8rem;
+`;
+
+const StatusCard = styled.div`
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  background: ${({ theme }) => theme.FIELD_BG};
+  border-radius: 12px;
+  padding: 0.65rem 0.75rem;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.2rem;
+`;
+
+const StatusLabel = styled.span`
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+`;
+
+const StatusValue = styled.span<{ $color?: string }>`
   font-size: 1rem;
+  font-weight: 800;
+  color: ${({ $color, theme }) => $color || theme.TEXT_PRIMARY};
+  line-height: 1.2;
+`;
+
+const StatusSub = styled.span`
+  font-size: 0.72rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  line-height: 1.3;
 `;
 
 
@@ -674,6 +852,12 @@ const RFIDAttendancePage: React.FC = () => {
         staff_start_time: string;
         staff_end_time: string;
         grace_period_minutes: number;
+        auto_mark_absent_enabled: boolean;
+        student_auto_mark_absent_enabled: boolean;
+        staff_auto_mark_absent_enabled: boolean;
+        student_cutoff_time: string;
+        staff_cutoff_time: string;
+        timezone: string;
     } | null>(null);
 
     const [selectedDate, setSelectedDate] = useState(today);
@@ -686,6 +870,8 @@ const RFIDAttendancePage: React.FC = () => {
 
     const [showSettings, setShowSettings] = useState(false);
     const [savingSettings, setSavingSettings] = useState(false);
+    const [automationOverview, setAutomationOverview] = useState<any | null>(null);
+    const [loadingAutomationOverview, setLoadingAutomationOverview] = useState(false);
     const [isNfcSupported, setIsNfcSupported] = useState(false);
     const [isNfcScanning, setIsNfcScanning] = useState(false);
     const nfcAbortControllerRef = useRef<AbortController | null>(null);
@@ -747,19 +933,65 @@ const RFIDAttendancePage: React.FC = () => {
                 .select('*')
                 .eq('school_id', user.school_id)
                 .single();
-            if (data) setAttnSettings(data);
+            if (data) {
+                setAttnSettings({
+                    ...data,
+                    auto_mark_absent_enabled: !!data.auto_mark_absent_enabled,
+                    student_auto_mark_absent_enabled: !!(data as any).student_auto_mark_absent_enabled || (!!data.auto_mark_absent_enabled && !(data as any).staff_auto_mark_absent_enabled),
+                    staff_auto_mark_absent_enabled: !!(data as any).staff_auto_mark_absent_enabled || (!!data.auto_mark_absent_enabled && !(data as any).student_auto_mark_absent_enabled),
+                    student_cutoff_time: data.student_cutoff_time || '08:15:00',
+                    staff_cutoff_time: data.staff_cutoff_time || '08:15:00',
+                    timezone: data.timezone || 'Asia/Karachi'
+                });
+            }
             else {
                 // Fallback / Default
                 setAttnSettings({
                     student_start_time: '08:00:00',
                     staff_start_time: '08:00:00',
                     staff_end_time: '14:00:00',
-                    grace_period_minutes: 15
+                    grace_period_minutes: 15,
+                    auto_mark_absent_enabled: false,
+                    student_auto_mark_absent_enabled: false,
+                    staff_auto_mark_absent_enabled: false,
+                    student_cutoff_time: '08:15:00',
+                    staff_cutoff_time: '08:15:00',
+                    timezone: 'Asia/Karachi'
                 });
             }
         };
         fetchSettings();
     }, [user?.school_id]);
+
+    const loadAutomationOverview = useCallback(async () => {
+        if (!user?.school_id) {
+            setAutomationOverview(null);
+            return;
+        }
+
+        setLoadingAutomationOverview(true);
+        try {
+            const { data, error } = await supabase.rpc('get_attendance_automation_status', {
+                p_school_id: user.school_id
+            });
+
+            if (error) throw error;
+
+            const normalized = Array.isArray(data) ? data[0] ?? null : data ?? null;
+            setAutomationOverview(normalized);
+        } catch (error) {
+            console.error('Failed to load attendance automation status:', error);
+            setAutomationOverview(null);
+        } finally {
+            setLoadingAutomationOverview(false);
+        }
+    }, [user?.school_id]);
+
+    useEffect(() => {
+        if (showSettings) {
+            loadAutomationOverview();
+        }
+    }, [showSettings, loadAutomationOverview]);
 
     useEffect(() => {
         if (isOnline && queueCount > 0 && !isSyncing) {
@@ -914,6 +1146,21 @@ const RFIDAttendancePage: React.FC = () => {
                         personType: result.person.type === 'student' ? 'student' : 'employee',
                     });
                     showToast(`Already Checked Out!`, 'error');
+                    return;
+                }
+
+                if (result.type === 'error_manual_only' && result.person) {
+                    setScanStatus('error');
+                    setStatusMsg(`Manual Only: ${result.person.name}`);
+                    setScannedPerson({ name: result.person.name, picture_url: result.person.picture_url });
+                    addFeedItem({
+                        type: 'warn',
+                        name: result.person.name,
+                        sub: 'Manual-only attendance policy enabled',
+                        time,
+                        personType: result.person.type === 'student' ? 'student' : 'employee',
+                    });
+                    showToast(`${result.person.name} is set to manual-only attendance`, 'error');
                     return;
                 }
 
@@ -1141,6 +1388,20 @@ const RFIDAttendancePage: React.FC = () => {
                 return;
             }
 
+            if (result.type === 'error_manual_only') {
+                setScanStatus('error');
+                setStatusMsg(`Manual Only: ${p.name}`);
+                addFeedItem({
+                    type: 'warn',
+                    name: p.name,
+                    sub: 'Manual-only attendance policy enabled',
+                    time,
+                    personType
+                });
+                showToast(`${p.name} is set to manual-only attendance`, 'error');
+                return;
+            }
+
             if (result.type === 'already' || result.type === 'already_out') {
                 const isAlreadyOut = result.type === 'already_out';
                 setScanStatus('error');
@@ -1226,6 +1487,20 @@ const RFIDAttendancePage: React.FC = () => {
         return () => document.removeEventListener('click', focusInput);
     }, []);
 
+    const formatAutomationRunAt = (value?: string | null) => {
+        if (!value) return 'No runs yet';
+
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return 'No runs yet';
+
+        return date.toLocaleString('en-PK', {
+            day: 'numeric',
+            month: 'short',
+            hour: 'numeric',
+            minute: '2-digit'
+        });
+    };
+
     return (
         <Page theme={themeObj}>
             <TopBar>
@@ -1266,71 +1541,238 @@ const RFIDAttendancePage: React.FC = () => {
                 </div>
             </TopBar>
 
-            {showSettings && attnSettings && (
+            {showSettings && attnSettings && ReactDOM.createPortal(
                 <ModalOverlay onClick={() => setShowSettings(false)}>
                     <ModalContent theme={themeObj} onClick={e => e.stopPropagation()}>
-                        <h2 style={{ margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <SettingsIcon /> Attendance Settings
-                        </h2>
+                        <ModalHeader theme={themeObj}>
+                            <ModalTitleBlock theme={themeObj}>
+                                <h2>
+                                    <SettingsIcon /> Attendance Settings
+                                </h2>
+                                <p>Scan timing, cutoff, and backend rules.</p>
+                            </ModalTitleBlock>
+                        </ModalHeader>
 
-                        <FormGroup>
-                            <Label theme={themeObj}>Student Start Time</Label>
-                            <TimeInput
-                                theme={themeObj}
-                                type="time"
-                                value={attnSettings.student_start_time}
-                                onChange={e => setAttnSettings({ ...attnSettings, student_start_time: e.target.value })}
-                            />
-                        </FormGroup>
+                        <StatusPanel>
+                            <StatusCard theme={themeObj}>
+                                <StatusLabel theme={themeObj}>Last Backend Run</StatusLabel>
+                                <StatusValue theme={themeObj}>
+                                    {loadingAutomationOverview ? 'Loading...' : formatAutomationRunAt(automationOverview?.last_run_at)}
+                                </StatusValue>
+                                <StatusSub theme={themeObj}>
+                                    {automationOverview?.local_date ? `School date ${automationOverview.local_date}` : 'Updates every 10 minutes via pg_cron'}
+                                </StatusSub>
+                            </StatusCard>
+                            <StatusCard theme={themeObj}>
+                                <StatusLabel theme={themeObj}>Students</StatusLabel>
+                                <StatusValue
+                                    theme={themeObj}
+                                    $color={automationOverview?.student_auto_enabled ? '#22c55e' : '#94a3b8'}
+                                >
+                                    {automationOverview?.student_auto_enabled ? 'Automation On' : 'Automation Off'}
+                                </StatusValue>
+                                <StatusSub theme={themeObj}>
+                                    {`Absent ${automationOverview?.last_student_absent_marked ?? 0} · Leave ${automationOverview?.last_student_leave_marked ?? 0}`}
+                                </StatusSub>
+                            </StatusCard>
+                            <StatusCard theme={themeObj}>
+                                <StatusLabel theme={themeObj}>Staff</StatusLabel>
+                                <StatusValue
+                                    theme={themeObj}
+                                    $color={automationOverview?.staff_auto_enabled ? '#22c55e' : '#94a3b8'}
+                                >
+                                    {automationOverview?.staff_auto_enabled ? 'Automation On' : 'Automation Off'}
+                                </StatusValue>
+                                <StatusSub theme={themeObj}>
+                                    {`Absent ${automationOverview?.last_staff_absent_marked ?? 0} · Leave ${automationOverview?.last_staff_leave_marked ?? 0}`}
+                                </StatusSub>
+                            </StatusCard>
+                            <StatusCard theme={themeObj}>
+                                <StatusLabel theme={themeObj}>Manual-Only Today</StatusLabel>
+                                <StatusValue theme={themeObj} $color="#f59e0b">
+                                    {(automationOverview?.today_manual_only_students ?? 0) + (automationOverview?.today_manual_only_staff ?? 0)}
+                                </StatusValue>
+                                <StatusSub theme={themeObj}>
+                                    {`Students ${automationOverview?.today_manual_only_students ?? 0} · Staff ${automationOverview?.today_manual_only_staff ?? 0}`}
+                                </StatusSub>
+                            </StatusCard>
+                            <StatusCard theme={themeObj}>
+                                <StatusLabel theme={themeObj}>Approved Leaves Today</StatusLabel>
+                                <StatusValue theme={themeObj} $color="#3b82f6">
+                                    {(automationOverview?.today_approved_student_leaves ?? 0) + (automationOverview?.today_approved_staff_leaves ?? 0)}
+                                </StatusValue>
+                                <StatusSub theme={themeObj}>
+                                    {`Students ${automationOverview?.today_approved_student_leaves ?? 0} · Staff ${automationOverview?.today_approved_staff_leaves ?? 0}`}
+                                </StatusSub>
+                            </StatusCard>
+                            <StatusCard theme={themeObj}>
+                                <StatusLabel theme={themeObj}>Staff First-Half Leave</StatusLabel>
+                                <StatusValue theme={themeObj} $color="#8b5cf6">
+                                    {automationOverview?.today_staff_first_half_leaves ?? 0}
+                                </StatusValue>
+                                <StatusSub theme={themeObj}>
+                                    Auto-marked as leave before absence cutoff.
+                                </StatusSub>
+                            </StatusCard>
+                            <StatusCard theme={themeObj}>
+                                <StatusLabel theme={themeObj}>Manual Skips Last Run</StatusLabel>
+                                <StatusValue theme={themeObj} $color="#ef4444">
+                                    {(automationOverview?.last_student_manual_skipped ?? 0) + (automationOverview?.last_staff_manual_skipped ?? 0)}
+                                </StatusValue>
+                                <StatusSub theme={themeObj}>
+                                    {`Students ${automationOverview?.last_student_manual_skipped ?? 0} · Staff ${automationOverview?.last_staff_manual_skipped ?? 0}`}
+                                </StatusSub>
+                            </StatusCard>
+                        </StatusPanel>
 
-                        <FormGroup>
-                            <Label theme={themeObj}>Staff Start Time</Label>
-                            <TimeInput
-                                theme={themeObj}
-                                type="time"
-                                value={attnSettings.staff_start_time}
-                                onChange={e => setAttnSettings({ ...attnSettings, staff_start_time: e.target.value })}
-                            />
-                        </FormGroup>
+                        <SettingsGrid>
+                            <FormGroup>
+                                <Label theme={themeObj}>Student Start Time</Label>
+                                <TimeInput
+                                    theme={themeObj}
+                                    type="time"
+                                    value={attnSettings.student_start_time}
+                                    onChange={e => setAttnSettings({ ...attnSettings, student_start_time: e.target.value })}
+                                />
+                                <InputHint theme={themeObj}>Controls late status.</InputHint>
+                            </FormGroup>
 
-                        <FormGroup>
-                            <Label theme={themeObj}>Staff Check-out Allowed After</Label>
-                            <TimeInput
-                                theme={themeObj}
-                                type="time"
-                                value={attnSettings.staff_end_time || '14:00'}
-                                onChange={e => setAttnSettings({ ...attnSettings, staff_end_time: e.target.value })}
-                            />
-                        </FormGroup>
+                            <FormGroup>
+                                <Label theme={themeObj}>Staff Start Time</Label>
+                                <TimeInput
+                                    theme={themeObj}
+                                    type="time"
+                                    value={attnSettings.staff_start_time}
+                                    onChange={e => setAttnSettings({ ...attnSettings, staff_start_time: e.target.value })}
+                                />
+                                <InputHint theme={themeObj}>Late after grace.</InputHint>
+                            </FormGroup>
 
-                        <FormGroup>
-                            <Label theme={themeObj}>Grace Period (Minutes)</Label>
-                            <TimeInput
-                                theme={themeObj}
-                                type="number"
-                                value={attnSettings.grace_period_minutes}
-                                onChange={e => setAttnSettings({ ...attnSettings, grace_period_minutes: parseInt(e.target.value) || 0 })}
-                            />
-                        </FormGroup>
+                            <FormGroup>
+                                <Label theme={themeObj}>Staff Check-out After</Label>
+                                <TimeInput
+                                    theme={themeObj}
+                                    type="time"
+                                    value={attnSettings.staff_end_time || '14:00'}
+                                    onChange={e => setAttnSettings({ ...attnSettings, staff_end_time: e.target.value })}
+                                />
+                                <InputHint theme={themeObj}>Blocks early check-out.</InputHint>
+                            </FormGroup>
 
-                        <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-                            <SecondaryBtn theme={themeObj} style={{ flex: 1 }} onClick={() => setShowSettings(false)}>
+                            <FormGroup>
+                                <Label theme={themeObj}>Grace Period (Minutes)</Label>
+                                <TimeInput
+                                    theme={themeObj}
+                                    type="number"
+                                    value={attnSettings.grace_period_minutes}
+                                    onChange={e => setAttnSettings({ ...attnSettings, grace_period_minutes: parseInt(e.target.value) || 0 })}
+                                />
+                                <InputHint theme={themeObj}>Applied to both.</InputHint>
+                            </FormGroup>
+
+                            <FormGroup>
+                                <Label theme={themeObj}>Student Auto-Absent Cutoff</Label>
+                                <TimeInput
+                                    theme={themeObj}
+                                    type="time"
+                                    value={attnSettings.student_cutoff_time || '08:15'}
+                                    onChange={e => setAttnSettings({ ...attnSettings, student_cutoff_time: e.target.value })}
+                                />
+                                <InputHint theme={themeObj}>Auto-absent after this time.</InputHint>
+                            </FormGroup>
+
+                            <FormGroup>
+                                <Label theme={themeObj}>Staff Auto-Absent Cutoff</Label>
+                                <TimeInput
+                                    theme={themeObj}
+                                    type="time"
+                                    value={attnSettings.staff_cutoff_time || '08:15'}
+                                    onChange={e => setAttnSettings({ ...attnSettings, staff_cutoff_time: e.target.value })}
+                                />
+                                <InputHint theme={themeObj}>Auto-absent after this time.</InputHint>
+                            </FormGroup>
+
+                            <FormGroup>
+                                <Label theme={themeObj}>Timezone</Label>
+                                <TimeInput
+                                    theme={themeObj}
+                                    type="text"
+                                    value={attnSettings.timezone || 'Asia/Karachi'}
+                                    onChange={e => setAttnSettings({ ...attnSettings, timezone: e.target.value })}
+                                    placeholder="Asia/Karachi"
+                                />
+                                <InputHint theme={themeObj}>Used when app is closed.</InputHint>
+                            </FormGroup>
+
+                            <WideFormGroup>
+                                <Label theme={themeObj}>Auto-Mark Missing Attendance</Label>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem' }}>
+                                    <ToggleCard theme={themeObj}>
+                                        <input
+                                            type="checkbox"
+                                            checked={!!attnSettings.student_auto_mark_absent_enabled}
+                                            onChange={e => setAttnSettings({
+                                                ...attnSettings,
+                                                student_auto_mark_absent_enabled: e.target.checked,
+                                                auto_mark_absent_enabled: e.target.checked || !!attnSettings.staff_auto_mark_absent_enabled
+                                            })}
+                                            style={{ marginTop: 4 }}
+                                        />
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                            <span style={{ fontWeight: 700 }}>Students</span>
+                                            <span style={{ fontSize: '0.78rem', lineHeight: 1.35, color: themeObj.TEXT_SECONDARY }}>
+                                                Backend auto-absent for students.
+                                            </span>
+                                        </div>
+                                    </ToggleCard>
+                                    <ToggleCard theme={themeObj}>
+                                        <input
+                                            type="checkbox"
+                                            checked={!!attnSettings.staff_auto_mark_absent_enabled}
+                                            onChange={e => setAttnSettings({
+                                                ...attnSettings,
+                                                staff_auto_mark_absent_enabled: e.target.checked,
+                                                auto_mark_absent_enabled: !!attnSettings.student_auto_mark_absent_enabled || e.target.checked
+                                            })}
+                                            style={{ marginTop: 4 }}
+                                        />
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                            <span style={{ fontWeight: 700 }}>Staff</span>
+                                            <span style={{ fontSize: '0.78rem', lineHeight: 1.35, color: themeObj.TEXT_SECONDARY }}>
+                                                Backend auto-absent for staff.
+                                            </span>
+                                        </div>
+                                    </ToggleCard>
+                                </div>
+                                <InputHint theme={themeObj}>Runs in backend and skips Sundays and holidays.</InputHint>
+                            </WideFormGroup>
+                        </SettingsGrid>
+
+                        <SettingsActions>
+                            <SecondaryBtn theme={themeObj} style={{ minWidth: 140 }} onClick={() => setShowSettings(false)}>
                                 Cancel
                             </SecondaryBtn>
                             <SecondaryBtn
                                 theme={themeObj}
-                                style={{ flex: 1, background: '#3b82f6', color: '#fff', borderColor: '#3b82f6' }}
+                                style={{ minWidth: 180, background: '#3b82f6', color: '#fff', borderColor: '#3b82f6' }}
                                 onClick={async () => {
                                     setSavingSettings(true);
                                     try {
+                                        const normalizedSettings = {
+                                            ...attnSettings,
+                                            auto_mark_absent_enabled:
+                                                !!attnSettings.student_auto_mark_absent_enabled ||
+                                                !!attnSettings.staff_auto_mark_absent_enabled
+                                        };
                                         const { error } = await supabase
                                             .from('attendance_settings')
                                             .upsert({
                                                 school_id: user?.school_id,
-                                                ...attnSettings,
+                                                ...normalizedSettings,
                                                 updated_at: new Date().toISOString()
                                             }, { onConflict: 'school_id' });
                                         if (error) throw error;
+                                        await loadAutomationOverview();
                                         setShowSettings(false);
                                     } catch (err: any) {
                                         alert('Failed to save settings: ' + err.message);
@@ -1342,10 +1784,10 @@ const RFIDAttendancePage: React.FC = () => {
                             >
                                 {savingSettings ? 'Saving...' : <><SaveIcon /> Save Changes</>}
                             </SecondaryBtn>
-                        </div>
+                        </SettingsActions>
                     </ModalContent>
                 </ModalOverlay>
-            )}
+            , document.body)}
 
             <MainGrid>
                 {/* \u2500\u2500 Left: Scanner \u2500\u2500 */}

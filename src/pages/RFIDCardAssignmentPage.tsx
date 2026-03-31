@@ -348,6 +348,7 @@ interface PersonRow {
     id: number;
     name: string;
     rfid_uid: string | null;
+    attendance_mode?: 'rfid_required' | 'manual_only' | 'hybrid' | null;
     roll_number?: string;
     class_id?: number;
     section_id?: number;
@@ -381,6 +382,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
     // Editing state
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editValue, setEditValue] = useState('');
+    const [editAttendanceMode, setEditAttendanceMode] = useState<'rfid_required' | 'manual_only' | 'hybrid'>('manual_only');
     const [saving, setSaving] = useState(false);
 
     const [isNfcSupported, setIsNfcSupported] = useState(false);
@@ -413,8 +415,8 @@ const RFIDCardAssignmentPage: React.FC = () => {
             // Fetch people
             const table = mode === 'students' ? 'students' : 'staff';
             const selectFields = mode === 'students'
-                ? 'id,name,rfid_uid,roll_number,class_id,section_id,status'
-                : 'id,name,rfid_uid,role';
+                ? 'id,name,rfid_uid,attendance_mode,roll_number,class_id,section_id,status'
+                : 'id,name,rfid_uid,attendance_mode,role';
 
             const data = await fetchAllRows(async (from, to) => {
                 return await supabase
@@ -481,6 +483,11 @@ const RFIDCardAssignmentPage: React.FC = () => {
             return;
         }
 
+        if (!cleanUID && editAttendanceMode !== 'manual_only') {
+            toast.showToast('Assign a card before using RFID Required or Hybrid mode', 'error');
+            return;
+        }
+
         setSaving(true);
         try {
             // Check for duplicates across BOTH students and staff tables
@@ -537,17 +544,25 @@ const RFIDCardAssignmentPage: React.FC = () => {
 
             const { error } = await supabase
                 .from(table)
-                .update({ rfid_uid: cleanUID || null })
+                .update({
+                    rfid_uid: cleanUID || null,
+                    attendance_mode: cleanUID ? editAttendanceMode : 'manual_only'
+                })
                 .eq('id', personId)
                 .eq('school_id', user.school_id);
 
             if (error) throw error;
 
             // Update local state
-            setPeople(prev => prev.map(p => p.id === personId ? { ...p, rfid_uid: cleanUID || null } : p));
+            setPeople(prev => prev.map(p => p.id === personId ? {
+                ...p,
+                rfid_uid: cleanUID || null,
+                attendance_mode: cleanUID ? editAttendanceMode : 'manual_only'
+            } : p));
             setEditingId(null);
             setEditValue('');
-            toast.showToast(cleanUID ? 'RFID card assigned successfully' : 'RFID card removed', 'success');
+            setEditAttendanceMode('manual_only');
+            toast.showToast(cleanUID ? 'RFID card settings saved successfully' : 'RFID card removed', 'success');
         } catch (e: any) {
             toast.showToast('Failed to save: ' + (e?.message || ''), 'error');
         } finally {
@@ -562,12 +577,12 @@ const RFIDCardAssignmentPage: React.FC = () => {
         try {
             const { error } = await supabase
                 .from(table)
-                .update({ rfid_uid: null })
+                .update({ rfid_uid: null, attendance_mode: 'manual_only' })
                 .eq('id', personId)
                 .eq('school_id', user.school_id);
 
             if (error) throw error;
-            setPeople(prev => prev.map(p => p.id === personId ? { ...p, rfid_uid: null } : p));
+            setPeople(prev => prev.map(p => p.id === personId ? { ...p, rfid_uid: null, attendance_mode: 'manual_only' } : p));
             toast.showToast('RFID card removed', 'success');
         } catch (e: any) {
             toast.showToast('Failed to remove: ' + (e?.message || ''), 'error');
@@ -577,6 +592,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
     const startEdit = (person: PersonRow) => {
         setEditingId(person.id);
         setEditValue(person.rfid_uid || '');
+        setEditAttendanceMode(person.attendance_mode || (person.rfid_uid ? 'rfid_required' : 'manual_only'));
     };
 
     const cancelEdit = () => {
@@ -587,6 +603,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
         }
         setEditingId(null);
         setEditValue('');
+        setEditAttendanceMode('manual_only');
     };
 
     const handleStartNfc = async () => {
@@ -753,6 +770,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
                                         {mode === 'students' && <TH theme={themeObj}>Roll No</TH>}
                                         {mode === 'students' && <TH theme={themeObj}>Class</TH>}
                                         {mode === 'employees' && <TH theme={themeObj}>Role</TH>}
+                                        <TH theme={themeObj}>Attendance Mode</TH>
                                         <TH theme={themeObj}>RFID Card</TH>
                                         <TH theme={themeObj} style={{ width: 180 }}>
                                             {editingId ? 'Scan Card / Type UID' : 'Actions'}
@@ -773,6 +791,31 @@ const RFIDCardAssignmentPage: React.FC = () => {
                                                 {mode === 'students' && <TD theme={themeObj}>{person.roll_number || person.id}</TD>}
                                                 {mode === 'students' && <TD theme={themeObj}>{classLabel}</TD>}
                                                 {mode === 'employees' && <TD theme={themeObj}>{person.role || '—'}</TD>}
+                                                <TD theme={themeObj}>
+                                                    {isEditing ? (
+                                                        <Select
+                                                            theme={themeObj}
+                                                            value={editAttendanceMode}
+                                                            onChange={e => setEditAttendanceMode(e.target.value as 'rfid_required' | 'manual_only' | 'hybrid')}
+                                                            style={{ minWidth: 150 }}
+                                                        >
+                                                            <option value="manual_only">Manual Only</option>
+                                                            <option value="rfid_required">RFID Required</option>
+                                                            <option value="hybrid">Hybrid</option>
+                                                        </Select>
+                                                    ) : (
+                                                        <RfidBadge
+                                                            $assigned={(person.attendance_mode || (person.rfid_uid ? 'rfid_required' : 'manual_only')) !== 'manual_only'}
+                                                            title="Controls whether backend cutoff expects an RFID scan"
+                                                        >
+                                                            {(person.attendance_mode || (person.rfid_uid ? 'rfid_required' : 'manual_only')) === 'hybrid'
+                                                                ? 'Hybrid'
+                                                                : (person.attendance_mode || (person.rfid_uid ? 'rfid_required' : 'manual_only')) === 'rfid_required'
+                                                                    ? 'RFID Required'
+                                                                    : 'Manual Only'}
+                                                        </RfidBadge>
+                                                    )}
+                                                </TD>
                                                 <TD theme={themeObj}>
                                                     {isEditing ? (
                                                         <>

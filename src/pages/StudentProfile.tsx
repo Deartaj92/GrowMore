@@ -410,59 +410,90 @@ const ProfileHeader = muiStyled(Box)(({ theme }) => ({
 }));
 
 const ProfileAvatar = muiStyled(Avatar)<ProfileAvatarProps>(({ theme }) => ({
-  width: 76,
-  height: 76,
-  fontSize: '2rem',
-  fontWeight: 600,
+  width: 104,
+  height: 104,
+  fontSize: '2.5rem',
+  fontWeight: 700,
   position: 'relative',
-  border: `2px solid ${alpha(theme.palette.primary.main, 0.3)}`,
-  background: theme.palette.background.paper,
+  borderRadius: '16px',
+  // Make the main background transparent to ensure only our controlled layers show
+  background: 'transparent !important',
   boxShadow: `
-    0 0 0 2px ${alpha(theme.palette.background.paper, 0.8)},
-    0 0 0 4px ${alpha(theme.palette.primary.main, 0.1)},
-    0 0 10px ${alpha(theme.palette.primary.main, 0.1)},
-    0 0 20px ${alpha(theme.palette.primary.main, 0.08)},
-    0 0 30px ${alpha(theme.palette.primary.main, 0.05)}
+    0 4px 12px ${alpha(theme.palette.primary.main, 0.15)},
+    0 8px 18px ${alpha(theme.palette.primary.main, 0.1)}
   `,
-  [theme.breakpoints.down('sm')]: {
-    width: 46,
-    height: 46,
-    fontSize: '1.15rem',
-    borderRadius: theme.shape.borderRadius * 1.5,
-  },
+  overflow: 'hidden',
+  border: 'none', // We'll simulate the border with layers to avoid MUI clipping
 
+  // The rotating light layer
   '&::before': {
     content: '""',
     position: 'absolute',
-    inset: -4,
-    padding: 2,
-    borderRadius: '50%',
-    background: `linear-gradient(135deg, 
-      ${theme.palette.primary.main} 0%, 
-      ${theme.palette.secondary.main} 100%)`,
-    WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-    WebkitMaskComposite: 'xor',
-    maskComposite: 'exclude',
-    animation: 'rotate 4s linear infinite',
+    inset: '-50%',
+    background: `conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      ${theme.palette.primary.main} 180deg,
+      ${theme.palette.secondary.main} 270deg,
+      transparent 360deg
+    )`,
+    animation: 'rotate 3s linear infinite',
+    zIndex: 0,
   },
 
-  '@keyframes rotate': {
-    '0%': {
-      transform: 'rotate(0deg)',
-    },
-    '100%': {
-      transform: 'rotate(360deg)',
-    },
+  // The inner background layer (the "box" the image sits in)
+  '&::after': {
+    content: '""',
+    position: 'absolute',
+    inset: '4px', // Creates the 4px border window
+    background: theme.palette.background.paper,
+    zIndex: 1,
+    borderRadius: '12px',
+    boxShadow: `inset 0 2px 4px ${alpha(theme.palette.common.black, 0.1)}`,
   },
 
-  '&:hover::before': {
-    animationDuration: '2s',
+  // Target THE IMAGE specifically - it needs to be smaller than the container
+  '& .MuiAvatar-img, & img': {
+    position: 'absolute',
+    top: '4px',
+    left: '4px',
+    width: 'calc(100% - 8px) !important',
+    height: 'calc(100% - 8px) !important',
+    objectFit: 'cover',
+    borderRadius: '12px !important',
+    zIndex: 2,
+    imageRendering: '-webkit-optimize-contrast',
+    'image-rendering': 'high-quality',
+    filter: 'brightness(1.02)'
+  },
+
+  // Target INITIALS / FALLBACK TEXT
+  '& .MuiAvatar-fallback, & .MuiTypography-root, & span': {
+    position: 'relative',
+    zIndex: 2,
+    color: theme.palette.primary.main,
+    fontSize: '2.5rem',
   },
 
   [theme.breakpoints.down('sm')]: {
-    width: 80,
-    height: 80,
-    fontSize: '2rem',
+    width: 68,
+    height: 68,
+    '& .MuiAvatar-img, & img': {
+      width: 'calc(100% - 6px) !important',
+      height: 'calc(100% - 6px) !important',
+      top: '3px',
+      left: '3px',
+      borderRadius: '8px !important',
+    },
+    '&::after': {
+      inset: '3px',
+      borderRadius: '8px',
+    }
+  },
+
+  '@keyframes rotate': {
+    '0%': { transform: 'rotate(0deg)' },
+    '100%': { transform: 'rotate(360deg)' },
   }
 }));
 
@@ -4706,9 +4737,9 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
         <ProfileHeader>
           <Skeleton
             variant="rounded"
-            width={76}
-            height={76}
-            sx={{ borderRadius: 4, flexShrink: 0, width: { xs: 46, sm: 76 }, height: { xs: 46, sm: 76 } }}
+            width={104}
+            height={104}
+            sx={{ borderRadius: '16px', flexShrink: 0, width: { xs: 68, sm: 104 }, height: { xs: 68, sm: 104 } }}
           />
           <Box
             sx={{

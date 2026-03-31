@@ -306,7 +306,7 @@ const StudentCard = styled.div<{ status: string }>`
   padding: 0;
   position: relative;
   border: 2px solid rgba(${({ status }) => getStatusColor(status)}, 0.5);
-  transition: transform 0.2s, box-shadow 0.2s, border-color 0.18s;
+  transition: box-shadow 0.25s ease, border-color 0.2s ease;
   min-width: 0;
   max-width: 100%;
   width: 100%;
@@ -315,7 +315,8 @@ const StudentCard = styled.div<{ status: string }>`
   overflow: hidden;
   
   &:hover {
-    border-color: rgba(${({ status }) => getStatusColor(status)}, 0.8);
+    border-color: rgba(${({ status }) => getStatusColor(status)}, 0.85);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   }
   
   @media (max-width: 700px) {
@@ -373,30 +374,29 @@ const StatusBadge = styled.div<{ status: string }>`
   }
 `;
 
-const CardImage = styled.img`
+const CardImage = styled.img<{ isLoaded?: boolean }>`
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center 15%; /* Perfect framing for portraits */
   display: block;
-  transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
-  will-change: transform;
-  ${StudentCard}:hover & {
-    transform: none;
-  }
+  /* Forcing Chrome to use its high-quality interpolation engine */
+  image-rendering: -webkit-optimize-contrast; 
+  image-rendering: high-quality;
+  -webkit-backface-visibility: hidden;
+  opacity: ${({ isLoaded }) => (isLoaded ? 1 : 0)};
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+  will-change: transform, opacity;
   
-  /* Mobile optimizations */
-  @media (max-width: 700px) {
-    /* Reduce transition duration on mobile for better performance */
-    transition: transform 0.2s ease;
-    /* Use GPU acceleration */
-    transform: translateZ(0);
-    backface-visibility: hidden;
+  ${StudentCard}:hover & {
+    transform: scale(1.18);
+    filter: brightness(1.05);
   }
 `;
 
 const Avatar = styled.div`
-  width: 78px;
-  min-height: 91px;
+  width: 80px;
+  min-height: 94px;
   align-self: stretch;
   border-radius: 0;
   background: ${({ theme }) => theme.ACCENT + '22'};
@@ -416,7 +416,7 @@ const Avatar = styled.div`
 
   &::after {
     content: '';
-  position: absolute;
+    position: absolute;
     inset: 0;
     background: ${({ theme }) => theme.BG === '#252525' ?
     'linear-gradient(45deg, rgba(255,255,255,0.1), transparent)' :
@@ -430,8 +430,8 @@ const Avatar = styled.div`
   }
   
   @media (max-width: 700px) {
-    width: 48px;
-    min-height: 62px;
+    width: 52px;
+    min-height: 64px;
     height: 100%;
     font-size: 1rem;
   }
@@ -441,7 +441,7 @@ const CardTop = styled.div`
   display: flex;
   align-items: stretch;
   gap: 0;
-  max-height: 91px;
+  max-height: 94px;
   
   @media (max-width: 700px) {
     min-height: 62px;
@@ -1624,11 +1624,8 @@ const MemoizedCardImage = memo(({ src, alt }: { src: string; alt: string }) => {
       src={isInView ? src : undefined}
       alt={alt}
       loading="lazy"
+      isLoaded={isLoaded}
       onLoad={() => setIsLoaded(true)}
-      style={{
-        opacity: isLoaded ? 1 : 0,
-        transition: 'opacity 0.3s ease'
-      }}
     />
   );
 });
@@ -1715,7 +1712,7 @@ const MemoizedStudentCard = memo(({
           title="View Student Profile"
         >
           {student.picture_url ? (
-            <img src={student.picture_url} alt={student.name} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }} />
+            <CardImage src={student.picture_url} alt={student.name} isLoaded={true} />
           ) : (
             <span style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <PersonIcon
@@ -2475,7 +2472,7 @@ const StudentList: React.FC = () => {
         }
       });
       // Handle avatar upload/removal
-      if (formData._newAvatarFile) {
+      if (formData._newAvatarFile || (formData as any)._newAvatarBase64) {
         // Delete old image if it exists
         if (editingStudent && editingStudent.picture_url) {
           const url = editingStudent.picture_url;
@@ -2489,24 +2486,32 @@ const StudentList: React.FC = () => {
           }
         }
 
-        const file = formData._newAvatarFile;
+        let file: any = formData._newAvatarFile;
 
-        if (!(file instanceof File)) {
-          showToast('File object was lost. Please select the image again.', 'error');
+        // If it's totally lost, notify the user. 
+        if (!file || (!('size' in file) && !('type' in file))) {
+          showToast('Invalid file structure. Please re-select the image.', 'error');
           setEditLoading(false);
           return;
         }
 
-        const fileExt = file.name.split('.').pop();
-        const fileName = `student_${editingStudent.id}_${Date.now()}.${fileExt}`;
+        const fileExt = (file.name || '').split('.').pop() || 'jpg';
+        // Generate random file name like StaffAddForm
+        const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+        const filePath = `students/${fileName}`; // StaffAddForm uses 'staff/filename' structure!
+        
+        showToast('Uploading picture...', 'info');
+        
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('student-avatars')
-          .upload(fileName, file, { upsert: true });
+          .from('student-avatars') // Or is it student-avatars? The bucket might require subfolders or just file directly.
+          .upload(fileName, file); // No contentType, no upsert, directly pass the Blob.
+          
         if (uploadError) {
           showToast('Failed to upload avatar: ' + uploadError.message, 'error');
           setEditLoading(false);
           return;
         }
+        
         const { data: publicUrlData } = supabase
           .storage
           .from('student-avatars')

@@ -13,6 +13,7 @@ export interface RFIDMapping {
     person_id: number;
     name: string;
     type: 'student' | 'employee';
+    attendance_mode?: 'rfid_required' | 'manual_only' | 'hybrid' | null;
     class_name?: string;
     section_name?: string;
     class_id?: number;
@@ -83,14 +84,14 @@ class RFIDOfflineService {
             // Fetch students
             const { data: students } = await supabase
                 .from('students')
-                .select('id, name, father_name, rfid_uid, roll_number, picture_url, status, class_id, section_id, classes:class_id(name), sections:section_id(name)')
+                .select('id, name, father_name, rfid_uid, attendance_mode, roll_number, picture_url, status, class_id, section_id, classes:class_id(name), sections:section_id(name)')
                 .eq('school_id', schoolId)
                 .not('rfid_uid', 'is', null);
 
             // Fetch staff
             const { data: staff } = await supabase
                 .from('staff')
-                .select('id, name, rfid_uid, role, picture_url, status')
+                .select('id, name, rfid_uid, attendance_mode, role, picture_url, status')
                 .eq('school_id', schoolId)
                 .not('rfid_uid', 'is', null);
 
@@ -108,6 +109,7 @@ class RFIDOfflineService {
                     person_id: s.id,
                     name: s.name,
                     type: 'student',
+                    attendance_mode: (s as any).attendance_mode || 'rfid_required',
                     class_name: (s.classes as any)?.name,
                     section_name: (s.sections as any)?.name,
                     class_id: s.class_id,
@@ -125,6 +127,7 @@ class RFIDOfflineService {
                     person_id: s.id,
                     name: s.name,
                     type: 'employee',
+                    attendance_mode: (s as any).attendance_mode || 'rfid_required',
                     role: s.role,
                     picture_url: s.picture_url,
                     status: (s as any).status || 'active',
@@ -262,6 +265,45 @@ class RFIDOfflineService {
                         failedCount++;
                     }
                 } else {
+                    const { data: existing } = await supabase.from(table)
+                        .select('id, status, source, check_in_time, check_out_time')
+                        .eq(idCol, scan.person_id)
+                        .eq('date', scan.date)
+                        .eq('school_id', scan.school_id)
+                        .maybeSingle();
+
+                    if (existing && (existing.status === 'absent' || !existing.check_in_time)) {
+                        const updatePayload: any = {
+                            session_id: Number(scan.session_id || cachedSession),
+                            status: scan.status || 'present',
+                            source: 'rfid',
+                            check_in_time: scan.timestamp,
+                        };
+
+                        if (scan.person_type === 'student') {
+                            if (scan.class_id) updatePayload.class_id = Number(scan.class_id);
+                            if (scan.section_id) updatePayload.section_id = Number(scan.section_id);
+                        }
+
+                        const { error } = await supabase.from(table)
+                            .update(updatePayload)
+                            .eq('id', existing.id);
+
+                        if (!error) {
+                            if (scan.id) await this.removeFromQueue(scan.id);
+                            successCount++;
+                        } else {
+                            failedCount++;
+                        }
+                        continue;
+                    }
+
+                    if (existing) {
+                        if (scan.id) await this.removeFromQueue(scan.id);
+                        successCount++;
+                        continue;
+                    }
+
                     // Insert new record for check-in
                     const payload: any = {
                         school_id: Number(scan.school_id),
@@ -317,7 +359,7 @@ class RFIDOfflineService {
             if (!person && navigator.onLine) {
                 // Try online lookup as fallback
                 const { data: student } = await supabase.from('students')
-                    .select('id, name, picture_url, status, class_id, section_id, classes:class_id(name), sections:section_id(name)')
+                    .select('id, name, picture_url, status, attendance_mode, class_id, section_id, classes:class_id(name), sections:section_id(name)')
                     .eq('school_id', schoolId).eq('rfid_uid', cleanUID).maybeSingle();
 
                 if (student) {
@@ -326,6 +368,7 @@ class RFIDOfflineService {
                         person_id: student.id,
                         name: student.name,
                         type: 'student',
+                        attendance_mode: (student as any).attendance_mode || 'rfid_required',
                         picture_url: student.picture_url,
                         class_name: (student as any).classes?.name,
                         section_name: (student as any).sections?.name,
@@ -335,7 +378,7 @@ class RFIDOfflineService {
                     };
                 } else {
                     const { data: staff } = await supabase.from('staff')
-                        .select('id, name, picture_url, role, status')
+                        .select('id, name, picture_url, role, status, attendance_mode')
                         .eq('school_id', schoolId).eq('rfid_uid', cleanUID).maybeSingle();
 
                     if (staff) {
@@ -344,6 +387,7 @@ class RFIDOfflineService {
                             person_id: staff.id,
                             name: staff.name,
                             type: 'employee',
+                            attendance_mode: (staff as any).attendance_mode || 'rfid_required',
                             picture_url: staff.picture_url,
                             role: staff.role,
                             status: (staff as any).status || 'active',
@@ -353,6 +397,10 @@ class RFIDOfflineService {
             }
 
             if (!person) return { success: false, person: null, type: 'error' };
+
+            if ((person.attendance_mode || 'rfid_required') === 'manual_only') {
+                return { success: false, person, type: 'error_manual_only' };
+            }
 
             // 1b. Check if person is active
             if (person.status && person.status !== 'active') {
@@ -389,9 +437,39 @@ class RFIDOfflineService {
 
                 // Check for duplicate or check-out
                 const { data: existing } = await supabase.from(table)
-                    .select('id, check_in_time, check_out_time').eq(idCol, person.person_id).eq('date', today).eq('school_id', schoolId).maybeSingle();
+                    .select('id, status, source, check_in_time, check_out_time')
+                    .eq(idCol, person.person_id)
+                    .eq('date', today)
+                    .eq('school_id', schoolId)
+                    .maybeSingle();
 
                 if (existing) {
+                    if (existing.status === 'absent' || !existing.check_in_time) {
+                        const cachedSession = await this.getConfig(KEY_ACTIVE_SESSION);
+                        const { data: session } = await supabase.from('sessions')
+                            .select('id').eq('school_id', schoolId).eq('is_active', true).maybeSingle();
+                        const session_id = session?.id || cachedSession;
+
+                        const updatePayload: any = {
+                            session_id,
+                            status: checkStatus,
+                            source: 'rfid',
+                            check_in_time: now,
+                        };
+
+                        if (person.type === 'student') {
+                            if (person.class_id) updatePayload.class_id = person.class_id;
+                            if (person.section_id) updatePayload.section_id = person.section_id;
+                        }
+
+                        const { error: updateError } = await supabase.from(table)
+                            .update(updatePayload)
+                            .eq('id', existing.id);
+                        if (updateError) throw updateError;
+
+                        return { success: true, person, type: 'new', attendance_status: checkStatus, recorded_time: now };
+                    }
+
                     if (person.type === 'employee' && !existing.check_out_time) {
                         // Check if checkout is allowed yet
                         if (settings && settings.staff_end_time) {
@@ -513,4 +591,4 @@ class RFIDOfflineService {
 }
 
 export const rfidOfflineService = new RFIDOfflineService();
-export type MarkResultType = 'new' | 'already' | 'error' | 'offline' | 'out' | 'error_checkout_early' | 'already_out' | 'error_inactive';
+export type MarkResultType = 'new' | 'already' | 'error' | 'offline' | 'out' | 'error_checkout_early' | 'already_out' | 'error_inactive' | 'error_manual_only';

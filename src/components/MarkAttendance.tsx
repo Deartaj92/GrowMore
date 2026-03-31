@@ -1327,6 +1327,8 @@ interface Student {
   status?: 'present' | 'absent' | 'leave' | 'late';
   picture_url?: string;
   remarks?: string;
+  rfid_uid?: string | null;
+  isOnLeave?: boolean;
 }
 
 // Add a hook to detect mobile
@@ -1370,6 +1372,7 @@ const MarkAttendance: React.FC = () => {
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'manual_only' | 'rfid_ready' | 'on_leave'>('all');
   const [hoveredAvatar, setHoveredAvatar] = useState<{ id: number; x: number; y: number; url: string } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -1455,12 +1458,18 @@ const MarkAttendance: React.FC = () => {
   // Define filteredStudents early so it can be used in handleSave
   const filteredStudents = useCallback((columnStudents: Student[]) =>
     columnStudents.filter(student =>
-      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.father_name.toLowerCase().includes(searchTerm.toLowerCase())
-    ), [searchTerm]);
+      (student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.father_name.toLowerCase().includes(searchTerm.toLowerCase())) &&
+      (
+        attendanceFilter === 'all' ||
+        (attendanceFilter === 'manual_only' && !student.rfid_uid) ||
+        (attendanceFilter === 'rfid_ready' && !!student.rfid_uid) ||
+        (attendanceFilter === 'on_leave' && !!student.isOnLeave)
+      )
+    ), [searchTerm, attendanceFilter]);
 
   // Define handleMarkAll early so it can be used in footer
-  const handleMarkAll = useCallback((status: 'present' | 'absent') => {
+  const handleMarkAll = useCallback((status: 'present' | 'absent' | 'leave') => {
     setStudents(prev =>
       prev.map(s =>
         selectedRows.includes(s.id) ? { ...s, status } : s
@@ -1536,6 +1545,14 @@ const MarkAttendance: React.FC = () => {
             >
               {!isMobile && <Cancel style={{ fontSize: 18, marginRight: 4 }} />}
               All Absent
+            </FooterActionButton>
+            <FooterActionButton
+              theme={theme === 'dark' ? darkTheme : lightTheme}
+              onClick={() => handleMarkAll('leave')}
+              disabled={students.length === 0 || selectedRows.length === 0}
+            >
+              {!isMobile && <Info style={{ fontSize: 18, marginRight: 4 }} />}
+              All Leave
             </FooterActionButton>
             <FooterActionButton
               theme={theme === 'dark' ? darkTheme : lightTheme}
@@ -2068,7 +2085,7 @@ const MarkAttendance: React.FC = () => {
       // Fetch full student details
       const { data: studentsData, error: studentsError } = await supabase
         .from('students')
-        .select('id, name, father_name, picture_url')
+        .select('id, name, father_name, picture_url, rfid_uid')
         .eq('school_id', user.school_id)
         .eq('status', 'active')
         .in('id', studentIds);
@@ -2094,20 +2111,36 @@ const MarkAttendance: React.FC = () => {
 
       if (attendanceError) throw attendanceError;
 
+      const { data: leaveData, error: leaveError } = await supabase
+        .from('leave_requests')
+        .select('student_id')
+        .eq('school_id', user.school_id)
+        .eq('session_id', sessionId)
+        .eq('status', 'approved')
+        .in('student_id', studentIds)
+        .lte('start_date', date)
+        .gte('end_date', date);
+
+      if (leaveError) throw leaveError;
+
       // Merge attendance status into students
       const attendanceMap = new Map();
       (attendanceData || []).forEach((rec: any) => {
         attendanceMap.set(rec.student_id, { status: rec.status, remarks: rec.remarks });
       });
+      const approvedLeaveSet = new Set((leaveData || []).map((leave: any) => leave.student_id));
       const formattedStudents = (studentsData || []).map((student: any) => {
         const att = attendanceMap.get(student.id);
+        const isOnLeave = approvedLeaveSet.has(student.id);
         return {
           id: student.id,
           name: student.name,
           father_name: student.father_name,
-          status: att ? att.status : (attendanceData && attendanceData.length === 0 ? 'present' : undefined),
+          status: att ? att.status : (isOnLeave ? 'leave' : (attendanceData && attendanceData.length === 0 ? 'present' : undefined)),
           picture_url: student.picture_url,
           remarks: att ? att.remarks || '' : '',
+          rfid_uid: student.rfid_uid,
+          isOnLeave,
         };
       }).sort((a, b) => a.id - b.id);
       setStudents(formattedStudents);
@@ -2683,6 +2716,17 @@ const MarkAttendance: React.FC = () => {
                 }}
                 style={{ minWidth: 120 }}
               />
+              <SegmentedSelect
+                theme={theme === 'dark' ? darkTheme : lightTheme}
+                value={attendanceFilter}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAttendanceFilter(e.target.value as any)}
+                style={{ minWidth: 120 }}
+              >
+                <option value="all">All</option>
+                <option value="manual_only">No Card</option>
+                <option value="rfid_ready">Has Card</option>
+                <option value="on_leave">On Leave</option>
+              </SegmentedSelect>
             </SegmentedGroup>
           </>
         ) : (
@@ -2749,6 +2793,17 @@ const MarkAttendance: React.FC = () => {
                 }}
               style={{ minWidth: 180 }}
             />
+            <SegmentedSelect
+              theme={theme === 'dark' ? darkTheme : lightTheme}
+              value={attendanceFilter}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAttendanceFilter(e.target.value as any)}
+              style={{ minWidth: 130 }}
+            >
+              <option value="all">All</option>
+              <option value="manual_only">No Card</option>
+              <option value="rfid_ready">Has Card</option>
+              <option value="on_leave">On Leave</option>
+            </SegmentedSelect>
           </SegmentedGroup>
               )}
       </Header>
@@ -2814,7 +2869,11 @@ const MarkAttendance: React.FC = () => {
                   )}
                 </MobileAvatar>
                 <MobileNameBlock>
-                  <MobileStudentName>{student.name}</MobileStudentName>
+                  <MobileStudentName>
+                    {student.name}
+                    {!student.rfid_uid && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#f59e42', fontWeight: 600 }}>(No Card)</span>}
+                    {student.isOnLeave && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#4a6cf7', fontWeight: 600 }}>(Leave)</span>}
+                  </MobileStudentName>
                   <MobileFatherName>{student.father_name}</MobileFatherName>
                 </MobileNameBlock>
                 {isMobile ? (

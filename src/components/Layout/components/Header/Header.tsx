@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getUserPermissions } from '../../../../services/permissionService';
 import { shouldShowMenuItem, pathToPermissionKey } from '../../../../utils/permissionMapping';
@@ -179,6 +179,8 @@ const AppLogo = styled.button`
     object-fit: cover;
     border-radius: 50%;
     pointer-events: none;
+    image-rendering: -webkit-optimize-contrast;
+    'image-rendering': 'high-quality';
   }
   
   @media (max-width: 700px) {
@@ -866,11 +868,11 @@ const ProfileAvatarContainer = styled(HeaderIconCircle) <{ $hasImage: boolean }>
   position: relative;
   overflow: hidden;
   padding: 0;
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   
   &:hover {
-    transform: scale(1.1);
+    transform: scale(1.08);
     box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceHoverShadow};
   }
   
@@ -883,10 +885,13 @@ const ProfileAvatarContainer = styled(HeaderIconCircle) <{ $hasImage: boolean }>
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     z-index: 0;
+    image-rendering: -webkit-optimize-contrast;
+    'image-rendering': 'high-quality';
+    filter: brightness(1.02);
   }
   
   &:hover img {
-    transform: scale(1.08);
+    transform: scale(1.06);
   }
   
   svg {
@@ -1151,10 +1156,10 @@ const SearchSectionLabel = styled.div`
 const SearchResultButton = styled.button<{ $active: boolean; $accent?: string }>`
   width: 100%;
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) auto;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: 14px;
+  padding: 10px 14px;
   border: 1px solid ${({ theme, $active, $accent }) =>
     $active ? ($accent || theme.ACCENT) : 'transparent'};
   border-radius: 16px;
@@ -1178,24 +1183,28 @@ const SearchResultButton = styled.button<{ $active: boolean; $accent?: string }>
 `;
 
 const SearchResultAvatar = styled.div<{ $accent?: string }>`
-  width: 38px;
-  height: 38px;
-  border-radius: 14px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.88rem;
+  font-size: 0.95rem;
   font-weight: 800;
   color: ${({ theme, $accent }) => $accent || theme.ACCENT};
   background: ${({ theme, $accent }) => `${$accent || theme.ACCENT}18`};
   border: 1px solid ${({ theme, $accent }) => `${$accent || theme.ACCENT}33`};
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    image-rendering: -webkit-optimize-contrast;
+    'image-rendering': 'high-quality';
+    filter: brightness(1.02);
   }
 `;
 
@@ -3611,9 +3620,9 @@ const Header: React.FC<HeaderProps> = ({
                                   {item.type !== 'page' && item.imageUrl ? (
                                     <img src={item.imageUrl} alt="" />
                                   ) : item.type === 'student' ? (
-                                    <PeopleIcon style={{ fontSize: 18 }} />
+                                    <PeopleIcon style={{ fontSize: 22 }} />
                                   ) : item.type === 'employee' ? (
-                                    <BadgeIcon style={{ fontSize: 18 }} />
+                                    <BadgeIcon style={{ fontSize: 22 }} />
                                   ) : (
                                     fallbackLabel
                                 )}
