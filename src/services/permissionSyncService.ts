@@ -82,6 +82,7 @@ function getCategoryFromPath(path: string): string {
   if (path.startsWith('/homework-diary') || path.startsWith('/diary-analytics')) return 'Academics';
   if (path.startsWith('/settings')) return 'Settings';
   if (path.startsWith('/dashboard')) return 'Dashboard';
+  if (path.startsWith('/misc')) return 'Misc';
   return 'Other';
 }
 
@@ -131,27 +132,17 @@ export async function syncPermissionsFromMenuStructure(): Promise<void> {
 
     const existingKeys = new Set((existingPermissions || []).map(p => p.key));
 
-    // Find missing permissions
-    const missingPermissions = permissionsToSync.filter(
-      p => !existingKeys.has(p.key)
-    );
-
-    if (missingPermissions.length === 0) {
-      console.log('All permissions are already synced');
-      return;
-    }
-
-    // Insert missing permissions
+    // Upsert permissions to ensure all paths and categories are up to date
     const { error: insertError } = await supabase
       .from('permissions')
-      .insert(missingPermissions);
+      .upsert(permissionsToSync, { onConflict: 'key' });
 
     if (insertError) {
       console.error('Error syncing permissions:', insertError);
       return;
     }
 
-    console.log(`Synced ${missingPermissions.length} new permission(s) from menu structure:`, missingPermissions.map(p => p.key));
+    console.log(`Successfully synchronized all menu structure permissions to the database.`);
   } catch (error) {
     console.error('Error in syncPermissionsFromMenuStructure:', error);
   }

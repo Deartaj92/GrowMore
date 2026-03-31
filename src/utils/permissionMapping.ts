@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Maps menu item paths to permission keys
  * This mapping is used to check if a user has permission to access a menu item
  */
@@ -24,6 +24,7 @@ export const pathToPermissionKey: Record<string, string> = {
   '/family-management': 'family-management',
   '/students/withdrawal-register': 'withdrawal-register',
   '/students/cards': 'students-cards',
+  '/misc/notebook-tags': 'notebook-tags',
   '/student/:id': 'student-profile',
   '/students/profile/:id': 'student-profile',
   '/profile': 'teacher-profile',

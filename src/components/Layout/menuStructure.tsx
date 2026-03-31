@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import {
   People as PeopleIcon,
   PersonAdd as PersonAddIcon,
@@ -125,6 +125,17 @@ export const studentMenuItems: MenuItem[] = [
     icon: React.createElement(BadgeIcon),
     path: '/students/cards',
     color: '#8b5cf6'
+  }
+];
+
+// Misc menu items
+export const miscMenuItems: MenuItem[] = [
+  {
+    title: 'Notebook Tags',
+    description: 'Generate and print tags for notebooks',
+    icon: React.createElement(AssignmentIcon),
+    path: '/misc/notebook-tags',
+    color: '#3b82f6'
   }
 ];
 
@@ -867,6 +878,16 @@ export const menuStructure: MainMenuItem[] = [
       { title: 'Enquiry Management', items: enquiryMenuItems }
     ],
     columns: 2
+  },
+  {
+    icon: React.createElement(ListAltIcon),
+    path: '/misc',
+    label: 'Miscellaneous',
+    hasDropdown: true,
+    menuItems: [
+      { title: 'Miscellaneous Items', items: miscMenuItems }
+    ],
+    columns: 1
   },
   {
     icon: React.createElement(SettingsIcon),

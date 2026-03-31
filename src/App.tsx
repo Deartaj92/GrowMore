@@ -1,4 +1,4 @@
-﻿import React, { useContext, useRef, useEffect } from 'react';
+import React, { useContext, useRef, useEffect } from 'react';
 import { ThemeProvider as MuiThemeProvider, createTheme } from '@mui/material/styles';
 import { HashRouter, BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from 'styled-components';
@@ -104,6 +104,7 @@ import DiaryAnalytics from './components/DiaryAnalytics';
 // Student Management Components
 import GeneralMessagePage from './pages/GeneralMessagePage';
 import StudentCardsPage from './pages/StudentCardsPage';
+import NotebookTagGenerator from './pages/NotebookTagGenerator';
 // Fine Management Components
 import FineDashboard from './components/FineDashboard';
 // Attendance Management Components
@@ -314,6 +315,17 @@ const App: React.FC = () => {
                                 requiredPermission="students-cards"
                               >
                                 <StudentCardsPage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="misc/notebook-tags"
+                            element={
+                              <ProtectedRoute
+                                requiredPermission="notebook-tags"
+                              >
+                                <NotebookTagGenerator />
                               </ProtectedRoute>
                             }
                           />

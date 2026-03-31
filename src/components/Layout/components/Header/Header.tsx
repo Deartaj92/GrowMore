@@ -1557,6 +1557,7 @@ const Header: React.FC<HeaderProps> = ({
   const [communicationMenuOpen, setCommunicationMenuOpen] = useState(false);
   const [academicsMenuOpen, setAcademicsMenuOpen] = useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [miscMenuOpen, setMiscMenuOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [unreadCounts, setUnreadCounts] = useState<UnreadCounts>({
     leaveRequests: 0,
@@ -1596,6 +1597,9 @@ const Header: React.FC<HeaderProps> = ({
   const settingsMenuRef = useRef<HTMLDivElement>(null);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
+  const miscMenuRef = useRef<HTMLDivElement>(null);
+  const miscButtonRef = useRef<HTMLButtonElement>(null);
+  const miscDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isRestrictedRole || !searchSchoolId) {
@@ -1738,12 +1742,13 @@ const Header: React.FC<HeaderProps> = ({
     if (communicationMenuOpen) updatePosition(communicationButtonRef, communicationDropdownRef);
     if (academicsMenuOpen) updatePosition(academicsButtonRef, academicsDropdownRef);
     if (settingsMenuOpen) updatePosition(settingsButtonRef, settingsDropdownRef);
+    if (miscMenuOpen) updatePosition(miscButtonRef, miscDropdownRef);
   };
 
   // Update positions when menus open or on scroll/resize
   useEffect(() => {
     if (studentMenuOpen || employeeMenuOpen || financeMenuOpen || accountsMenuOpen ||
-      communicationMenuOpen || academicsMenuOpen || settingsMenuOpen) {
+      communicationMenuOpen || academicsMenuOpen || settingsMenuOpen || miscMenuOpen) {
       // Initial positioning
       updateDropdownPositions();
 
@@ -1765,7 +1770,7 @@ const Header: React.FC<HeaderProps> = ({
       };
     }
   }, [studentMenuOpen, employeeMenuOpen, financeMenuOpen, accountsMenuOpen,
-    communicationMenuOpen, academicsMenuOpen, settingsMenuOpen]);
+    communicationMenuOpen, academicsMenuOpen, settingsMenuOpen, miscMenuOpen]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -1833,6 +1838,17 @@ const Header: React.FC<HeaderProps> = ({
       icon: <BadgeIcon />,
       path: '/students/cards',
       color: '#8b5cf6'
+    }
+  ];
+
+  // Misc menu items
+  const miscMenuItems = [
+    {
+      title: 'Notebook Tags',
+      description: 'Generate and print tags for notebooks',
+      icon: <AssignmentIcon />,
+      path: '/misc/notebook-tags',
+      color: '#3b82f6'
     }
   ];
 
@@ -2626,6 +2642,16 @@ const Header: React.FC<HeaderProps> = ({
       columns: 2
     },
     {
+      icon: <ListAltIcon />,
+      path: '/misc',
+      label: 'Miscellaneous',
+      hasDropdown: true,
+      menuItems: [
+        { title: 'Miscellaneous Items', items: miscMenuItems }
+      ],
+      columns: 1
+    },
+    {
       icon: <SettingsIcon />,
       path: '/settings',
       label: 'Settings',
@@ -3197,6 +3223,7 @@ const Header: React.FC<HeaderProps> = ({
                   if (item.label === 'Communication') return { open: communicationMenuOpen, setOpen: setCommunicationMenuOpen, ref: communicationMenuRef, buttonRef: communicationButtonRef, dropdownRef: communicationDropdownRef };
                   if (item.label === 'Academics') return { open: academicsMenuOpen, setOpen: setAcademicsMenuOpen, ref: academicsMenuRef, buttonRef: academicsButtonRef, dropdownRef: academicsDropdownRef };
                   if (item.label === 'Settings') return { open: settingsMenuOpen, setOpen: setSettingsMenuOpen, ref: settingsMenuRef, buttonRef: settingsButtonRef, dropdownRef: settingsDropdownRef };
+                  if (item.label === 'Miscellaneous') return { open: miscMenuOpen, setOpen: setMiscMenuOpen, ref: miscMenuRef, buttonRef: miscButtonRef, dropdownRef: miscDropdownRef };
                   return null;
                 };
 
@@ -3216,6 +3243,7 @@ const Header: React.FC<HeaderProps> = ({
                         if (item.label !== 'Communication' && communicationMenuOpen) setCommunicationMenuOpen(false);
                         if (item.label !== 'Academics' && academicsMenuOpen) setAcademicsMenuOpen(false);
                         if (item.label !== 'Settings' && settingsMenuOpen) setSettingsMenuOpen(false);
+                        if (item.label !== 'Miscellaneous' && miscMenuOpen) setMiscMenuOpen(false);
 
                         // Clear any pending close timeout for this menu
                         if (menuLeaveTimeoutRef.current[item.path]) {
