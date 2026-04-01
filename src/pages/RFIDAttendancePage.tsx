@@ -740,6 +740,35 @@ const InputHint = styled.span`
   color: ${({ theme }) => getDashboardPalette(theme).subtleText};
 `;
 
+const toInputTime = (value: string | null | undefined, fallback: string): string => {
+    const raw = (value || '').trim();
+    if (!raw) return fallback;
+
+    const time24 = raw.match(/^([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/);
+    if (time24) {
+        const hh = time24[1].padStart(2, '0');
+        const mm = time24[2];
+        return `${hh}:${mm}`;
+    }
+
+    const ampm = raw.match(/^(\d{1,2}):([0-5]\d)\s*(AM|PM)$/i);
+    if (ampm) {
+        let hour = parseInt(ampm[1], 10);
+        const minute = ampm[2];
+        const period = ampm[3].toUpperCase();
+        if (period === 'PM' && hour < 12) hour += 12;
+        if (period === 'AM' && hour === 12) hour = 0;
+        return `${String(hour).padStart(2, '0')}:${minute}`;
+    }
+
+    return fallback;
+};
+
+const toDbTime = (value: string | null | undefined, fallback: string): string => {
+    const normalized = toInputTime(value, fallback);
+    return `${normalized}:00`;
+};
+
 const Label = styled.label`
   display: block;
   font-size: 0.72rem;
@@ -936,26 +965,29 @@ const RFIDAttendancePage: React.FC = () => {
             if (data) {
                 setAttnSettings({
                     ...data,
+                    student_start_time: toInputTime(data.student_start_time, '08:00'),
+                    staff_start_time: toInputTime(data.staff_start_time, '08:00'),
+                    staff_end_time: toInputTime(data.staff_end_time, '14:00'),
                     auto_mark_absent_enabled: !!data.auto_mark_absent_enabled,
                     student_auto_mark_absent_enabled: !!(data as any).student_auto_mark_absent_enabled || (!!data.auto_mark_absent_enabled && !(data as any).staff_auto_mark_absent_enabled),
                     staff_auto_mark_absent_enabled: !!(data as any).staff_auto_mark_absent_enabled || (!!data.auto_mark_absent_enabled && !(data as any).student_auto_mark_absent_enabled),
-                    student_cutoff_time: data.student_cutoff_time || '08:15:00',
-                    staff_cutoff_time: data.staff_cutoff_time || '08:15:00',
+                    student_cutoff_time: toInputTime(data.student_cutoff_time, '08:15'),
+                    staff_cutoff_time: toInputTime(data.staff_cutoff_time, '08:15'),
                     timezone: data.timezone || 'Asia/Karachi'
                 });
             }
             else {
                 // Fallback / Default
                 setAttnSettings({
-                    student_start_time: '08:00:00',
-                    staff_start_time: '08:00:00',
-                    staff_end_time: '14:00:00',
+                    student_start_time: '08:00',
+                    staff_start_time: '08:00',
+                    staff_end_time: '14:00',
                     grace_period_minutes: 15,
                     auto_mark_absent_enabled: false,
                     student_auto_mark_absent_enabled: false,
                     staff_auto_mark_absent_enabled: false,
-                    student_cutoff_time: '08:15:00',
-                    staff_cutoff_time: '08:15:00',
+                    student_cutoff_time: '08:15',
+                    staff_cutoff_time: '08:15',
                     timezone: 'Asia/Karachi'
                 });
             }
@@ -1760,6 +1792,12 @@ const RFIDAttendancePage: React.FC = () => {
                                     try {
                                         const normalizedSettings = {
                                             ...attnSettings,
+                                            student_start_time: toDbTime(attnSettings.student_start_time, '08:00'),
+                                            staff_start_time: toDbTime(attnSettings.staff_start_time, '08:00'),
+                                            staff_end_time: toDbTime(attnSettings.staff_end_time, '14:00'),
+                                            student_cutoff_time: toDbTime(attnSettings.student_cutoff_time, '08:15'),
+                                            staff_cutoff_time: toDbTime(attnSettings.staff_cutoff_time, '08:15'),
+                                            timezone: (attnSettings.timezone || 'Asia/Karachi').trim() || 'Asia/Karachi',
                                             auto_mark_absent_enabled:
                                                 !!attnSettings.student_auto_mark_absent_enabled ||
                                                 !!attnSettings.staff_auto_mark_absent_enabled

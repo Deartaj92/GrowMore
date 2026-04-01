@@ -382,7 +382,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
     // Editing state
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editValue, setEditValue] = useState('');
-    const [editAttendanceMode, setEditAttendanceMode] = useState<'rfid_required' | 'manual_only' | 'hybrid'>('manual_only');
+    const [editAttendanceMode, setEditAttendanceMode] = useState<'rfid_required' | 'manual_only' | 'hybrid'>('hybrid');
     const [saving, setSaving] = useState(false);
 
     const [isNfcSupported, setIsNfcSupported] = useState(false);
@@ -542,11 +542,13 @@ const RFIDCardAssignmentPage: React.FC = () => {
                 }
             }
 
+            const nextAttendanceMode = cleanUID ? editAttendanceMode : 'manual_only';
+
             const { error } = await supabase
                 .from(table)
                 .update({
                     rfid_uid: cleanUID || null,
-                    attendance_mode: cleanUID ? editAttendanceMode : 'manual_only'
+                    attendance_mode: nextAttendanceMode
                 })
                 .eq('id', personId)
                 .eq('school_id', user.school_id);
@@ -557,11 +559,11 @@ const RFIDCardAssignmentPage: React.FC = () => {
             setPeople(prev => prev.map(p => p.id === personId ? {
                 ...p,
                 rfid_uid: cleanUID || null,
-                attendance_mode: cleanUID ? editAttendanceMode : 'manual_only'
+                attendance_mode: nextAttendanceMode
             } : p));
             setEditingId(null);
             setEditValue('');
-            setEditAttendanceMode('manual_only');
+            setEditAttendanceMode('hybrid');
             toast.showToast(cleanUID ? 'RFID card settings saved successfully' : 'RFID card removed', 'success');
         } catch (e: any) {
             toast.showToast('Failed to save: ' + (e?.message || ''), 'error');
@@ -592,7 +594,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
     const startEdit = (person: PersonRow) => {
         setEditingId(person.id);
         setEditValue(person.rfid_uid || '');
-        setEditAttendanceMode(person.attendance_mode || (person.rfid_uid ? 'rfid_required' : 'manual_only'));
+        setEditAttendanceMode(person.attendance_mode || (person.rfid_uid ? 'rfid_required' : 'hybrid'));
     };
 
     const cancelEdit = () => {
@@ -603,7 +605,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
         }
         setEditingId(null);
         setEditValue('');
-        setEditAttendanceMode('manual_only');
+        setEditAttendanceMode('hybrid');
     };
 
     const handleStartNfc = async () => {
