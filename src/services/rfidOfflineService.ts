@@ -302,7 +302,7 @@ class RFIDOfflineService {
                         .eq('school_id', scan.school_id)
                         .maybeSingle();
 
-                    if (scan.person_type === 'employee' && this.isEmployeeActiveAttendance(existing)) {
+                    if (scan.person_type === 'employee' && existing && this.isEmployeeActiveAttendance(existing)) {
                         const { error } = await supabase.from(table)
                             .update({ check_out_time: scan.timestamp })
                             .eq('id', existing.id)
