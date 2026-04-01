@@ -356,6 +356,17 @@ interface PersonRow {
     status?: string;
 }
 
+const getEffectiveAttendanceMode = (
+    attendanceMode: 'rfid_required' | 'manual_only' | 'hybrid' | null | undefined,
+    hasCard: boolean
+): 'rfid_required' | 'manual_only' | 'hybrid' => {
+    if (hasCard && (!attendanceMode || attendanceMode === 'manual_only')) {
+        return 'hybrid';
+    }
+
+    return attendanceMode || (hasCard ? 'hybrid' : 'manual_only');
+};
+
 interface ClassRow { id: number; name: string; }
 interface SectionRow { id: number; name: string; class_id: number; }
 
@@ -594,7 +605,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
     const startEdit = (person: PersonRow) => {
         setEditingId(person.id);
         setEditValue(person.rfid_uid || '');
-        setEditAttendanceMode(person.attendance_mode || (person.rfid_uid ? 'rfid_required' : 'hybrid'));
+        setEditAttendanceMode(getEffectiveAttendanceMode(person.attendance_mode, !!person.rfid_uid));
     };
 
     const cancelEdit = () => {
@@ -807,12 +818,12 @@ const RFIDCardAssignmentPage: React.FC = () => {
                                                         </Select>
                                                     ) : (
                                                         <RfidBadge
-                                                            $assigned={(person.attendance_mode || (person.rfid_uid ? 'rfid_required' : 'manual_only')) !== 'manual_only'}
+                                                            $assigned={getEffectiveAttendanceMode(person.attendance_mode, !!person.rfid_uid) !== 'manual_only'}
                                                             title="Controls whether backend cutoff expects an RFID scan"
                                                         >
-                                                            {(person.attendance_mode || (person.rfid_uid ? 'rfid_required' : 'manual_only')) === 'hybrid'
+                                                            {getEffectiveAttendanceMode(person.attendance_mode, !!person.rfid_uid) === 'hybrid'
                                                                 ? 'Hybrid'
-                                                                : (person.attendance_mode || (person.rfid_uid ? 'rfid_required' : 'manual_only')) === 'rfid_required'
+                                                                : getEffectiveAttendanceMode(person.attendance_mode, !!person.rfid_uid) === 'rfid_required'
                                                                     ? 'RFID Required'
                                                                     : 'Manual Only'}
                                                         </RfidBadge>

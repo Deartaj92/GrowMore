@@ -1327,6 +1327,8 @@ interface Student {
   status?: 'present' | 'absent' | 'leave' | 'late';
   picture_url?: string;
   remarks?: string;
+  check_in_time?: string | null;
+  source?: string | null;
   rfid_uid?: string | null;
   isOnLeave?: boolean;
 }
@@ -1341,6 +1343,50 @@ function useIsMobile() {
   }, []);
   return isMobile;
 }
+
+const toInputTime = (value?: string | null) => {
+  const raw = (value || '').trim();
+  if (!raw) return '';
+
+  if (raw.includes('T') || /[zZ]|[+-]\d{2}:\d{2}$/.test(raw)) {
+    const parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) {
+      return `${String(parsed.getHours()).padStart(2, '0')}:${String(parsed.getMinutes()).padStart(2, '0')}`;
+    }
+  }
+
+  const match = raw.match(/^([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/);
+  if (!match) return '';
+  return `${match[1].padStart(2, '0')}:${match[2]}`;
+};
+
+const buildLocalTimestamp = (date: string, value?: string | null) => {
+  const normalized = toInputTime(value);
+  if (!normalized) return null;
+
+  const [year, month, day] = date.split('-').map(Number);
+  const [hours, minutes] = normalized.split(':').map(Number);
+  const localDate = new Date(year, (month || 1) - 1, day || 1, hours || 0, minutes || 0, 0, 0);
+
+  if (Number.isNaN(localDate.getTime())) return null;
+  return localDate.toISOString();
+};
+
+const currentTimeValue = () => {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+};
+
+const getManualAttendanceTimestamp = (date: string, existingValue?: string | null) => {
+  if (existingValue) return existingValue;
+
+  const today = format(new Date(), 'yyyy-MM-dd');
+  if (date === today) {
+    return buildLocalTimestamp(date, currentTimeValue());
+  }
+
+  return buildLocalTimestamp(date, '08:00');
+};
 
 const MarkAttendance: React.FC = () => {
   const { theme } = useContext(ThemeContext);
@@ -2095,7 +2141,7 @@ const MarkAttendance: React.FC = () => {
       // Fetch attendance records for this date/section/class
       let attendanceQuery = supabase
         .from('attendance_records')
-        .select('student_id, status, remarks')
+        .select('student_id, status, remarks, check_in_time, source')
         .eq('class_id', selectedClass)
         .eq('date', date)
         .eq('school_id', user.school_id);
@@ -2126,7 +2172,12 @@ const MarkAttendance: React.FC = () => {
       // Merge attendance status into students
       const attendanceMap = new Map();
       (attendanceData || []).forEach((rec: any) => {
-        attendanceMap.set(rec.student_id, { status: rec.status, remarks: rec.remarks });
+        attendanceMap.set(rec.student_id, {
+          status: rec.status,
+          remarks: rec.remarks,
+          check_in_time: rec.check_in_time,
+          source: rec.source
+        });
       });
       const approvedLeaveSet = new Set((leaveData || []).map((leave: any) => leave.student_id));
       const formattedStudents = (studentsData || []).map((student: any) => {
@@ -2139,6 +2190,8 @@ const MarkAttendance: React.FC = () => {
           status: att ? att.status : (isOnLeave ? 'leave' : (attendanceData && attendanceData.length === 0 ? 'present' : undefined)),
           picture_url: student.picture_url,
           remarks: att ? att.remarks || '' : '',
+          check_in_time: att ? att.check_in_time || null : null,
+          source: att ? att.source || null : null,
           rfid_uid: student.rfid_uid,
           isOnLeave,
         };
@@ -2184,7 +2237,14 @@ const MarkAttendance: React.FC = () => {
     setStudents(prev =>
       prev.map(student =>
         student.id === studentId
-          ? ({ ...student, status: status.toLowerCase() as 'present' | 'absent' | 'leave' | 'late' } as Student)
+          ? ({
+              ...student,
+              status: status.toLowerCase() as 'present' | 'absent' | 'leave' | 'late',
+              check_in_time: status === 'present' || status === 'late'
+                ? getManualAttendanceTimestamp(date, student.check_in_time)
+                : null,
+              source: 'manual'
+            } as Student)
           : student
       )
     );
@@ -2196,7 +2256,14 @@ const MarkAttendance: React.FC = () => {
 
   const handleBulkMark = (status: 'present' | 'absent' | 'leave' | 'late') => {
     setStudents(prev =>
-      prev.map(student => ({ ...student, status }))
+      prev.map(student => ({
+        ...student,
+        status,
+        check_in_time: status === 'present' || status === 'late'
+          ? getManualAttendanceTimestamp(date, student.check_in_time)
+          : null,
+        source: 'manual'
+      }))
     );
     toast.showToast('Marked all students as ' + status, 'success');
   };
@@ -2292,6 +2359,10 @@ const MarkAttendance: React.FC = () => {
         date,
         status: typeof student.status === 'string' ? student.status.toLowerCase() : student.status,
         remarks: student.remarks || null,
+        check_in_time: student.status === 'present' || student.status === 'late'
+          ? getManualAttendanceTimestamp(date, student.check_in_time)
+          : null,
+        source: student.source || 'manual',
         created_at: new Date().toISOString(),
         session_id: sessionId,
         school_id: user.school_id,
@@ -2432,11 +2503,13 @@ const MarkAttendance: React.FC = () => {
     if (allChecked) {
       // Deselect only filtered students
       setSelectedRows(prev => prev.filter(id => !filtered.some(s => s.id === id)));
-      setStudents(prev => prev.map(s => filtered.some(f => f.id === s.id) ? { ...s, status: undefined } : s));
+      setStudents(prev => prev.map(s => filtered.some(f => f.id === s.id) ? { ...s, status: undefined, check_in_time: null, source: null } : s));
     } else {
       // Select all filtered students
       setSelectedRows(prev => Array.from(new Set([...prev, ...filtered.map(s => s.id)])));
-      setStudents(prev => prev.map(s => filtered.some(f => f.id === s.id) ? { ...s, status: 'present' } : s));
+      setStudents(prev => prev.map(s => filtered.some(f => f.id === s.id)
+        ? { ...s, status: 'present', check_in_time: getManualAttendanceTimestamp(date, s.check_in_time), source: 'manual' }
+        : s));
     }
   };
   // Enter key submits
@@ -2453,11 +2526,13 @@ const MarkAttendance: React.FC = () => {
     setSelectedRows(prev => {
       if (prev.includes(studentId)) {
         // Deselect: remove from selectedRows and clear status
-        setStudents(students => students.map(s => s.id === studentId ? { ...s, status: undefined } : s));
+        setStudents(students => students.map(s => s.id === studentId ? { ...s, status: undefined, check_in_time: null, source: null } : s));
         return prev.filter(id => id !== studentId);
       } else {
         // Select: add to selectedRows and set status to present
-        setStudents(students => students.map(s => s.id === studentId ? { ...s, status: 'present' } : s));
+        setStudents(students => students.map(s => s.id === studentId
+          ? { ...s, status: 'present', check_in_time: getManualAttendanceTimestamp(date, s.check_in_time), source: 'manual' }
+          : s));
         return [...prev, studentId];
       }
     });

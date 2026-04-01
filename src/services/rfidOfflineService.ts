@@ -44,6 +44,30 @@ export interface QueuedScan {
 class RFIDOfflineService {
     private db: IDBDatabase | null = null;
 
+    private isEmployeeActiveAttendance(existing: {
+        status?: string | null;
+        check_in_time?: string | null;
+        check_out_time?: string | null;
+    } | null | undefined): boolean {
+        if (!existing) return false;
+
+        const normalizedStatus = (existing.status || '').toLowerCase();
+        return (normalizedStatus === 'present' || normalizedStatus === 'late') && !existing.check_out_time;
+    }
+
+    private normalizeAttendanceMode(
+        attendanceMode: 'rfid_required' | 'manual_only' | 'hybrid' | null | undefined,
+        hasCard: boolean
+    ): 'rfid_required' | 'manual_only' | 'hybrid' {
+        // Card-assigned people should not be blocked by stale legacy manual-only values.
+        // Treat them as hybrid so manual marking, RFID scans, and backend automation can coexist.
+        if (hasCard && (!attendanceMode || attendanceMode === 'manual_only')) {
+            return 'hybrid';
+        }
+
+        return attendanceMode || (hasCard ? 'hybrid' : 'manual_only');
+    }
+
     private async getDB(): Promise<IDBDatabase> {
         if (this.db) return this.db;
 
@@ -109,7 +133,7 @@ class RFIDOfflineService {
                     person_id: s.id,
                     name: s.name,
                     type: 'student',
-                    attendance_mode: (s as any).attendance_mode || 'rfid_required',
+                    attendance_mode: this.normalizeAttendanceMode((s as any).attendance_mode, !!s.rfid_uid),
                     class_name: (s.classes as any)?.name,
                     section_name: (s.sections as any)?.name,
                     class_id: s.class_id,
@@ -127,7 +151,7 @@ class RFIDOfflineService {
                     person_id: s.id,
                     name: s.name,
                     type: 'employee',
-                    attendance_mode: (s as any).attendance_mode || 'rfid_required',
+                    attendance_mode: this.normalizeAttendanceMode((s as any).attendance_mode, !!s.rfid_uid),
                     role: s.role,
                     picture_url: s.picture_url,
                     status: (s as any).status || 'active',
@@ -187,7 +211,13 @@ class RFIDOfflineService {
             const store = tx.objectStore(STORE_MAPPINGS);
             const request = store.get(rfid_uid.toUpperCase());
 
-            request.onsuccess = () => resolve(request.result || null);
+            request.onsuccess = () => {
+                const result = request.result || null;
+                if (result) {
+                    result.attendance_mode = this.normalizeAttendanceMode(result.attendance_mode, true);
+                }
+                resolve(result);
+            };
             request.onerror = () => resolve(null);
         });
     }
@@ -272,7 +302,22 @@ class RFIDOfflineService {
                         .eq('school_id', scan.school_id)
                         .maybeSingle();
 
-                    if (existing && (existing.status === 'absent' || !existing.check_in_time)) {
+                    if (scan.person_type === 'employee' && this.isEmployeeActiveAttendance(existing)) {
+                        const { error } = await supabase.from(table)
+                            .update({ check_out_time: scan.timestamp })
+                            .eq('id', existing.id)
+                            .is('check_out_time', null);
+
+                        if (!error) {
+                            if (scan.id) await this.removeFromQueue(scan.id);
+                            successCount++;
+                        } else {
+                            failedCount++;
+                        }
+                        continue;
+                    }
+
+                    if (existing && (existing.status === 'absent' || (!existing.check_in_time && !this.isEmployeeActiveAttendance(existing)))) {
                         const updatePayload: any = {
                             session_id: Number(scan.session_id || cachedSession),
                             status: scan.status || 'present',
@@ -368,7 +413,7 @@ class RFIDOfflineService {
                         person_id: student.id,
                         name: student.name,
                         type: 'student',
-                        attendance_mode: (student as any).attendance_mode || 'rfid_required',
+                        attendance_mode: this.normalizeAttendanceMode((student as any).attendance_mode, true),
                         picture_url: student.picture_url,
                         class_name: (student as any).classes?.name,
                         section_name: (student as any).sections?.name,
@@ -387,7 +432,7 @@ class RFIDOfflineService {
                             person_id: staff.id,
                             name: staff.name,
                             type: 'employee',
-                            attendance_mode: (staff as any).attendance_mode || 'rfid_required',
+                            attendance_mode: this.normalizeAttendanceMode((staff as any).attendance_mode, true),
                             picture_url: staff.picture_url,
                             role: staff.role,
                             status: (staff as any).status || 'active',
@@ -398,7 +443,22 @@ class RFIDOfflineService {
 
             if (!person) return { success: false, person: null, type: 'error' };
 
-            if ((person.attendance_mode || 'rfid_required') === 'manual_only') {
+            const effectiveAttendanceMode = this.normalizeAttendanceMode(person.attendance_mode, true);
+
+            if (navigator.onLine && person.attendance_mode !== effectiveAttendanceMode) {
+                const peopleTable = person.type === 'student' ? 'students' : 'staff';
+                const { error: modeUpdateError } = await supabase
+                    .from(peopleTable)
+                    .update({ attendance_mode: effectiveAttendanceMode })
+                    .eq('id', person.person_id)
+                    .eq('school_id', schoolId);
+
+                if (!modeUpdateError) {
+                    person.attendance_mode = effectiveAttendanceMode;
+                }
+            }
+
+            if (effectiveAttendanceMode === 'manual_only') {
                 return { success: false, person, type: 'error_manual_only' };
             }
 
@@ -444,7 +504,26 @@ class RFIDOfflineService {
                     .maybeSingle();
 
                 if (existing) {
-                    if (existing.status === 'absent' || !existing.check_in_time) {
+                    if (person.type === 'employee' && this.isEmployeeActiveAttendance(existing)) {
+                        // Check if checkout is allowed yet
+                        if (settings && settings.staff_end_time) {
+                            const [endH, endM] = settings.staff_end_time.split(':').map(Number);
+                            const endLimit = new Date();
+                            endLimit.setHours(endH, endM, 0, 0);
+                            if (new Date() < endLimit) {
+                                return { success: false, person, type: 'error_checkout_early' };
+                            }
+                        }
+
+                        const { error: outError } = await supabase.from(table)
+                            .update({ check_out_time: now })
+                            .eq('id', existing.id)
+                            .is('check_out_time', null);
+                        if (outError) throw outError;
+                        return { success: true, person, type: 'out', attendance_status: checkStatus, recorded_time: now };
+                    }
+
+                    if (existing.status === 'absent' || (!existing.check_in_time && !this.isEmployeeActiveAttendance(existing))) {
                         const cachedSession = await this.getConfig(KEY_ACTIVE_SESSION);
                         const { data: session } = await supabase.from('sessions')
                             .select('id').eq('school_id', schoolId).eq('is_active', true).maybeSingle();
@@ -468,25 +547,6 @@ class RFIDOfflineService {
                         if (updateError) throw updateError;
 
                         return { success: true, person, type: 'new', attendance_status: checkStatus, recorded_time: now };
-                    }
-
-                    if (person.type === 'employee' && !existing.check_out_time) {
-                        // Check if checkout is allowed yet
-                        if (settings && settings.staff_end_time) {
-                            const [endH, endM] = settings.staff_end_time.split(':').map(Number);
-                            const endLimit = new Date();
-                            endLimit.setHours(endH, endM, 0, 0);
-                            if (new Date() < endLimit) {
-                                return { success: false, person, type: 'error_checkout_early' };
-                            }
-                        }
-
-                        // Check out the employee
-                        const { error: outError } = await supabase.from(table)
-                            .update({ check_out_time: now })
-                            .eq('id', existing.id);
-                        if (outError) throw outError;
-                        return { success: true, person, type: 'out', attendance_status: checkStatus, recorded_time: now };
                     }
                     if (person.type === 'employee' && existing.check_out_time) {
                         return { success: true, person, type: 'already_out', attendance_status: checkStatus, recorded_time: existing.check_out_time };

@@ -1552,6 +1552,7 @@ const Header: React.FC<HeaderProps> = ({
 
   const [studentMenuOpen, setStudentMenuOpen] = useState(false);
   const [employeeMenuOpen, setEmployeeMenuOpen] = useState(false);
+  const [attendanceMenuOpen, setAttendanceMenuOpen] = useState(false);
   const [financeMenuOpen, setFinanceMenuOpen] = useState(false);
   const [accountsMenuOpen, setAccountsMenuOpen] = useState(false);
   const [communicationMenuOpen, setCommunicationMenuOpen] = useState(false);
@@ -1582,6 +1583,9 @@ const Header: React.FC<HeaderProps> = ({
   const employeeMenuRef = useRef<HTMLDivElement>(null);
   const employeeButtonRef = useRef<HTMLButtonElement>(null);
   const employeeDropdownRef = useRef<HTMLDivElement>(null);
+  const attendanceMenuRef = useRef<HTMLDivElement>(null);
+  const attendanceButtonRef = useRef<HTMLButtonElement>(null);
+  const attendanceDropdownRef = useRef<HTMLDivElement>(null);
   const financeMenuRef = useRef<HTMLDivElement>(null);
   const financeButtonRef = useRef<HTMLButtonElement>(null);
   const financeDropdownRef = useRef<HTMLDivElement>(null);
@@ -1737,6 +1741,7 @@ const Header: React.FC<HeaderProps> = ({
 
     if (studentMenuOpen) updatePosition(studentButtonRef, studentDropdownRef);
     if (employeeMenuOpen) updatePosition(employeeButtonRef, employeeDropdownRef);
+    if (attendanceMenuOpen) updatePosition(attendanceButtonRef, attendanceDropdownRef);
     if (financeMenuOpen) updatePosition(financeButtonRef, financeDropdownRef);
     if (accountsMenuOpen) updatePosition(accountsButtonRef, accountsDropdownRef);
     if (communicationMenuOpen) updatePosition(communicationButtonRef, communicationDropdownRef);
@@ -1747,7 +1752,7 @@ const Header: React.FC<HeaderProps> = ({
 
   // Update positions when menus open or on scroll/resize
   useEffect(() => {
-    if (studentMenuOpen || employeeMenuOpen || financeMenuOpen || accountsMenuOpen ||
+    if (studentMenuOpen || employeeMenuOpen || attendanceMenuOpen || financeMenuOpen || accountsMenuOpen ||
       communicationMenuOpen || academicsMenuOpen || settingsMenuOpen || miscMenuOpen) {
       // Initial positioning
       updateDropdownPositions();
@@ -1769,7 +1774,7 @@ const Header: React.FC<HeaderProps> = ({
         window.removeEventListener('resize', handleResize);
       };
     }
-  }, [studentMenuOpen, employeeMenuOpen, financeMenuOpen, accountsMenuOpen,
+  }, [studentMenuOpen, employeeMenuOpen, attendanceMenuOpen, financeMenuOpen, accountsMenuOpen,
     communicationMenuOpen, academicsMenuOpen, settingsMenuOpen, miscMenuOpen]);
 
   // Cleanup timeouts on unmount
@@ -1805,6 +1810,17 @@ const Header: React.FC<HeaderProps> = ({
       color: '#06b6d4'
     },
     {
+      title: 'Family Management',
+      description: 'Manage family relationships',
+      icon: <PeopleIcon />,
+      path: '/family-management',
+      color: '#ef4444',
+      separatorBefore: true
+    }
+  ];
+
+  const studentSecondaryMenuItems = [
+    {
       title: 'Student Status',
       description: 'Manage enrollment status',
       icon: <BlockIcon />,
@@ -1819,18 +1835,19 @@ const Header: React.FC<HeaderProps> = ({
       color: '#8b5cf6'
     },
     {
-      title: 'Family Management',
-      description: 'Manage family relationships',
-      icon: <PeopleIcon />,
-      path: '/family-management',
-      color: '#ef4444'
-    },
-    {
       title: 'Withdrawal Register',
       description: 'View admission and withdrawal',
       icon: <DescriptionIcon />,
       path: '/students/withdrawal-register',
       color: '#14b8a6'
+    },
+    {
+      title: 'Student Reports',
+      description: 'Generate comprehensive student reports',
+      icon: <BarChartIcon />,
+      path: '/reports',
+      color: '#3b82f6',
+      separatorBefore: true
     },
     {
       title: 'Student Cards',
@@ -1881,34 +1898,10 @@ const Header: React.FC<HeaderProps> = ({
       icon: <BarChartIcon />,
       path: '/attendance/analytics',
       color: '#0ea5e9'
-    },
-    {
-      title: 'RFID Scanner',
-      description: 'Mark attendance via RFID card scanning',
-      icon: <NfcIcon />,
-      path: '/attendance/rfid-scanner',
-      color: '#6366f1'
-    },
-    {
-      title: 'RFID Card Assignment',
-      description: 'Assign RFID cards to students and employees',
-      icon: <CreditCardIcon />,
-      path: '/attendance/rfid-cards',
-      color: '#a855f7'
     }
   ];
 
   // Reports menu items
-  const studentReportsMenuItems = [
-    {
-      title: 'Student Reports',
-      description: 'Generate comprehensive student reports',
-      icon: <BarChartIcon />,
-      path: '/reports',
-      color: '#3b82f6'
-    }
-  ];
-
   const employeeReportsMenuItems = [
     {
       title: 'Employee Reports',
@@ -1948,6 +1941,30 @@ const Header: React.FC<HeaderProps> = ({
       icon: <BarChartIcon />,
       path: '/attendance/staff-analytics',
       color: '#0ea5e9'
+    }
+  ];
+
+  const otherAttendanceMenuItems = [
+    {
+      title: 'RFID Scanner',
+      description: 'Mark attendance via RFID card scanning',
+      icon: <NfcIcon />,
+      path: '/attendance/rfid-scanner',
+      color: '#6366f1'
+    },
+    {
+      title: 'RFID Card Assignment',
+      description: 'Assign RFID cards to students and employees',
+      icon: <CreditCardIcon />,
+      path: '/attendance/rfid-cards',
+      color: '#a855f7'
+    },
+    {
+      title: 'Holidays',
+      description: 'Set up holiday calendar',
+      icon: <BeachAccessIcon />,
+      path: '/settings/holidays',
+      color: '#8b5cf6'
     }
   ];
 
@@ -2421,13 +2438,6 @@ const Header: React.FC<HeaderProps> = ({
       icon: <CalendarMonthIcon />,
       path: '/settings/sessions',
       color: '#f59e0b'
-    },
-    {
-      title: 'Holidays',
-      description: 'Set up holiday calendar',
-      icon: <BeachAccessIcon />,
-      path: '/settings/holidays',
-      color: '#8b5cf6'
     }
   ];
 
@@ -2562,10 +2572,7 @@ const Header: React.FC<HeaderProps> = ({
       hasDropdown: true,
       menuItems: [
         { title: 'Student Management', items: studentMenuItems },
-        {
-          title: 'Attendance & Reports',
-          items: [...attendanceMenuItems, ...studentReportsMenuItems]
-        }
+        { title: 'Student Services', items: studentSecondaryMenuItems }
       ],
       columns: 2
     },
@@ -2576,12 +2583,21 @@ const Header: React.FC<HeaderProps> = ({
       hasDropdown: true,
       menuItems: [
         { title: 'Employee Management', items: employeeMenuItems },
-        {
-          title: 'Attendance & Reports',
-          items: [...employeeAttendanceMenuItems, ...employeeReportsMenuItems]
-        }
+        { title: 'Reports', items: employeeReportsMenuItems }
       ],
       columns: 2
+    },
+    {
+      icon: <AssessmentIcon />,
+      path: '/attendance',
+      label: 'Attendance',
+      hasDropdown: true,
+      menuItems: [
+        { title: 'Student Attendance', items: attendanceMenuItems },
+        { title: 'Employees Attendance', items: employeeAttendanceMenuItems },
+        { title: 'Other', items: otherAttendanceMenuItems }
+      ],
+      columns: 3
     },
     {
       icon: <AccountBalanceIcon />,
@@ -3214,10 +3230,12 @@ const Header: React.FC<HeaderProps> = ({
               {filterMenuItems.map((item) => {
                 const isStudents = item.label === 'Students';
                 const isEmployees = item.label === 'Employees';
+                const isAttendance = item.label === 'Attendance';
 
                 const getMenuState = () => {
                   if (isStudents) return { open: studentMenuOpen, setOpen: setStudentMenuOpen, ref: studentMenuRef, buttonRef: studentButtonRef, dropdownRef: studentDropdownRef };
                   if (isEmployees) return { open: employeeMenuOpen, setOpen: setEmployeeMenuOpen, ref: employeeMenuRef, buttonRef: employeeButtonRef, dropdownRef: employeeDropdownRef };
+                  if (isAttendance) return { open: attendanceMenuOpen, setOpen: setAttendanceMenuOpen, ref: attendanceMenuRef, buttonRef: attendanceButtonRef, dropdownRef: attendanceDropdownRef };
                   if (item.label === 'Finance') return { open: financeMenuOpen, setOpen: setFinanceMenuOpen, ref: financeMenuRef, buttonRef: financeButtonRef, dropdownRef: financeDropdownRef };
                   if (item.label === 'Accounts') return { open: accountsMenuOpen, setOpen: setAccountsMenuOpen, ref: accountsMenuRef, buttonRef: accountsButtonRef, dropdownRef: accountsDropdownRef };
                   if (item.label === 'Communication') return { open: communicationMenuOpen, setOpen: setCommunicationMenuOpen, ref: communicationMenuRef, buttonRef: communicationButtonRef, dropdownRef: communicationDropdownRef };
@@ -3238,6 +3256,7 @@ const Header: React.FC<HeaderProps> = ({
                         // Close all other menus first
                         if (!isStudents && studentMenuOpen) setStudentMenuOpen(false);
                         if (!isEmployees && employeeMenuOpen) setEmployeeMenuOpen(false);
+                        if (!isAttendance && attendanceMenuOpen) setAttendanceMenuOpen(false);
                         if (item.label !== 'Finance' && financeMenuOpen) setFinanceMenuOpen(false);
                         if (item.label !== 'Accounts' && accountsMenuOpen) setAccountsMenuOpen(false);
                         if (item.label !== 'Communication' && communicationMenuOpen) setCommunicationMenuOpen(false);
@@ -3452,18 +3471,18 @@ const Header: React.FC<HeaderProps> = ({
                               </DropdownColumn>
                             );
                           })
-                        ) : isStudents || isEmployees || item.label === 'Academics' || item.label === 'Communication' || item.label === 'Settings' || item.label === 'Accounts' ? (
+                        ) : isStudents || isEmployees || isAttendance || item.label === 'Academics' || item.label === 'Communication' || item.label === 'Settings' || item.label === 'Accounts' ? (
                           // Students, Employees, and Academics have 3 columns, Communication, Settings, and Accounts have 2 columns - all with titles
                           item.menuItems?.map((section: any, sectionIdx: number) => (
                             <DropdownColumn key={sectionIdx}>
                               <ColumnTitle>{section.title}</ColumnTitle>
                               {section.items.map((menuItem: any, idx: number) => {
                                 // Add separator before Reports items in Students and Employees menus
-                                const isStudentReports = isStudents && sectionIdx === 1 && menuItem.path === '/reports';
                                 const isEmployeeReports = isEmployees && sectionIdx === 1 && menuItem.path === '/reports/employee-reports';
                                 // Add separator before Teacher Subject Assignment in Employee Management section
                                 const isTeacherSubject = isEmployees && sectionIdx === 0 && menuItem.path === '/teacher-subjects';
-                                const shouldShowSeparator = isStudentReports || isEmployeeReports || isTeacherSubject;
+                                const isAttendanceOtherBreak = isAttendance && section.title === 'Other' && menuItem.path === '/settings/holidays';
+                                const shouldShowSeparator = !!menuItem.separatorBefore || isEmployeeReports || isTeacherSubject || isAttendanceOtherBreak;
                                 return (
                                   <React.Fragment key={idx}>
                                     {shouldShowSeparator && <ColumnSeparator />}

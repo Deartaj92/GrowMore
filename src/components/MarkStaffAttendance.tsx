@@ -184,9 +184,9 @@ const StaffRole = styled.span`
 // Status button styles
 const MobileStatusGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   grid-gap: 0.3rem;
-  width: 96px;
+  width: 128px;
 `;
 
 const EnhancedStatusButton = styled.button<{ $active: boolean; $color: string }>`
@@ -239,6 +239,41 @@ const DesktopStatusButton = styled.button<{ $active: boolean; $color: string }>`
     color: #fff;
     outline: none;
     box-shadow: 0 0 8px 2px ${({ $color }) => $color}33;
+  }
+`;
+
+const CheckoutTimeBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(59,130,246,0.14)' : 'rgba(59,130,246,0.08)'};
+  color: ${({ theme }) => theme.ACCENT};
+  border: 1px solid ${({ theme }) => theme.BG === '#252525' ? 'rgba(59,130,246,0.28)' : 'rgba(59,130,246,0.18)'};
+`;
+
+const CheckoutButton = styled.button`
+  min-width: 90px;
+  padding: 0.4rem 0.85rem;
+  border-radius: 18px;
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(59,130,246,0.12)' : 'rgba(59,130,246,0.08)'};
+  color: ${({ theme }) => theme.ACCENT};
+  border: 1.5px solid ${({ theme }) => theme.ACCENT};
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  transition: all 0.18s ease;
+  &:hover, &:focus {
+    background: ${({ theme }) => theme.ACCENT};
+    color: #fff;
+    outline: none;
   }
 `;
 
@@ -304,6 +339,9 @@ interface StaffMember {
   status?: 'present' | 'absent' | 'leave' | 'late';
   picture_url?: string;
   remarks?: string;
+  check_in_time?: string | null;
+  check_out_time?: string | null;
+  source?: string | null;
   isOnHoliday?: boolean;
   rfid_uid?: string | null;
   isOnLeave?: boolean;
@@ -319,6 +357,56 @@ function useIsMobile() {
   }, []);
   return isMobile;
 }
+
+const toInputTime = (value?: string | null) => {
+  const raw = (value || '').trim();
+  if (!raw) return '';
+
+  // Parse full timestamps into the browser's local timezone so saved manual
+  // checkout/check-in times stay aligned with the user's region.
+  if (raw.includes('T') || /[zZ]|[+-]\d{2}:\d{2}$/.test(raw)) {
+    const parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) {
+      return `${String(parsed.getHours()).padStart(2, '0')}:${String(parsed.getMinutes()).padStart(2, '0')}`;
+    }
+  }
+
+  const match = raw.match(/^([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/);
+  if (!match) return '';
+  return `${match[1].padStart(2, '0')}:${match[2]}`;
+};
+
+const buildLocalTimestamp = (date: string, value?: string | null) => {
+  const normalized = toInputTime(value);
+  if (!normalized) return null;
+
+  const [year, month, day] = date.split('-').map(Number);
+  const [hours, minutes] = normalized.split(':').map(Number);
+  const localDate = new Date(year, (month || 1) - 1, day || 1, hours || 0, minutes || 0, 0, 0);
+
+  if (Number.isNaN(localDate.getTime())) return null;
+  return localDate.toISOString();
+};
+
+const toDbTimestamp = (date: string, value?: string | null) => {
+  return buildLocalTimestamp(date, value);
+};
+
+const currentTimeValue = () => {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+};
+
+const getManualAttendanceTimestamp = (date: string, existingValue?: string | null) => {
+  if (existingValue) return existingValue;
+
+  const today = format(new Date(), 'yyyy-MM-dd');
+  if (date === today) {
+    return toDbTimestamp(date, currentTimeValue());
+  }
+
+  return buildLocalTimestamp(date, '08:00');
+};
 
 // Segmented Group Styles
 const SEGMENTED_HEIGHT = '32px';
@@ -480,6 +568,7 @@ const Spinner = styled.div`
 
 const MarkStaffAttendance: React.FC = () => {
   const { theme } = useContext(ThemeContext);
+  const themeObj = theme === 'dark' ? darkTheme : lightTheme;
   const toast = useToast();
   const isMobile = useIsMobile();
   const { user } = useAuth();
@@ -499,6 +588,8 @@ const MarkStaffAttendance: React.FC = () => {
   const [saveButtonBounce, setSaveButtonBounce] = useState(false);
   const [hasAttendanceRecords, setHasAttendanceRecords] = useState(false);
   const [statusBounce, setStatusBounce] = useState<{ id: number; status: string } | null>(null);
+  const [checkoutModalStaff, setCheckoutModalStaff] = useState<StaffMember | null>(null);
+  const [checkoutTime, setCheckoutTime] = useState(currentTimeValue());
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [hasActiveSession, setHasActiveSession] = useState<boolean | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
@@ -578,7 +669,8 @@ const MarkStaffAttendance: React.FC = () => {
       const { data: staffData, error: staffError } = await supabase
         .from('staff')
         .select('id')
-        .eq('school_id', user.school_id);
+        .eq('school_id', user.school_id)
+        .eq('status', 'active');
       
       setHasAnyStaff(staffData && staffData.length > 0);
       
@@ -636,7 +728,8 @@ const MarkStaffAttendance: React.FC = () => {
       const { data: staffData, error: staffError } = await supabase
         .from('staff')
         .select('id')
-        .eq('school_id', user.school_id);
+        .eq('school_id', user.school_id)
+        .eq('status', 'active');
       
       
       if (!staffError && staffData && staffData.length > 0) {
@@ -674,7 +767,8 @@ const MarkStaffAttendance: React.FC = () => {
       const { data: staffData, error: staffError } = await supabase
         .from('staff')
         .select('id, name, role, picture_url, rfid_uid')
-        .eq('school_id', user.school_id);
+        .eq('school_id', user.school_id)
+        .eq('status', 'active');
 
       if (staffError) {
         throw staffError;
@@ -779,7 +873,7 @@ const MarkStaffAttendance: React.FC = () => {
       // Fetch attendance records for this date
       const { data: attendanceData, error: attendanceError } = await supabase
         .from('staff_attendance_records')
-        .select('staff_id, status, remarks')
+        .select('staff_id, status, remarks, check_in_time, check_out_time, source')
         .eq('date', date)
         .eq('school_id', user.school_id)
         .eq('session_id', sessionId);
@@ -802,7 +896,13 @@ const MarkStaffAttendance: React.FC = () => {
       // Merge attendance status into all staff (including those on holiday)
       const attendanceMap = new Map();
       (attendanceData || []).forEach((rec: any) => {
-        attendanceMap.set(rec.staff_id, { status: rec.status, remarks: rec.remarks });
+        attendanceMap.set(rec.staff_id, {
+          status: rec.status,
+          remarks: rec.remarks,
+          check_in_time: rec.check_in_time,
+          check_out_time: rec.check_out_time,
+          source: rec.source
+        });
       });
       const approvedLeaveSet = new Set((leaveData || []).map((leave: any) => leave.staff_id));
       
@@ -817,6 +917,9 @@ const MarkStaffAttendance: React.FC = () => {
           status: att ? att.status : (isOnLeave ? 'leave' : undefined),
           picture_url: staff.picture_url,
           remarks: att ? att.remarks || '' : '',
+          check_in_time: att ? att.check_in_time || null : null,
+          check_out_time: att ? att.check_out_time || null : null,
+          source: att ? att.source || null : null,
           isOnHoliday: isOnHoliday,
           rfid_uid: staff.rfid_uid,
           isOnLeave,
@@ -845,7 +948,15 @@ const MarkStaffAttendance: React.FC = () => {
     setStaffMembers(prev =>
       prev.map(staff =>
         staff.id === staffId
-          ? ({ ...staff, status: status.toLowerCase() as 'present' | 'absent' | 'leave' | 'late' } as StaffMember)
+          ? ({
+              ...staff,
+              status: status.toLowerCase() as 'present' | 'absent' | 'leave' | 'late',
+              check_in_time: status === 'present' || status === 'late'
+                ? getManualAttendanceTimestamp(date, staff.check_in_time)
+                : null,
+              check_out_time: status === 'present' || status === 'late' ? staff.check_out_time : null,
+              source: status === 'present' || status === 'late' ? (staff.source || 'manual') : 'manual'
+            } as StaffMember)
           : staff
       )
     );
@@ -856,9 +967,46 @@ const MarkStaffAttendance: React.FC = () => {
 
   const handleBulkMark = useCallback((status: 'present' | 'absent' | 'leave') => {
     setStaffMembers(prev =>
-      prev.map(staff => ({ ...staff, status }))
+      prev.map(staff => ({
+        ...staff,
+        status,
+        check_in_time: status === 'present' ? getManualAttendanceTimestamp(date, staff.check_in_time) : null,
+        check_out_time: status === 'present' ? staff.check_out_time : null,
+        source: 'manual'
+      }))
     );
+  }, [date]);
+
+  const handleOpenCheckoutModal = useCallback((staff: StaffMember) => {
+    setCheckoutModalStaff(staff);
+    setCheckoutTime(toInputTime(staff.check_out_time) || currentTimeValue());
   }, []);
+
+  const handleConfirmCheckout = useCallback(() => {
+    if (!checkoutModalStaff) return;
+
+    const normalizedCheckout = toDbTimestamp(date, checkoutTime);
+    if (!normalizedCheckout) {
+      toast.showToast('Please select a valid checkout time', 'error');
+      return;
+    }
+
+    setStaffMembers(prev =>
+      prev.map(staff =>
+        staff.id === checkoutModalStaff.id
+          ? {
+              ...staff,
+              check_in_time: staff.check_in_time || getManualAttendanceTimestamp(date, staff.check_in_time),
+              check_out_time: normalizedCheckout,
+              status: staff.status === 'late' ? 'late' : 'present',
+              source: staff.source || 'manual'
+            }
+          : staff
+      )
+    );
+    setSelectedRows(prev => prev.includes(checkoutModalStaff.id) ? prev : [...prev, checkoutModalStaff.id]);
+    setCheckoutModalStaff(null);
+  }, [checkoutModalStaff, checkoutTime, date, toast]);
 
   const filteredStaff = staffMembers.filter(staff =>
     (
@@ -951,6 +1099,11 @@ const MarkStaffAttendance: React.FC = () => {
         date,
         status: typeof staff.status === 'string' ? staff.status.toLowerCase() : staff.status,
         remarks: staff.remarks || null,
+        check_in_time: staff.status === 'present' || staff.status === 'late'
+          ? getManualAttendanceTimestamp(date, staff.check_in_time)
+          : null,
+        check_out_time: toDbTimestamp(date, staff.check_out_time),
+        source: staff.source || 'manual',
         created_at: new Date().toISOString(),
         session_id: sessionId,
         school_id: user.school_id,
@@ -1055,7 +1208,6 @@ const MarkStaffAttendance: React.FC = () => {
   // Set footer content for global footer
   useEffect(() => {
     const FooterContent = React.memo(() => {
-      const themeObj = theme === 'dark' ? darkTheme : lightTheme;
       // Check if all staff are on holiday
       const allStaffOnHoliday = staffMembers.length > 0 && staffMembers.every(s => s.isOnHoliday);
       
@@ -1371,6 +1523,22 @@ const MarkStaffAttendance: React.FC = () => {
                       >
                         Lt
                       </EnhancedStatusButton>
+                      <CheckoutButton
+                        theme={themeObj}
+                        onClick={() => !isOnHoliday && handleOpenCheckoutModal(staff)}
+                        style={{
+                          minWidth: 0,
+                          width: 28,
+                          height: 28,
+                          padding: 0,
+                          borderRadius: '50%',
+                          opacity: isOnHoliday ? 0.5 : 1,
+                          cursor: isOnHoliday ? 'not-allowed' : 'pointer'
+                        }}
+                        title={staff.check_out_time ? `Edit checkout (${toInputTime(staff.check_out_time)})` : 'Set checkout time'}
+                      >
+                        <Close style={{ fontSize: 15 }} />
+                      </CheckoutButton>
                       <input
                         type="text"
                         value={staff.remarks || ''}
@@ -1390,6 +1558,14 @@ const MarkStaffAttendance: React.FC = () => {
                           opacity: isOnHoliday ? 0.5 : 1
                         }}
                       />
+                      {staff.check_out_time && (
+                        <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', marginTop: '0.15rem' }}>
+                          <CheckoutTimeBadge theme={themeObj}>
+                            <Close style={{ fontSize: 13 }} />
+                            Out {toInputTime(staff.check_out_time)}
+                          </CheckoutTimeBadge>
+                        </div>
+                      )}
                     </MobileStatusGrid>
                   ) : (
                     <>
@@ -1413,6 +1589,21 @@ const MarkStaffAttendance: React.FC = () => {
                           opacity: isOnHoliday ? 0.5 : 1
                         }}
                       />
+                      {staff.check_out_time && (
+                        <CheckoutTimeBadge theme={themeObj} style={{ marginRight: '0.7rem' }}>
+                          <Close style={{ fontSize: 13 }} />
+                          Out {toInputTime(staff.check_out_time)}
+                        </CheckoutTimeBadge>
+                      )}
+                      <CheckoutButton
+                        theme={themeObj}
+                        onClick={() => !isOnHoliday && handleOpenCheckoutModal(staff)}
+                        style={{ marginRight: '0.7rem', opacity: isOnHoliday ? 0.5 : 1, cursor: isOnHoliday ? 'not-allowed' : 'pointer' }}
+                        title={staff.check_out_time ? `Edit checkout (${toInputTime(staff.check_out_time)})` : 'Set checkout time'}
+                      >
+                        <Close style={{ fontSize: 15 }} />
+                        {staff.check_out_time ? 'Edit Out' : 'Check Out'}
+                      </CheckoutButton>
                       <DesktopStatusRow>
                         <DesktopStatusButton
                           $active={staff.status === 'present'}
@@ -1455,6 +1646,88 @@ const MarkStaffAttendance: React.FC = () => {
           )}
         </MobileStaffList>
       </MainContent>
+
+      {checkoutModalStaff && (
+        <>
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: '#0006',
+              zIndex: 3899
+            }}
+            onClick={() => setCheckoutModalStaff(null)}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: theme === 'dark' ? darkTheme.CARD : lightTheme.CARD,
+              padding: '1.25rem',
+              borderRadius: '12px',
+              boxShadow: '0 8px 32px #0004',
+              zIndex: 3900,
+              minWidth: isMobile ? 'min(92vw, 320px)' : '360px',
+              border: `1px solid ${theme === 'dark' ? darkTheme.BORDER : lightTheme.BORDER}`
+            }}
+          >
+            <h3 style={{ margin: '0 0 0.5rem 0', color: themeObj.TEXT_PRIMARY, fontSize: '1.05rem' }}>
+              Manual Checkout
+            </h3>
+            <p style={{ margin: '0 0 1rem 0', color: themeObj.TEXT_SECONDARY, fontSize: '0.92rem', lineHeight: 1.45 }}>
+              Set a manual checkout time for <strong>{checkoutModalStaff.name}</strong>.
+            </p>
+            <input
+              type="time"
+              value={checkoutTime}
+              onChange={(e) => setCheckoutTime(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.65rem 0.8rem',
+                borderRadius: '10px',
+                border: `1px solid ${themeObj.FIELD_BORDER}`,
+                background: themeObj.FIELD_BG,
+                color: themeObj.TEXT_PRIMARY,
+                fontSize: '0.98rem',
+                boxSizing: 'border-box'
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
+              <button
+                onClick={() => setCheckoutModalStaff(null)}
+                style={{
+                  padding: '0.6rem 1rem',
+                  borderRadius: '10px',
+                  border: `1px solid ${themeObj.BORDER}`,
+                  background: 'transparent',
+                  color: themeObj.TEXT_SECONDARY,
+                  fontWeight: 700
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmCheckout}
+                style={{
+                  padding: '0.6rem 1rem',
+                  borderRadius: '10px',
+                  border: `1px solid ${themeObj.ACCENT}`,
+                  background: themeObj.ACCENT,
+                  color: '#fff',
+                  fontWeight: 700
+                }}
+              >
+                Save Checkout
+              </button>
+            </div>
+          </div>
+        </>
+      )}
       
       {showDeleteConfirm && (
         <>

@@ -51,6 +51,7 @@ export interface MenuItem {
   icon: React.ReactElement;
   path: string;
   color: string;
+  separatorBefore?: boolean;
 }
 
 export interface MenuSection {
@@ -92,6 +93,17 @@ export const studentMenuItems: MenuItem[] = [
     color: '#06b6d4'
   },
   {
+    title: 'Family Management',
+    description: 'Manage family relationships',
+    icon: React.createElement(PeopleIcon),
+    path: '/family-management',
+    color: '#ef4444',
+    separatorBefore: true
+  }
+];
+
+export const studentSecondaryMenuItems: MenuItem[] = [
+  {
     title: 'Student Status',
     description: 'Manage enrollment status',
     icon: React.createElement(BlockIcon),
@@ -106,18 +118,19 @@ export const studentMenuItems: MenuItem[] = [
     color: '#8b5cf6'
   },
   {
-    title: 'Family Management',
-    description: 'Manage family relationships',
-    icon: React.createElement(PeopleIcon),
-    path: '/family-management',
-    color: '#ef4444'
-  },
-  {
     title: 'Withdrawal Register',
     description: 'View admission and withdrawal',
     icon: React.createElement(DescriptionIcon),
     path: '/students/withdrawal-register',
     color: '#14b8a6'
+  },
+  {
+    title: 'Student Reports',
+    description: 'Generate comprehensive student reports',
+    icon: React.createElement(BarChartIcon),
+    path: '/reports',
+    color: '#3b82f6',
+    separatorBefore: true
   },
   {
     title: 'Student Cards',
@@ -168,34 +181,10 @@ export const attendanceMenuItems: MenuItem[] = [
     icon: React.createElement(AnalyticsIcon),
     path: '/attendance/analytics',
     color: '#0ea5e9'
-  },
-  {
-    title: 'RFID Scanner',
-    description: 'Mark attendance via RFID card scanning at school entrance',
-    icon: React.createElement(NfcIcon),
-    path: '/attendance/rfid-scanner',
-    color: '#6366f1'
-  },
-  {
-    title: 'RFID Card Assignment',
-    description: 'Assign and manage RFID cards for students and employees',
-    icon: React.createElement(CreditCardIcon),
-    path: '/attendance/rfid-cards',
-    color: '#a855f7'
   }
 ];
 
 // Reports menu items
-export const studentReportsMenuItems: MenuItem[] = [
-  {
-    title: 'Student Reports',
-    description: 'Generate comprehensive student reports',
-    icon: React.createElement(BarChartIcon),
-    path: '/reports',
-    color: '#3b82f6'
-  }
-];
-
 export const employeeReportsMenuItems: MenuItem[] = [
   {
     title: 'Employee Reports',
@@ -235,6 +224,31 @@ export const employeeAttendanceMenuItems: MenuItem[] = [
     icon: React.createElement(AnalyticsIcon),
     path: '/attendance/staff-analytics',
     color: '#0ea5e9'
+  }
+];
+
+export const otherAttendanceMenuItems: MenuItem[] = [
+  {
+    title: 'RFID Scanner',
+    description: 'Mark attendance via RFID card scanning at school entrance',
+    icon: React.createElement(NfcIcon),
+    path: '/attendance/rfid-scanner',
+    color: '#6366f1'
+  },
+  {
+    title: 'RFID Card Assignment',
+    description: 'Assign and manage RFID cards for students and employees',
+    icon: React.createElement(CreditCardIcon),
+    path: '/attendance/rfid-cards',
+    color: '#a855f7'
+  },
+  {
+    title: 'Holidays',
+    description: 'Set up holiday calendar',
+    icon: React.createElement(BeachAccessIcon),
+    path: '/settings/holidays',
+    color: '#8b5cf6',
+    separatorBefore: true
   }
 ];
 
@@ -738,13 +752,6 @@ export const settingsColumn1Items: MenuItem[] = [
     icon: React.createElement(CalendarMonthIcon),
     path: '/settings/sessions',
     color: '#f59e0b'
-  },
-  {
-    title: 'Holidays',
-    description: 'Set up holiday calendar',
-    icon: React.createElement(BeachAccessIcon),
-    path: '/settings/holidays',
-    color: '#8b5cf6'
   }
 ];
 
@@ -802,10 +809,9 @@ export const menuStructure: MainMenuItem[] = [
     hasDropdown: true,
     menuItems: [
       { title: 'Student Management', items: studentMenuItems },
-      { title: 'Attendance', items: attendanceMenuItems },
-      { title: 'Reports', items: studentReportsMenuItems }
+      { title: 'Student Services', items: studentSecondaryMenuItems }
     ],
-    columns: 3
+    columns: 2
   },
   {
     icon: React.createElement(SchoolIcon),
@@ -814,12 +820,21 @@ export const menuStructure: MainMenuItem[] = [
     hasDropdown: true,
     menuItems: [
       { title: 'Employee Management', items: employeeMenuItems },
-      {
-        title: 'Attendance & Reports',
-        items: [...employeeAttendanceMenuItems, ...employeeReportsMenuItems]
-      }
+      { title: 'Reports', items: employeeReportsMenuItems }
     ],
     columns: 2
+  },
+  {
+    icon: React.createElement(AssessmentIcon),
+    path: '/attendance',
+    label: 'Attendance',
+    hasDropdown: true,
+    menuItems: [
+      { title: 'Student Attendance', items: attendanceMenuItems },
+      { title: 'Employees Attendance', items: employeeAttendanceMenuItems },
+      { title: 'Other', items: otherAttendanceMenuItems }
+    ],
+    columns: 3
   },
   {
     icon: React.createElement(AccountBalanceIcon),
@@ -901,8 +916,5 @@ export const menuStructure: MainMenuItem[] = [
     columns: 2
   }
 ];
-
-
-
 
 
