@@ -339,6 +339,7 @@ const StaffAddForm: React.FC = () => {
     dob: '2000-01-01',
     address: '',
     notificationChannel: 'whatsapp' as 'whatsapp' | 'sms',
+    attendanceEnabled: true,
   });
   const [image, setImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -406,6 +407,7 @@ const StaffAddForm: React.FC = () => {
             dob: data.dob || '2000-01-01',
             address: data.address || '',
             notificationChannel: (data.notification_channel as 'whatsapp' | 'sms') || 'whatsapp',
+            attendanceEnabled: data.attendance_enabled ?? true,
           });
           setImage(data.picture_url || null);
         }
@@ -481,6 +483,7 @@ const StaffAddForm: React.FC = () => {
       dob: '2000-01-01',
       address: '',
       notificationChannel: 'whatsapp' as 'whatsapp' | 'sms',
+      attendanceEnabled: true,
     });
     setImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -526,6 +529,7 @@ const StaffAddForm: React.FC = () => {
         dob: form.dob || null,
         address: form.address.trim() || null,
         notification_channel: form.notificationChannel || 'whatsapp',
+        attendance_enabled: form.attendanceEnabled,
         school_id: user.school_id
       };
 
@@ -554,7 +558,7 @@ const StaffAddForm: React.FC = () => {
         showToast('Staff member added successfully', 'success');
       }
 
-      navigate('/employees');
+      navigate('/employees/list');
     } catch (error: any) {
       showToast(error.message || 'Failed to save staff member', 'error');
     } finally {
@@ -669,6 +673,35 @@ const StaffAddForm: React.FC = () => {
                       InputLabelProps={{ shrink: true }}
                       size="small"
                     />
+                  </Grid>
+                  <Grid item xs={12} lg={8}>
+                    <FormControl component="fieldset">
+                      <Typography
+                        variant="body2"
+                        sx={{ mb: 1, fontWeight: 600, color: 'text.secondary' }}
+                      >
+                        Attendance Tracking
+                      </Typography>
+                      <RadioGroup
+                        row
+                        value={form.attendanceEnabled ? 'enabled' : 'disabled'}
+                        onChange={(e) => setForm(prev => ({
+                          ...prev,
+                          attendanceEnabled: e.target.value === 'enabled',
+                        }))}
+                      >
+                        <FormControlLabel
+                          value="enabled"
+                          control={<Radio size="small" />}
+                          label="With Attendance"
+                        />
+                        <FormControlLabel
+                          value="disabled"
+                          control={<Radio size="small" />}
+                          label="Without Attendance"
+                        />
+                      </RadioGroup>
+                    </FormControl>
                   </Grid>
                 </Grid>
 

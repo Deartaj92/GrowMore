@@ -239,6 +239,7 @@ const CardGrid = styled.div<{ cardCount: number }>`
 
 const getStatusColor = (status: string) =>
   status === 'active' ? '34,197,94' : // green
+    status === 'inactive' ? '107,114,128' : // gray
     status === 'suspended' ? '245,158,11' : // orange
       status === 'withdrawn' ? '239,68,68' : // red
         '99,102,241'; // blue
@@ -335,11 +336,13 @@ const StatusBadge = styled.div<{ status: string }>`
   text-transform: uppercase;
   background: ${({ status }) =>
     status === 'active' ? 'rgba(34, 197, 94, 0.15)' :
+      status === 'inactive' ? 'rgba(107, 114, 128, 0.15)' :
       status === 'suspended' ? 'rgba(245, 158, 11, 0.15)' :
         status === 'withdrawn' ? 'rgba(239, 68, 68, 0.15)' :
           'rgba(99, 102, 241, 0.15)'};
   color: ${({ status }) =>
     status === 'active' ? 'rgb(21, 128, 61)' :
+      status === 'inactive' ? 'rgb(75, 85, 99)' :
       status === 'suspended' ? 'rgb(161, 98, 7)' :
         status === 'withdrawn' ? 'rgb(185, 28, 28)' :
           'rgb(67, 56, 202)'};
@@ -352,6 +355,7 @@ const StatusBadge = styled.div<{ status: string }>`
   line-height: 1;
   border: 1px solid ${({ status }) =>
     status === 'active' ? 'rgba(34, 197, 94, 0.3)' :
+      status === 'inactive' ? 'rgba(107, 114, 128, 0.3)' :
       status === 'suspended' ? 'rgba(245, 158, 11, 0.3)' :
         status === 'withdrawn' ? 'rgba(239, 68, 68, 0.3)' :
           'rgba(99, 102, 241, 0.3)'};
@@ -1077,6 +1081,7 @@ const PerPageLabel = styled.span`
 const STATUS_OPTIONS = [
   { value: '', label: 'All Status' },
   { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
   { value: 'suspended', label: 'Suspended' },
   { value: 'withdrawn', label: 'Withdrawn' },
 ] as const;

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import styled from 'styled-components';
 import { supabase } from '../supabaseClient';
-import { Edit as EditIcon, Add as AddIcon, Phone as PhoneIcon, Work as WorkIcon, Info, Person as PersonIcon, LocationOn as LocationIcon, WhatsApp as WhatsAppIcon, Sms as SmsIcon, ToggleOn as StatusIcon, Close as CloseIcon } from '@mui/icons-material';
+import { Edit as EditIcon, Add as AddIcon, Work as WorkIcon, Info, Person as PersonIcon, LocationOn as LocationIcon, WhatsApp as WhatsAppIcon, Sms as SmsIcon, ToggleOn as StatusIcon, Close as CloseIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoading } from '../contexts/LoadingContext';
@@ -189,6 +189,20 @@ const StatusBadge = styled.div<{ status: string }>`
       opacity: 0.6;
     }
   `}
+`;
+
+const AttendanceBadge = styled.div<{ $enabled: boolean }>`
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid ${({ $enabled }) => $enabled ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'};
+  background: ${({ $enabled }) => $enabled ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)'};
+  color: ${({ $enabled }) => $enabled ? 'rgb(21, 128, 61)' : 'rgb(185, 28, 28)'};
 `;
 
 const Avatar = styled.div`
@@ -614,6 +628,9 @@ const EmployeeList: React.FC = () => {
                       <StatusBadge status={employee.status || 'active'}>
                         {(employee.status || 'active').charAt(0).toUpperCase() + (employee.status || 'active').slice(1)}
                       </StatusBadge>
+                      <AttendanceBadge $enabled={employee.attendance_enabled !== false}>
+                        {employee.attendance_enabled !== false ? 'With Attendance' : 'Without Attendance'}
+                      </AttendanceBadge>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                       <span style={{

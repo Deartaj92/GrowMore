@@ -92,26 +92,47 @@ const PrintGlobalStyle = createGlobalStyle`
 `;
 
 const ControlPanel = styled(ClayCard)`
-  padding: 1.5rem;
-  margin-top: 10px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.25rem;
-  align-items: end;
+  padding: 0.85rem 1rem;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  border-radius: 14px;
 
   @media print {
     display: none;
   }
 `;
 
+const ControlRow = styled.div`
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+`;
+
+const FilterGroup = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(150px, 190px));
+  gap: 0.8rem;
+  align-items: end;
+  flex: 1 1 auto;
+
+  @media (max-width: 900px) {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    width: 100%;
+  }
+`;
+
 const FormGroup = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.35rem;
 `;
 
 const Label = styled.label`
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
   display: flex;
@@ -128,12 +149,12 @@ const SubjectGrid = styled.div`
   grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  padding: 1rem;
+  gap: 0.55rem;
+  padding: 0.75rem;
   background: ${({ theme }) => getFieldPalette(theme).bg};
   border: 1px solid ${({ theme }) => getFieldPalette(theme).border};
   border-radius: 12px;
-  margin-top: 0.5rem;
+  margin-top: 0.2rem;
 `;
 
 const SubjectPill = styled.div<{ $selected: boolean }>`
@@ -396,9 +417,17 @@ const EmptyState = styled(ClayCard)`
 const Actions = styled.div`
   display: flex;
   justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 1rem;
-  grid-column: 1 / -1;
+  gap: 0.65rem;
+  margin-top: 0;
+  flex-wrap: nowrap;
+  align-self: end;
+  flex: 0 0 auto;
+
+  @media (max-width: 900px) {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 `;
 
 // ==========================================
@@ -420,10 +449,12 @@ const NotebookTagGenerator: React.FC = () => {
   const [schoolProfile, setSchoolProfile] = useState<any>(null);
   const [teacherAssignments, setTeacherAssignments] = useState<any[]>([]);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
 
   // Filters
-  const [selectedClass, setSelectedClass] = useState<string>('');
-  const [selectedSection, setSelectedSection] = useState<string>('');
+  const [selectedClass, setSelectedClass] = useState<string>('all');
+  const [selectedSection, setSelectedSection] = useState<string>('all');
+  const [selectedStudent, setSelectedStudent] = useState<string>('all');
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
 
   const [classSubjectsMapping, setClassSubjectsMapping] = useState<any[]>([]);
@@ -444,6 +475,7 @@ const NotebookTagGenerator: React.FC = () => {
           { data: subjectsData },
           { data: classSubjectsData },
           { data: teacherAssignmentsData },
+          { data: activeSessionData },
           { data: profileData },
           { data: schoolData }
         ] = await Promise.all([
@@ -455,6 +487,7 @@ const NotebookTagGenerator: React.FC = () => {
             .from('teacher_class_subjects')
             .select('section_id, class_subjects (class_id, subject_id), staff (name)')
             .eq('school_id', user.school_id),
+          supabase.from('sessions').select('id').eq('school_id', user.school_id).eq('is_active', true).maybeSingle(),
           supabase.from('institute_profile').select('*').eq('school_id', user.school_id).single(),
           supabase.from('schools').select('*').eq('id', user.school_id).single()
         ]);
@@ -464,6 +497,7 @@ const NotebookTagGenerator: React.FC = () => {
         setSubjects(subjectsData || []);
         setClassSubjectsMapping(classSubjectsData || []);
         setTeacherAssignments(teacherAssignmentsData || []);
+        setActiveSessionId(activeSessionData?.id || null);
         setSchoolProfile({
           name: profileData?.name || schoolData?.name || 'GrowMore ERP',
           address: profileData?.address || schoolData?.address || ''
@@ -479,9 +513,9 @@ const NotebookTagGenerator: React.FC = () => {
     fetchInitialData();
   }, [user]);
 
-  // Fetch Students when class/section changes
+  // Fetch students from class history for the active session
   useEffect(() => {
-    if (!user?.school_id || !selectedClass) {
+    if (!user?.school_id || !activeSessionId) {
       setStudents([]);
       return;
     }
@@ -489,22 +523,99 @@ const NotebookTagGenerator: React.FC = () => {
     const fetchStudents = async () => {
       setFetchingStudents(true);
       try {
-        let query = supabase
+        const historyQuery = supabase
+          .from('student_class_history')
+          .select(`
+            student_id,
+            new_class_id,
+            new_section_id,
+            adm_class_id,
+            adm_section_id
+          `)
+          .eq('session_id', activeSessionId)
+          .eq('school_id', user.school_id);
+
+        const { data: historyData, error: historyError } = await historyQuery;
+        if (historyError) throw historyError;
+
+        if (!historyData || historyData.length === 0) {
+          setStudents([]);
+          return;
+        }
+
+        const uniqueHistory = Array.from(
+          new Map(
+            historyData.map((entry: any) => [
+              entry.student_id,
+              {
+                ...entry,
+                current_class_id: entry.new_class_id || entry.adm_class_id,
+                current_section_id:
+                  entry.new_section_id !== null && entry.new_section_id !== undefined
+                    ? entry.new_section_id
+                    : entry.adm_section_id
+              }
+            ])
+          ).values()
+        )
+          .filter((entry: any) => entry.current_class_id)
+          .filter((entry: any) =>
+            selectedClass === 'all'
+              ? true
+              : entry.current_class_id?.toString() === selectedClass
+          )
+          .filter((entry: any) =>
+            selectedSection === 'all'
+              ? true
+              : entry.current_section_id?.toString() === selectedSection
+          );
+
+        if (uniqueHistory.length === 0) {
+          setStudents([]);
+          return;
+        }
+
+        const studentIds = uniqueHistory.map((entry: any) => entry.student_id);
+        const { data: studentsData, error: studentsError } = await supabase
           .from('students')
           .select('*')
           .eq('school_id', user.school_id)
-          .eq('class_id', selectedClass)
           .eq('status', 'active')
+          .in('id', studentIds)
           .order('name');
 
-        if (selectedSection) {
-          query = query.eq('section_id', selectedSection);
-        }
+        if (studentsError) throw studentsError;
 
-        const { data, error } = await query;
-        if (error) throw error;
-        setStudents(data || []);
+        const historyMap = new Map(
+          uniqueHistory.map((entry: any) => [entry.student_id, entry])
+        );
+
+        const getRollSortValue = (student: any) => {
+          const rollValue = getStudentRoll(student);
+          const numericRoll = Number(String(rollValue).replace(/[^\d.-]/g, ''));
+          return Number.isFinite(numericRoll) ? numericRoll : Number.MAX_SAFE_INTEGER;
+        };
+
+        const mappedStudents = (studentsData || [])
+          .map((student: any) => {
+            const historyEntry = historyMap.get(student.id);
+            if (!historyEntry) return null;
+            return {
+              ...student,
+              class_id: historyEntry.current_class_id,
+              section_id: historyEntry.current_section_id ?? null
+            };
+          })
+          .filter(Boolean)
+          .sort((a: any, b: any) => {
+            const rollDiff = getRollSortValue(a) - getRollSortValue(b);
+            if (rollDiff !== 0) return rollDiff;
+            return (a.name || '').localeCompare(b.name || '');
+          });
+
+        setStudents(mappedStudents);
       } catch (err: any) {
+        console.error('Error fetching students from class history:', err);
         toast.showToast('Failed to fetch students', 'error');
       } finally {
         setFetchingStudents(false);
@@ -512,7 +623,7 @@ const NotebookTagGenerator: React.FC = () => {
     };
 
     fetchStudents();
-  }, [selectedClass, selectedSection, user]);
+  }, [activeSessionId, selectedClass, selectedSection, user, toast]);
 
   const handleSubjectToggle = (subjectId: string) => {
     setSelectedSubjects(prev => 
@@ -523,10 +634,9 @@ const NotebookTagGenerator: React.FC = () => {
   };
 
   const handleSelectAllSubjects = () => {
-    const classSubjectsForThisClass = subjects.filter(s => 
-      classSubjectsMapping.some(m => m.class_id.toString() === selectedClass && m.subject_id === s.id)
-    );
-    const classSubjects = classSubjectsForThisClass.map(s => s.name);
+    const classSubjects = uniqueSubjects
+      .filter(Boolean)
+      .map((subject: any) => subject.name);
     
     // If all are already selected, clear. Otherwise select all.
     const uniqueClassSubjects = Array.from(new Set(classSubjects));
@@ -740,18 +850,35 @@ const NotebookTagGenerator: React.FC = () => {
 
   if (loading) return <Loader />;
 
-  const filteredSections = sections.filter(s => s.class_id.toString() === selectedClass);
-  const classSubjects = subjects.filter(s => 
-    classSubjectsMapping.some(m => m.class_id.toString() === selectedClass && m.subject_id === s.id)
+  const filteredSections = selectedClass === 'all'
+    ? sections
+    : sections.filter(s => s.class_id.toString() === selectedClass);
+
+  const availableClassIds = Array.from(
+    new Set(
+      students
+        .map(student => student.class_id?.toString())
+        .filter(Boolean)
+    )
+  );
+
+  const classSubjects = subjects.filter(s =>
+    classSubjectsMapping.some(m =>
+      availableClassIds.includes(m.class_id?.toString()) && m.subject_id === s.id
+    )
   );
   
   // Get unique subject names
   const uniqueSubjects = Array.from(new Set(classSubjects.map(s => s.name)))
     .map(name => classSubjects.find(s => s.name === name));
 
+  const filteredStudents = selectedStudent === 'all'
+    ? students
+    : students.filter(student => student.id.toString() === selectedStudent);
+
   const tagsToRender: any[] = [];
-  if (students.length > 0 && selectedSubjects.length > 0) {
-    students.forEach(student => {
+  if (filteredStudents.length > 0 && selectedSubjects.length > 0) {
+    filteredStudents.forEach(student => {
       selectedSubjects.forEach(subjectName => {
         const teacherName = findTeacherForTag(student, subjectName);
         tagsToRender.push({
@@ -771,57 +898,83 @@ const NotebookTagGenerator: React.FC = () => {
       <PrintGlobalStyle />
       
       <ControlPanel>
-        <FormGroup>
-          <Label><ClassIcon /> Select Class</Label>
-          <ClaySelect 
-            value={selectedClass} 
-            onChange={(e) => {
-              setSelectedClass(e.target.value);
-              setSelectedSection('');
-              setSelectedSubjects([]);
-            }}
-          >
-            <option value="">Choose Class</option>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </ClaySelect>
-        </FormGroup>
+        <ControlRow>
+          <FilterGroup>
+            <FormGroup>
+              <Label><ClassIcon /> Class</Label>
+              <ClaySelect 
+                value={selectedClass} 
+                onChange={(e) => {
+                  setSelectedClass(e.target.value);
+                  setSelectedSection('all');
+                  setSelectedStudent('all');
+                  setSelectedSubjects([]);
+                }}
+              >
+                <option value="all">All Classes</option>
+                {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </ClaySelect>
+            </FormGroup>
 
-        <FormGroup>
-          <Label><ClassIcon /> Select Section (Optional)</Label>
-          <ClaySelect 
-            value={selectedSection} 
-            onChange={(e) => setSelectedSection(e.target.value)}
-            disabled={!selectedClass}
-          >
-            <option value="">All Sections</option>
-            {filteredSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </ClaySelect>
-        </FormGroup>
+            <FormGroup>
+              <Label><ClassIcon /> Section</Label>
+              <ClaySelect 
+                value={selectedSection} 
+                onChange={(e) => {
+                  setSelectedSection(e.target.value);
+                  setSelectedStudent('all');
+                  setSelectedSubjects([]);
+                }}
+              >
+                <option value="all">All Sections</option>
+                {filteredSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </ClaySelect>
+            </FormGroup>
 
-        <Actions>
-          <ClayButton 
-            $variant="secondary"
-            onClick={handleSelectAllSubjects}
-            disabled={!selectedClass}
-          >
-            {selectedSubjects.length === uniqueSubjects.length && uniqueSubjects.length > 0 ? <UncheckIcon /> : <CheckIcon />}
-            {selectedSubjects.length === uniqueSubjects.length && uniqueSubjects.length > 0 ? 'Deselect All' : 'Select All Subjects'}
-          </ClayButton>
-          
-          <ClayButton 
-            $variant="primary" 
-            onClick={generatePDF}
-            disabled={tagsToRender.length === 0 || isGeneratingPdf}
-            style={{ minWidth: '180px' }}
-          >
-            {isGeneratingPdf ? <div className="button-spinner" style={{ marginRight: '8px' }} /> : <PdfIcon />}
-            {isGeneratingPdf ? 'Generating...' : `Export PDF (${tagsToRender.length} Tags)`}
-          </ClayButton>
-        </Actions>
+            <FormGroup>
+              <Label><TagIcon /> Student</Label>
+              <ClaySelect
+                value={selectedStudent}
+                onChange={(e) => setSelectedStudent(e.target.value)}
+                disabled={students.length === 0}
+              >
+                <option value="all">All Students</option>
+                {students.map(student => (
+                  <option key={student.id} value={student.id}>
+                    {[getStudentRoll(student), student.name, student.father_name]
+                      .filter(Boolean)
+                      .join(' - ')}
+                  </option>
+                ))}
+              </ClaySelect>
+            </FormGroup>
+          </FilterGroup>
 
-        {selectedClass && uniqueSubjects.length > 0 && (
-          <FormGroup style={{ gridColumn: '1 / -1' }}>
-            <Label><SubjectIcon /> Select Subjects for Tags</Label>
+          <Actions>
+            <ClayButton 
+              $variant="secondary"
+              onClick={handleSelectAllSubjects}
+              disabled={uniqueSubjects.length === 0}
+            >
+              {selectedSubjects.length === uniqueSubjects.length && uniqueSubjects.length > 0 ? <UncheckIcon /> : <CheckIcon />}
+              {selectedSubjects.length === uniqueSubjects.length && uniqueSubjects.length > 0 ? 'Deselect All' : 'All Subjects'}
+            </ClayButton>
+            
+            <ClayButton 
+              $variant="primary" 
+              onClick={generatePDF}
+              disabled={tagsToRender.length === 0 || isGeneratingPdf}
+              style={{ minWidth: '150px' }}
+            >
+              {isGeneratingPdf ? <div className="button-spinner" style={{ marginRight: '8px' }} /> : <PdfIcon />}
+              {isGeneratingPdf ? 'Generating...' : `Export PDF (${tagsToRender.length} Tags)`}
+            </ClayButton>
+          </Actions>
+        </ControlRow>
+
+        {uniqueSubjects.length > 0 && (
+          <FormGroup>
+            <Label><SubjectIcon /> Subjects</Label>
             <SubjectGrid>
               {uniqueSubjects.map(s => s && (
                 <SubjectPill 
@@ -891,11 +1044,9 @@ const NotebookTagGenerator: React.FC = () => {
       ) : (
         <EmptyState>
           <TagIcon />
-          {!selectedClass 
-            ? 'Select a class and subjects to generate notebook tags.' 
-            : selectedSubjects.length === 0 
-              ? 'Please select at least one subject.' 
-              : 'No students found in the selected class.'}
+          {selectedSubjects.length === 0
+            ? 'Select one or more subjects to generate notebook tags.'
+            : 'No active-session students found for the selected filters.'}
         </EmptyState>
       )}
     </Container>

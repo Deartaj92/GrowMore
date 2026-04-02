@@ -345,6 +345,7 @@ interface StaffMember {
   isOnHoliday?: boolean;
   rfid_uid?: string | null;
   isOnLeave?: boolean;
+  attendance_enabled?: boolean | null;
 }
 
 // Add a hook to detect mobile
@@ -668,11 +669,11 @@ const MarkStaffAttendance: React.FC = () => {
       setProgress(60);
       const { data: staffData, error: staffError } = await supabase
         .from('staff')
-        .select('id')
+        .select('id, attendance_enabled')
         .eq('school_id', user.school_id)
         .eq('status', 'active');
       
-      setHasAnyStaff(staffData && staffData.length > 0);
+      setHasAnyStaff((staffData || []).some((staff: any) => staff.attendance_enabled !== false));
       
       setProgress(100);
       const elapsed = Date.now() - start;
@@ -727,12 +728,12 @@ const MarkStaffAttendance: React.FC = () => {
       if (!user?.school_id || hasAnyStaff !== null) return; // Skip if already checked
       const { data: staffData, error: staffError } = await supabase
         .from('staff')
-        .select('id')
+        .select('id, attendance_enabled')
         .eq('school_id', user.school_id)
         .eq('status', 'active');
       
       
-      if (!staffError && staffData && staffData.length > 0) {
+      if (!staffError && staffData && staffData.some((staff: any) => staff.attendance_enabled !== false)) {
         setHasAnyStaff(true);
       } else {
         setHasAnyStaff(false);
@@ -766,7 +767,7 @@ const MarkStaffAttendance: React.FC = () => {
       // Fetch all staff members first
       const { data: staffData, error: staffError } = await supabase
         .from('staff')
-        .select('id, name, role, picture_url, rfid_uid')
+        .select('id, name, role, picture_url, rfid_uid, attendance_enabled')
         .eq('school_id', user.school_id)
         .eq('status', 'active');
 
@@ -774,8 +775,10 @@ const MarkStaffAttendance: React.FC = () => {
         throw staffError;
       }
 
-      if (!staffData || staffData.length === 0) {
-        toast.showToast('No staff members found', 'success');
+      const attendanceEligibleStaff = (staffData || []).filter((staff: any) => staff.attendance_enabled !== false);
+
+      if (attendanceEligibleStaff.length === 0) {
+        toast.showToast('No staff members are enabled for attendance', 'success');
         setStaffMembers([]);
         setLoadingStaff(false);
         isCheckingHoliday.current = false;
@@ -831,7 +834,7 @@ const MarkStaffAttendance: React.FC = () => {
       const holidayNames: string[] = [];
 
       // Check each staff member against holiday assignments
-      staffData.forEach((staff: any) => {
+      attendanceEligibleStaff.forEach((staff: any) => {
         let isOnHoliday = false;
         let holidayName = '';
 
@@ -863,7 +866,7 @@ const MarkStaffAttendance: React.FC = () => {
 
       // Keep all staff members but mark which ones are on holiday
       // If ALL staff are on holiday, show toast
-      if (staffOnHoliday.size === staffData.length && staffOnHoliday.size > 0) {
+      if (staffOnHoliday.size === attendanceEligibleStaff.length && staffOnHoliday.size > 0) {
         const holidayMessage = holidayNames.length > 0 
           ? `Selected date is a holiday: ${holidayNames.join(', ')}`
           : 'Selected date is a holiday';
@@ -882,7 +885,7 @@ const MarkStaffAttendance: React.FC = () => {
         // Don't throw error for attendance records as table might not exist yet
       }
 
-      const staffIds = (staffData || []).map((staff: any) => staff.id);
+      const staffIds = attendanceEligibleStaff.map((staff: any) => staff.id);
       const { data: leaveData } = await supabase
         .from('leave_requests')
         .select('staff_id')
@@ -906,7 +909,7 @@ const MarkStaffAttendance: React.FC = () => {
       });
       const approvedLeaveSet = new Set((leaveData || []).map((leave: any) => leave.staff_id));
       
-      const formattedStaff = staffData.map((staff: any) => {
+      const formattedStaff = attendanceEligibleStaff.map((staff: any) => {
         const att = attendanceMap.get(staff.id);
         const isOnHoliday = staffOnHoliday.has(staff.id);
         const isOnLeave = approvedLeaveSet.has(staff.id);
@@ -923,6 +926,7 @@ const MarkStaffAttendance: React.FC = () => {
           isOnHoliday: isOnHoliday,
           rfid_uid: staff.rfid_uid,
           isOnLeave,
+          attendance_enabled: staff.attendance_enabled,
         };
       }).sort((a, b) => {
         // First, sort by holiday status (non-holiday first)

@@ -129,7 +129,6 @@ import FinanceDashboard from './components/FinanceDashboard';
 import CommunicationDashboard from './components/CommunicationDashboard';
 // Settings Management Components
 // Employee Management Components
-import EmployeesDashboard from './components/EmployeesDashboard';
 import { LoadingProvider } from './contexts/LoadingContext';
 // import RouteChangeLoader from './components/RouteChangeLoader'; // Disabled - using page-specific loaders instead
 import { ThemeContext, darkTheme, lightTheme } from './contexts/ThemeContext';
@@ -415,17 +414,16 @@ const App: React.FC = () => {
                             }
                           />
 
-                          {/* Employee Dashboard */}
+                          {/* Employee Management */}
                           <Route
                             path="employees"
                             element={
-                              <ProtectedRoute requiredPermission="settings-classes">
-                                <EmployeesDashboard />
+                              <ProtectedRoute requiredPermission="employees-list">
+                                <EmployeeList />
                               </ProtectedRoute>
                             }
                           />
 
-                          {/* Employee Management */}
                           <Route
                             path="employees/list"
                             element={

@@ -611,6 +611,19 @@ interface ScanResult {
     isNew?: boolean;
 }
 
+interface PersistedDailyScanHistory {
+    date: string;
+    feed: ScanResult[];
+    presentCount: number;
+    unknownCount: number;
+    dupCount: number;
+}
+
+const getLocalToday = () => new Date().toISOString().slice(0, 10);
+
+const buildDailyScanStorageKey = (schoolId: number | string) =>
+    `rfid-attendance:daily-scan-history:${schoolId}`;
+
 const SecondaryBtn = styled.button`
   ${clayButtonStyle}
   padding: 0.5rem 1rem;
@@ -874,7 +887,7 @@ const RFIDAttendancePage: React.FC = () => {
     const { showToast } = useToast();
     const themeObj = theme === 'dark' ? darkTheme : lightTheme;
     const { user } = useAuth();
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getLocalToday();
 
     const [attnSettings, setAttnSettings] = useState<{
         student_start_time: string;
@@ -924,6 +937,89 @@ const RFIDAttendancePage: React.FC = () => {
     const [showSuccess, setShowSuccess] = useState(false);
     const [syncStats, setSyncStats] = useState({ success: 0, failed: 0 });
     const [scannedPerson, setScannedPerson] = useState<{ name: string; picture_url?: string } | null>(null);
+
+    const clearPersistedDailyHistory = useCallback(() => {
+        if (!user?.school_id) return;
+        try {
+            localStorage.removeItem(buildDailyScanStorageKey(user.school_id));
+        } catch (error) {
+            console.warn('Failed to clear RFID daily scan history:', error);
+        }
+    }, [user?.school_id]);
+
+    useEffect(() => {
+        if (!user?.school_id) return;
+
+        const storageKey = buildDailyScanStorageKey(user.school_id);
+        try {
+            const raw = localStorage.getItem(storageKey);
+            const activeToday = getLocalToday();
+
+            if (selectedDate !== activeToday) {
+                setFeed([]);
+                setPresentCount(0);
+                setUnknownCount(0);
+                setDupCount(0);
+                return;
+            }
+
+            if (!raw) {
+                setFeed([]);
+                setPresentCount(0);
+                setUnknownCount(0);
+                setDupCount(0);
+                return;
+            }
+
+            const parsed = JSON.parse(raw) as PersistedDailyScanHistory;
+
+            if (!parsed || parsed.date !== activeToday) {
+                localStorage.removeItem(storageKey);
+                setFeed([]);
+                setPresentCount(0);
+                setUnknownCount(0);
+                setDupCount(0);
+                return;
+            }
+
+            setFeed((parsed.feed || []).map(item => ({ ...item, isNew: false })));
+            setPresentCount(parsed.presentCount || 0);
+            setUnknownCount(parsed.unknownCount || 0);
+            setDupCount(parsed.dupCount || 0);
+        } catch (error) {
+            console.warn('Failed to restore RFID daily scan history:', error);
+            localStorage.removeItem(storageKey);
+            setFeed([]);
+            setPresentCount(0);
+            setUnknownCount(0);
+            setDupCount(0);
+        }
+    }, [selectedDate, user?.school_id]);
+
+    useEffect(() => {
+        if (!user?.school_id) return;
+
+        const activeToday = getLocalToday();
+        const storageKey = buildDailyScanStorageKey(user.school_id);
+
+        if (selectedDate !== activeToday) {
+            return;
+        }
+
+        const payload: PersistedDailyScanHistory = {
+            date: activeToday,
+            feed: feed.map(item => ({ ...item, isNew: false })),
+            presentCount,
+            unknownCount,
+            dupCount,
+        };
+
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(payload));
+        } catch (error) {
+            console.warn('Failed to persist RFID daily scan history:', error);
+        }
+    }, [dupCount, feed, presentCount, selectedDate, unknownCount, user?.school_id]);
 
     // Initial cache and queue check
     useEffect(() => {
@@ -1503,6 +1599,7 @@ const RFIDAttendancePage: React.FC = () => {
         setPresentCount(0);
         setUnknownCount(0);
         setDupCount(0);
+        clearPersistedDailyHistory();
     };
     const scanIcon =
         scanStatus === 'success' ? <CheckCircle style={{ fontSize: 56 }} /> :
