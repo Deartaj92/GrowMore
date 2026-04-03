@@ -4,7 +4,7 @@ import { ThemeContext, darkTheme, lightTheme } from '../../../../contexts/ThemeC
 import { useAuth } from '../../../../contexts/AuthContext';
 import { useToast } from '../../../../components/useToast';
 import { payrollService } from '../../../../services/payrollService';
-import { PayrollAdvance, CreatePayrollAdvanceInput } from '../../../../types/payroll';
+import { PayrollAdvance } from '../../../../types/payroll';
 import {
   Box,
   Button,
@@ -14,7 +14,6 @@ import {
   TableCell,
   TableHead,
   TableRow,
-  Chip,
   IconButton,
   Tooltip,
   MenuItem,
@@ -25,81 +24,24 @@ import {
 import {
   Add as AddIcon,
   Search as SearchIcon,
-  Edit as EditIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material';
 import Loader from '../../../../components/Loader';
 import CreateAdvanceModal from './CreateAdvanceModal';
-
-const PageContainer = styled.div`
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  background: ${({ theme }) => theme.BG};
-  min-height: 100%;
-`;
-
-const Header = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-  gap: 8px;
-  
-  @media (max-width: 768px) {
-    margin-bottom: 8px;
-    gap: 6px;
-    flex-direction: column;
-    align-items: stretch;
-  }
-`;
-
-const Title = styled.h2`
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  margin: 0;
-  
-  @media (max-width: 768px) {
-    font-size: 1rem;
-  }
-`;
-
-const FiltersCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  border-radius: 6px;
-  padding: 10px 12px;
-  margin-bottom: 12px;
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  
-  @media (max-width: 768px) {
-    padding: 8px 10px;
-    margin-bottom: 8px;
-    gap: 8px;
-    border-radius: 4px;
-    flex-direction: column;
-    align-items: stretch;
-  }
-`;
-
-const TableContainer = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  border-radius: 6px;
-  overflow: hidden;
-  
-  @media (max-width: 768px) {
-    border-radius: 4px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-`;
+import { formatPayrollDate } from '../../utils';
+import { usePayrollDisplaySettings } from '../../PayrollDisplaySettingsContext';
+import {
+  PayrollContainer,
+  ToolbarCard,
+  ToolbarRow,
+  ToolbarGroup,
+  PageHeading,
+  PageTitle,
+  PageSubtitle,
+  TableWrapper,
+  TableScroller,
+  StatusBadge,
+} from '../../styles';
 
 const StyledTable = styled(Table)`
   & .MuiTableCell-root {
@@ -117,7 +59,7 @@ const StyledTable = styled(Table)`
   & .MuiTableCell-head {
     font-weight: 600;
     font-size: 0.75rem;
-    background: ${({ theme }) => theme.BG};
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.42)'};
     color: ${({ theme }) => theme.TEXT_SECONDARY};
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -131,7 +73,7 @@ const StyledTable = styled(Table)`
   
   & .MuiTableRow-root {
     &:hover {
-      background: ${({ theme }) => theme.BG};
+      background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255,255,255,0.03)' : 'rgba(99,102,241,0.05)'};
     }
   }
   
@@ -145,6 +87,7 @@ const PayrollAdvancesList: React.FC = () => {
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
   const { user } = useAuth() as any;
   const { showToast } = useToast();
+  const { formatCurrency } = usePayrollDisplaySettings();
   const [loading, setLoading] = useState(true);
   const [advances, setAdvances] = useState<PayrollAdvance[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -246,36 +189,52 @@ const PayrollAdvancesList: React.FC = () => {
 
   if (loading) {
     return (
-      <PageContainer>
+      <PayrollContainer>
         <Loader />
-      </PageContainer>
+      </PayrollContainer>
     );
   }
 
   return (
-    <PageContainer>
-      <Header>
-        <Title>Payroll Advances</Title>
-        <Button
-          variant="contained"
-          color="primary"
-          size="small"
-          startIcon={<AddIcon style={{ fontSize: 16 }} />}
-          onClick={() => {
-            setEditingAdvance(null);
-            setCreateModalOpen(true);
-          }}
-          sx={{ 
-            fontSize: '0.8125rem',
-            height: '32px',
-            padding: '4px 12px',
-          }}
-        >
-          Create Advance
-        </Button>
-      </Header>
+    <PayrollContainer>
+      <ToolbarCard>
+        <ToolbarRow>
+          <ToolbarGroup>
+            <PageHeading>
+              <PageTitle>Payroll Advances</PageTitle>
+              <PageSubtitle>Track salary advances and their remaining balances with the same clay-styled layout used across the app.</PageSubtitle>
+            </PageHeading>
+          </ToolbarGroup>
+          <ToolbarGroup>
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={<AddIcon style={{ fontSize: 16 }} />}
+              onClick={() => {
+                setEditingAdvance(null);
+                setCreateModalOpen(true);
+              }}
+              sx={{ 
+                fontSize: '0.8125rem',
+                height: '36px',
+                padding: '6px 14px',
+                borderRadius: '999px',
+                boxShadow: theme.BG === '#252525'
+                  ? '0 6px 18px rgba(37,99,235,0.35)'
+                  : '0 6px 18px rgba(37,99,235,0.22)',
+                '@media (max-width: 768px)': { width: '100%' },
+              }}
+            >
+              Create Advance
+            </Button>
+          </ToolbarGroup>
+        </ToolbarRow>
+      </ToolbarCard>
 
-      <FiltersCard>
+      <ToolbarCard>
+        <ToolbarRow>
+          <ToolbarGroup style={{ flex: 1 }}>
           <TextField
             size="small"
             placeholder="Search by employee, reason..."
@@ -294,26 +253,29 @@ const PayrollAdvancesList: React.FC = () => {
             }}
             variant="outlined"
           />
-        <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 150 } }}>
-          <InputLabel sx={{ fontSize: { xs: '0.75rem', sm: '0.8125rem' } }}>Status</InputLabel>
-          <Select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
-            label="Status"
-            sx={{ 
-              fontSize: { xs: '0.75rem', sm: '0.8125rem' },
-              height: { xs: '36px', sm: '32px' },
-            }}
-          >
-            <MenuItem value="all" sx={{ fontSize: { xs: '0.75rem', sm: '0.8125rem' } }}>All</MenuItem>
-            <MenuItem value="active" sx={{ fontSize: { xs: '0.75rem', sm: '0.8125rem' } }}>Active</MenuItem>
-            <MenuItem value="completed" sx={{ fontSize: { xs: '0.75rem', sm: '0.8125rem' } }}>Completed</MenuItem>
-          </Select>
-        </FormControl>
-      </FiltersCard>
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 150 } }}>
+              <InputLabel sx={{ fontSize: { xs: '0.75rem', sm: '0.8125rem' } }}>Status</InputLabel>
+              <Select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                label="Status"
+                sx={{ 
+                  fontSize: { xs: '0.75rem', sm: '0.8125rem' },
+                  height: { xs: '36px', sm: '32px' },
+                }}
+              >
+                <MenuItem value="all" sx={{ fontSize: { xs: '0.75rem', sm: '0.8125rem' } }}>All</MenuItem>
+                <MenuItem value="active" sx={{ fontSize: { xs: '0.75rem', sm: '0.8125rem' } }}>Active</MenuItem>
+                <MenuItem value="completed" sx={{ fontSize: { xs: '0.75rem', sm: '0.8125rem' } }}>Completed</MenuItem>
+              </Select>
+            </FormControl>
+          </ToolbarGroup>
+        </ToolbarRow>
+      </ToolbarCard>
 
-      <TableContainer>
-        <StyledTable size="small">
+      <TableWrapper>
+        <TableScroller>
+          <StyledTable size="small">
           <TableHead>
             <TableRow>
               <TableCell>Employee</TableCell>
@@ -339,23 +301,20 @@ const PayrollAdvancesList: React.FC = () => {
                   <TableCell style={{ fontWeight: 500 }}>
                     {advance.staff?.name || 'N/A'}
                   </TableCell>
-                  <TableCell>{new Date(advance.advanceDate).toLocaleDateString()}</TableCell>
+                  <TableCell>{formatPayrollDate(advance.advanceDate)}</TableCell>
                   <TableCell style={{ fontWeight: 600 }}>
-                    Rs. {advance.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    {formatCurrency(advance.amount)}
                   </TableCell>
                   <TableCell>
-                    Rs. {advance.repaymentAmountPerMonth.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    {formatCurrency(advance.repaymentAmountPerMonth)}
                   </TableCell>
                   <TableCell style={{ fontWeight: 600 }}>
-                    Rs. {advance.remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    {formatCurrency(advance.remainingBalance)}
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      label={advance.status}
-                      size="small"
-                      color={advance.status === 'active' ? 'warning' : 'success'}
-                      style={{ fontSize: '0.75rem', height: '22px' }}
-                    />
+                    <StatusBadge status={advance.status === 'active' ? 'pending' : 'paid'}>
+                      {advance.status}
+                    </StatusBadge>
                   </TableCell>
                   <TableCell style={{ color: theme.TEXT_SECONDARY, fontSize: '0.8rem' }}>
                     {advance.reason || '-'}
@@ -388,8 +347,9 @@ const PayrollAdvancesList: React.FC = () => {
               ))
             )}
           </TableBody>
-        </StyledTable>
-      </TableContainer>
+          </StyledTable>
+        </TableScroller>
+      </TableWrapper>
 
       {createModalOpen && (
         <CreateAdvanceModal
@@ -406,9 +366,8 @@ const PayrollAdvancesList: React.FC = () => {
           editingAdvance={editingAdvance}
         />
       )}
-    </PageContainer>
+    </PayrollContainer>
   );
 };
 
 export default PayrollAdvancesList;
-

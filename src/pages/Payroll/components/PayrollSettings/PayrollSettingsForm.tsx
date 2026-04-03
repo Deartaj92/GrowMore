@@ -4,7 +4,6 @@ import { ThemeContext, darkTheme, lightTheme } from '../../../../contexts/ThemeC
 import { useAuth } from '../../../../contexts/AuthContext';
 import { useToast } from '../../../../components/useToast';
 import { payrollService } from '../../../../services/payrollService';
-import { PayrollSettings } from '../../../../types/payroll';
 import {
   Box,
   TextField,
@@ -15,52 +14,46 @@ import {
   FormControlLabel,
   Radio,
   Switch,
-  FormHelperText,
   CircularProgress,
 } from '@mui/material';
 import { Settings as SettingsIcon, Save as SaveIcon } from '@mui/icons-material';
 import Loader from '../../../../components/Loader';
+import { blockNumberArrowKey, blockNumberWheelChange, payrollAmountInputSx } from '../../utils';
+import { usePayrollDisplaySettings } from '../../PayrollDisplaySettingsContext';
+import {
+  PayrollContainer,
+  ToolbarCard,
+  ToolbarRow,
+  ToolbarGroup,
+  PageHeading,
+  PageTitle,
+  PageSubtitle,
+  ContentCard,
+} from '../../styles';
 
-const PageContainer = styled.div`
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  background: ${({ theme }) => theme.BG};
-  min-height: 100%;
-`;
-
-const Header = styled.div`
-  margin-bottom: 12px;
-`;
-
-const Title = styled.h1`
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  margin: 0 0 4px 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const Subtitle = styled.p`
-  font-size: 0.8125rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  margin: 0;
-`;
-
-const SettingsCard = styled.div`
-  background: ${({ theme }) => theme.CARD};
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  border-radius: 6px;
+const SettingsCard = styled(ContentCard)`
   padding: 12px 14px;
+  height: fit-content;
+  display: inline-block;
+  width: 100%;
+  break-inside: avoid;
   margin-bottom: 12px;
   
   @media (max-width: 768px) {
     padding: 10px 12px;
     margin-bottom: 10px;
     border-radius: 4px;
+  }
+`;
+
+const SettingsGrid = styled.div`
+  column-count: 2;
+  column-gap: 12px;
+  margin-bottom: 12px;
+
+  @media (max-width: 900px) {
+    column-count: 1;
+    margin-bottom: 10px;
   }
 `;
 
@@ -116,7 +109,6 @@ const HelperText = styled.p`
 `;
 
 const ActionButton = styled(Button)`
-  margin-top: 12px;
   padding: 6px 16px;
   font-weight: 600;
   font-size: 0.8125rem;
@@ -125,11 +117,15 @@ const ActionButton = styled(Button)`
   height: 32px;
   
   @media (max-width: 768px) {
-    margin-top: 10px;
-    width: 100%;
     height: 36px;
     font-size: 0.75rem;
   }
+`;
+
+const StickyToolbarCard = styled(ToolbarCard)`
+  position: sticky;
+  top: 0;
+  z-index: 20;
 `;
 
 const PayrollSettingsForm: React.FC = () => {
@@ -137,10 +133,9 @@ const PayrollSettingsForm: React.FC = () => {
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
   const { user } = useAuth() as any;
   const { showToast } = useToast();
+  const { refreshSettings } = usePayrollDisplaySettings();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [settings, setSettings] = useState<PayrollSettings | null>(null);
-
   const [formData, setFormData] = useState({
     monthlyWorkingDays: 26,
     allowedLeavesPerMonth: 2,
@@ -154,6 +149,7 @@ const PayrollSettingsForm: React.FC = () => {
     lateDeductionType: 'fixed' as 'fixed' | 'percentage',
     allowLeaveBonus: false,
     leaveBonusDays: 1 as 1 | 2,
+    roundUpAmounts: false,
   });
 
   useEffect(() => {
@@ -170,7 +166,6 @@ const PayrollSettingsForm: React.FC = () => {
       const data = await payrollService.getPayrollSettings(user.school_id);
       
       if (data) {
-        setSettings(data);
         setFormData({
           monthlyWorkingDays: data.monthlyWorkingDays,
           allowedLeavesPerMonth: data.allowedLeavesPerMonth,
@@ -184,6 +179,7 @@ const PayrollSettingsForm: React.FC = () => {
           lateDeductionType: data.lateDeductionType || 'fixed',
           allowLeaveBonus: data.allowLeaveBonus || false,
           leaveBonusDays: (data.leaveBonusDays === 2 ? 2 : 1) as 1 | 2,
+          roundUpAmounts: data.roundUpAmounts || false,
         });
       }
     } catch (error: any) {
@@ -209,6 +205,7 @@ const PayrollSettingsForm: React.FC = () => {
       );
       
       showToast('Payroll settings saved successfully', 'success');
+      await refreshSettings();
       await loadSettings();
     } catch (error: any) {
       console.error('Error saving settings:', error);
@@ -220,21 +217,60 @@ const PayrollSettingsForm: React.FC = () => {
 
   if (loading) {
     return (
-      <PageContainer>
+      <PayrollContainer>
         <Loader />
-      </PageContainer>
+      </PayrollContainer>
     );
   }
 
   return (
-    <PageContainer>
-      <Header>
-        <Title>
-          <SettingsIcon style={{ fontSize: 24 }} />
-          Payroll Settings
-        </Title>
-        <Subtitle>Configure general payroll settings and calculation methods</Subtitle>
-      </Header>
+    <PayrollContainer>
+      <StickyToolbarCard>
+        <ToolbarRow>
+          <ToolbarGroup>
+            <PageHeading>
+              <PageTitle>
+                <SettingsIcon style={{ fontSize: 20 }} />
+                Payroll Settings
+              </PageTitle>
+              <PageSubtitle>Configure working days, leave rules, deduction logic, and payment defaults with the same global clay styling used elsewhere in the app.</PageSubtitle>
+            </PageHeading>
+          </ToolbarGroup>
+          <ToolbarGroup>
+            <ActionButton
+              variant="contained"
+              color="primary"
+              startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Save Settings'}
+            </ActionButton>
+          </ToolbarGroup>
+        </ToolbarRow>
+      </StickyToolbarCard>
+
+      <SettingsGrid>
+      <SettingsCard>
+        <SectionTitle>Display & Rounding</SectionTitle>
+
+        <FormGroup>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={formData.roundUpAmounts}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  roundUpAmounts: e.target.checked,
+                })}
+                size="small"
+              />
+            }
+            label="Round Up Payroll Amounts For Display"
+          />
+          <HelperText>When enabled, payroll amounts across tabs and PDF export are rounded upward to the nearest rupee.</HelperText>
+        </FormGroup>
+      </SettingsCard>
 
       <SettingsCard>
         <SectionTitle>Working Days & Leaves</SectionTitle>
@@ -248,10 +284,13 @@ const PayrollSettingsForm: React.FC = () => {
               ...formData,
               monthlyWorkingDays: parseInt(e.target.value) || 26,
             })}
+            onKeyDown={blockNumberArrowKey}
+            onWheelCapture={blockNumberWheelChange}
             inputProps={{ min: 1, max: 31 }}
             size="small"
             fullWidth
             variant="outlined"
+            sx={payrollAmountInputSx}
           />
           <HelperText>Number of working days in a month (typically 26)</HelperText>
         </FormGroup>
@@ -265,10 +304,13 @@ const PayrollSettingsForm: React.FC = () => {
               ...formData,
               allowedLeavesPerMonth: parseInt(e.target.value) || 0,
             })}
+            onKeyDown={blockNumberArrowKey}
+            onWheelCapture={blockNumberWheelChange}
             inputProps={{ min: 0 }}
             size="small"
             fullWidth
             variant="outlined"
+            sx={payrollAmountInputSx}
           />
           <HelperText>Number of leaves allowed per month without deduction</HelperText>
         </FormGroup>
@@ -336,10 +378,13 @@ const PayrollSettingsForm: React.FC = () => {
                   ...formData,
                   allowedLateDaysPerMonth: parseInt(e.target.value) || 0,
                 })}
+                onKeyDown={blockNumberArrowKey}
+                onWheelCapture={blockNumberWheelChange}
                 inputProps={{ min: 0 }}
                 size="small"
                 fullWidth
                 variant="outlined"
+                sx={payrollAmountInputSx}
               />
               <HelperText>Number of late attendance days allowed per month without deduction</HelperText>
             </FormGroup>
@@ -383,6 +428,8 @@ const PayrollSettingsForm: React.FC = () => {
                   ...formData,
                   lateDeductionAmount: parseFloat(e.target.value) || 0,
                 })}
+                onKeyDown={blockNumberArrowKey}
+                onWheelCapture={blockNumberWheelChange}
                 inputProps={{ 
                   min: 0, 
                   step: formData.lateDeductionType === 'percentage' ? 0.1 : 1 
@@ -390,6 +437,7 @@ const PayrollSettingsForm: React.FC = () => {
                 size="small"
                 fullWidth
                 variant="outlined"
+                sx={payrollAmountInputSx}
               />
               <HelperText>
                 {formData.lateDeductionType === 'fixed'
@@ -547,19 +595,10 @@ const PayrollSettingsForm: React.FC = () => {
           </Box>
         </FormGroup>
       </SettingsCard>
+      </SettingsGrid>
 
-      <ActionButton
-        variant="contained"
-        color="primary"
-        startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
-        onClick={handleSave}
-        disabled={saving}
-      >
-        {saving ? 'Saving...' : 'Save Settings'}
-      </ActionButton>
-    </PageContainer>
+    </PayrollContainer>
   );
 };
 
 export default PayrollSettingsForm;
-

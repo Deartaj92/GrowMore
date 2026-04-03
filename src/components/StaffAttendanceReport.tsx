@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled, { useTheme } from 'styled-components';
 import { supabase } from '../supabaseClient';
-import { BarChart, CalendarMonth, PictureAsPdf, X, FilterList as FilterIcon, Block } from '@mui/icons-material';
+import { BarChart, CalendarMonth, PictureAsPdf, X, FilterList as FilterIcon, Block, AttachMoney } from '@mui/icons-material';
 import { format, getDaysInMonth, parseISO } from 'date-fns';
 import ReactDOM from 'react-dom';
 import { useToast } from './useToast';
@@ -371,6 +371,25 @@ const HalfLeaveBadge = styled.span`
   z-index: 1;
   box-shadow: 0 1px 2px rgba(0,0,0,0.2);
 `;
+const PaidLeaveBadge = styled.span`
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #16a34a;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+
+  svg {
+    font-size: 0.58rem;
+  }
+`;
 const SummaryRow = styled.tr`
   background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#f8f9fa'};
   font-weight: 700;
@@ -470,6 +489,13 @@ interface StaffMember {
   role: string;
 }
 
+interface LeaveDecisionState {
+  staff: StaffMember;
+  idx: number;
+  dayIdx: number;
+  dateStr: string;
+}
+
 interface Holiday {
   id: number;
   name: string;
@@ -482,6 +508,7 @@ interface Holiday {
 
 const StaffAttendanceReport: React.FC = () => {
   const theme = useTheme();
+  const modalTheme = isDark(theme) ? darkTheme : lightTheme;
   const { user } = useAuth();
   const navigate = useNavigate();
   const { startProgress, setProgress, completeProgress } = useProgress();
@@ -518,6 +545,8 @@ const StaffAttendanceReport: React.FC = () => {
   const [holidayTextStyle, setHolidayTextStyle] = useState<{ [key: string]: { angle: number, fontSize: string, maxWidth?: string } }>({});
   const holidayCellRefs = useRef<{ [key: string]: HTMLTableCellElement | null }>({});
   const [halfLeavesMap, setHalfLeavesMap] = useState<Map<string, { leave_type: string; arrival_time?: string | null; departure_time?: string | null }>>(new Map());
+  const [paidLeavesMap, setPaidLeavesMap] = useState<Map<string, boolean>>(new Map());
+  const [leaveDecision, setLeaveDecision] = useState<LeaveDecisionState | null>(null);
 
   // Fetch active session on mount
   useEffect(() => {
@@ -593,7 +622,7 @@ const StaffAttendanceReport: React.FC = () => {
       
       const { data: attendanceData, error: attendanceError } = await supabase
         .from('staff_attendance_records')
-        .select('staff_id, date, status')
+        .select('staff_id, date, status, paid_leave')
         .eq('school_id', user?.school_id)
         .eq('session_id', sessionId)
         .gte('date', startDate)
@@ -675,11 +704,16 @@ const StaffAttendanceReport: React.FC = () => {
       // Build attendance matrix
       setProgress(80);
       const attMap: Record<number, Record<number, string>> = {};
+      const paidLeaveLookup = new Map<string, boolean>();
       attendanceData.forEach((rec: any) => {
         const day = parseInt(rec.date.split('-')[2], 10);
         if (!attMap[rec.staff_id]) attMap[rec.staff_id] = {};
         attMap[rec.staff_id][day] = rec.status === 'present' ? 'P' : rec.status === 'absent' ? 'A' : rec.status === 'late' ? 'Lt' : rec.status === 'leave' ? 'L' : rec.status === 'half_day' ? 'H' : '-';
+        if (rec.status === 'leave' && rec.paid_leave) {
+          paidLeaveLookup.set(`${rec.staff_id}_${rec.date}`, true);
+        }
       });
+      setPaidLeavesMap(paidLeaveLookup);
       const matrix = staffData.map((staff: any) =>
         Array.from({ length: daysInMonth }, (_, i) => attMap[staff.id]?.[i + 1] || '-')
       );
@@ -876,6 +910,184 @@ const StaffAttendanceReport: React.FC = () => {
     });
   }, [holidays, filteredStaff, selectedMonth]);
 
+  const recalculateAttendanceStats = (matrix: string[][]) => {
+    const daysWithAttendance = new Set<number>();
+    for (let d = 0; d < matrix[0]?.length; d++) {
+      for (let s = 0; s < matrix.length; s++) {
+        if (matrix[s][d] && matrix[s][d] !== '-') {
+          daysWithAttendance.add(d + 1);
+          break;
+        }
+      }
+    }
+
+    setWorkingDays(daysWithAttendance.size);
+
+    let presentCount = 0;
+    const totalPossible = matrix.length * daysWithAttendance.size;
+    matrix.forEach(row => {
+      daysWithAttendance.forEach(day => {
+        const status = row[day - 1];
+        if (status === 'P' || status === 'Lt' || status === 'H') {
+          presentCount++;
+        }
+      });
+    });
+    setAvgAttendance(totalPossible ? Math.round((presentCount / totalPossible) * 100) : 0);
+  };
+
+  const persistAttendanceStatus = async (
+    optValue: string,
+    idx: number,
+    dayIdx: number,
+    staff: StaffMember,
+    paidLeave: boolean
+  ) => {
+    const dateStr = `${selectedMonth}-${String(dayIdx + 1).padStart(2, '0')}`;
+    const updateKey = `${staff.id}-${selectedMonth}-${dayIdx + 1}-${optValue}-${paidLeave ? 'paid' : 'unpaid'}`;
+
+    if (updatingStatusRef.current.has(updateKey)) {
+      return;
+    }
+
+    updatingStatusRef.current.add(updateKey);
+    setIsUpdatingStatus(true);
+
+    const previousStatus = attendanceMatrix[idx]?.[dayIdx] || '-';
+    const paidLeaveKey = `${staff.id}_${dateStr}`;
+    const previousPaidLeave = paidLeavesMap.get(paidLeaveKey) || false;
+
+    try {
+      if (optValue === 'DELETE') {
+        const updatedMatrix = attendanceMatrix.map(row => [...row]);
+        updatedMatrix[idx][dayIdx] = '-';
+        setAttendanceMatrix(updatedMatrix);
+        recalculateAttendanceStats(updatedMatrix);
+        setPaidLeavesMap(prev => {
+          const next = new Map(prev);
+          next.delete(paidLeaveKey);
+          return next;
+        });
+        setOpenDropdown(null);
+
+        if (!staff.id || !dateStr || !user?.school_id || !sessionId) {
+          throw new Error(`Missing required fields for delete: staff_id=${staff.id}, date=${dateStr}, school_id=${user?.school_id}, session_id=${sessionId}`);
+        }
+
+        const { error } = await supabase
+          .from('staff_attendance_records')
+          .delete()
+          .eq('staff_id', staff.id)
+          .eq('school_id', user.school_id)
+          .eq('session_id', sessionId)
+          .eq('date', dateStr);
+
+        if (error) {
+          throw error;
+        }
+
+        toast.showToast('Staff attendance record deleted.', 'success');
+        return;
+      }
+
+      if (!sessionId) {
+        toast.showToast('No active session found. Please activate a session first.', 'error');
+        return;
+      }
+
+      const updatedMatrix = attendanceMatrix.map(row => [...row]);
+      updatedMatrix[idx][dayIdx] = optValue;
+      setAttendanceMatrix(updatedMatrix);
+      recalculateAttendanceStats(updatedMatrix);
+      setPaidLeavesMap(prev => {
+        const next = new Map(prev);
+        if (optValue === 'L' && paidLeave) {
+          next.set(paidLeaveKey, true);
+        } else {
+          next.delete(paidLeaveKey);
+        }
+        return next;
+      });
+      setOpenDropdown(null);
+
+      if (!staff.id || !dateStr || !user?.school_id || !sessionId) {
+        throw new Error(`Missing required fields: staff_id=${staff.id}, date=${dateStr}, school_id=${user?.school_id}, session_id=${sessionId}`);
+      }
+
+      const statusMap: Record<string, string> = {
+        'P': 'present',
+        'A': 'absent',
+        'L': 'leave',
+        'Lt': 'late',
+        'H': 'half_day'
+      };
+      const dbStatus = statusMap[optValue] || 'present';
+      const upsertPayload = {
+        staff_id: staff.id,
+        date: dateStr,
+        status: dbStatus,
+        paid_leave: dbStatus === 'leave' ? paidLeave : false,
+        school_id: user.school_id,
+        session_id: sessionId
+      };
+
+      const { data: existingRecord, error: checkError } = await supabase
+        .from('staff_attendance_records')
+        .select('id, status, paid_leave')
+        .eq('staff_id', staff.id)
+        .eq('school_id', user.school_id)
+        .eq('session_id', sessionId)
+        .eq('date', dateStr)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      let error;
+
+      if (existingRecord) {
+        const updateResult = await supabase
+          .from('staff_attendance_records')
+          .update({
+            status: dbStatus,
+            paid_leave: dbStatus === 'leave' ? paidLeave : false
+          })
+          .eq('id', existingRecord.id);
+        error = updateResult.error;
+      } else {
+        const insertResult = await supabase
+          .from('staff_attendance_records')
+          .insert([upsertPayload]);
+        error = insertResult.error;
+      }
+
+      if (error) {
+        throw error;
+      }
+
+      toast.showToast('Staff attendance updated successfully.', 'success');
+    } catch (err: any) {
+      const revertedMatrix = attendanceMatrix.map(row => [...row]);
+      revertedMatrix[idx][dayIdx] = previousStatus;
+      setAttendanceMatrix(revertedMatrix);
+      recalculateAttendanceStats(revertedMatrix);
+      setPaidLeavesMap(prev => {
+        const next = new Map(prev);
+        if (previousPaidLeave) {
+          next.set(paidLeaveKey, true);
+        } else {
+          next.delete(paidLeaveKey);
+        }
+        return next;
+      });
+      toast.showToast(`Could not update staff attendance: ${err.message || 'Unknown error'}`, 'error');
+    } finally {
+      updatingStatusRef.current.delete(updateKey);
+      setIsUpdatingStatus(false);
+    }
+  };
+
   const handleStatusChange = async (
     opt: StatusOption,
     idx: number,
@@ -889,187 +1101,59 @@ const StaffAttendanceReport: React.FC = () => {
     }
     lastClickTimeRef.current = now;
     
-    // Create a unique key for this update operation
-    const updateKey = `${staff.id}-${selectedMonth}-${dayIdx + 1}-${opt.value}`;
-    
-    // Prevent duplicate calls
-    if (updatingStatusRef.current.has(updateKey)) {
-      return;
-    }
-    
-    // Add to updating set
-    updatingStatusRef.current.add(updateKey);
-    setIsUpdatingStatus(true);
-    
-    
     try {
       if (opt.value === 'DELETE') {
-        // Delete attendance record from Supabase
-        setAttendanceMatrix(prev => {
-          const updated = prev.map(row => [...row]);
-          updated[idx][dayIdx] = '-';
-          // --- Realtime average and working days update ---
-          const daysWithAttendance = new Set<number>();
-          for (let d = 0; d < updated[0]?.length; d++) {
-            for (let s = 0; s < updated.length; s++) {
-              if (updated[s][d] && updated[s][d] !== '-') {
-                daysWithAttendance.add(d + 1);
-                break;
-              }
-            }
-          }
-          setWorkingDays(daysWithAttendance.size);
-          let presentCount = 0;
-          let totalPossible = updated.length * daysWithAttendance.size;
-          updated.forEach(row => {
-            daysWithAttendance.forEach(day => {
-              const status = row[day - 1];
-              if (status === 'P' || status === 'Lt' || status === 'H') presentCount++;
-            });
-          });
-          setAvgAttendance(totalPossible ? Math.round((presentCount / totalPossible) * 100) : 0);
-          // --- End realtime update ---
-          return updated;
-        });
-        setOpenDropdown(null);
-        const dateStr = `${selectedMonth}-${String(dayIdx + 1).padStart(2, '0')}`;
-        
-        // Validate required fields for delete
-        if (!staff.id || !dateStr || !user?.school_id || !sessionId) {
-          throw new Error(`Missing required fields for delete: staff_id=${staff.id}, date=${dateStr}, school_id=${user?.school_id}, session_id=${sessionId}`);
+        await persistAttendanceStatus(opt.value, idx, dayIdx, staff, false);
+        return;
+      }
+
+      const dateStr = `${selectedMonth}-${String(dayIdx + 1).padStart(2, '0')}`;
+
+      if (opt.value === 'L') {
+        if (!sessionId || !user?.school_id) {
+          toast.showToast('No active session found. Please activate a session first.', 'error');
+          return;
         }
-        
-        
-        const { data, error } = await supabase
+
+        const startDate = `${selectedMonth}-01`;
+        const daysInMonth = getDaysInMonth(parseISO(startDate));
+        const endDate = format(
+          new Date(parseISO(startDate).getFullYear(), parseISO(startDate).getMonth(), daysInMonth),
+          'yyyy-MM-dd'
+        );
+
+        const { data: monthlyLeaveAbsenceRecords, error } = await supabase
           .from('staff_attendance_records')
-          .delete()
-          .eq('staff_id', staff.id)
+          .select('id')
           .eq('school_id', user.school_id)
           .eq('session_id', sessionId)
-          .eq('date', dateStr);
-          
+          .eq('staff_id', staff.id)
+          .gte('date', startDate)
+          .lte('date', endDate)
+          .in('status', ['absent', 'leave']);
+
         if (error) {
           throw error;
         }
-        
-        toast.showToast('Staff attendance record deleted.', 'success');
-        return;
-      }
-      
-      if (!sessionId) {
-        toast.showToast('No active session found. Please activate a session first.', 'error');
-        return;
-      }
-      
-      setAttendanceMatrix(prev => {
-        const updated = prev.map(row => [...row]);
-        updated[idx][dayIdx] = opt.value;
 
-        // --- Realtime average and working days update ---
-        // 1. Find working days (days with at least one attendance record)
-        const daysWithAttendance = new Set<number>();
-        for (let d = 0; d < updated[0]?.length; d++) {
-          for (let s = 0; s < updated.length; s++) {
-            if (updated[s][d] && updated[s][d] !== '-') {
-              daysWithAttendance.add(d + 1);
-              break;
-            }
-          }
-        }
-        setWorkingDays(daysWithAttendance.size);
-        // 2. Calculate average attendance (P, Lt, and H count as present)
-        let presentCount = 0;
-        let totalPossible = updated.length * daysWithAttendance.size;
-        updated.forEach(row => {
-          daysWithAttendance.forEach(day => {
-            const status = row[day - 1];
-            if (status === 'P' || status === 'Lt' || status === 'H') presentCount++;
+        if ((monthlyLeaveAbsenceRecords || []).length > 0) {
+          setOpenDropdown(null);
+          setLeaveDecision({
+            staff,
+            idx,
+            dayIdx,
+            dateStr
           });
-        });
-        setAvgAttendance(totalPossible ? Math.round((presentCount / totalPossible) * 100) : 0);
-        // --- End realtime update ---
+          return;
+        }
 
-        return updated;
-      });
-      setOpenDropdown(null);
-      const dateStr = `${selectedMonth}-${String(dayIdx + 1).padStart(2, '0')}`;
-      
-      // Validate required fields
-      if (!staff.id || !dateStr || !user?.school_id || !sessionId) {
-        throw new Error(`Missing required fields: staff_id=${staff.id}, date=${dateStr}, school_id=${user?.school_id}, session_id=${sessionId}`);
+        await persistAttendanceStatus(opt.value, idx, dayIdx, staff, false);
+        return;
       }
-      
-      // Map UI status to DB status
-      const statusMap: Record<string, string> = {
-        'P': 'present',
-        'A': 'absent',
-        'L': 'leave',
-        'Lt': 'late',
-        'H': 'half_day'
-      };
-      const dbStatus = statusMap[opt.value] || 'present';
-      const upsertPayload = {
-        staff_id: staff.id,
-        date: dateStr,
-        status: dbStatus,
-        school_id: user.school_id,
-        session_id: sessionId
-      };
-      
-      
-      // First, check if record already exists
-      const { data: existingRecord, error: checkError } = await supabase
-        .from('staff_attendance_records')
-        .select('id, status')
-        .eq('staff_id', staff.id)
-        .eq('school_id', user.school_id)
-        .eq('session_id', sessionId)
-        .eq('date', dateStr)
-        .single();
-      
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw checkError;
-      }
-      
-      let data, error;
-      
-      if (existingRecord) {
-        // Record exists, update it
-        const updateResult = await supabase
-          .from('staff_attendance_records')
-          .update({ status: dbStatus })
-          .eq('id', existingRecord.id);
-        data = updateResult.data;
-        error = updateResult.error;
-      } else {
-        // Record doesn't exist, insert it
-        const insertResult = await supabase
-          .from('staff_attendance_records')
-          .insert([upsertPayload]);
-        data = insertResult.data;
-        error = insertResult.error;
-      }
-      
-      if (error) {
-        throw error;
-      }
-      
-      toast.showToast('Staff attendance updated successfully.', 'success');
-      
+
+      await persistAttendanceStatus(opt.value, idx, dayIdx, staff, false);
     } catch (err: any) {
-      
-      // Revert the UI state on error
-      setAttendanceMatrix(prev => {
-        const reverted = prev.map(row => [...row]);
-        reverted[idx][dayIdx] = attendanceMatrix[idx]?.[dayIdx] || '-';
-        return reverted;
-      });
-      
       toast.showToast(`Could not update staff attendance: ${err.message || 'Unknown error'}`, 'error');
-    } finally {
-      // Clean up
-      updatingStatusRef.current.delete(updateKey);
-      setIsUpdatingStatus(false);
     }
   };
 
@@ -2041,6 +2125,7 @@ const StaffAttendanceReport: React.FC = () => {
                       const dateStr = `${selectedMonth}-${String(dayIdx + 1).padStart(2, '0')}`;
                       const halfLeaveKey = staffMember ? `${staffMember.id}_${dateStr}` : '';
                       const halfLeave = halfLeaveKey ? halfLeavesMap.get(halfLeaveKey) : null;
+                      const isPaidLeave = halfLeaveKey ? paidLeavesMap.get(halfLeaveKey) : false;
                       
                       return (
                         <StatusCell key={dayIdx} status={status} style={{ position: 'relative' }}>
@@ -2048,6 +2133,11 @@ const StaffAttendanceReport: React.FC = () => {
                             <HalfLeaveBadge title={`Half Leave (${halfLeave.leave_type === 'first_half' ? 'First Half' : 'Second Half'})`}>
                               HL
                             </HalfLeaveBadge>
+                          )}
+                          {status === 'L' && isPaidLeave && (
+                            <PaidLeaveBadge title="Paid Leave" aria-label="Paid Leave">
+                              <AttachMoney />
+                            </PaidLeaveBadge>
                           )}
                           <span
                             ref={el => {
@@ -2239,6 +2329,84 @@ const StaffAttendanceReport: React.FC = () => {
           </>
         )}
       </TableWrapper>
+
+      {leaveDecision && (
+        <>
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: '#0006',
+              zIndex: 3999
+            }}
+            onClick={() => setLeaveDecision(null)}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: modalTheme.CARD,
+              border: `1px solid ${modalTheme.BORDER}`,
+              borderRadius: 14,
+              padding: '1.2rem',
+              width: 'min(92vw, 440px)',
+              zIndex: 4000,
+              boxShadow: '0 20px 50px rgba(0,0,0,0.25)'
+            }}
+          >
+            <h3 style={{ margin: '0 0 0.5rem 0', color: modalTheme.TEXT_PRIMARY, fontSize: '1rem' }}>Leave Type</h3>
+            <p style={{ margin: '0 0 1rem 0', color: modalTheme.TEXT_SECONDARY, fontSize: '0.9rem', lineHeight: 1.45 }}>
+              <strong>{leaveDecision.staff.name}</strong> already has an absent or leave entry in this month.
+              Choose whether this leave should be treated as paid or unpaid.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button
+                onClick={async () => {
+                  const currentDecision = leaveDecision;
+                  if (!currentDecision) return;
+                  setLeaveDecision(null);
+                  await persistAttendanceStatus('L', currentDecision.idx, currentDecision.dayIdx, currentDecision.staff, true);
+                }}
+                style={{
+                  padding: '0.65rem 1rem',
+                  borderRadius: 10,
+                  border: `1px solid ${modalTheme.BORDER}`,
+                  background: 'transparent',
+                  color: modalTheme.TEXT_PRIMARY,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Paid Leave
+              </button>
+              <button
+                onClick={async () => {
+                  const currentDecision = leaveDecision;
+                  if (!currentDecision) return;
+                  setLeaveDecision(null);
+                  await persistAttendanceStatus('L', currentDecision.idx, currentDecision.dayIdx, currentDecision.staff, false);
+                }}
+                style={{
+                  padding: '0.65rem 1rem',
+                  borderRadius: 10,
+                  border: `1px solid ${modalTheme.ACCENT}`,
+                  background: modalTheme.ACCENT,
+                  color: '#fff',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Unpaid Leave
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </Container>
   );
 };

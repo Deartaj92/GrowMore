@@ -18,6 +18,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
+import { blockNumberArrowKey, blockNumberWheelChange, payrollAmountInputSx } from '../../utils';
 
 const ModalOverlay = styled.div<{ open: boolean }>`
   position: fixed;
@@ -282,9 +283,12 @@ const CreateAdjustmentModal: React.FC<CreateAdjustmentModalProps> = ({
                 size="small"
                 value={formData.amount}
                 onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+                onKeyDown={blockNumberArrowKey}
+                onWheelCapture={blockNumberWheelChange}
                 fullWidth
                 variant="outlined"
                 inputProps={{ min: 0, step: 0.01 }}
+                sx={payrollAmountInputSx}
               />
             </FormGroup>
 
@@ -311,9 +315,11 @@ const CreateAdjustmentModal: React.FC<CreateAdjustmentModalProps> = ({
                 size="small"
                 value={formData.payrollYear}
                 onChange={(e) => setFormData({ ...formData, payrollYear: parseInt(e.target.value) || new Date().getFullYear() })}
+                onWheelCapture={blockNumberWheelChange}
                 fullWidth
                 variant="outlined"
                 inputProps={{ min: 2000, max: 2100 }}
+                sx={payrollAmountInputSx}
               />
             </FormGroup>
           </Box>
@@ -354,4 +360,3 @@ const CreateAdjustmentModal: React.FC<CreateAdjustmentModalProps> = ({
 };
 
 export default CreateAdjustmentModal;
-

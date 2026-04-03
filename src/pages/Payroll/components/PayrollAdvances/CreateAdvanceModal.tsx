@@ -19,6 +19,14 @@ import {
   Autocomplete,
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
+import PayrollDateField from '../PayrollDateField';
+import {
+  blockNumberArrowKey,
+  blockNumberWheelChange,
+  isoToDisplayDate,
+  isValidDisplayDate,
+  payrollAmountInputSx,
+} from '../../utils';
 
 const ModalOverlay = styled.div<{ open: boolean }>`
   position: fixed;
@@ -145,6 +153,9 @@ const CreateAdvanceModal: React.FC<CreateAdvanceModalProps> = ({
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [staffList, setStaffList] = useState<any[]>([]);
+  const [advanceDateDisplay, setAdvanceDateDisplay] = useState(
+    isoToDisplayDate(new Date().toISOString().split('T')[0])
+  );
   const [formData, setFormData] = useState({
     staffId: 0,
     advanceDate: new Date().toISOString().split('T')[0],
@@ -164,6 +175,7 @@ const CreateAdvanceModal: React.FC<CreateAdvanceModalProps> = ({
           repaymentAmountPerMonth: editingAdvance.repaymentAmountPerMonth,
           reason: editingAdvance.reason || '',
         });
+        setAdvanceDateDisplay(isoToDisplayDate(editingAdvance.advanceDate));
       } else {
         resetForm();
       }
@@ -187,13 +199,15 @@ const CreateAdvanceModal: React.FC<CreateAdvanceModalProps> = ({
   };
 
   const resetForm = () => {
+    const todayIso = new Date().toISOString().split('T')[0];
     setFormData({
       staffId: 0,
-      advanceDate: new Date().toISOString().split('T')[0],
+      advanceDate: todayIso,
       amount: 0,
       repaymentAmountPerMonth: 0,
       reason: '',
     });
+    setAdvanceDateDisplay(isoToDisplayDate(todayIso));
   };
 
   const handleSave = async () => {
@@ -204,6 +218,11 @@ const CreateAdvanceModal: React.FC<CreateAdvanceModalProps> = ({
 
     if (!formData.staffId) {
       showToast('Please select an employee', 'error');
+      return;
+    }
+
+    if (!isValidDisplayDate(advanceDateDisplay)) {
+      showToast('Advance date must be in dd-mm-yyyy format', 'error');
       return;
     }
 
@@ -298,14 +317,12 @@ const CreateAdvanceModal: React.FC<CreateAdvanceModalProps> = ({
 
           <FormGroup>
             <Label>Advance Date *</Label>
-            <TextField
-              type="date"
-              size="small"
-              value={formData.advanceDate}
-              onChange={(e) => setFormData({ ...formData, advanceDate: e.target.value })}
-              fullWidth
-              variant="outlined"
-              InputLabelProps={{ shrink: true }}
+            <PayrollDateField
+              value={advanceDateDisplay}
+              onChange={(isoValue, displayValue) => {
+                setAdvanceDateDisplay(displayValue);
+                setFormData({ ...formData, advanceDate: isoValue });
+              }}
             />
           </FormGroup>
 
@@ -316,9 +333,12 @@ const CreateAdvanceModal: React.FC<CreateAdvanceModalProps> = ({
               size="small"
               value={formData.amount}
               onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+              onKeyDown={blockNumberArrowKey}
+              onWheelCapture={blockNumberWheelChange}
               fullWidth
               variant="outlined"
               inputProps={{ min: 0, step: 0.01 }}
+              sx={payrollAmountInputSx}
             />
           </FormGroup>
 
@@ -329,9 +349,12 @@ const CreateAdvanceModal: React.FC<CreateAdvanceModalProps> = ({
               size="small"
               value={formData.repaymentAmountPerMonth}
               onChange={(e) => setFormData({ ...formData, repaymentAmountPerMonth: parseFloat(e.target.value) || 0 })}
+              onKeyDown={blockNumberArrowKey}
+              onWheelCapture={blockNumberWheelChange}
               fullWidth
               variant="outlined"
               inputProps={{ min: 0, step: 0.01 }}
+              sx={payrollAmountInputSx}
             />
           </FormGroup>
 
@@ -370,4 +393,3 @@ const CreateAdvanceModal: React.FC<CreateAdvanceModalProps> = ({
 };
 
 export default CreateAdvanceModal;
-

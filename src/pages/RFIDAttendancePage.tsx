@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import styled, { keyframes, css } from 'styled-components';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 // Add NDEFReader types for TypeScript
 declare global {
@@ -15,6 +16,7 @@ import { darkTheme, lightTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/useToast';
 import { supabase } from '../supabaseClient';
+import { getStudentDisplayId } from '../utils/studentUtils';
 import {
     CheckCircle,
     Cancel as XCircle,
@@ -369,7 +371,7 @@ const DateSelect = styled.input`
 
 const StatsRow = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 0.6rem;
   width: 100%;
 `;
@@ -433,6 +435,30 @@ const ClearBtn = styled.button`
   gap: 0.3rem;
   padding: 0.35rem 0.7rem;
   min-height: 32px;
+`;
+
+const FeedHeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  @media (max-width: 720px) {
+    width: 100%;
+    justify-content: space-between;
+  }
+`;
+
+const FeedSearch = styled.input`
+  ${clayInputStyle}
+  min-width: 240px;
+  height: 34px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.82rem;
+
+  @media (max-width: 720px) {
+    min-width: 0;
+    flex: 1;
+  }
 `;
 
 const FeedList = styled.div`
@@ -525,17 +551,27 @@ const FeedInfo = styled.div`
 `;
 
 const FeedName = styled.div`
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 `;
 
+const FeedFatherName = styled.span`
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-weight: 600;
+`;
+
 const FeedSub = styled.div`
   font-size: 0.76rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
+`;
+
+const FeedRollNumber = styled.span`
+  font-weight: 800;
+  color: #ec4899;
 `;
 
 const FeedTime = styled.div`
@@ -586,6 +622,34 @@ const EmptyFeed = styled.div`
   font-size: 0.9rem;
 `;
 
+const renderFeedSub = (item: ScanResult, themeObj: any) => {
+    if (!item.subAccent) {
+        return <FeedSub theme={themeObj}>{item.sub}</FeedSub>;
+    }
+
+    return (
+        <FeedSub theme={themeObj}>
+            {item.sub}
+            {' - '}
+            <FeedRollNumber theme={themeObj}>{item.subAccent}</FeedRollNumber>
+        </FeedSub>
+    );
+};
+
+const matchesFeedSearch = (item: ScanResult, search: string) => {
+    const query = search.trim().toLowerCase();
+    if (!query) return true;
+
+    return [
+        item.name,
+        item.fatherName,
+        item.sub,
+        item.subAccent,
+        item.time,
+        item.attendanceStatus,
+    ].some(value => String(value || '').toLowerCase().includes(query));
+};
+
 const MobileNfcBtn = styled.button<{ $active?: boolean }>`
   ${clayButtonStyle}
   background: ${({ $active, theme }) => $active ? getButtonPalette(theme).primaryBg : undefined};
@@ -624,10 +688,13 @@ interface ScanResult {
     id: string;
     type: 'success' | 'error' | 'warn';
     name: string;
+    fatherName?: string;
     sub: string;
+    subAccent?: string;
     time: string;
     personType: Mode;
     attendanceStatus?: 'present' | 'late';
+    attendanceLateCount?: number;
     isNew?: boolean;
 }
 
@@ -827,6 +894,10 @@ const TimeInput = styled.input`
   }
 `;
 
+const PasswordInput = styled(TimeInput)`
+  letter-spacing: 0.02em;
+`;
+
 const SettingsActions = styled.div`
   display: flex;
   justify-content: flex-end;
@@ -859,46 +930,6 @@ const ToggleCard = styled.div`
   }
 `;
 
-const StatusPanel = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 0.55rem;
-  margin-bottom: 0.8rem;
-`;
-
-const StatusCard = styled.div`
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  background: ${({ theme }) => theme.FIELD_BG};
-  border-radius: 12px;
-  padding: 0.65rem 0.75rem;
-  min-height: 72px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 0.2rem;
-`;
-
-const StatusLabel = styled.span`
-  font-size: 0.68rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-`;
-
-const StatusValue = styled.span<{ $color?: string }>`
-  font-size: 1rem;
-  font-weight: 800;
-  color: ${({ $color, theme }) => $color || theme.TEXT_PRIMARY};
-  line-height: 1.2;
-`;
-
-const StatusSub = styled.span`
-  font-size: 0.72rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  line-height: 1.3;
-`;
-
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -907,6 +938,8 @@ const RFIDAttendancePage: React.FC = () => {
     const { showToast } = useToast();
     const themeObj = theme === 'dark' ? darkTheme : lightTheme;
     const { user } = useAuth();
+    const navigate = useNavigate();
+    const location = useLocation();
     const today = getLocalToday();
 
     const [attnSettings, setAttnSettings] = useState<{
@@ -914,6 +947,8 @@ const RFIDAttendancePage: React.FC = () => {
         staff_start_time: string;
         staff_end_time: string;
         grace_period_minutes: number;
+        student_mark_late_enabled: boolean;
+        staff_mark_late_enabled: boolean;
         auto_mark_absent_enabled: boolean;
         student_auto_mark_absent_enabled: boolean;
         staff_auto_mark_absent_enabled: boolean;
@@ -926,11 +961,21 @@ const RFIDAttendancePage: React.FC = () => {
     const [scanStatus, setScanStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [statusMsg, setStatusMsg] = useState('Waiting for card scan...');
     const [feed, setFeed] = useState<ScanResult[]>([]);
+    const [feedSearch, setFeedSearch] = useState('');
     const [presentCount, setPresentCount] = useState(0);
     const [unknownCount, setUnknownCount] = useState(0);
     const [dupCount, setDupCount] = useState(0);
 
     const [showSettings, setShowSettings] = useState(false);
+    const [showSettingsPasswordModal, setShowSettingsPasswordModal] = useState(false);
+    const [settingsPassword, setSettingsPassword] = useState('');
+    const [verifyingSettingsPassword, setVerifyingSettingsPassword] = useState(false);
+    const [showClearPasswordModal, setShowClearPasswordModal] = useState(false);
+    const [clearPassword, setClearPassword] = useState('');
+    const [verifyingClearPassword, setVerifyingClearPassword] = useState(false);
+    const [showLeavePasswordModal, setShowLeavePasswordModal] = useState(false);
+    const [leavePassword, setLeavePassword] = useState('');
+    const [verifyingLeavePassword, setVerifyingLeavePassword] = useState(false);
     const [savingSettings, setSavingSettings] = useState(false);
     const [automationOverview, setAutomationOverview] = useState<any | null>(null);
     const [loadingAutomationOverview, setLoadingAutomationOverview] = useState(false);
@@ -957,6 +1002,9 @@ const RFIDAttendancePage: React.FC = () => {
     const [showSuccess, setShowSuccess] = useState(false);
     const [syncStats, setSyncStats] = useState({ success: 0, failed: 0 });
     const [scannedPerson, setScannedPerson] = useState<{ name: string; picture_url?: string } | null>(null);
+    const bypassNavigationGuardRef = useRef(false);
+    const currentPathRef = useRef(`${location.pathname}${location.search}${location.hash}`);
+    const pendingNavigationRef = useRef<{ path: string; replace?: boolean } | null>(null);
 
     const clearPersistedDailyHistory = useCallback(() => {
         if (!user?.school_id) return;
@@ -1085,6 +1133,8 @@ const RFIDAttendancePage: React.FC = () => {
                     staff_start_time: toInputTime(data.staff_start_time, '08:00'),
                     staff_end_time: toInputTime(data.staff_end_time, '14:00'),
                     auto_mark_absent_enabled: !!data.auto_mark_absent_enabled,
+                    student_mark_late_enabled: (data as any).student_mark_late_enabled !== false,
+                    staff_mark_late_enabled: (data as any).staff_mark_late_enabled !== false,
                     student_auto_mark_absent_enabled: !!(data as any).student_auto_mark_absent_enabled || (!!data.auto_mark_absent_enabled && !(data as any).staff_auto_mark_absent_enabled),
                     staff_auto_mark_absent_enabled: !!(data as any).staff_auto_mark_absent_enabled || (!!data.auto_mark_absent_enabled && !(data as any).student_auto_mark_absent_enabled),
                     student_cutoff_time: toInputTime(data.student_cutoff_time, '08:15'),
@@ -1099,6 +1149,8 @@ const RFIDAttendancePage: React.FC = () => {
                     staff_start_time: '08:00',
                     staff_end_time: '14:00',
                     grace_period_minutes: 15,
+                    student_mark_late_enabled: true,
+                    staff_mark_late_enabled: true,
                     auto_mark_absent_enabled: false,
                     student_auto_mark_absent_enabled: false,
                     staff_auto_mark_absent_enabled: false,
@@ -1195,6 +1247,46 @@ const RFIDAttendancePage: React.FC = () => {
         return data?.id ?? null;
     }, [user?.school_id]);
 
+    const fetchPersonMonthlyLateCount = useCallback(async (
+        personId: number | string,
+        personType: Mode,
+        options?: { includePendingToday?: boolean }
+    ) => {
+        if (!user?.school_id || !selectedDate || !personId) {
+            return 0;
+        }
+
+        try {
+            const sessionId = await fetchSession();
+            const selected = new Date(`${selectedDate}T00:00:00`);
+            const monthStart = new Date(selected.getFullYear(), selected.getMonth(), 1).toISOString().slice(0, 10);
+            const monthEnd = new Date(selected.getFullYear(), selected.getMonth() + 1, 0).toISOString().slice(0, 10);
+            const tableName = personType === 'student' ? 'attendance_records' : 'staff_attendance_records';
+            const personColumn = personType === 'student' ? 'student_id' : 'staff_id';
+
+            let query = supabase
+                .from(tableName)
+                .select('*', { count: 'exact', head: true })
+                .eq('school_id', user.school_id)
+                .eq(personColumn, personId)
+                .eq('status', 'late')
+                .gte('date', monthStart)
+                .lte('date', monthEnd);
+
+            if (sessionId) {
+                query = query.eq('session_id', sessionId);
+            }
+
+            const { count, error } = await query;
+            if (error) throw error;
+
+            return (count || 0) + (options?.includePendingToday ? 1 : 0);
+        } catch (error) {
+            console.error('Failed to load person monthly late count:', error);
+            return options?.includePendingToday ? 1 : 0;
+        }
+    }, [fetchSession, selectedDate, user?.school_id]);
+
     const handleSync = async () => {
         if (isSyncing || !isOnline) return;
         setIsSyncing(true);
@@ -1211,7 +1303,6 @@ const RFIDAttendancePage: React.FC = () => {
             if (result.success > 0 || result.failed > 0) {
                 setSyncStats(result);
                 setShowSuccess(true);
-
                 addFeedItem({
                     type: result.failed === 0 ? 'success' : 'warn',
                     name: 'Synchronization Complete',
@@ -1225,8 +1316,12 @@ const RFIDAttendancePage: React.FC = () => {
         }
     };
 
-    const determineStatus = (personType: Mode): 'present' | 'late' => {
+    const determineStatus = useCallback((personType: Mode): 'present' | 'late' => {
         if (!attnSettings) return 'present';
+        const markLateEnabled = personType === 'student'
+            ? attnSettings.student_mark_late_enabled
+            : attnSettings.staff_mark_late_enabled;
+        if (!markLateEnabled) return 'present';
         const startTimeStr = personType === 'student' ? attnSettings.student_start_time : attnSettings.staff_start_time;
         if (!startTimeStr) return 'present';
 
@@ -1237,7 +1332,7 @@ const RFIDAttendancePage: React.FC = () => {
         startLimit.setMinutes(startLimit.getMinutes() + (attnSettings.grace_period_minutes || 0));
 
         return now > startLimit ? 'late' : 'present';
-    };
+    }, [attnSettings]);
 
     const processUID = useCallback(async (uid: string) => {
         if (!uid || !user?.school_id || isProcessingRef.current) return;
@@ -1358,22 +1453,32 @@ const RFIDAttendancePage: React.FC = () => {
             } else {
                 // 'new' or 'offline'
                 const isOffline = result.type === 'offline';
-                const isLate = result.attendance_status === 'late';
+                const isLate = determineStatus(personType) === 'late' && result.attendance_status === 'late';
+                const lateCount = isLate
+                    ? await fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: isOffline })
+                    : undefined;
                 setScanStatus('success');
                 setStatusMsg(`${isOffline ? '(Offline) ' : ''}✓ ${p.name}`);
                 setPresentCount(c => c + 1);
 
+                const studentDisplayId = getStudentDisplayId({ id: p.person_id, roll_number: p.roll_number });
                 const subLabel = p.type === 'student'
-                    ? `${p.class_name || ''} ${p.section_name || ''}`.trim()
+                    ? `${p.class_name || ''}${p.section_name ? ` (${p.section_name})` : ''}`.trim()
                     : p.role || 'Staff';
+                const subAccent = p.type === 'student'
+                    ? (studentDisplayId ? String(studentDisplayId) : undefined)
+                    : (p.person_id ? String(p.person_id) : undefined);
 
                 addFeedItem({
                     type: 'success',
                     name: `${p.name}${isOffline ? ' (Offline)' : ''}`,
+                    fatherName: personType === 'student' ? p.father_name : undefined,
                     sub: subLabel,
+                    subAccent,
                     time,
                     personType,
                     attendanceStatus: isLate ? 'late' : 'present',
+                    attendanceLateCount: lateCount,
                 });
 
                 if (isOffline) {
@@ -1406,7 +1511,7 @@ const RFIDAttendancePage: React.FC = () => {
                 resetTimerRef.current = null;
             }, 4000);
         }
-    }, [user?.school_id, addFeedItem, selectedDate]);
+    }, [user?.school_id, addFeedItem, selectedDate, fetchPersonMonthlyLateCount, determineStatus]);
 
     const handleStartNfc = async () => {
         // --- 1. Pure Native Android APK (PhoneGap-NFC) ---
@@ -1495,7 +1600,7 @@ const RFIDAttendancePage: React.FC = () => {
 
     // UI synchronization with global background scanner
     useEffect(() => {
-        const handleGlobalScan = (e: any) => {
+        const handleGlobalScan = async (e: any) => {
             const { uid, result } = e.detail;
             if (!result || !result.person) return;
 
@@ -1577,22 +1682,32 @@ const RFIDAttendancePage: React.FC = () => {
                 showToast('Employee Checked Out!', 'success');
             } else {
                 const isOffline = result.type === 'offline';
-                const isLate = result.attendance_status === 'late';
+                const isLate = determineStatus(personType) === 'late' && result.attendance_status === 'late';
+                const lateCount = isLate
+                    ? await fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: isOffline })
+                    : undefined;
                 setScanStatus('success');
                 setStatusMsg(`${isOffline ? '(Offline) ' : ''}✓ ${p.name}`);
                 setPresentCount(c => c + 1);
 
+                const studentDisplayId = getStudentDisplayId({ id: p.person_id, roll_number: p.roll_number });
                 const subLabel = p.type === 'student'
-                    ? `${p.class_name || ''} ${p.section_name || ''}`.trim()
+                    ? `${p.class_name || ''}${p.section_name ? ` (${p.section_name})` : ''}`.trim()
                     : p.role || 'Staff';
+                const subAccent = p.type === 'student'
+                    ? (studentDisplayId ? String(studentDisplayId) : undefined)
+                    : (p.person_id ? String(p.person_id) : undefined);
 
                 addFeedItem({
                     type: 'success',
                     name: `${p.name}${isOffline ? ' (Offline)' : ''}`,
+                    fatherName: personType === 'student' ? p.father_name : undefined,
                     sub: subLabel,
+                    subAccent,
                     time,
                     personType,
                     attendanceStatus: isLate ? 'late' : 'present',
+                    attendanceLateCount: lateCount,
                 });
 
                 if (isOffline) {
@@ -1614,15 +1729,224 @@ const RFIDAttendancePage: React.FC = () => {
 
         window.addEventListener('rfid-scan-processed', handleGlobalScan);
         return () => window.removeEventListener('rfid-scan-processed', handleGlobalScan);
-    }, [addFeedItem]);
+    }, [addFeedItem, fetchPersonMonthlyLateCount, determineStatus, showToast]);
 
-    const handleClear = () => {
+    const clearFeedData = () => {
         setFeed([]);
         setPresentCount(0);
         setUnknownCount(0);
         setDupCount(0);
         clearPersistedDailyHistory();
     };
+
+    const openClearPasswordModal = () => {
+        setClearPassword('');
+        setShowClearPasswordModal(true);
+    };
+
+    const closeClearPasswordModal = () => {
+        if (verifyingClearPassword) return;
+        setShowClearPasswordModal(false);
+        setClearPassword('');
+    };
+
+    const closeLeavePasswordModal = () => {
+        if (verifyingLeavePassword) return;
+        setShowLeavePasswordModal(false);
+        setLeavePassword('');
+        pendingNavigationRef.current = null;
+    };
+
+    const verifyUserPassword = useCallback(async (password: string) => {
+        if (!user?.id) return false;
+
+        if (user.is_super_admin) {
+            const { data, error } = await supabase
+                .from('super_admins')
+                .select('password')
+                .eq('id', user.id)
+                .single();
+
+            return !error && !!data && data.password === password;
+        }
+
+        const { data, error } = await supabase
+            .from('users')
+            .select('password')
+            .eq('id', user.id)
+            .single();
+
+        return !error && !!data && data.password === password;
+    }, [user?.id, user?.is_super_admin]);
+
+    const openSettingsPasswordModal = () => {
+        setSettingsPassword('');
+        setShowSettingsPasswordModal(true);
+    };
+
+    const closeSettingsPasswordModal = () => {
+        if (verifyingSettingsPassword) return;
+        setShowSettingsPasswordModal(false);
+        setSettingsPassword('');
+    };
+
+    const verifySettingsPassword = async () => {
+        if (!user?.id) return;
+
+        if (!settingsPassword.trim()) {
+            showToast('Please enter your password.', 'error');
+            return;
+        }
+
+        setVerifyingSettingsPassword(true);
+        try {
+            const isValidPassword = await verifyUserPassword(settingsPassword);
+            if (!isValidPassword) {
+                showToast('Incorrect password.', 'error');
+                return;
+            }
+
+            setShowSettingsPasswordModal(false);
+            setSettingsPassword('');
+            setShowSettings(true);
+        } catch (error) {
+            showToast('Failed to verify password.', 'error');
+        } finally {
+            setVerifyingSettingsPassword(false);
+        }
+    };
+
+    const verifyClearPassword = async () => {
+        if (!user?.id) return;
+
+        if (!clearPassword.trim()) {
+            showToast('Please enter your password.', 'error');
+            return;
+        }
+
+        setVerifyingClearPassword(true);
+        try {
+            const isValidPassword = await verifyUserPassword(clearPassword);
+            if (!isValidPassword) {
+                showToast('Incorrect password.', 'error');
+                return;
+            }
+
+            clearFeedData();
+            setShowClearPasswordModal(false);
+            setClearPassword('');
+        } catch (error) {
+            showToast('Failed to verify password.', 'error');
+        } finally {
+            setVerifyingClearPassword(false);
+        }
+    };
+
+    const verifyLeavePassword = async () => {
+        if (!user?.id) return;
+
+        if (!leavePassword.trim()) {
+            showToast('Please enter your password.', 'error');
+            return;
+        }
+
+        setVerifyingLeavePassword(true);
+        try {
+            const isValidPassword = await verifyUserPassword(leavePassword);
+            if (!isValidPassword) {
+                showToast('Incorrect password.', 'error');
+                return;
+            }
+
+            const pendingNavigation = pendingNavigationRef.current;
+            setShowLeavePasswordModal(false);
+            setLeavePassword('');
+            pendingNavigationRef.current = null;
+
+            if (pendingNavigation) {
+                bypassNavigationGuardRef.current = true;
+                navigate(pendingNavigation.path, { replace: !!pendingNavigation.replace });
+                window.setTimeout(() => {
+                    bypassNavigationGuardRef.current = false;
+                }, 0);
+            }
+        } catch (error) {
+            showToast('Failed to verify password.', 'error');
+        } finally {
+            setVerifyingLeavePassword(false);
+        }
+    };
+
+    useEffect(() => {
+        currentPathRef.current = `${location.pathname}${location.search}${location.hash}`;
+    }, [location.hash, location.pathname, location.search]);
+
+    useEffect(() => {
+        const originalPushState = window.history.pushState.bind(window.history);
+        const originalReplaceState = window.history.replaceState.bind(window.history);
+
+        const getNextPath = (url?: string | URL | null) => {
+            if (!url) return currentPathRef.current;
+            const resolved = new URL(String(url), window.location.origin);
+            return `${resolved.pathname}${resolved.search}${resolved.hash}`;
+        };
+
+        const blockNavigation = (path: string, replace = false) => {
+            if (bypassNavigationGuardRef.current || path === currentPathRef.current) {
+                return false;
+            }
+
+            pendingNavigationRef.current = { path, replace };
+            setLeavePassword('');
+            setShowLeavePasswordModal(true);
+            return true;
+        };
+
+        window.history.pushState = function (data, unused, url) {
+            const nextPath = getNextPath(url);
+            if (blockNavigation(nextPath, false)) {
+                return;
+            }
+            originalPushState(data, unused, url);
+        };
+
+        window.history.replaceState = function (data, unused, url) {
+            const nextPath = getNextPath(url);
+            if (blockNavigation(nextPath, true)) {
+                return;
+            }
+            originalReplaceState(data, unused, url);
+        };
+
+        const handlePopState = () => {
+            const nextPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+            if (bypassNavigationGuardRef.current || nextPath === currentPathRef.current) {
+                return;
+            }
+
+            pendingNavigationRef.current = { path: nextPath, replace: false };
+            setLeavePassword('');
+            setShowLeavePasswordModal(true);
+
+            bypassNavigationGuardRef.current = true;
+            originalPushState(window.history.state, '', currentPathRef.current);
+            window.setTimeout(() => {
+                bypassNavigationGuardRef.current = false;
+            }, 0);
+        };
+
+        window.addEventListener('popstate', handlePopState);
+
+        return () => {
+            window.history.pushState = originalPushState;
+            window.history.replaceState = originalReplaceState;
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, []);
+
+    const filteredEmployeeFeed = feed.filter(item => item.personType === 'employee' && matchesFeedSearch(item, feedSearch));
+    const filteredStudentFeed = feed.filter(item => item.personType === 'student' && matchesFeedSearch(item, feedSearch));
+
     const scanIcon =
         scanStatus === 'success' ? <CheckCircle style={{ fontSize: 56 }} /> :
             scanStatus === 'error' ? <XCircle style={{ fontSize: 56 }} /> :
@@ -1630,7 +1954,24 @@ const RFIDAttendancePage: React.FC = () => {
 
     // Auto-focus the hidden input
     useEffect(() => {
-        const focusInput = () => {
+        const focusInput = (event?: MouseEvent) => {
+            const target = event?.target as HTMLElement | null;
+            if (target) {
+                const tagName = target.tagName;
+                const isInteractive =
+                    target.isContentEditable ||
+                    tagName === 'INPUT' ||
+                    tagName === 'TEXTAREA' ||
+                    tagName === 'SELECT' ||
+                    tagName === 'BUTTON' ||
+                    tagName === 'A' ||
+                    !!target.closest('input, textarea, select, button, a, [contenteditable="true"]');
+
+                if (isInteractive) {
+                    return;
+                }
+            }
+
             if (hiddenInputRef.current) hiddenInputRef.current.focus();
         };
         focusInput();
@@ -1685,12 +2026,186 @@ const RFIDAttendancePage: React.FC = () => {
                         </div>
                     </ProminentDate>
 
-                    <SecondaryBtn theme={themeObj} onClick={() => setShowSettings(true)}>
+                    <SecondaryBtn theme={themeObj} onClick={openSettingsPasswordModal}>
                         <SettingsIcon style={{ fontSize: 18 }} />
                         Settings
                     </SecondaryBtn>
                 </div>
             </TopBar>
+
+            {showSettingsPasswordModal && ReactDOM.createPortal(
+                <ModalOverlay onClick={closeSettingsPasswordModal}>
+                    <ModalContent
+                        theme={themeObj}
+                        onClick={e => e.stopPropagation()}
+                        style={{ maxWidth: 440 }}
+                    >
+                        <ModalHeader theme={themeObj}>
+                            <ModalTitleBlock theme={themeObj}>
+                                <h2>
+                                    <SettingsIcon /> Verify Password
+                                </h2>
+                                <p>Enter your login password to open attendance settings.</p>
+                            </ModalTitleBlock>
+                        </ModalHeader>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                            <Label theme={themeObj}>Password</Label>
+                            <PasswordInput
+                                theme={themeObj}
+                                type="password"
+                                value={settingsPassword}
+                                onChange={e => setSettingsPassword(e.target.value)}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        verifySettingsPassword();
+                                    }
+                                }}
+                                placeholder="Enter your password"
+                                autoFocus
+                            />
+                            <InputHint theme={themeObj}>Use the same password you used to log in.</InputHint>
+                        </div>
+
+                        <SettingsActions>
+                            <SecondaryBtn
+                                theme={themeObj}
+                                style={{ minWidth: 140 }}
+                                onClick={closeSettingsPasswordModal}
+                                disabled={verifyingSettingsPassword}
+                            >
+                                Cancel
+                            </SecondaryBtn>
+                            <SecondaryBtn
+                                theme={themeObj}
+                                style={{ minWidth: 180, background: '#3b82f6', color: '#fff', borderColor: '#3b82f6' }}
+                                onClick={verifySettingsPassword}
+                                disabled={verifyingSettingsPassword}
+                            >
+                                {verifyingSettingsPassword ? 'Verifying...' : 'Open Settings'}
+                            </SecondaryBtn>
+                        </SettingsActions>
+                    </ModalContent>
+                </ModalOverlay>,
+                document.body
+            )}
+
+            {showClearPasswordModal && ReactDOM.createPortal(
+                <ModalOverlay onClick={closeClearPasswordModal}>
+                    <ModalContent
+                        theme={themeObj}
+                        onClick={e => e.stopPropagation()}
+                        style={{ maxWidth: 440 }}
+                    >
+                        <ModalHeader theme={themeObj}>
+                            <ModalTitleBlock theme={themeObj}>
+                                <h2>
+                                    <RefreshCw /> Verify Password
+                                </h2>
+                                <p>Enter your login password to clear the scan feed.</p>
+                            </ModalTitleBlock>
+                        </ModalHeader>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                            <Label theme={themeObj}>Password</Label>
+                            <PasswordInput
+                                theme={themeObj}
+                                type="password"
+                                value={clearPassword}
+                                onChange={e => setClearPassword(e.target.value)}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        verifyClearPassword();
+                                    }
+                                }}
+                                placeholder="Enter your password"
+                                autoFocus
+                            />
+                            <InputHint theme={themeObj}>Use the same password you used to log in.</InputHint>
+                        </div>
+
+                        <SettingsActions>
+                            <SecondaryBtn
+                                theme={themeObj}
+                                style={{ minWidth: 140 }}
+                                onClick={closeClearPasswordModal}
+                                disabled={verifyingClearPassword}
+                            >
+                                Cancel
+                            </SecondaryBtn>
+                            <SecondaryBtn
+                                theme={themeObj}
+                                style={{ minWidth: 180, background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}
+                                onClick={verifyClearPassword}
+                                disabled={verifyingClearPassword}
+                            >
+                                {verifyingClearPassword ? 'Verifying...' : 'Clear Feed'}
+                            </SecondaryBtn>
+                        </SettingsActions>
+                    </ModalContent>
+                </ModalOverlay>,
+                document.body
+            )}
+
+            {showLeavePasswordModal && ReactDOM.createPortal(
+                <ModalOverlay onClick={closeLeavePasswordModal}>
+                    <ModalContent
+                        theme={themeObj}
+                        onClick={e => e.stopPropagation()}
+                        style={{ maxWidth: 440 }}
+                    >
+                        <ModalHeader theme={themeObj}>
+                            <ModalTitleBlock theme={themeObj}>
+                                <h2>
+                                    <SettingsIcon /> Verify Password
+                                </h2>
+                                <p>Enter your login password to leave this page.</p>
+                            </ModalTitleBlock>
+                        </ModalHeader>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                            <Label theme={themeObj}>Password</Label>
+                            <PasswordInput
+                                theme={themeObj}
+                                type="password"
+                                value={leavePassword}
+                                onChange={e => setLeavePassword(e.target.value)}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        verifyLeavePassword();
+                                    }
+                                }}
+                                placeholder="Enter your password"
+                                autoFocus
+                            />
+                            <InputHint theme={themeObj}>Use the same password you used to log in.</InputHint>
+                        </div>
+
+                        <SettingsActions>
+                            <SecondaryBtn
+                                theme={themeObj}
+                                style={{ minWidth: 140 }}
+                                onClick={closeLeavePasswordModal}
+                                disabled={verifyingLeavePassword}
+                            >
+                                Stay Here
+                            </SecondaryBtn>
+                            <SecondaryBtn
+                                theme={themeObj}
+                                style={{ minWidth: 180, background: '#3b82f6', color: '#fff', borderColor: '#3b82f6' }}
+                                onClick={verifyLeavePassword}
+                                disabled={verifyingLeavePassword}
+                            >
+                                {verifyingLeavePassword ? 'Verifying...' : 'Leave Page'}
+                            </SecondaryBtn>
+                        </SettingsActions>
+                    </ModalContent>
+                </ModalOverlay>,
+                document.body
+            )}
 
             {showSettings && attnSettings && ReactDOM.createPortal(
                 <ModalOverlay onClick={() => setShowSettings(false)}>
@@ -1704,77 +2219,6 @@ const RFIDAttendancePage: React.FC = () => {
                             </ModalTitleBlock>
                         </ModalHeader>
 
-                        <StatusPanel>
-                            <StatusCard theme={themeObj}>
-                                <StatusLabel theme={themeObj}>Last Backend Run</StatusLabel>
-                                <StatusValue theme={themeObj}>
-                                    {loadingAutomationOverview ? 'Loading...' : formatAutomationRunAt(automationOverview?.last_run_at)}
-                                </StatusValue>
-                                <StatusSub theme={themeObj}>
-                                    {automationOverview?.local_date ? `School date ${automationOverview.local_date}` : 'Updates every 10 minutes via pg_cron'}
-                                </StatusSub>
-                            </StatusCard>
-                            <StatusCard theme={themeObj}>
-                                <StatusLabel theme={themeObj}>Students</StatusLabel>
-                                <StatusValue
-                                    theme={themeObj}
-                                    $color={automationOverview?.student_auto_enabled ? '#22c55e' : '#94a3b8'}
-                                >
-                                    {automationOverview?.student_auto_enabled ? 'Automation On' : 'Automation Off'}
-                                </StatusValue>
-                                <StatusSub theme={themeObj}>
-                                    {`Absent ${automationOverview?.last_student_absent_marked ?? 0} · Leave ${automationOverview?.last_student_leave_marked ?? 0}`}
-                                </StatusSub>
-                            </StatusCard>
-                            <StatusCard theme={themeObj}>
-                                <StatusLabel theme={themeObj}>Staff</StatusLabel>
-                                <StatusValue
-                                    theme={themeObj}
-                                    $color={automationOverview?.staff_auto_enabled ? '#22c55e' : '#94a3b8'}
-                                >
-                                    {automationOverview?.staff_auto_enabled ? 'Automation On' : 'Automation Off'}
-                                </StatusValue>
-                                <StatusSub theme={themeObj}>
-                                    {`Absent ${automationOverview?.last_staff_absent_marked ?? 0} · Leave ${automationOverview?.last_staff_leave_marked ?? 0}`}
-                                </StatusSub>
-                            </StatusCard>
-                            <StatusCard theme={themeObj}>
-                                <StatusLabel theme={themeObj}>Manual-Only Today</StatusLabel>
-                                <StatusValue theme={themeObj} $color="#f59e0b">
-                                    {(automationOverview?.today_manual_only_students ?? 0) + (automationOverview?.today_manual_only_staff ?? 0)}
-                                </StatusValue>
-                                <StatusSub theme={themeObj}>
-                                    {`Students ${automationOverview?.today_manual_only_students ?? 0} · Staff ${automationOverview?.today_manual_only_staff ?? 0}`}
-                                </StatusSub>
-                            </StatusCard>
-                            <StatusCard theme={themeObj}>
-                                <StatusLabel theme={themeObj}>Approved Leaves Today</StatusLabel>
-                                <StatusValue theme={themeObj} $color="#3b82f6">
-                                    {(automationOverview?.today_approved_student_leaves ?? 0) + (automationOverview?.today_approved_staff_leaves ?? 0)}
-                                </StatusValue>
-                                <StatusSub theme={themeObj}>
-                                    {`Students ${automationOverview?.today_approved_student_leaves ?? 0} · Staff ${automationOverview?.today_approved_staff_leaves ?? 0}`}
-                                </StatusSub>
-                            </StatusCard>
-                            <StatusCard theme={themeObj}>
-                                <StatusLabel theme={themeObj}>Staff First-Half Leave</StatusLabel>
-                                <StatusValue theme={themeObj} $color="#8b5cf6">
-                                    {automationOverview?.today_staff_first_half_leaves ?? 0}
-                                </StatusValue>
-                                <StatusSub theme={themeObj}>
-                                    Auto-marked as leave before absence cutoff.
-                                </StatusSub>
-                            </StatusCard>
-                            <StatusCard theme={themeObj}>
-                                <StatusLabel theme={themeObj}>Manual Skips Last Run</StatusLabel>
-                                <StatusValue theme={themeObj} $color="#ef4444">
-                                    {(automationOverview?.last_student_manual_skipped ?? 0) + (automationOverview?.last_staff_manual_skipped ?? 0)}
-                                </StatusValue>
-                                <StatusSub theme={themeObj}>
-                                    {`Students ${automationOverview?.last_student_manual_skipped ?? 0} · Staff ${automationOverview?.last_staff_manual_skipped ?? 0}`}
-                                </StatusSub>
-                            </StatusCard>
-                        </StatusPanel>
 
                         <SettingsGrid>
                             <FormGroup>
@@ -1854,6 +2298,47 @@ const RFIDAttendancePage: React.FC = () => {
                                 />
                                 <InputHint theme={themeObj}>Used when app is closed.</InputHint>
                             </FormGroup>
+
+                            <WideFormGroup>
+                                <Label theme={themeObj}>Mark Late</Label>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem' }}>
+                                    <ToggleCard theme={themeObj}>
+                                        <input
+                                            type="checkbox"
+                                            checked={!!attnSettings.student_mark_late_enabled}
+                                            onChange={e => setAttnSettings({
+                                                ...attnSettings,
+                                                student_mark_late_enabled: e.target.checked
+                                            })}
+                                            style={{ marginTop: 4 }}
+                                        />
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                            <span style={{ fontWeight: 700 }}>Students</span>
+                                            <span style={{ fontSize: '0.78rem', lineHeight: 1.35, color: themeObj.TEXT_SECONDARY }}>
+                                                Enable late marking for student scans.
+                                            </span>
+                                        </div>
+                                    </ToggleCard>
+                                    <ToggleCard theme={themeObj}>
+                                        <input
+                                            type="checkbox"
+                                            checked={!!attnSettings.staff_mark_late_enabled}
+                                            onChange={e => setAttnSettings({
+                                                ...attnSettings,
+                                                staff_mark_late_enabled: e.target.checked
+                                            })}
+                                            style={{ marginTop: 4 }}
+                                        />
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                            <span style={{ fontWeight: 700 }}>Staff</span>
+                                            <span style={{ fontSize: '0.78rem', lineHeight: 1.35, color: themeObj.TEXT_SECONDARY }}>
+                                                Enable late marking for staff scans.
+                                            </span>
+                                        </div>
+                                    </ToggleCard>
+                                </div>
+                                <InputHint theme={themeObj}>If disabled, late arrivals are marked present instead.</InputHint>
+                            </WideFormGroup>
 
                             <WideFormGroup>
                                 <Label theme={themeObj}>Auto-Mark Missing Attendance</Label>
@@ -2018,12 +2503,19 @@ const RFIDAttendancePage: React.FC = () => {
                             <Clock style={{ fontSize: 16 }} />
                             Live Scan Feed
                         </FeedTitle>
-                        <div style={{ display: 'flex', gap: '0.4rem' }}>
-                            <ClearBtn theme={themeObj} onClick={handleClear}>
+                        <FeedHeaderActions>
+                            <ClearBtn theme={themeObj} onClick={openClearPasswordModal}>
                                 <RefreshCw style={{ fontSize: 14 }} />
                                 Clear
                             </ClearBtn>
-                        </div>
+                            <FeedSearch
+                                theme={themeObj}
+                                type="text"
+                                value={feedSearch}
+                                onChange={e => setFeedSearch(e.target.value)}
+                                placeholder="Search scans..."
+                            />
+                        </FeedHeaderActions>
                     </FeedHeader>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', flex: 1, minHeight: 0 }} className="feed-split-grid">
@@ -2037,17 +2529,17 @@ const RFIDAttendancePage: React.FC = () => {
                         <FeedSection theme={themeObj}>
                             <SectionHeader theme={themeObj} $mode="employee">
                                 <span>Employees</span>
-                                <span style={{ opacity: 0.8 }}>{feed.filter(i => i.personType === 'employee').length}</span>
+                                <span style={{ opacity: 0.8 }}>{filteredEmployeeFeed.length}</span>
                             </SectionHeader>
                             <SectionBody>
                                 <FeedList>
-                                    {feed.filter(i => i.personType === 'employee').length === 0 ? (
+                                    {filteredEmployeeFeed.length === 0 ? (
                                         <EmptyFeed theme={themeObj}>
                                             <Scan style={{ fontSize: 32, opacity: 0.3 }} />
-                                            <span>No employee scans</span>
+                                            <span>{feedSearch.trim() ? 'No matching employee scans' : 'No employee scans'}</span>
                                         </EmptyFeed>
                                     ) : (
-                                        feed.filter(i => i.personType === 'employee').map(item => (
+                                        filteredEmployeeFeed.map(item => (
                                             <FeedItem key={item.id} $type={item.type} $personType={item.personType} $new={item.isNew} theme={themeObj}>
                                                 <FeedIcon $type={item.type} $personType={item.personType}>
                                                     {item.type === 'success' ? <UserCheck style={{ fontSize: 16 }} /> :
@@ -2055,13 +2547,23 @@ const RFIDAttendancePage: React.FC = () => {
                                                             <XCircle style={{ fontSize: 16 }} />}
                                                 </FeedIcon>
                                                 <FeedInfo>
-                                                    <FeedName theme={themeObj}>{item.name}</FeedName>
-                                                    <FeedSub theme={themeObj}>{item.sub}</FeedSub>
+                                                    <FeedName theme={themeObj}>
+                                                        {item.name}
+                                                        {item.personType === 'student' && item.fatherName && (
+                                                            <>
+                                                                {' - '}
+                                                                <FeedFatherName theme={themeObj}>{item.fatherName}</FeedFatherName>
+                                                            </>
+                                                        )}
+                                                    </FeedName>
+                                                    {renderFeedSub(item, themeObj)}
                                                 </FeedInfo>
                                                 <FeedTime>
                                                     {item.attendanceStatus && (
                                                         <FeedAttendanceStatus $status={item.attendanceStatus}>
-                                                            {item.attendanceStatus === 'late' ? 'Late' : 'Present'}
+                                                            {item.attendanceStatus === 'late'
+                                                                ? `Late${item.attendanceLateCount ? ` (${item.attendanceLateCount})` : ''}`
+                                                                : 'Present'}
                                                         </FeedAttendanceStatus>
                                                     )}
                                                     <FeedTimeLabel theme={themeObj}>{item.time}</FeedTimeLabel>
@@ -2077,17 +2579,17 @@ const RFIDAttendancePage: React.FC = () => {
                         <FeedSection theme={themeObj}>
                             <SectionHeader theme={themeObj} $mode="student">
                                 <span>Students</span>
-                                <span style={{ opacity: 0.6 }}>{feed.filter(i => i.personType === 'student').length}</span>
+                                <span style={{ opacity: 0.6 }}>{filteredStudentFeed.length}</span>
                             </SectionHeader>
                             <SectionBody>
                                 <FeedList>
-                                    {feed.filter(i => i.personType === 'student').length === 0 ? (
+                                    {filteredStudentFeed.length === 0 ? (
                                         <EmptyFeed theme={themeObj}>
                                             <Scan style={{ fontSize: 32, opacity: 0.3 }} />
-                                            <span>No student scans</span>
+                                            <span>{feedSearch.trim() ? 'No matching student scans' : 'No student scans'}</span>
                                         </EmptyFeed>
                                     ) : (
-                                        feed.filter(i => i.personType === 'student').map(item => (
+                                        filteredStudentFeed.map(item => (
                                             <FeedItem key={item.id} $type={item.type} $personType={item.personType} $new={item.isNew} theme={themeObj}>
                                                 <FeedIcon $type={item.type} $personType={item.personType}>
                                                     {item.type === 'success' ? <UserCheck style={{ fontSize: 16 }} /> :
@@ -2095,13 +2597,23 @@ const RFIDAttendancePage: React.FC = () => {
                                                             <XCircle style={{ fontSize: 16 }} />}
                                                 </FeedIcon>
                                                 <FeedInfo>
-                                                    <FeedName theme={themeObj}>{item.name}</FeedName>
-                                                    <FeedSub theme={themeObj}>{item.sub}</FeedSub>
+                                                    <FeedName theme={themeObj}>
+                                                        {item.name}
+                                                        {item.personType === 'student' && item.fatherName && (
+                                                            <>
+                                                                {' - '}
+                                                                <FeedFatherName theme={themeObj}>{item.fatherName}</FeedFatherName>
+                                                            </>
+                                                        )}
+                                                    </FeedName>
+                                                    {renderFeedSub(item, themeObj)}
                                                 </FeedInfo>
                                                 <FeedTime>
                                                     {item.attendanceStatus && (
                                                         <FeedAttendanceStatus $status={item.attendanceStatus}>
-                                                            {item.attendanceStatus === 'late' ? 'Late' : 'Present'}
+                                                            {item.attendanceStatus === 'late'
+                                                                ? `Late${item.attendanceLateCount ? ` (${item.attendanceLateCount})` : ''}`
+                                                                : 'Present'}
                                                         </FeedAttendanceStatus>
                                                     )}
                                                     <FeedTimeLabel theme={themeObj}>{item.time}</FeedTimeLabel>
@@ -2187,4 +2699,5 @@ const RFIDAttendancePage: React.FC = () => {
 };
 
 export default RFIDAttendancePage;
+
 

@@ -19,6 +19,16 @@ import {
 } from '@mui/material';
 import { Close as CloseIcon, Payment as PaymentIcon } from '@mui/icons-material';
 import Loader from '../../../../components/Loader';
+import PayrollDateField from '../PayrollDateField';
+import {
+  blockNumberArrowKey,
+  blockNumberWheelChange,
+  formatPayrollCurrency,
+  isoToDisplayDate,
+  isValidDisplayDate,
+  payrollAmountInputSx,
+} from '../../utils';
+import { usePayrollDisplaySettings } from '../../PayrollDisplaySettingsContext';
 
 const ModalOverlay = styled.div<{ open: boolean }>`
   position: fixed;
@@ -156,9 +166,14 @@ const ProcessPaymentModal: React.FC<ProcessPaymentModalProps> = ({
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
   const { user } = useAuth() as any;
   const { showToast } = useToast();
+  const { roundUpAmounts, formatCurrency } = usePayrollDisplaySettings();
   const [loading, setLoading] = useState(false);
   const [generation, setGeneration] = useState<PayrollGeneration | null>(null);
   const [remainingBalance, setRemainingBalance] = useState(0);
+  const [defaultPaymentMode, setDefaultPaymentMode] = useState<'cash' | 'bank_transfer' | 'cheque' | 'easypaisa_jazzcash' | 'other'>('bank_transfer');
+  const [paymentDateDisplay, setPaymentDateDisplay] = useState(
+    isoToDisplayDate(new Date().toISOString().split('T')[0])
+  );
   const [formData, setFormData] = useState({
     paymentDate: new Date().toISOString().split('T')[0],
     amount: 0,
@@ -168,12 +183,31 @@ const ProcessPaymentModal: React.FC<ProcessPaymentModalProps> = ({
   });
 
   useEffect(() => {
-    if (open && generationId && user?.school_id) {
-      loadGeneration();
-    } else if (open) {
-      resetForm();
+    if (open && user?.school_id) {
+      loadDefaultPaymentMode();
+      if (generationId) {
+        loadGeneration();
+      } else {
+        resetForm();
+      }
     }
   }, [open, generationId, user?.school_id]);
+
+  const loadDefaultPaymentMode = async () => {
+    if (!user?.school_id) return;
+
+    try {
+      const settings = await payrollService.getPayrollSettings(user.school_id);
+      const paymentMode = settings?.defaultPaymentMode || 'bank_transfer';
+      setDefaultPaymentMode(paymentMode);
+      setFormData(prev => ({
+        ...prev,
+        paymentMode: paymentMode,
+      }));
+    } catch (error) {
+      console.error('Error loading payroll settings:', error);
+    }
+  };
 
   const loadGeneration = async () => {
     if (!generationId || !user?.school_id) return;
@@ -204,13 +238,15 @@ const ProcessPaymentModal: React.FC<ProcessPaymentModalProps> = ({
   };
 
   const resetForm = () => {
+    const todayIso = new Date().toISOString().split('T')[0];
     setFormData({
-      paymentDate: new Date().toISOString().split('T')[0],
+      paymentDate: todayIso,
       amount: 0,
-      paymentMode: 'bank_transfer',
+      paymentMode: defaultPaymentMode,
       referenceNo: '',
       remarks: '',
     });
+    setPaymentDateDisplay(isoToDisplayDate(todayIso));
     setGeneration(null);
   };
 
@@ -225,13 +261,18 @@ const ProcessPaymentModal: React.FC<ProcessPaymentModalProps> = ({
       return;
     }
 
+    if (!isValidDisplayDate(paymentDateDisplay)) {
+      showToast('Payment date must be in dd-mm-yyyy format', 'error');
+      return;
+    }
+
     if (formData.amount <= 0) {
       showToast('Payment amount must be greater than 0', 'error');
       return;
     }
 
     if (formData.amount > remainingBalance) {
-      showToast(`Payment amount cannot exceed remaining balance of Rs. ${remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 'error');
+      showToast(`Payment amount cannot exceed remaining balance of ${formatCurrency(remainingBalance)}`, 'error');
       return;
     }
 
@@ -280,7 +321,7 @@ const ProcessPaymentModal: React.FC<ProcessPaymentModalProps> = ({
                     {generation.staff?.name} • {generation.payrollMonth}/{generation.payrollYear}
                   </Typography>
                   <Typography variant="caption" sx={{ fontSize: { xs: '0.6875rem', sm: '0.75rem' }, fontWeight: 600, color: remainingBalance > 0 ? '#ef4444' : '#10b981' }}>
-                    Balance: Rs. {remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    Balance: {formatCurrency(remainingBalance)}
                   </Typography>
                 </Box>
               </Box>
@@ -289,14 +330,12 @@ const ProcessPaymentModal: React.FC<ProcessPaymentModalProps> = ({
 
           <FormGroup>
             <Label>Payment Date *</Label>
-            <TextField
-              type="date"
-              size="small"
-              value={formData.paymentDate}
-              onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
-              fullWidth
-              variant="outlined"
-              InputLabelProps={{ shrink: true }}
+            <PayrollDateField
+              value={paymentDateDisplay}
+              onChange={(isoValue, displayValue) => {
+                setPaymentDateDisplay(displayValue);
+                setFormData({ ...formData, paymentDate: isoValue });
+              }}
               sx={{
                 '& .MuiInputBase-root': {
                   fontSize: { xs: '0.75rem', sm: '0.8125rem' },
@@ -313,11 +352,14 @@ const ProcessPaymentModal: React.FC<ProcessPaymentModalProps> = ({
               size="small"
               value={formData.amount}
               onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+              onKeyDown={blockNumberArrowKey}
+              onWheelCapture={blockNumberWheelChange}
               fullWidth
               variant="outlined"
               inputProps={{ min: 0, max: remainingBalance, step: 0.01 }}
-              helperText={`Maximum: Rs. ${remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
+              helperText={`Maximum: ${formatPayrollCurrency(remainingBalance, roundUpAmounts)}`}
               sx={{
+                ...payrollAmountInputSx,
                 '& .MuiInputBase-root': {
                   fontSize: { xs: '0.75rem', sm: '0.8125rem' },
                   height: { xs: '36px', sm: '32px' },
@@ -438,4 +480,3 @@ const ProcessPaymentModal: React.FC<ProcessPaymentModalProps> = ({
 };
 
 export default ProcessPaymentModal;
-

@@ -15,6 +15,7 @@ export interface PayrollSettings {
   lateDeductionType?: 'fixed' | 'percentage';
   allowLeaveBonus?: boolean;
   leaveBonusDays?: number; // 1 or 2 days
+  roundUpAmounts?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -107,7 +108,7 @@ export interface PayrollGeneration {
   lateDeductions?: number;
   advanceDeductions?: number;
   attendanceData?: {
-    records: Array<{ status: string; date: string }>;
+    records: Array<{ status: string; date: string; paidLeave?: boolean }>;
     halfLeaves: Array<{ date: string; type: 'first_half' | 'second_half' }>;
     summary: {
       workingDays: number;
@@ -116,6 +117,7 @@ export interface PayrollGeneration {
       absentDays: number;
       lateDays: number;
       halfDayLeaves: number;
+      paidLeaveDays?: number;
     };
     dateRange: {
       startDate: string;
@@ -214,8 +216,24 @@ export interface PayrollPayment {
   id: number;
   schoolId: number;
   generationId: number;
+  paymentGroupId?: string;
   paymentDate: string;
   amount: number;
+  totalRemainingBeforePayment?: number;
+  remainingAfterPayment?: number;
+  oldBalanceAmount?: number;
+  currentMonthGross?: number;
+  currentMonthDeductions?: number;
+  priorPaymentsCurrentMonth?: number;
+  netAmount?: number;
+  attendancePresent?: number;
+  attendanceLeave?: number;
+  attendanceAbsent?: number;
+  attendanceLate?: number;
+  absentDeductionAmount?: number;
+  leaveDeductionAmount?: number;
+  lateDeductionAmount?: number;
+  advanceDeductionAmount?: number;
   paymentMode: 'cash' | 'bank_transfer' | 'cheque' | 'easypaisa_jazzcash' | 'other';
   referenceNo?: string;
   remarks?: string;
@@ -225,11 +243,25 @@ export interface PayrollPayment {
   updatedAt?: string;
   // Joined data
   generation?: PayrollGeneration;
+  items?: PayrollPaymentItem[];
   receivedByUser?: {
     id: number;
     name: string;
     email: string;
   };
+}
+
+export interface PayrollPaymentItem {
+  id: number;
+  schoolId: number;
+  paymentId: number;
+  generationId: number;
+  amountDueBeforePayment: number;
+  paidAmount: number;
+  remainingAfterPayment: number;
+  displayOrder: number;
+  createdAt?: string;
+  generation?: PayrollGeneration;
 }
 
 export interface PayrollAdvance {
@@ -348,6 +380,7 @@ export interface AttendanceSummary {
   absentDays: number;
   halfDayLeaves: number;
   lateDays: number;
+  paidLeaveDays?: number;
 }
 
 export interface SalaryCalculationResult {
@@ -397,6 +430,7 @@ export interface ProcessPaymentInput {
   paymentDate: string;
   amount: number;
   paymentMode: 'cash' | 'bank_transfer' | 'cheque' | 'easypaisa_jazzcash' | 'other';
+  paymentGroupId?: string;
   referenceNo?: string;
   remarks?: string;
 }
@@ -407,4 +441,3 @@ export interface PayslipData extends PayrollGeneration {
   advances?: PayrollAdvance[];
   adjustments?: PayrollAdjustment[];
 }
-

@@ -19,12 +19,16 @@ import {
   Add as AddIcon,
   Search as SearchIcon,
   Refresh as RefreshIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import Loader from '../../../../components/Loader';
 import CreateAdjustmentModal from './CreateAdjustmentModal';
+import { usePayrollDisplaySettings } from '../../PayrollDisplaySettingsContext';
 import {
   PayrollContainer,
-  ContentCard,
+  ToolbarCard,
+  ToolbarRow,
+  ToolbarGroup,
   TableWrapper,
   StyledTable,
   StatusBadge,
@@ -32,6 +36,10 @@ import {
   EmptyStateIcon,
   EmptyStateTitle,
   EmptyStateText,
+  PageHeading,
+  PageTitle,
+  PageSubtitle,
+  IconButton,
 } from '../../styles';
 
 
@@ -40,11 +48,13 @@ const PayrollAdjustmentsList: React.FC = () => {
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
   const { user } = useAuth() as any;
   const { showToast } = useToast();
+  const { formatCurrency } = usePayrollDisplaySettings();
   const [loading, setLoading] = useState(true);
   const [adjustments, setAdjustments] = useState<PayrollAdjustment[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [deletingAdjustmentId, setDeletingAdjustmentId] = useState<number | null>(null);
 
   useEffect(() => {
     if (user?.school_id) {
@@ -83,6 +93,34 @@ const PayrollAdjustmentsList: React.FC = () => {
     return true;
   });
 
+  const handleDeleteAdjustment = async (adjustment: PayrollAdjustment) => {
+    if (!user?.school_id) {
+      showToast('User not authenticated', 'error');
+      return;
+    }
+
+    if (adjustment.isApplied || adjustment.appliedToGenerationId) {
+      showToast('This adjustment is already included in a payroll and cannot be deleted', 'error');
+      return;
+    }
+
+    if (!window.confirm('Are you sure you want to delete this adjustment?')) {
+      return;
+    }
+
+    try {
+      setDeletingAdjustmentId(adjustment.id);
+      await payrollService.deleteAdjustment(user.school_id, adjustment.id, user.id);
+      showToast('Adjustment deleted successfully', 'success');
+      await loadAdjustments();
+    } catch (error: any) {
+      console.error('Error deleting adjustment:', error);
+      showToast(error.message || 'Failed to delete adjustment', 'error');
+    } finally {
+      setDeletingAdjustmentId(null);
+    }
+  };
+
   if (loading) {
     return <Loader />;
   }
@@ -98,8 +136,18 @@ const PayrollAdjustmentsList: React.FC = () => {
 
   return (
     <PayrollContainer>
-      {/* Header matching Generate Payroll tab style */}
-      <ContentCard style={{ padding: '0.75rem 1rem', marginBottom: '0.375rem' }}>
+      <ToolbarCard>
+        <ToolbarRow>
+          <ToolbarGroup>
+            <PageHeading>
+              <PageTitle>Payroll Adjustments</PageTitle>
+              <PageSubtitle>Create and review bonuses, fines, and extra deductions inside the same clay-styled shell as the rest of payroll.</PageSubtitle>
+            </PageHeading>
+          </ToolbarGroup>
+        </ToolbarRow>
+      </ToolbarCard>
+
+      <ToolbarCard>
         <Box display="flex" gap={1} alignItems="flex-end" flexWrap="wrap" justifyContent="space-between" sx={{ 
           '@media (max-width: 768px)': { 
             gap: 0.75,
@@ -192,7 +240,7 @@ const PayrollAdjustmentsList: React.FC = () => {
             </Button>
           </Box>
         </Box>
-      </ContentCard>
+      </ToolbarCard>
 
       <TableWrapper>
         <StyledTable>
@@ -204,12 +252,13 @@ const PayrollAdjustmentsList: React.FC = () => {
               <th>Month/Year</th>
               <th>Reason</th>
               <th>Status</th>
+              <th style={{ textAlign: 'center', width: '84px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredAdjustments.length === 0 ? (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={7}>
                   <EmptyStateContainer>
                     <EmptyStateIcon><AddIcon /></EmptyStateIcon>
                     <EmptyStateTitle>{searchTerm ? 'No adjustments found matching your search' : 'No adjustments recorded yet'}</EmptyStateTitle>
@@ -230,7 +279,7 @@ const PayrollAdjustmentsList: React.FC = () => {
                   </td>
                   <td style={{ textAlign: 'right', fontWeight: 600 }}>
                     {adjustment.adjustmentType === 'bonus' ? '+' : '-'}
-                    Rs. {adjustment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    {formatCurrency(adjustment.amount)}
                   </td>
                   <td>
                     {adjustment.payrollMonth}/{adjustment.payrollYear}
@@ -242,6 +291,37 @@ const PayrollAdjustmentsList: React.FC = () => {
                     <StatusBadge status={adjustment.isApplied ? 'paid' : 'pending'}>
                       {adjustment.isApplied ? 'Applied' : 'Pending'}
                     </StatusBadge>
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    {!adjustment.isApplied && !adjustment.appliedToGenerationId ? (
+                      <IconButton
+                        onClick={() => handleDeleteAdjustment(adjustment)}
+                        disabled={deletingAdjustmentId === adjustment.id}
+                        title="Delete adjustment"
+                        style={{
+                          color: '#ef4444',
+                          width: '28px',
+                          height: '28px',
+                        }}
+                      >
+                        {deletingAdjustmentId === adjustment.id ? (
+                          <div style={{
+                            width: '14px',
+                            height: '14px',
+                            border: '2px solid #ef4444',
+                            borderTopColor: 'transparent',
+                            borderRadius: '50%',
+                            animation: 'spin 0.6s linear infinite'
+                          }} />
+                        ) : (
+                          <DeleteIcon style={{ fontSize: '0.9rem' }} />
+                        )}
+                      </IconButton>
+                    ) : (
+                      <span style={{ fontSize: '0.72rem', color: theme.TEXT_SECONDARY }}>
+                        Locked
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))
@@ -265,4 +345,3 @@ const PayrollAdjustmentsList: React.FC = () => {
 };
 
 export default PayrollAdjustmentsList;
-

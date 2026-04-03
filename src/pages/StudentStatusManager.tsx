@@ -253,6 +253,12 @@ const StudentCard = styled.div<{ status: string }>`
     box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceHoverShadow};
     border-color: rgba(${({ status }) => getStatusColor(status)}, 0.45);
   }
+
+  &:hover .student-delete-button {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+  }
   
   @media (max-width: 700px) {
     /* Optimize for mobile performance */
@@ -270,6 +276,43 @@ const StudentCard = styled.div<{ status: string }>`
     &:active {
       opacity: 0.95;
     }
+  }
+`;
+
+const CardDeleteButton = styled.button`
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
+  cursor: pointer;
+  z-index: 3;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.9);
+  transition: opacity 0.18s ease, transform 0.18s ease, background 0.18s ease;
+
+  &:hover {
+    background: rgba(239, 68, 68, 0.22);
+  }
+
+  svg {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+
+  @media (max-width: 700px) {
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1);
   }
 `;
 
@@ -988,6 +1031,10 @@ const ModalInput = styled.input`
   margin-bottom: 0.5rem;
 `;
 
+const PasswordInput = styled(ModalInput)`
+  letter-spacing: 0.02em;
+`;
+
 const ModalSelect = styled.select`
   ${clayInputStyle}
   ${minimalSelectMenuStyle}
@@ -1396,12 +1443,13 @@ const AddHeaderIconButton = styled.button`
 `;
 
 // Memoized Student Card Component for better performance
-const MemoizedStudentCard = memo(({ student, onStatusChange, onPromote, onReadmit, onHistory, classes, sections, setSelectedStudent, setModalType, setShowModal, fetchSectionsForPromotion }: {
+const MemoizedStudentCard = memo(({ student, onStatusChange, onPromote, onReadmit, onHistory, onDelete, classes, sections, setSelectedStudent, setModalType, setShowModal, fetchSectionsForPromotion }: {
   student: any;
   onStatusChange: (studentId: string, newStatus: string, reason?: string, actionDate?: string) => void;
   onPromote: (studentId: string, newClassId: number, newSectionId: number) => void;
   onReadmit: (student: any) => void;
   onHistory: (studentId: number) => void;
+  onDelete: (student: any) => void;
   classes: any[];
   sections: any[];
   setSelectedStudent: (student: any) => void;
@@ -1491,8 +1539,22 @@ const MemoizedStudentCard = memo(({ student, onStatusChange, onPromote, onReadmi
     navigate(`/students/profile/${student.id}`);
   }, [student.id, navigate]);
 
+  const handleDeleteClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onDelete(student);
+  }, [onDelete, student]);
+
   return (
     <StudentCard status={student.status}>
+      <CardDeleteButton
+        className="student-delete-button"
+        onClick={handleDeleteClick}
+        title="Delete student"
+        aria-label={`Delete ${student.name}`}
+      >
+        <DeleteIcon />
+      </CardDeleteButton>
       {!isMobile && (
         <StatusBadge
           status={student.status}
@@ -1686,6 +1748,10 @@ const StudentStatusManager: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<'suspend' | 'withdraw' | 'promote' | 'deactivate' | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState<any>(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [verifyingDeletePassword, setVerifyingDeletePassword] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyStudent, setHistoryStudent] = useState<any>(null);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
@@ -2726,6 +2792,101 @@ const StudentStatusManager: React.FC = () => {
   const getClassName = (id: number) => classes.find((c: any) => c.id === id)?.name || id;
   const getSectionName = (id: number) => sections.find((s: any) => s.id === id)?.name || id;
 
+  const verifyUserPassword = useCallback(async (password: string) => {
+    if (!user?.id) return false;
+
+    if ((user as any).is_super_admin) {
+      const { data, error } = await supabase
+        .from('super_admins')
+        .select('password')
+        .eq('id', user.id)
+        .single();
+
+      return !error && !!data && data.password === password;
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('password')
+      .eq('id', user.id)
+      .single();
+
+    return !error && !!data && data.password === password;
+  }, [user?.id]);
+
+  const openDeleteModal = useCallback((student: any) => {
+    setStudentToDelete(student);
+    setDeletePassword('');
+    setShowDeleteModal(true);
+  }, []);
+
+  const closeDeleteModal = useCallback(() => {
+    if (verifyingDeletePassword) return;
+    setShowDeleteModal(false);
+    setStudentToDelete(null);
+    setDeletePassword('');
+  }, [verifyingDeletePassword]);
+
+  const deleteStudentAndRecords = useCallback(async () => {
+    if (!studentToDelete?.id || !user?.school_id) return;
+
+    if (!deletePassword.trim()) {
+      toast.showToast('Please enter your password.', 'error');
+      return;
+    }
+
+    setVerifyingDeletePassword(true);
+    setLoading(true);
+    const start = Date.now();
+    const minDuration = 1500;
+
+    try {
+      const isValidPassword = await verifyUserPassword(deletePassword);
+      if (!isValidPassword) {
+        toast.showToast('Incorrect password.', 'error');
+        return;
+      }
+
+      const studentId = studentToDelete.id;
+      const schoolId = user.school_id;
+
+      const explicitDeletes = [
+        supabase
+          .from('half_leaves')
+          .delete()
+          .eq('person_type', 'student')
+          .eq('person_id', studentId)
+          .eq('school_id', schoolId),
+      ];
+
+      const explicitResults = await Promise.all(explicitDeletes);
+      const explicitError = explicitResults.find(result => result.error)?.error;
+      if (explicitError) throw explicitError;
+
+      const { error: deleteError } = await supabase
+        .from('students')
+        .delete()
+        .eq('id', studentId)
+        .eq('school_id', schoolId);
+
+      if (deleteError) throw deleteError;
+
+      toast.showToast('Student and related records deleted successfully.', 'success');
+      closeDeleteModal();
+      fetchStudents();
+    } catch (err: any) {
+      toast.showToast(err?.message || 'Failed to delete student.', 'error');
+    } finally {
+      setVerifyingDeletePassword(false);
+      const elapsed = Date.now() - start;
+      if (elapsed < minDuration) {
+        setTimeout(() => setLoading(false), minDuration - elapsed);
+      } else {
+        setLoading(false);
+      }
+    }
+  }, [closeDeleteModal, deletePassword, fetchStudents, setLoading, studentToDelete, toast, user?.school_id, verifyUserPassword]);
+
   // Helper to fetch sections for a class
   const fetchSectionsForPromotion = async (classId: number, prevSectionId?: number) => {
     if (!classId) {
@@ -3022,6 +3183,7 @@ const StudentStatusManager: React.FC = () => {
                 onStatusChange={handleStatusChange}
                 onPromote={handlePromote}
                 onReadmit={openReadmitModal}
+                onDelete={openDeleteModal}
                 onHistory={async (studentId: number) => {
                   setHistoryStudent(student);
                   setShowHistoryModal(true);
@@ -3313,6 +3475,71 @@ const StudentStatusManager: React.FC = () => {
                     {modalType === 'withdraw' && 'Withdraw'}
                     {modalType === 'promote' && 'Promote'}
                   </>
+                )}
+              </ModalButton>
+            </ModalFooter>
+          </ModalBox>
+        </ModalOverlay>,
+        document.body
+      )}
+
+      {showDeleteModal && studentToDelete && ReactDOM.createPortal(
+        <ModalOverlay>
+          <ModalBox style={{ maxWidth: 520 }}>
+            <ModalHeader>
+              <ModalTitle>
+                <StatusIcon type="withdraw">
+                  <DeleteIcon style={{ fontSize: '1.35rem' }} />
+                </StatusIcon>
+                Delete Student
+              </ModalTitle>
+            </ModalHeader>
+
+            <ModalContent>
+              <ModalText>
+                Delete <strong>{studentToDelete.name}</strong> and the records linked only to this student.
+              </ModalText>
+
+              <InfoBox type="error">
+                <WarningIcon style={{ fontSize: '1.1rem' }} />
+                This permanently deletes the selected student record and its dependent student data. Other students remain untouched.
+              </InfoBox>
+
+              <ModalFormGroup>
+                <ModalLabel htmlFor="deleteStudentPassword">Enter your password</ModalLabel>
+                <PasswordInput
+                  id="deleteStudentPassword"
+                  type="password"
+                  placeholder="Enter your login password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !verifyingDeletePassword) {
+                      e.preventDefault();
+                      deleteStudentAndRecords();
+                    }
+                  }}
+                  autoFocus
+                />
+              </ModalFormGroup>
+            </ModalContent>
+
+            <ModalFooter>
+              <ModalButton onClick={closeDeleteModal} disabled={verifyingDeletePassword}>
+                Cancel
+              </ModalButton>
+              <ModalButton
+                variant="danger"
+                onClick={deleteStudentAndRecords}
+                disabled={verifyingDeletePassword || !deletePassword.trim()}
+              >
+                {verifyingDeletePassword ? (
+                  <>
+                    <CircularProgress size={16} color="inherit" />
+                    <span style={{ marginLeft: '8px' }}>Deleting...</span>
+                  </>
+                ) : (
+                  'Delete Student'
                 )}
               </ModalButton>
             </ModalFooter>

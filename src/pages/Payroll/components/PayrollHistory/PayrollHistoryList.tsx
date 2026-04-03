@@ -20,11 +20,17 @@ import {
   Download as DownloadIcon,
   Delete as DeleteIcon,
   Refresh as RefreshIcon,
+  PictureAsPdf as PictureAsPdfIcon,
 } from '@mui/icons-material';
 import Loader from '../../../../components/Loader';
+import { formatPayrollDate } from '../../utils';
+import { usePayrollDisplaySettings } from '../../PayrollDisplaySettingsContext';
+import { generateCombinedPayrollPaymentReceipt, generatePayrollPaymentReceipt } from '../../paymentReceipt';
 import {
   PayrollContainer,
-  ContentCard,
+  ToolbarCard,
+  ToolbarRow,
+  ToolbarGroup,
   TableWrapper,
   StyledTable,
   StatusBadge,
@@ -33,7 +39,25 @@ import {
   EmptyStateTitle,
   EmptyStateText,
   IconButton,
+  PageHeading,
+  PageTitle,
+  PageSubtitle,
+  SecondaryButton,
 } from '../../styles';
+
+interface GenerationWithBalance {
+  generation: {
+    id: number;
+    staffId: number;
+    payrollMonth: number;
+    payrollYear: number;
+    grossSalary?: number;
+    totalEarnings: number;
+    totalDeductions: number;
+  };
+  totalPaid: number;
+  remainingBalance: number;
+}
 
 const PaginationContainer = styled.div`
   display: flex;
@@ -75,24 +99,12 @@ const PaginationControls = styled.div`
   }
 `;
 
-const PaginationButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
+const PaginationButton = styled(SecondaryButton)`
   padding: 0.375rem 0.625rem;
-  border-radius: 6px;
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
   font-size: 0.8125rem;
   font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
   min-width: 32px;
-  
-  &:hover:not(:disabled) {
-    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'};
-  }
+  justify-content: center;
   
   &:disabled {
     opacity: 0.5;
@@ -112,11 +124,37 @@ const PaginationButton = styled.button`
   }
 `;
 
+const ActionRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  flex-wrap: nowrap;
+`;
+
+interface GroupedPaymentHistoryItem {
+  key: string;
+  paymentIds: number[];
+  paymentGroupId?: string;
+  paymentDate: string;
+  amount: number;
+  paymentMode: PayrollPayment['paymentMode'];
+  referenceNo?: string;
+  status: PayrollPayment['status'];
+  employeeName: string;
+  periods: string[];
+  paymentCount: number;
+  latestCreatedAt?: string;
+  netAmount: number;
+  remainingAfter: number;
+}
+
 const PayrollHistoryList: React.FC = () => {
   const { theme: themeMode } = useContext(ThemeContext);
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
   const { user } = useAuth() as any;
   const { showToast } = useToast();
+  const { formatCurrency, roundUpAmounts } = usePayrollDisplaySettings();
   const [loading, setLoading] = useState(true);
   const [payments, setPayments] = useState<PayrollPayment[]>([]);
   const [filters, setFilters] = useState<PayrollFilters>({});
@@ -124,6 +162,7 @@ const PayrollHistoryList: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deletingPaymentId, setDeletingPaymentId] = useState<number | null>(null);
+  const [employeeBalanceMap, setEmployeeBalanceMap] = useState<Record<number, GenerationWithBalance[]>>({});
 
   useEffect(() => {
     if (user?.school_id) {
@@ -143,6 +182,23 @@ const PayrollHistoryList: React.FC = () => {
       setLoading(true);
       const data = await payrollService.getPayrollPayments(user.school_id, filters);
       setPayments(data);
+      const staffIds = Array.from(new Set(
+        data
+          .map(payment => payment.generation?.staffId)
+          .filter((staffId): staffId is number => Boolean(staffId))
+      ));
+      const balances = await Promise.all(
+        staffIds.map(async staffId => ({
+          staffId,
+          balances: await payrollService.getEmployeePayrollGenerationsWithBalance(user.school_id, staffId),
+        }))
+      );
+      setEmployeeBalanceMap(
+        balances.reduce<Record<number, GenerationWithBalance[]>>((acc, item) => {
+          acc[item.staffId] = item.balances as GenerationWithBalance[];
+          return acc;
+        }, {})
+      );
     } catch (error: any) {
       console.error('Error loading history:', error);
       showToast('Failed to load payment history', 'error');
@@ -152,15 +208,145 @@ const PayrollHistoryList: React.FC = () => {
   };
 
   const filteredPayments = useMemo(() => {
-    return payments.filter(payment => {
+    const grouped = new Map<string, GroupedPaymentHistoryItem>();
+    const paymentsByGroup = new Map<string, PayrollPayment[]>();
+
+    payments.forEach(payment => {
+      const key = payment.paymentGroupId || `single-${payment.id}`;
+      const groupPayments = paymentsByGroup.get(key) || [];
+      groupPayments.push(payment);
+      paymentsByGroup.set(key, groupPayments);
+      const periodLabels = (payment.items && payment.items.length > 0
+        ? payment.items.map(item => item.generation || payments.find(p => p.generation?.id === item.generationId)?.generation).filter(Boolean)
+        : [payment.generation]
+      )
+        .filter(Boolean)
+        .sort((a: any, b: any) => {
+          if (a.payrollYear !== b.payrollYear) {
+            return a.payrollYear - b.payrollYear;
+          }
+          return a.payrollMonth - b.payrollMonth;
+        })
+        .map((generation: any) =>
+          new Date(generation.payrollYear, generation.payrollMonth - 1, 1).toLocaleString('default', { month: 'short', year: 'numeric' })
+        );
+      const existing = grouped.get(key);
+
+      if (existing) {
+        existing.paymentIds.push(payment.id);
+        existing.amount += payment.amount;
+        existing.paymentCount += 1;
+        periodLabels.forEach(periodLabel => {
+          if (!existing.periods.includes(periodLabel)) {
+            existing.periods.push(periodLabel);
+          }
+        });
+        if (String(payment.paymentDate) > String(existing.paymentDate)) {
+          existing.paymentDate = payment.paymentDate;
+        }
+        if (String(payment.createdAt || '') > String(existing.latestCreatedAt || '')) {
+          existing.latestCreatedAt = payment.createdAt;
+        }
+      } else {
+        grouped.set(key, {
+          key,
+          paymentIds: [payment.id],
+          paymentGroupId: payment.paymentGroupId,
+          paymentDate: payment.paymentDate,
+          amount: payment.amount,
+          paymentMode: payment.paymentMode,
+          referenceNo: payment.referenceNo,
+          status: payment.status,
+          employeeName: payment.generation?.staff?.name || 'N/A',
+          periods: periodLabels.length > 0 ? periodLabels : ['-'],
+          paymentCount: 1,
+          latestCreatedAt: payment.createdAt,
+          netAmount: 0,
+          remainingAfter: 0,
+        });
+      }
+    });
+
+    return Array.from(grouped.values())
+      .map(item => ({
+        ...item,
+        periods: [...item.periods].sort((a, b) => new Date(a).getTime() - new Date(b).getTime()),
+        ...(() => {
+          const groupPayments = paymentsByGroup.get(item.key) || [];
+          const latestGroupPayment = [...groupPayments].sort((a, b) => {
+            const createdDiff = String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+            if (createdDiff !== 0) return createdDiff;
+            const dateDiff = String(b.paymentDate).localeCompare(String(a.paymentDate));
+            if (dateDiff !== 0) return dateDiff;
+            return b.id - a.id;
+          })[0];
+
+          if (groupPayments.length === 1 && latestGroupPayment?.items && latestGroupPayment.items.length > 0) {
+            return {
+              netAmount: latestGroupPayment.netAmount ?? item.amount,
+              remainingAfter: latestGroupPayment.remainingAfterPayment ?? 0,
+            };
+          }
+
+          const staffId = groupPayments[0]?.generation?.staffId;
+          const employeeBalances = staffId ? employeeBalanceMap[staffId] || [] : [];
+          const latestGeneration = [...employeeBalances].sort((a, b) =>
+            (b.generation.payrollYear * 100 + b.generation.payrollMonth) -
+            (a.generation.payrollYear * 100 + a.generation.payrollMonth)
+          )[0]?.generation;
+
+          if (!latestGeneration) {
+            return {
+              netAmount: item.amount,
+              remainingAfter: 0,
+            };
+          }
+
+          const latestPeriod = latestGeneration.payrollYear * 100 + latestGeneration.payrollMonth;
+          const oldBalance = employeeBalances
+            .filter(balance => balance.generation.payrollYear * 100 + balance.generation.payrollMonth < latestPeriod)
+            .reduce((sum, balance) => {
+              const appliedInThisGroup = groupPayments
+                .filter(payment => payment.generation?.id === balance.generation.id)
+                .reduce((innerSum, payment) => innerSum + payment.amount, 0);
+              return sum + balance.remainingBalance + appliedInThisGroup;
+            }, 0);
+
+          const priorPaymentsThisMonth = payments
+            .filter(payment =>
+              payment.status === 'completed' &&
+              payment.generation?.id === latestGeneration.id &&
+              !groupPayments.some(groupPayment => groupPayment.id === payment.id)
+            )
+            .reduce((sum, payment) => sum + payment.amount, 0);
+
+          const netAmount = oldBalance
+            + (latestGeneration.grossSalary || latestGeneration.totalEarnings || 0)
+            - (latestGeneration.totalDeductions || 0)
+            - priorPaymentsThisMonth;
+
+          return {
+            netAmount,
+            remainingAfter: Math.max(0, netAmount - item.amount),
+          };
+        })(),
+      }))
+      .filter(payment => {
       if (!searchTerm) return true;
       const searchLower = searchTerm.toLowerCase();
       return (
-        payment.generation?.staff?.name?.toLowerCase().includes(searchLower) ||
-        payment.referenceNo?.toLowerCase().includes(searchLower)
+        payment.employeeName?.toLowerCase().includes(searchLower) ||
+        payment.referenceNo?.toLowerCase().includes(searchLower) ||
+        payment.periods.some(period => period.toLowerCase().includes(searchLower))
       );
-    });
-  }, [payments, searchTerm]);
+      }).sort((a, b) => {
+      const createdDiff = String(b.latestCreatedAt || '').localeCompare(String(a.latestCreatedAt || ''));
+      if (createdDiff !== 0) return createdDiff;
+      const dateDiff = String(b.paymentDate).localeCompare(String(a.paymentDate));
+      if (dateDiff !== 0) return dateDiff;
+      return (b.paymentIds[0] || 0) - (a.paymentIds[0] || 0);
+      });
+  }, [payments, searchTerm, employeeBalanceMap]);
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
@@ -168,7 +354,7 @@ const PayrollHistoryList: React.FC = () => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedPayments = filteredPayments.slice(startIndex, endIndex);
 
-  const handleDeletePayment = async (paymentId: number) => {
+  const handleDeletePayment = async (paymentId: number, paymentGroupId?: string) => {
     if (!user?.school_id) {
       showToast('User not authenticated', 'error');
       return;
@@ -180,7 +366,11 @@ const PayrollHistoryList: React.FC = () => {
 
     try {
       setDeletingPaymentId(paymentId);
-      await payrollService.deletePayment(user.school_id, paymentId, user.id);
+      if (paymentGroupId) {
+        await payrollService.deletePaymentGroup(user.school_id, paymentGroupId, user.id);
+      } else {
+        await payrollService.deletePayment(user.school_id, paymentId, user.id);
+      }
       showToast('Payment deleted successfully', 'success');
       await loadHistory();
     } catch (error: any) {
@@ -188,6 +378,24 @@ const PayrollHistoryList: React.FC = () => {
       showToast(error.message || 'Failed to delete payment', 'error');
     } finally {
       setDeletingPaymentId(null);
+    }
+  };
+
+  const handleDownloadReceipt = async (paymentIds: number[]) => {
+    if (!user?.school_id) {
+      showToast('User not authenticated', 'error');
+      return;
+    }
+
+    try {
+      if (paymentIds.length > 1) {
+        await generateCombinedPayrollPaymentReceipt(user.school_id, paymentIds, roundUpAmounts);
+      } else if (paymentIds[0]) {
+        await generatePayrollPaymentReceipt(user.school_id, paymentIds[0], roundUpAmounts);
+      }
+    } catch (error: any) {
+      console.error('Error generating payroll receipt:', error);
+      showToast(error.message || 'Failed to generate payroll receipt', 'error');
     }
   };
 
@@ -200,8 +408,18 @@ const PayrollHistoryList: React.FC = () => {
 
   return (
     <PayrollContainer>
-      {/* Header matching Generate Payroll tab style */}
-      <ContentCard style={{ padding: '0.75rem 1rem', marginBottom: '0.375rem' }}>
+      <ToolbarCard>
+        <ToolbarRow>
+          <ToolbarGroup>
+            <PageHeading>
+              <PageTitle>Payroll History</PageTitle>
+              <PageSubtitle>Review payment activity with the same global clay panels, filters, and table treatment used across the app.</PageSubtitle>
+            </PageHeading>
+          </ToolbarGroup>
+        </ToolbarRow>
+      </ToolbarCard>
+
+      <ToolbarCard>
         <Box display="flex" gap={1} alignItems="flex-end" flexWrap="wrap" justifyContent="space-between" sx={{ 
           '@media (max-width: 768px)': { 
             gap: 0.75,
@@ -316,26 +534,27 @@ const PayrollHistoryList: React.FC = () => {
             </Button>
           </Box>
         </Box>
-      </ContentCard>
+      </ToolbarCard>
 
       <TableWrapper>
         <StyledTable>
           <thead>
             <tr>
-              <th>Employee</th>
+              <th>Employee / Transaction</th>
               <th>Payment Date</th>
+              <th>Salary Months</th>
+              <th>Reference / Mode</th>
+              <th style={{ textAlign: 'right' }}>Net Payment</th>
               <th style={{ textAlign: 'right' }}>Amount</th>
-              <th>Payment Mode</th>
-              <th>Reference</th>
-              <th>Month/Year</th>
+              <th style={{ textAlign: 'right' }}>Remaining</th>
               <th>Status</th>
-              <th style={{ textAlign: 'center', width: '80px' }}>Actions</th>
+              <th style={{ textAlign: 'center', width: '120px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {paginatedPayments.length === 0 ? (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={9}>
                   <EmptyStateContainer>
                     <EmptyStateIcon><DownloadIcon /></EmptyStateIcon>
                     <EmptyStateTitle>{searchTerm ? 'No payments found matching your search' : 'No payment history available'}</EmptyStateTitle>
@@ -345,24 +564,68 @@ const PayrollHistoryList: React.FC = () => {
               </tr>
             ) : (
               paginatedPayments.map((payment) => (
-                <tr key={payment.id}>
-                  <td style={{ fontWeight: 500 }}>
-                    {payment.generation?.staff?.name || 'N/A'}
-                  </td>
-                  <td>{new Date(payment.paymentDate).toLocaleDateString()}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 600 }}>
-                    Rs. {payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                <tr key={payment.key}>
+                  <td>
+                    <div style={{ fontWeight: 700, fontSize: '0.83rem' }}>
+                      {payment.employeeName || 'N/A'}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: theme.TEXT_SECONDARY, marginTop: '0.18rem' }}>
+                      {payment.paymentGroupId
+                        ? `Combined payment · ${payment.paymentCount} entries`
+                        : 'Single payroll payment'}
+                    </div>
                   </td>
                   <td>
-                    <StatusBadge>
-                      {payment.paymentMode.replace('_', ' ')}
-                    </StatusBadge>
-                  </td>
-                  <td style={{ color: theme.TEXT_SECONDARY, fontSize: '0.8rem' }}>
-                    {payment.referenceNo || '-'}
+                    <div style={{ fontWeight: 600, fontSize: '0.8rem' }}>{formatPayrollDate(payment.paymentDate)}</div>
+                    <div style={{ fontSize: '0.72rem', color: theme.TEXT_SECONDARY, marginTop: '0.18rem' }}>
+                      {payment.latestCreatedAt ? new Date(payment.latestCreatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                    </div>
                   </td>
                   <td>
-                    {payment.generation?.payrollMonth}/{payment.generation?.payrollYear}
+                    <div style={{ fontWeight: 600, fontSize: '0.8rem' }}>
+                      {payment.periods.length > 1
+                        ? `${payment.periods[0]} to ${payment.periods[payment.periods.length - 1]}`
+                        : payment.periods[0]}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: theme.TEXT_SECONDARY, marginTop: '0.18rem' }}>
+                      {payment.periods.length > 1
+                        ? `${payment.periods.length} salary months covered`
+                        : '1 salary month covered'}
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ color: theme.TEXT_SECONDARY, fontSize: '0.8rem' }}>
+                      {payment.referenceNo || '-'}
+                    </div>
+                    <div style={{ marginTop: '0.32rem' }}>
+                      <StatusBadge>
+                        {payment.paymentMode.replace(/_/g, ' ')}
+                      </StatusBadge>
+                    </div>
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.84rem', color: theme.ACCENT }}>
+                      {formatCurrency(payment.netAmount)}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: theme.TEXT_SECONDARY, marginTop: '0.18rem' }}>
+                      receipt basis
+                    </div>
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.86rem', color: '#10b981' }}>
+                      {formatCurrency(payment.amount)}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: theme.TEXT_SECONDARY, marginTop: '0.18rem' }}>
+                      {payment.paymentCount > 1 ? `Grouped total` : `Single entry`}
+                    </div>
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.84rem', color: payment.remainingAfter > 0 ? '#ef4444' : '#10b981' }}>
+                      {formatCurrency(payment.remainingAfter)}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: theme.TEXT_SECONDARY, marginTop: '0.18rem' }}>
+                      after payment
+                    </div>
                   </td>
                   <td>
                     <StatusBadge 
@@ -370,31 +633,46 @@ const PayrollHistoryList: React.FC = () => {
                     />
                   </td>
                   <td style={{ textAlign: 'center' }}>
-                    <IconButton
-                      onClick={() => handleDeletePayment(payment.id)}
-                      disabled={deletingPaymentId === payment.id}
-                      title="Delete Payment"
-                      style={{ 
-                        color: '#ef4444',
-                        fontSize: '0.875rem',
-                        padding: '0.25rem',
-                        width: '28px',
-                        height: '28px',
-                      }}
-                    >
-                      {deletingPaymentId === payment.id ? (
-                        <div style={{ 
-                          width: '14px', 
-                          height: '14px', 
-                          border: '2px solid #ef4444', 
-                          borderTopColor: 'transparent', 
-                          borderRadius: '50%', 
-                          animation: 'spin 0.6s linear infinite' 
-                        }} />
-                      ) : (
-                        <DeleteIcon style={{ fontSize: '1rem' }} />
-                      )}
-                    </IconButton>
+                    <ActionRow>
+                      <IconButton
+                        onClick={() => handleDownloadReceipt(payment.paymentIds)}
+                        title="Download Receipt"
+                        style={{
+                          color: theme.ACCENT,
+                          fontSize: '0.875rem',
+                          padding: '0.25rem',
+                          width: '28px',
+                          height: '28px',
+                        }}
+                      >
+                        <PictureAsPdfIcon style={{ fontSize: '1rem' }} />
+                      </IconButton>
+                      <IconButton
+                        onClick={() => handleDeletePayment(payment.paymentIds[0], payment.paymentGroupId)}
+                        disabled={deletingPaymentId === payment.paymentIds[0]}
+                        title="Delete Payment"
+                        style={{ 
+                          color: '#ef4444',
+                          fontSize: '0.875rem',
+                          padding: '0.25rem',
+                          width: '28px',
+                          height: '28px',
+                        }}
+                      >
+                        {deletingPaymentId === payment.paymentIds[0] ? (
+                          <div style={{ 
+                            width: '14px', 
+                            height: '14px', 
+                            border: '2px solid #ef4444', 
+                            borderTopColor: 'transparent', 
+                            borderRadius: '50%', 
+                            animation: 'spin 0.6s linear infinite' 
+                          }} />
+                        ) : (
+                          <DeleteIcon style={{ fontSize: '1rem' }} />
+                        )}
+                      </IconButton>
+                    </ActionRow>
                   </td>
                 </tr>
               ))
@@ -466,4 +744,3 @@ const PayrollHistoryList: React.FC = () => {
 };
 
 export default PayrollHistoryList;
-

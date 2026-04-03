@@ -23,6 +23,8 @@ import {
 } from '@mui/icons-material';
 import Loader from '../../../../components/Loader';
 import CreatePayrollPlanModal from './CreatePayrollPlanModal';
+import { formatPayrollDate } from '../../utils';
+import { usePayrollDisplaySettings } from '../../PayrollDisplaySettingsContext';
 import {
   ContentCard,
   TableWrapper,
@@ -114,17 +116,63 @@ const ExpandIcon = styled.div`
   }
 `;
 
+const GroupHeaderRow = styled.tr`
+  td {
+    padding: 0.625rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: ${({ theme }) => theme.TEXT_PRIMARY};
+    border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  }
+`;
+
+const GroupHeaderButton = styled.button`
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+`;
+
+const GroupHeaderLabel = styled.div`
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+`;
+
+const GroupPill = styled.span<{ $tone: 'active' | 'expired' }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: ${({ $tone }) => $tone === 'active' ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)'};
+  color: ${({ $tone }) => $tone === 'active' ? '#16a34a' : '#dc2626'};
+  border: 1px solid ${({ $tone }) => $tone === 'active' ? 'rgba(34, 197, 94, 0.22)' : 'rgba(239, 68, 68, 0.22)'};
+`;
+
 const PayrollPlansList: React.FC = () => {
   const { theme: themeMode } = useContext(ThemeContext);
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
   const { user } = useAuth() as any;
   const { showToast } = useToast();
+  const { formatCurrency } = usePayrollDisplaySettings();
   const [loading, setLoading] = useState(true);
   const [plans, setPlans] = useState<PayrollPlanWithItems[]>([]);
   const [expandedPlans, setExpandedPlans] = useState<Set<number>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<PayrollPlan | null>(null);
+  const [showExpiredPlans, setShowExpiredPlans] = useState(false);
 
   useEffect(() => {
     if (user?.school_id) {
@@ -223,6 +271,162 @@ const PayrollPlansList: React.FC = () => {
     plan.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     plan.staff?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     plan.staff?.role.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const isExpiredPlan = (plan: PayrollPlanWithItems) => {
+    if (plan.status !== 'active') {
+      return true;
+    }
+
+    if (!plan.effectiveTo) {
+      return false;
+    }
+
+    const effectiveTo = new Date(plan.effectiveTo);
+    effectiveTo.setHours(0, 0, 0, 0);
+    return effectiveTo < today;
+  };
+
+  const activePlans = filteredPlans.filter(plan => !isExpiredPlan(plan));
+  const expiredPlans = filteredPlans.filter(isExpiredPlan);
+
+  const renderPlanRows = (groupPlans: PayrollPlanWithItems[]) => (
+    groupPlans.map((plan) => {
+      const isExpanded = expandedPlans.has(plan.id);
+      const totalSalary = calculateTotalSalary(plan);
+      const isExpired = isExpiredPlan(plan);
+      const displayStatus = isExpired ? 'cancelled' : plan.status;
+
+      return (
+        <React.Fragment key={plan.id}>
+          <ExpandableRow
+            $expanded={isExpanded}
+            onClick={() => toggleExpand(plan.id)}
+          >
+            <td onClick={(e) => e.stopPropagation()} style={{ padding: '0.625rem 0.625rem' }}>
+              <ExpandIcon
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleExpand(plan.id);
+                }}
+                style={{ width: '20px', height: '20px' }}
+              >
+                {isExpanded ? <ExpandLessIcon style={{ fontSize: '1rem' }} /> : <ExpandMoreIcon style={{ fontSize: '1rem' }} />}
+              </ExpandIcon>
+            </td>
+            <td style={{ fontWeight: 500, padding: '0.625rem 0.625rem', fontSize: '0.8125rem' }}>
+              {plan.staff ? `${plan.staff.name} (${plan.staff.role})` : 'N/A'}
+            </td>
+            <td style={{ fontWeight: 500, padding: '0.625rem 0.625rem', fontSize: '0.8125rem' }}>{plan.name}</td>
+            <td style={{ fontWeight: 600, color: theme.ACCENT, padding: '0.625rem 0.625rem', fontSize: '0.8125rem' }}>
+              {formatCurrency(totalSalary)}
+            </td>
+            <td style={{ padding: '0.625rem 0.625rem', fontSize: '0.8125rem' }}>{formatPayrollDate(plan.effectiveFrom)}</td>
+            <td style={{ padding: '0.625rem 0.625rem' }}>
+              <StatusBadge
+                status={displayStatus}
+                bgColor={isExpired ? 'rgba(239, 68, 68, 0.12)' : 'rgba(34, 197, 94, 0.12)'}
+                color={isExpired ? '#dc2626' : '#16a34a'}
+                style={{ fontSize: '0.6875rem', padding: '0.2rem 0.5rem' }}
+              >
+                {isExpired ? 'expired' : 'active'}
+              </StatusBadge>
+            </td>
+            <ActionCell onClick={(e) => e.stopPropagation()} style={{ padding: '0.625rem 0.625rem' }}>
+              <ActionButtons>
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingPlan(plan);
+                    setCreateModalOpen(true);
+                  }}
+                  title="Edit"
+                  style={{ width: '28px', height: '28px' }}
+                >
+                  <EditIcon style={{ fontSize: '0.9rem' }} />
+                </IconButton>
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(plan.id);
+                  }}
+                  title="Delete"
+                  style={{ color: '#ef4444', width: '28px', height: '28px' }}
+                >
+                  <DeleteIcon style={{ fontSize: '0.9rem' }} />
+                </IconButton>
+              </ActionButtons>
+            </ActionCell>
+          </ExpandableRow>
+          <tr>
+            <ExpandedContent $expanded={isExpanded} colSpan={7}>
+              {isExpanded && (
+                <div style={{ padding: '0.375rem 0' }}>
+                  <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.375rem', fontSize: '0.6875rem', flexWrap: 'wrap' }}>
+                    <div>
+                      <span style={{ color: theme.TEXT_SECONDARY }}>Basic: </span>
+                      <span style={{ fontWeight: 500 }}>{formatCurrency(plan.basicPay)}</span>
+                    </div>
+                    {plan.description && (
+                      <div>
+                        <span style={{ color: theme.TEXT_SECONDARY }}>Desc: </span>
+                        <span>{plan.description}</span>
+                      </div>
+                    )}
+                    {plan.effectiveTo && (
+                      <div>
+                        <span style={{ color: theme.TEXT_SECONDARY }}>Effective To: </span>
+                        <span>{formatPayrollDate(plan.effectiveTo)}</span>
+                      </div>
+                    )}
+                  </div>
+                  {plan.items && plan.items.length > 0 ? (
+                    <ExpandedInnerTable>
+                      <thead>
+                        <tr>
+                          <th>Type</th>
+                          <th>Name</th>
+                          <th style={{ textAlign: 'right' }}>Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {plan.items.map((item) => {
+                          const amountDisplay = item.amountType === 'percentage'
+                            ? `${item.amount}%`
+                            : formatCurrency(item.amount);
+                          return (
+                            <tr key={item.id}>
+                              <td>
+                                <StatusBadge
+                                  status={item.itemType === 'allowance' ? 'paid' : 'rejected'}
+                                  bgColor={item.itemType === 'allowance' ? '#22c55e20' : '#ef444420'}
+                                  color={item.itemType === 'allowance' ? '#22c55e' : '#ef4444'}
+                                >
+                                  {item.itemType === 'allowance' ? 'A' : 'D'}
+                                </StatusBadge>
+                              </td>
+                              <td>{item.name}</td>
+                              <td style={{ textAlign: 'right' }}>{amountDisplay}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </ExpandedInnerTable>
+                  ) : (
+                    <div style={{ fontSize: '0.6875rem', color: theme.TEXT_SECONDARY, fontStyle: 'italic', padding: '0.2rem 0' }}>
+                      No items configured
+                    </div>
+                  )}
+                </div>
+              )}
+            </ExpandedContent>
+          </tr>
+        </React.Fragment>
+      );
+    })
   );
 
   if (loading) {
@@ -336,123 +540,46 @@ const PayrollPlansList: React.FC = () => {
                 </td>
               </tr>
             ) : (
-              filteredPlans.map((plan) => {
-                const isExpanded = expandedPlans.has(plan.id);
-                const totalSalary = calculateTotalSalary(plan);
-                return (
-                  <React.Fragment key={plan.id}>
-                    <ExpandableRow 
-                      $expanded={isExpanded}
-                      onClick={() => toggleExpand(plan.id)}
-                    >
-                      <td onClick={(e) => e.stopPropagation()} style={{ padding: '0.625rem 0.625rem' }}>
-                        <ExpandIcon
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleExpand(plan.id);
-                          }}
-                          style={{ width: '20px', height: '20px' }}
-                        >
-                          {isExpanded ? <ExpandLessIcon style={{ fontSize: '1rem' }} /> : <ExpandMoreIcon style={{ fontSize: '1rem' }} />}
-                        </ExpandIcon>
-                      </td>
-                      <td style={{ fontWeight: 500, padding: '0.625rem 0.625rem', fontSize: '0.8125rem' }}>
-                        {plan.staff ? `${plan.staff.name} (${plan.staff.role})` : 'N/A'}
-                      </td>
-                      <td style={{ fontWeight: 500, padding: '0.625rem 0.625rem', fontSize: '0.8125rem' }}>{plan.name}</td>
-                      <td style={{ fontWeight: 600, color: theme.ACCENT, padding: '0.625rem 0.625rem', fontSize: '0.8125rem' }}>
-                        Rs. {totalSalary.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td style={{ padding: '0.625rem 0.625rem', fontSize: '0.8125rem' }}>{new Date(plan.effectiveFrom).toLocaleDateString()}</td>
-                      <td style={{ padding: '0.625rem 0.625rem' }}>
-                        <StatusBadge status={plan.status} style={{ fontSize: '0.6875rem', padding: '0.2rem 0.5rem' }} />
-                      </td>
-                      <ActionCell onClick={(e) => e.stopPropagation()} style={{ padding: '0.625rem 0.625rem' }}>
-                        <ActionButtons>
-                          <IconButton
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingPlan(plan);
-                              setCreateModalOpen(true);
-                            }}
-                            title="Edit"
-                            style={{ width: '28px', height: '28px' }}
-                          >
-                            <EditIcon style={{ fontSize: '0.9rem' }} />
-                          </IconButton>
-                          <IconButton
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(plan.id);
-                            }}
-                            title="Delete"
-                            style={{ color: '#ef4444', width: '28px', height: '28px' }}
-                          >
-                            <DeleteIcon style={{ fontSize: '0.9rem' }} />
-                          </IconButton>
-                        </ActionButtons>
-                      </ActionCell>
-                    </ExpandableRow>
+              <>
+                <GroupHeaderRow>
+                  <td colSpan={7}>
+                    <GroupHeaderLabel>
+                      <GroupPill $tone="active">Active Plans ({activePlans.length})</GroupPill>
+                    </GroupHeaderLabel>
+                  </td>
+                </GroupHeaderRow>
+                {activePlans.length > 0 ? renderPlanRows(activePlans) : (
+                  <tr>
+                    <td colSpan={7} style={{ textAlign: 'center', padding: '1rem', fontSize: '0.75rem', color: theme.TEXT_SECONDARY }}>
+                      No active plans found
+                    </td>
+                  </tr>
+                )}
+
+                <GroupHeaderRow>
+                  <td colSpan={7}>
+                    <GroupHeaderButton type="button" onClick={() => setShowExpiredPlans(prev => !prev)}>
+                      <GroupPill $tone="expired">Expired Plans ({expiredPlans.length})</GroupPill>
+                      {showExpiredPlans ? <ExpandLessIcon style={{ fontSize: '1rem' }} /> : <ExpandMoreIcon style={{ fontSize: '1rem' }} />}
+                    </GroupHeaderButton>
+                  </td>
+                </GroupHeaderRow>
+                {showExpiredPlans ? (
+                  expiredPlans.length > 0 ? renderPlanRows(expiredPlans) : (
                     <tr>
-                      <ExpandedContent $expanded={isExpanded} colSpan={7}>
-                        {isExpanded && (
-                          <div style={{ padding: '0.375rem 0' }}>
-                            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.375rem', fontSize: '0.6875rem', flexWrap: 'wrap' }}>
-                              <div>
-                                <span style={{ color: theme.TEXT_SECONDARY }}>Basic: </span>
-                                <span style={{ fontWeight: 500 }}>Rs. {plan.basicPay.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                              </div>
-                              {plan.description && (
-                                <div>
-                                  <span style={{ color: theme.TEXT_SECONDARY }}>Desc: </span>
-                                  <span>{plan.description}</span>
-                                </div>
-                              )}
-                            </div>
-                            {plan.items && plan.items.length > 0 ? (
-                              <ExpandedInnerTable>
-                                <thead>
-                                  <tr>
-                                    <th>Type</th>
-                                    <th>Name</th>
-                                    <th style={{ textAlign: 'right' }}>Amount</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {plan.items.map((item) => {
-                                    const amountDisplay = item.amountType === 'percentage' 
-                                      ? `${item.amount}%`
-                                      : `Rs. ${item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
-                                    return (
-                                      <tr key={item.id}>
-                                        <td>
-                                          <StatusBadge 
-                                            status={item.itemType === 'allowance' ? 'paid' : 'rejected'}
-                                            bgColor={item.itemType === 'allowance' ? '#22c55e20' : '#ef444420'}
-                                            color={item.itemType === 'allowance' ? '#22c55e' : '#ef4444'}
-                                          >
-                                            {item.itemType === 'allowance' ? 'A' : 'D'}
-                                          </StatusBadge>
-                                        </td>
-                                        <td>{item.name}</td>
-                                        <td style={{ textAlign: 'right' }}>{amountDisplay}</td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </ExpandedInnerTable>
-                            ) : (
-                              <div style={{ fontSize: '0.6875rem', color: theme.TEXT_SECONDARY, fontStyle: 'italic', padding: '0.2rem 0' }}>
-                                No items configured
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </ExpandedContent>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '1rem', fontSize: '0.75rem', color: theme.TEXT_SECONDARY }}>
+                        No expired plans found
+                      </td>
                     </tr>
-                  </React.Fragment>
-                );
-              })
+                  )
+                ) : (
+                  <tr>
+                    <td colSpan={7} style={{ textAlign: 'center', padding: '0.875rem', fontSize: '0.75rem', color: theme.TEXT_SECONDARY }}>
+                      Expired plans are hidden
+                    </td>
+                  </tr>
+                )}
+              </>
             )}
           </tbody>
         </StyledTable>
@@ -478,4 +605,3 @@ const PayrollPlansList: React.FC = () => {
 };
 
 export default PayrollPlansList;
-

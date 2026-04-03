@@ -211,35 +211,31 @@ export const calculateAdvanceDeductions = (
 };
 
 /**
- * Get attendance summary from attendance records
+ * Get attendance counts directly from saved attendance records.
+ * This is used for display/audit so the UI reflects actual marked entries,
+ * independent of payroll calculation mode.
  */
-export const getAttendanceSummary = (
-  attendanceRecords: Array<{ status: string; date: string }>,
+export const getAttendanceRecordSummary = (
+  attendanceRecords: Array<{ status: string; date: string; paidLeave?: boolean }>,
   workingDays: number,
-  halfLeavesMap?: Map<string, 'first_half' | 'second_half'>,
-  calculationMode: 'full' | 'partial' = 'partial'
+  halfLeavesMap?: Map<string, 'first_half' | 'second_half'>
 ): AttendanceSummary => {
-  let presentDaysOnly = 0; // Only 'present' records (not including late)
+  let presentDaysOnly = 0;
   let leaveDays = 0;
-  let explicitlyAbsentDays = 0;
+  let absentDays = 0;
   let halfDayLeaves = 0;
-  let lateDays = 0; // Only 'late' records
+  let lateDays = 0;
+  let paidLeaveDays = 0;
 
-  // Track which dates have attendance records or half leaves
-  const datesWithRecords = new Set<string>();
   const datesWithHalfLeaves = new Set<string>();
 
-  // Process half leaves from half_leaves table first
-  // First half = absent in morning, arrives in afternoon (counts as 0.5 absent + 0.5 present)
-  // Second half = present in morning, leaves at half day (counts as 0.5 present + 0.5 leave)
   if (halfLeavesMap) {
     halfLeavesMap.forEach((leaveType, date) => {
       datesWithHalfLeaves.add(date);
-      datesWithRecords.add(date); // Mark as accounted
       halfDayLeaves++;
       if (leaveType === 'first_half') {
         presentDaysOnly += 0.5;
-        explicitlyAbsentDays += 0.5;
+        absentDays += 0.5;
       } else if (leaveType === 'second_half') {
         presentDaysOnly += 0.5;
         leaveDays += 0.5;
@@ -247,23 +243,23 @@ export const getAttendanceSummary = (
     });
   }
 
-  // Count all attendance records (skip dates that have half leaves, as half leave takes precedence)
   attendanceRecords.forEach(record => {
-    // If this date has a half leave, skip the attendance record (half leave takes precedence)
     if (datesWithHalfLeaves.has(record.date)) {
       return;
     }
-    
-    datesWithRecords.add(record.date);
+
     switch (record.status.toLowerCase()) {
       case 'present':
         presentDaysOnly++;
         break;
       case 'leave':
         leaveDays++;
+        if (record.paidLeave) {
+          paidLeaveDays++;
+        }
         break;
       case 'absent':
-        explicitlyAbsentDays++;
+        absentDays++;
         break;
       case 'half_day':
         halfDayLeaves++;
@@ -272,14 +268,51 @@ export const getAttendanceSummary = (
         break;
       case 'late':
         lateDays++;
-        // Late is also counted as present, so add to presentDaysOnly
         presentDaysOnly++;
         break;
     }
   });
-  
-  // Calculate total present days (present + late) for display
-  const totalPresentDays = presentDaysOnly; // presentDaysOnly already includes late (we added it above)
+
+  return {
+    workingDays: Math.round(workingDays),
+    presentDays: Math.round(presentDaysOnly),
+    leaveDays: Math.round(leaveDays),
+    absentDays: Math.round(absentDays),
+    halfDayLeaves: Math.round(halfDayLeaves),
+    lateDays: Math.round(lateDays),
+    paidLeaveDays: Math.round(paidLeaveDays),
+  };
+};
+
+/**
+ * Get attendance summary from attendance records
+ */
+export const getAttendanceSummary = (
+  attendanceRecords: Array<{ status: string; date: string; paidLeave?: boolean }>,
+  workingDays: number,
+  halfLeavesMap?: Map<string, 'first_half' | 'second_half'>,
+  calculationMode: 'full' | 'partial' = 'partial'
+): AttendanceSummary => {
+  const recordSummary = getAttendanceRecordSummary(attendanceRecords, workingDays, halfLeavesMap);
+  let presentDaysOnly = recordSummary.presentDays; // already includes late
+  let leaveDays = recordSummary.leaveDays;
+  let explicitlyAbsentDays = recordSummary.absentDays;
+  let halfDayLeaves = recordSummary.halfDayLeaves;
+  let lateDays = recordSummary.lateDays;
+  let paidLeaveDays = recordSummary.paidLeaveDays || 0;
+
+  // Track which dates have attendance records or half leaves
+  const datesWithRecords = new Set<string>();
+
+  if (halfLeavesMap) {
+    halfLeavesMap.forEach((_, date) => {
+      datesWithRecords.add(date);
+    });
+  }
+
+  attendanceRecords.forEach(record => {
+    datesWithRecords.add(record.date);
+  });
 
   // Count actual number of unique days with records (not fractional days)
   // This is important for Partial mode calculation - we need to know how many actual dates have records
@@ -297,7 +330,7 @@ export const getAttendanceSummary = (
     finalAbsentDays = explicitlyAbsentDays;
     // Adjust totalPresentDays to include unaccounted days (days without any records = present)
     const unaccountedDays = workingDays - actualDaysWithRecords;
-    finalPresentDays = totalPresentDays + Math.max(0, unaccountedDays);
+    finalPresentDays = presentDaysOnly + Math.max(0, unaccountedDays);
   } else {
     // Partial mode: All non-recorded days = absent
     // Only generate salary for days that have records (actualDaysWithRecords)
@@ -306,7 +339,7 @@ export const getAttendanceSummary = (
     // Absent days = explicitly marked absent + all unrecorded days
     finalAbsentDays = explicitlyAbsentDays + Math.max(0, unaccountedDays);
     // totalPresentDays already includes both present and late
-    finalPresentDays = totalPresentDays;
+    finalPresentDays = presentDaysOnly;
   }
 
   // finalPresentDays already includes both Present and Late records
@@ -320,6 +353,7 @@ export const getAttendanceSummary = (
     absentDays: Math.round(finalAbsentDays), // Round to integer
     halfDayLeaves: Math.round(halfDayLeaves), // Round to integer
     lateDays: Math.round(lateDays), // Keep lateDays separate to show how many of the present days were late - round to integer
+    paidLeaveDays: Math.round(paidLeaveDays),
   };
 };
 
@@ -402,7 +436,7 @@ export const calculateSalaryBreakdown = (
     // PARTIAL MODE: Only pay for days with records
     // Payable Days = Present + Late (+ half leaves converted if needed) + Bonus Leave Days
     // Note: attendance.presentDays already includes lateDays (late is counted as present)
-    const payableDays = attendance.presentDays + halfLeavesAsFullDays + (remainingHalfLeaves * 0.5) + bonusLeaveDays;
+    const payableDays = attendance.presentDays + halfLeavesAsFullDays + (remainingHalfLeaves * 0.5) + bonusLeaveDays + (attendance.paidLeaveDays || 0);
     grossPay = payableDays * dailyRate;
     console.log(`[Partial Mode] Payable Days: ${payableDays} (including ${bonusLeaveDays} bonus), Gross Pay: ${grossPay}`);
     
@@ -431,7 +465,7 @@ export const calculateSalaryBreakdown = (
     
     // Leave deductions: Only for excess leaves (beyond allowed + bonus)
     // Formula: ExcessLeaves = max(0, Leaves - AllowedLeaves - BonusLeaveDays)
-    const totalAllowedLeaves = allowedLeavesPerMonth + bonusLeaveDays;
+    const totalAllowedLeaves = allowedLeavesPerMonth + bonusLeaveDays + (attendance.paidLeaveDays || 0);
     const excessLeaves = Math.max(0, attendance.leaveDays - totalAllowedLeaves);
     if (excessLeaves > 0) {
       switch (leaveDeductionMethod) {
@@ -546,4 +580,3 @@ export const getMonthNumber = (monthName: string): number => {
   ];
   return months.indexOf(monthName) + 1;
 };
-

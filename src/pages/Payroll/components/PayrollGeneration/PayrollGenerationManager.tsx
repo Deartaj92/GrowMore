@@ -6,6 +6,8 @@ import { useToast } from '../../../../components/useToast';
 import { payrollService } from '../../../../services/payrollService';
 import { supabase } from '../../../../supabaseClient';
 import { format, getDaysInMonth, parseISO } from 'date-fns';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   Box,
   Button,
@@ -39,9 +41,13 @@ import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   Search as SearchIcon,
+  DeleteOutline as DeleteOutlineIcon,
+  PictureAsPdf as PictureAsPdfIcon,
 } from '@mui/icons-material';
 import Loader from '../../../../components/Loader';
 import { PayrollGeneration } from '../../../../types/payroll';
+import { usePayrollDisplaySettings } from '../../PayrollDisplaySettingsContext';
+import { formatPayrollCurrency } from '../../utils';
 import {
   PayrollContainer,
   ContentCard,
@@ -145,15 +151,25 @@ interface PreviewData {
   lateDays: number;
 }
 
+const defaultPayrollPeriod = (() => {
+  const now = new Date();
+  const previousMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  return {
+    month: previousMonthDate.getMonth() + 1,
+    year: previousMonthDate.getFullYear(),
+  };
+})();
+
 const PayrollGenerationManager: React.FC = () => {
   const { theme: themeMode } = useContext(ThemeContext);
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
   const { user } = useAuth() as any;
   const { showToast } = useToast();
+  const { roundUpAmounts, formatCurrency } = usePayrollDisplaySettings();
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(defaultPayrollPeriod.month);
+  const [selectedYear, setSelectedYear] = useState(defaultPayrollPeriod.year);
   const [eligibleStaff, setEligibleStaff] = useState<EligibleStaff[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<Set<string>>(new Set());
   const [generations, setGenerations] = useState<PayrollGeneration[]>([]);
@@ -169,6 +185,8 @@ const PayrollGenerationManager: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [includeLeaveBonus, setIncludeLeaveBonus] = useState<boolean>(true);
   const [payrollSettings, setPayrollSettings] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
@@ -445,6 +463,7 @@ const PayrollGenerationManager: React.FC = () => {
       const attendanceRecords = (attendanceData || []).map(ar => ({
         status: ar.status,
         date: ar.date,
+        paidLeave: !!ar.paid_leave,
       }));
 
       // Fetch half leaves for the selected month and year
@@ -468,12 +487,17 @@ const PayrollGenerationManager: React.FC = () => {
 
       // Use monthlyWorkingDays from settings (not calculated)
       // This matches how employee profile counts attendance
-      const { getAttendanceSummary } = await import('../../../../utils/payrollCalculations');
-        const attendanceSummary = getAttendanceSummary(
+      const { getAttendanceSummary, getAttendanceRecordSummary } = await import('../../../../utils/payrollCalculations');
+      const attendanceSummary = getAttendanceSummary(
         attendanceRecords,
         settings.monthlyWorkingDays,
         halfLeavesMap,
         staffCalculationMode
+      );
+      const attendanceRecordSummary = getAttendanceRecordSummary(
+        attendanceRecords,
+        settings.monthlyWorkingDays,
+        halfLeavesMap
       );
 
       // Get advances and adjustments
@@ -516,11 +540,11 @@ const PayrollGenerationManager: React.FC = () => {
         absentDeductions: breakdown.absentDeductions || 0,
         leaveBonusAmount: breakdown.leaveBonusAmount,
         netSalary: breakdown.netSalary,
-        workingDays: attendanceSummary.workingDays,
-        presentDays: attendanceSummary.presentDays,
-        leaveDays: attendanceSummary.leaveDays,
-        absentDays: attendanceSummary.absentDays,
-        lateDays: attendanceSummary.lateDays,
+        workingDays: attendanceRecordSummary.workingDays,
+        presentDays: attendanceRecordSummary.presentDays,
+        leaveDays: attendanceRecordSummary.leaveDays,
+        absentDays: attendanceRecordSummary.absentDays,
+        lateDays: attendanceRecordSummary.lateDays,
       };
       
       setSalaryBreakdowns(prev => new Map(prev).set(staffPlanKey, breakdownData));
@@ -676,11 +700,12 @@ const PayrollGenerationManager: React.FC = () => {
     }
   };
 
-  const handleApprove = async (generationId: number) => {
+  const handleApprove = async (generation: PayrollGeneration) => {
     if (!user?.school_id || !user?.id) return;
+    if (generation.status !== 'draft') return;
     
     try {
-      await payrollService.approvePayroll(user.school_id, generationId, user.id);
+      await payrollService.approvePayroll(user.school_id, generation.id, user.id);
       showToast('Payroll approved successfully', 'success');
       await loadGenerations();
     } catch (error: any) {
@@ -700,6 +725,337 @@ const PayrollGenerationManager: React.FC = () => {
     }
   };
 
+  const handleDeleteGenerations = async (generationIds: number[]) => {
+    if (!user?.school_id || !user?.id) return;
+    if (generationIds.length === 0) {
+      showToast('Select generated payrolls to delete', 'error');
+      return;
+    }
+
+    const uniqueGenerationIds = Array.from(new Set(generationIds));
+    setDeleting(true);
+
+    try {
+      const deletableGenerations = generations.filter(g => uniqueGenerationIds.includes(g.id));
+      const deletedNames: string[] = [];
+      const skippedNames: string[] = [];
+
+      for (const generation of deletableGenerations) {
+        try {
+          await payrollService.deletePayrollGeneration(user.school_id, generation.id, user.id);
+          deletedNames.push(generation.staff?.name || `Payroll #${generation.id}`);
+        } catch (error: any) {
+          const message = String(error?.message || '').toLowerCase();
+          if (message.includes('payment')) {
+            skippedNames.push(generation.staff?.name || `Payroll #${generation.id}`);
+            continue;
+          }
+          throw error;
+        }
+      }
+
+      const deletedCount = deletedNames.length;
+      const skippedCount = skippedNames.length;
+
+      if (deletedCount === 0 && skippedCount > 0) {
+        showToast(
+          `Skipped ${skippedCount} payroll${skippedCount > 1 ? 's' : ''} because payment has already been made`,
+          'error'
+        );
+      } else if (deletedCount > 0 && skippedCount > 0) {
+        showToast(
+          `Deleted ${deletedCount} payroll${deletedCount > 1 ? 's' : ''}; skipped ${skippedCount} with payments`,
+          'success'
+        );
+      } else if (deletedCount > 0) {
+        showToast(
+          `Deleted ${deletedCount} payroll${deletedCount > 1 ? 's' : ''} successfully`,
+          'success'
+        );
+      }
+
+      const remainingSelected = Array.from(selectedStaff).filter((staffPlanKey) => {
+        const [staffId, planId] = staffPlanKey.split('-').map(Number);
+        const generation = generations.find(g => g.staffId === staffId && g.planId === planId);
+        return generation ? !uniqueGenerationIds.includes(generation.id) : true;
+      });
+      setSelectedStaff(new Set(remainingSelected));
+
+      await loadEligibleStaff();
+      await loadGenerations();
+    } catch (error: any) {
+      console.error('Error deleting payroll generations:', error);
+      showToast(error.message || 'Failed to delete payroll generation', 'error');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleExportGeneratedPayrolls = async () => {
+    if (!selectedGeneratedPayrollIds.length) {
+      showToast('Select generated payrolls to export', 'error');
+      return;
+    }
+
+    const selectedGenerations = Array.from(
+      new Map(
+        generations
+          .filter(g => selectedGeneratedPayrollIds.includes(g.id))
+          .map(g => [g.id, g])
+      ).values()
+    ).sort((a, b) => {
+      const nameA = (a.staff?.name || '').toLowerCase();
+      const nameB = (b.staff?.name || '').toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+
+    if (selectedGenerations.length === 0) {
+      showToast('No generated payrolls found in the current selection', 'error');
+      return;
+    }
+
+    try {
+      setExportingPdf(true);
+
+      const uniqueStaffIds = Array.from(new Set(selectedGenerations.map(generation => generation.staffId)));
+      const staffBalanceEntries = await Promise.all(
+        uniqueStaffIds.map(async (staffId) => {
+          const balances = await payrollService.getEmployeePayrollGenerationsWithBalance(user.school_id, staffId);
+          return [staffId, balances] as const;
+        })
+      );
+      const balancesByStaff = new Map(staffBalanceEntries);
+
+      const getPresentCountFromAttendance = (generation: PayrollGeneration) => {
+        const records = generation.attendanceData?.records || [];
+        return records.reduce((count, record) => {
+          const status = String(record.status || '').toLowerCase();
+          if (status === 'present' || status === 'late') {
+            return count + 1;
+          }
+          return count;
+        }, 0);
+      };
+
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const monthLabel = new Date(selectedYear, selectedMonth - 1, 1).toLocaleString('default', { month: 'long' });
+      const generatedOn = format(new Date(), 'dd-MM-yyyy hh:mm a');
+      const totalGrossPayroll = selectedGenerations.reduce((sum, generation) => sum + (generation.grossSalary || generation.totalEarnings), 0);
+      const totalDeductions = selectedGenerations.reduce((sum, generation) => sum + generation.totalDeductions, 0);
+      const totalOldBalance = selectedGenerations.reduce((sum, generation) => {
+        const balanceEntries = balancesByStaff.get(generation.staffId) || [];
+        const oldBalance = balanceEntries
+          .filter(({ generation: previousGeneration }) => {
+            const previousPeriod = previousGeneration.payrollYear * 100 + previousGeneration.payrollMonth;
+            const currentPeriod = generation.payrollYear * 100 + generation.payrollMonth;
+            return previousGeneration.id !== generation.id && previousPeriod < currentPeriod;
+          })
+          .reduce((balanceSum, item) => balanceSum + item.remainingBalance, 0);
+        return sum + oldBalance;
+      }, 0);
+      const totalNet = selectedGenerations.reduce((sum, generation) => {
+        const balanceEntries = balancesByStaff.get(generation.staffId) || [];
+        const oldBalance = balanceEntries
+          .filter(({ generation: previousGeneration }) => {
+            const previousPeriod = previousGeneration.payrollYear * 100 + previousGeneration.payrollMonth;
+            const currentPeriod = generation.payrollYear * 100 + generation.payrollMonth;
+            return previousGeneration.id !== generation.id && previousPeriod < currentPeriod;
+          })
+          .reduce((balanceSum, item) => balanceSum + item.remainingBalance, 0);
+        return sum + generation.netSalary + oldBalance;
+      }, 0);
+
+      doc.setFillColor(37, 99, 235);
+      doc.rect(0, 0, 297, 28, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.text('Payroll Register', 14, 12);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${monthLabel} ${selectedYear}`, 14, 19);
+      doc.text(`Generated: ${generatedOn}`, 230, 12);
+      doc.text(`Records: ${selectedGenerations.length}`, 230, 19);
+
+      doc.setTextColor(31, 41, 55);
+      doc.setFillColor(239, 246, 255);
+      doc.roundedRect(14, 33, 269, 18, 3, 3, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text('Summary', 18, 39);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Old Balance: ${formatPayrollCurrency(totalOldBalance, roundUpAmounts)}`, 18, 46);
+      doc.text(`Gross Payroll Amount: ${formatPayrollCurrency(totalGrossPayroll, roundUpAmounts)}`, 78, 46);
+      doc.text(`Deductions: ${formatPayrollCurrency(totalDeductions, roundUpAmounts)}`, 162, 46);
+      doc.setFillColor(37, 99, 235);
+      doc.roundedRect(205, 35.5, 74, 13, 3, 3, 'F');
+      doc.setTextColor(219, 234, 254);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.text('NET PAYROLL AMOUNT', 242, 39.5, { align: 'center' });
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(12.5);
+      doc.text(formatPayrollCurrency(totalNet, roundUpAmounts), 242, 45.8, { align: 'center' });
+
+      const tableRows = selectedGenerations.map((generation, index) => {
+        const staff = eligibleStaff.find(s => s.staffId === generation.staffId && s.planId === generation.planId);
+        const oldBalance = (balancesByStaff.get(generation.staffId) || [])
+          .filter(({ generation: previousGeneration }) => {
+            const previousPeriod = previousGeneration.payrollYear * 100 + previousGeneration.payrollMonth;
+            const currentPeriod = generation.payrollYear * 100 + generation.payrollMonth;
+            return previousGeneration.id !== generation.id && previousPeriod < currentPeriod;
+          })
+          .reduce((sum, item) => sum + item.remainingBalance, 0);
+
+        return [
+          index + 1,
+          `${generation.staff?.name || staff?.staffName || '-'}\n${generation.staff?.role || staff?.staffRole || '-'}`,
+          staff?.planName || generation.planSnapshot?.planName || '-',
+          generation.calculationMode || 'full',
+          formatPayrollCurrency(oldBalance, roundUpAmounts),
+          getPresentCountFromAttendance(generation),
+          generation.leaveDays || 0,
+          generation.absentDays || 0,
+          generation.lateDays || 0,
+          formatPayrollCurrency(generation.grossSalary || generation.totalEarnings, roundUpAmounts),
+          formatPayrollCurrency(generation.absentDeductions || 0, roundUpAmounts),
+          formatPayrollCurrency(generation.leaveDeductions || 0, roundUpAmounts),
+          formatPayrollCurrency(generation.lateDeductions || 0, roundUpAmounts),
+          formatPayrollCurrency(generation.advanceDeductions || 0, roundUpAmounts),
+          formatPayrollCurrency(generation.totalDeductions, roundUpAmounts),
+          formatPayrollCurrency(generation.netSalary + oldBalance, roundUpAmounts),
+        ];
+      });
+
+      tableRows.push([
+        '',
+        'TOTAL',
+        '',
+        '',
+        formatPayrollCurrency(totalOldBalance, roundUpAmounts),
+        '',
+        '',
+        '',
+        '',
+        formatPayrollCurrency(totalGrossPayroll, roundUpAmounts),
+        '',
+        '',
+        '',
+        '',
+        formatPayrollCurrency(totalDeductions, roundUpAmounts),
+        formatPayrollCurrency(totalNet, roundUpAmounts),
+      ]);
+
+      autoTable(doc, {
+        startY: 57,
+        margin: { left: 10, right: 10 },
+        head: [[
+          '#',
+          'Employee',
+          'Plan',
+          'Mode',
+          'Old Bal.',
+          'Present',
+          'Leave',
+          'Absent',
+          'Late',
+          'Gross',
+          'Absent Ded.',
+          'Leave Ded.',
+          'Late Ded.',
+          'Advance Ded.',
+          'Total Ded.',
+          'Net Salary',
+        ]],
+        body: tableRows,
+        theme: 'grid',
+        styles: {
+          font: 'helvetica',
+          fontSize: 7.2,
+          cellPadding: 2.1,
+          lineColor: [226, 232, 240],
+          lineWidth: 0.15,
+          textColor: [31, 41, 55],
+          valign: 'middle',
+        },
+        headStyles: {
+          fillColor: [30, 41, 59],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center',
+        },
+        bodyStyles: {
+          halign: 'center',
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252],
+        },
+        columnStyles: {
+          0: { cellWidth: 8 },
+          1: { cellWidth: 40, halign: 'left' },
+          2: { cellWidth: 24, halign: 'left' },
+          3: { cellWidth: 12 },
+          4: { cellWidth: 16, halign: 'right' },
+          5: { cellWidth: 15 },
+          6: { cellWidth: 14 },
+          7: { cellWidth: 14 },
+          8: { cellWidth: 12 },
+          9: { cellWidth: 17, halign: 'right' },
+          10: { cellWidth: 17, halign: 'right' },
+          11: { cellWidth: 17, halign: 'right' },
+          12: { cellWidth: 17, halign: 'right' },
+          13: { cellWidth: 17, halign: 'right' },
+          14: { cellWidth: 15, halign: 'right' },
+          15: { cellWidth: 19, halign: 'right' },
+        },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.column.index === 15) {
+            data.cell.styles.fontStyle = 'bold';
+          }
+
+          if (data.section === 'body' && data.row.index === tableRows.length - 1) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [239, 246, 255];
+            data.cell.styles.lineWidth = 0.25;
+            data.cell.styles.lineColor = [147, 197, 253];
+          }
+        },
+        didDrawPage: () => {
+          const pageCount = doc.getNumberOfPages();
+          const pageSize = doc.internal.pageSize;
+          const pageHeight = pageSize.getHeight();
+          doc.setFontSize(8);
+          doc.setTextColor(100, 116, 139);
+          doc.text(
+            `Payroll export for ${monthLabel} ${selectedYear}`,
+            14,
+            pageHeight - 7
+          );
+          doc.text(
+            `Page ${pageCount}`,
+            pageSize.getWidth() - 14,
+            pageHeight - 7,
+            { align: 'right' }
+          );
+        },
+      });
+
+      const fileMonth = String(selectedMonth).padStart(2, '0');
+      doc.save(`Payroll_Register_${selectedYear}_${fileMonth}.pdf`);
+      showToast(`PDF exported for ${selectedGenerations.length} payroll${selectedGenerations.length > 1 ? 's' : ''}`, 'success');
+    } catch (error: any) {
+      console.error('Error exporting payroll PDF:', error);
+      showToast(error.message || 'Failed to export payroll PDF', 'error');
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'approved': return 'success';
@@ -707,13 +1063,6 @@ const PayrollGenerationManager: React.FC = () => {
       case 'cancelled': return 'error';
       default: return 'warning';
     }
-  };
-
-  const formatCurrency = (amount: number | undefined | null) => {
-    if (amount === undefined || amount === null || isNaN(amount)) {
-      return 'Rs. 0.00';
-    }
-    return `Rs. ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   // Filter eligible staff based on search query
@@ -726,6 +1075,14 @@ const PayrollGenerationManager: React.FC = () => {
       staff.planName.toLowerCase().includes(query)
     );
   });
+
+  const selectedGeneratedPayrollIds = Array.from(selectedStaff)
+    .map((staffPlanKey) => {
+      const [staffId, planId] = staffPlanKey.split('-').map(Number);
+      const generation = generations.find(g => g.staffId === staffId && g.planId === planId);
+      return generation?.id;
+    })
+    .filter((generationId): generationId is number => typeof generationId === 'number');
 
   return (
     <PayrollContainer>
@@ -941,6 +1298,41 @@ const PayrollGenerationManager: React.FC = () => {
             >
               {generating ? 'Generating...' : `Generate (${selectedStaff.size})`}
             </Button>
+
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              startIcon={deleting ? <CircularProgress size={12} /> : <DeleteOutlineIcon sx={{ fontSize: 14 }} />}
+              onClick={() => handleDeleteGenerations(selectedGeneratedPayrollIds)}
+              disabled={deleting || generating || selectedGeneratedPayrollIds.length === 0}
+              sx={{
+                fontSize: '0.75rem',
+                height: '30px',
+                padding: '4px 10px',
+                whiteSpace: 'nowrap',
+                '@media (max-width: 768px)': { width: '100%' },
+              }}
+            >
+              {deleting ? 'Deleting...' : `Delete (${selectedGeneratedPayrollIds.length})`}
+            </Button>
+
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={exportingPdf ? <CircularProgress size={12} /> : <PictureAsPdfIcon sx={{ fontSize: 14 }} />}
+              onClick={handleExportGeneratedPayrolls}
+              disabled={exportingPdf || generating || deleting || selectedGeneratedPayrollIds.length === 0}
+              sx={{
+                fontSize: '0.75rem',
+                height: '30px',
+                padding: '4px 10px',
+                whiteSpace: 'nowrap',
+                '@media (max-width: 768px)': { width: '100%' },
+              }}
+            >
+              {exportingPdf ? 'Exporting...' : `Export PDF (${selectedGeneratedPayrollIds.length})`}
+            </Button>
           </Box>
         </Box>
       </ContentCard>
@@ -1095,7 +1487,7 @@ const PayrollGenerationManager: React.FC = () => {
                                   variant="contained"
                                   color="success"
                                   size="small"
-                                  onClick={() => handleApprove(generation.id)}
+                                  onClick={() => handleApprove(generation)}
                                   sx={{ minWidth: 65, fontSize: '0.6875rem', height: '24px', padding: '2px 6px' }}
                                 >
                                   Approve
@@ -1110,10 +1502,19 @@ const PayrollGenerationManager: React.FC = () => {
                                   Reject
                                 </Button>
                               </Box>
-                            ) : generation && generation.status === 'approved' ? (
-                              <Chip label="Approved" size="small" color="success" sx={{ fontSize: '0.6875rem', height: '20px' }} />
-                            ) : generation && generation.status === 'paid' ? (
-                              <Chip label="Paid" size="small" color="info" sx={{ fontSize: '0.6875rem', height: '20px' }} />
+                            ) : generation ? (
+                              <Box display="flex" gap={0.375} justifyContent="center" alignItems="center" flexWrap="wrap">
+                                <Button
+                                  variant="outlined"
+                                  color="error"
+                                  size="small"
+                                  onClick={() => handleDeleteGenerations([generation.id])}
+                                  disabled={deleting}
+                                  sx={{ minWidth: 58, fontSize: '0.6875rem', height: '24px', padding: '2px 6px' }}
+                                >
+                                  Delete
+                                </Button>
+                              </Box>
                             ) : null}
                           </td>
                         </tr>
@@ -1299,9 +1700,9 @@ const PayrollGenerationManager: React.FC = () => {
                                     </Box>
 
                                     {/* Approve/Reject Buttons (Mobile Only) */}
-                                    {generation && generation.status === 'draft' && (
-                                      <Box 
-                                        display="flex" 
+                                      {generation && generation.status === 'draft' && (
+                                        <Box 
+                                          display="flex" 
                                         gap={0.75} 
                                         marginTop={0.75} 
                                         paddingTop={0.75} 
@@ -1322,7 +1723,7 @@ const PayrollGenerationManager: React.FC = () => {
                                           variant="contained"
                                           color="success"
                                           size="small"
-                                          onClick={() => handleApprove(generation.id)}
+                                          onClick={() => handleApprove(generation)}
                                           sx={{ 
                                             flex: 1, 
                                             fontSize: { xs: '0.6875rem', sm: '0.75rem' }, 
@@ -1347,11 +1748,41 @@ const PayrollGenerationManager: React.FC = () => {
                                           }}
                                         >
                                           Reject
-                                        </Button>
-                                      </Box>
-                                    )}
-                                  </Box>
-                                ) : (
+                                          </Button>
+                                        </Box>
+                                      )}
+
+                                      {generation && generation.status !== 'draft' && (
+                                        <Box
+                                          display="flex"
+                                          gap={0.75}
+                                          marginTop={0.75}
+                                          paddingTop={0.75}
+                                          sx={{
+                                            borderTop: `1px solid ${theme.BORDER}`,
+                                            '@media (min-width: 769px)': { display: 'none' },
+                                          }}
+                                        >
+                                          <Button
+                                            variant="outlined"
+                                            color="error"
+                                            size="small"
+                                            onClick={() => handleDeleteGenerations([generation.id])}
+                                            disabled={deleting}
+                                            sx={{
+                                              flex: 1,
+                                              fontSize: { xs: '0.6875rem', sm: '0.75rem' },
+                                              height: { xs: '32px', sm: '28px' },
+                                              padding: { xs: '4px 8px', sm: '2px 8px' },
+                                              '@media (max-width: 768px)': { width: '100%' },
+                                            }}
+                                          >
+                                            Delete Payroll
+                                          </Button>
+                                        </Box>
+                                      )}
+                                    </Box>
+                                  ) : (
                                   <Typography variant="body2" color={theme.TEXT_SECONDARY} style={{ padding: '16px', textAlign: 'center' }}>
                                     Click to expand and view salary breakdown
                                   </Typography>

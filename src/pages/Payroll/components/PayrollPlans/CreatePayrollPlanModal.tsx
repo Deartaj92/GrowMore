@@ -24,6 +24,14 @@ import {
 } from '@mui/material';
 import { Close as CloseIcon, Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { supabase } from '../../../../supabaseClient';
+import PayrollDateField from '../PayrollDateField';
+import {
+  blockNumberArrowKey,
+  blockNumberWheelChange,
+  isoToDisplayDate,
+  isValidDisplayDate,
+  payrollAmountInputSx,
+} from '../../utils';
 
 const ModalOverlay = styled.div<{ open: boolean }>`
   position: fixed;
@@ -170,6 +178,10 @@ const CreatePayrollPlanModal: React.FC<CreatePayrollPlanModalProps> = ({
   const [staffList, setStaffList] = useState<Array<{ id: number; name: string; role: string }>>([]);
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [selectedStaffId, setSelectedStaffId] = useState<number | ''>('');
+  const [effectiveFromDisplay, setEffectiveFromDisplay] = useState(
+    isoToDisplayDate(new Date().toISOString().split('T')[0])
+  );
+  const [effectiveToDisplay, setEffectiveToDisplay] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -195,6 +207,8 @@ const CreatePayrollPlanModal: React.FC<CreatePayrollPlanModalProps> = ({
         effectiveFrom: editingPlan.effectiveFrom,
         effectiveTo: editingPlan.effectiveTo || '',
       });
+      setEffectiveFromDisplay(isoToDisplayDate(editingPlan.effectiveFrom));
+      setEffectiveToDisplay(isoToDisplayDate(editingPlan.effectiveTo || ''));
       loadPlanItems();
     } else if (open) {
       resetForm();
@@ -242,14 +256,17 @@ const CreatePayrollPlanModal: React.FC<CreatePayrollPlanModalProps> = ({
   };
 
   const resetForm = () => {
+    const todayIso = new Date().toISOString().split('T')[0];
     setSelectedStaffId('');
     setFormData({
       name: '',
       description: '',
       basicPay: 0,
-      effectiveFrom: new Date().toISOString().split('T')[0],
+      effectiveFrom: todayIso,
       effectiveTo: '',
     });
+    setEffectiveFromDisplay(isoToDisplayDate(todayIso));
+    setEffectiveToDisplay('');
     setItems([]);
   };
 
@@ -293,6 +310,16 @@ const CreatePayrollPlanModal: React.FC<CreatePayrollPlanModalProps> = ({
 
     if (formData.basicPay <= 0) {
       showToast('Basic pay must be greater than 0', 'error');
+      return;
+    }
+
+    if (!isValidDisplayDate(effectiveFromDisplay)) {
+      showToast('Effective from date must be in dd-mm-yyyy format', 'error');
+      return;
+    }
+
+    if (effectiveToDisplay && !isValidDisplayDate(effectiveToDisplay)) {
+      showToast('Effective to date must be in dd-mm-yyyy format', 'error');
       return;
     }
 
@@ -423,35 +450,34 @@ const CreatePayrollPlanModal: React.FC<CreatePayrollPlanModalProps> = ({
                 size="small"
                 value={formData.basicPay}
                 onChange={(e) => setFormData({ ...formData, basicPay: parseFloat(e.target.value) || 0 })}
+                onKeyDown={blockNumberArrowKey}
+                onWheelCapture={blockNumberWheelChange}
                 fullWidth
                 variant="outlined"
                 inputProps={{ min: 0, step: 0.01 }}
+                sx={payrollAmountInputSx}
               />
             </FormGroup>
 
             <FormGroup style={{ flex: 1 }}>
               <Label>Effective From *</Label>
-              <TextField
-                type="date"
-                size="small"
-                value={formData.effectiveFrom}
-                onChange={(e) => setFormData({ ...formData, effectiveFrom: e.target.value })}
-                fullWidth
-                variant="outlined"
-                InputLabelProps={{ shrink: true }}
+              <PayrollDateField
+                value={effectiveFromDisplay}
+                onChange={(isoValue, displayValue) => {
+                  setEffectiveFromDisplay(displayValue);
+                  setFormData({ ...formData, effectiveFrom: isoValue });
+                }}
               />
             </FormGroup>
 
             <FormGroup style={{ flex: 1 }}>
               <Label>Effective To</Label>
-              <TextField
-                type="date"
-                size="small"
-                value={formData.effectiveTo}
-                onChange={(e) => setFormData({ ...formData, effectiveTo: e.target.value })}
-                fullWidth
-                variant="outlined"
-                InputLabelProps={{ shrink: true }}
+              <PayrollDateField
+                value={effectiveToDisplay}
+                onChange={(isoValue, displayValue) => {
+                  setEffectiveToDisplay(displayValue);
+                  setFormData({ ...formData, effectiveTo: isoValue });
+                }}
               />
             </FormGroup>
           </Box>
@@ -524,10 +550,13 @@ const CreatePayrollPlanModal: React.FC<CreatePayrollPlanModalProps> = ({
                             size="small"
                             value={item.amount}
                             onChange={(e) => handleUpdateItem(index, 'amount', parseFloat(e.target.value) || 0)}
+                            onKeyDown={blockNumberArrowKey}
+                            onWheelCapture={blockNumberWheelChange}
                             fullWidth
                             variant="outlined"
                             inputProps={{ min: 0, step: 0.01 }}
                             style={{ fontSize: '0.8rem' }}
+                            sx={payrollAmountInputSx}
                           />
                         </TableCell>
                         <TableCell>
@@ -593,4 +622,3 @@ const TableContainer = styled.div`
 `;
 
 export default CreatePayrollPlanModal;
-

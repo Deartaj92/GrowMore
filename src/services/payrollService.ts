@@ -8,6 +8,7 @@ import {
   PayrollGeneration,
   PayrollGenerationItem,
   PayrollPayment,
+  PayrollPaymentItem,
   PayrollAdvance,
   PayrollAdjustment,
   PayrollAuditLog,
@@ -23,6 +24,7 @@ import {
 import {
   calculateSalaryBreakdown,
   getAttendanceSummary,
+  getAttendanceRecordSummary,
 } from '../utils/payrollCalculations';
 import { expenseService } from './expenseService';
 import { fetchAllRows } from '../utils/paginationHelper';
@@ -121,6 +123,85 @@ const logAudit = async (
   if (error) console.error('Audit log error:', error);
 };
 
+const mapPayrollGenerationSummary = (item: any): PayrollGeneration | undefined => {
+  if (!item) return undefined;
+
+  return {
+    id: item.id,
+    schoolId: item.school_id,
+    staffId: item.staff_id,
+    payrollMonth: item.payroll_month,
+    payrollYear: item.payroll_year,
+    totalEarnings: parseFloat(item.total_earnings || '0'),
+    totalDeductions: parseFloat(item.total_deductions || '0'),
+    netSalary: parseFloat(item.net_salary || '0'),
+    workingDays: item.working_days ?? undefined,
+    presentDays: item.present_days ?? undefined,
+    leaveDays: item.leave_days ?? undefined,
+    absentDays: item.absent_days ?? undefined,
+    lateDays: item.late_days ?? undefined,
+    grossSalary: item.gross_salary !== undefined && item.gross_salary !== null ? parseFloat(item.gross_salary) : undefined,
+    absentDeductions: item.absent_deductions !== undefined && item.absent_deductions !== null ? parseFloat(item.absent_deductions) : undefined,
+    leaveDeductions: item.leave_deductions !== undefined && item.leave_deductions !== null ? parseFloat(item.leave_deductions) : undefined,
+    lateDeductions: item.late_deductions !== undefined && item.late_deductions !== null ? parseFloat(item.late_deductions) : undefined,
+    advanceDeductions: item.advance_deductions !== undefined && item.advance_deductions !== null ? parseFloat(item.advance_deductions) : undefined,
+    attendanceData: item.attendance_data || undefined,
+    calculationDetails: item.calculation_details || undefined,
+    calculationMode: item.calculation_mode || undefined,
+    halfDayLeaves: item.half_day_leaves ?? undefined,
+    planId: item.plan_id ?? undefined,
+    planSnapshot: item.plan_snapshot || undefined,
+    status: item.status,
+    approvedBy: item.approved_by ?? undefined,
+    approvedAt: item.approved_at ?? undefined,
+    generatedBy: item.generated_by ?? undefined,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
+    staff: item.staff ? {
+      id: item.staff.id,
+      name: item.staff.name,
+      role: item.staff.role,
+    } : undefined,
+  };
+};
+
+const getPayrollPaymentAppliedAmount = (payment: PayrollPayment, generationId: number): number => {
+  if (payment.items && payment.items.length > 0) {
+    return payment.items
+      .filter(item => item.generationId === generationId)
+      .reduce((sum, item) => sum + item.paidAmount, 0);
+  }
+
+  return payment.generationId === generationId ? payment.amount : 0;
+};
+
+const getAttendanceSnapshot = (generation: PayrollGeneration) => {
+  const attendanceRecords = generation.attendanceData?.records || [];
+  if (attendanceRecords.length > 0) {
+    return attendanceRecords.reduce(
+      (acc, record) => {
+        const status = String(record.status || '').toLowerCase();
+        if (status === 'present') acc.present += 1;
+        if (status === 'leave') acc.leave += 1;
+        if (status === 'absent') acc.absent += 1;
+        if (status === 'late') {
+          acc.late += 1;
+          acc.present += 1;
+        }
+        return acc;
+      },
+      { present: 0, leave: 0, absent: 0, late: 0 }
+    );
+  }
+
+  return {
+    present: generation.attendanceData?.summary?.presentDays ?? generation.presentDays ?? 0,
+    leave: generation.attendanceData?.summary?.leaveDays ?? generation.leaveDays ?? 0,
+    absent: generation.attendanceData?.summary?.absentDays ?? generation.absentDays ?? 0,
+    late: generation.attendanceData?.summary?.lateDays ?? generation.lateDays ?? 0,
+  };
+};
+
 
 export const payrollService = {
   // Payroll Settings
@@ -150,6 +231,7 @@ export const payrollService = {
       lateDeductionType: data.late_deduction_type || 'fixed',
       allowLeaveBonus: data.allow_leave_bonus || false,
       leaveBonusDays: data.leave_bonus_days || 1,
+      roundUpAmounts: data.round_up_amounts || false,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
@@ -179,6 +261,7 @@ export const payrollService = {
       late_deduction_type: settings.lateDeductionType || 'fixed',
       allow_leave_bonus: settings.allowLeaveBonus ?? false,
       leave_bonus_days: settings.leaveBonusDays ?? 1,
+      round_up_amounts: settings.roundUpAmounts ?? false,
     };
     
     let data, error;
@@ -234,6 +317,13 @@ export const payrollService = {
       salaryCalculationMethod: data.salary_calculation_method,
       defaultPaymentMode: data.default_payment_mode,
       autoApprovePayroll: data.auto_approve_payroll,
+      lateDeductionEnabled: data.late_deduction_enabled || false,
+      allowedLateDaysPerMonth: data.allowed_late_days_per_month || 0,
+      lateDeductionAmount: data.late_deduction_amount ? parseFloat(data.late_deduction_amount) : 0,
+      lateDeductionType: data.late_deduction_type || 'fixed',
+      allowLeaveBonus: data.allow_leave_bonus || false,
+      leaveBonusDays: data.leave_bonus_days || 1,
+      roundUpAmounts: data.round_up_amounts || false,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
@@ -988,6 +1078,7 @@ export const payrollService = {
     const attendanceRecords = (attendanceResult.data || []).map(ar => ({
       status: ar.status,
       date: ar.date,
+      paidLeave: !!ar.paid_leave,
     }));
     
     const halfLeavesData = halfLeavesResult.data || [];
@@ -1004,6 +1095,11 @@ export const payrollService = {
       settings.monthlyWorkingDays,
       halfLeavesMap,
       calculationMode
+    );
+    const attendanceRecordSummary = getAttendanceRecordSummary(
+      attendanceRecords,
+      settings.monthlyWorkingDays,
+      halfLeavesMap
     );
     
     // Get active advances and adjustments in parallel
@@ -1052,12 +1148,22 @@ export const payrollService = {
       records: attendanceRecords,
       halfLeaves: Array.from(halfLeavesMap.entries()).map(([date, type]) => ({ date, type })),
       summary: {
+        workingDays: attendanceRecordSummary.workingDays,
+        presentDays: attendanceRecordSummary.presentDays,
+        leaveDays: attendanceRecordSummary.leaveDays,
+        absentDays: attendanceRecordSummary.absentDays,
+        lateDays: attendanceRecordSummary.lateDays,
+        halfDayLeaves: attendanceRecordSummary.halfDayLeaves,
+        paidLeaveDays: attendanceRecordSummary.paidLeaveDays || 0,
+      },
+      calculatedSummary: {
         workingDays: attendanceSummary.workingDays,
         presentDays: attendanceSummary.presentDays,
         leaveDays: attendanceSummary.leaveDays,
         absentDays: attendanceSummary.absentDays,
         lateDays: attendanceSummary.lateDays,
         halfDayLeaves: attendanceSummary.halfDayLeaves,
+        paidLeaveDays: attendanceSummary.paidLeaveDays || 0,
       },
       dateRange: {
         startDate,
@@ -1128,12 +1234,12 @@ export const payrollService = {
       total_earnings: breakdown.grossSalary + breakdown.allowances.reduce((sum, a) => sum + a.amount, 0),
       total_deductions: breakdown.deductions.reduce((sum, d) => sum + d.amount, 0) + breakdown.leaveDeductions + breakdown.lateDeductions + breakdown.advanceDeductions + (breakdown.absentDeductions || 0),
       net_salary: breakdown.netSalary,
-      working_days: Math.round(attendanceSummary.workingDays || 0),
-      present_days: Math.round(attendanceSummary.presentDays || 0),
-      leave_days: Math.round(attendanceSummary.leaveDays || 0),
-      absent_days: Math.round(attendanceSummary.absentDays || 0),
-      late_days: Math.round(attendanceSummary.lateDays || 0),
-      half_day_leaves: Math.round(attendanceSummary.halfDayLeaves || 0),
+      working_days: Math.round(attendanceRecordSummary.workingDays || 0),
+      present_days: Math.round(attendanceRecordSummary.presentDays || 0),
+      leave_days: Math.round(attendanceRecordSummary.leaveDays || 0),
+      absent_days: Math.round(attendanceRecordSummary.absentDays || 0),
+      late_days: Math.round(attendanceRecordSummary.lateDays || 0),
+      half_day_leaves: Math.round(attendanceRecordSummary.halfDayLeaves || 0),
       calculation_mode: calculationMode,
       gross_salary: breakdown.grossSalary,
       absent_deductions: breakdown.absentDeductions || 0,
@@ -1225,13 +1331,17 @@ export const payrollService = {
     
     // Add leave deductions
     if (breakdown.leaveDeductions > 0) {
+      const excessLeaves = Math.max(
+        0,
+        (attendanceSummary.leaveDays || 0) - settings.allowedLeavesPerMonth - (attendanceSummary.paidLeaveDays || 0)
+      );
       itemsData.push({
         school_id: schoolId,
         generation_id: generationId,
         item_name: 'Leave Deduction',
         item_type: 'deduction',
         amount: breakdown.leaveDeductions,
-        calculation_basis: `Excess leaves: ${attendanceSummary.leaveDays - settings.allowedLeavesPerMonth} days`,
+        calculation_basis: `Excess leaves: ${excessLeaves} days`,
       });
     }
     
@@ -1446,6 +1556,100 @@ export const payrollService = {
     return await this.getPayrollGeneration(schoolId, generationId) as PayrollGeneration;
   },
 
+  async deletePayrollGeneration(
+    schoolId: number,
+    generationId: number,
+    userId?: number
+  ): Promise<void> {
+    if (userId) await setAuditUser(userId);
+
+    const generation = await this.getPayrollGeneration(schoolId, generationId);
+    if (!generation) {
+      throw new Error('Payroll generation not found');
+    }
+
+    const hasPayments = await this.hasPayrollPayments(schoolId, generationId);
+    if (hasPayments) {
+      throw new Error('Cannot delete payroll generation because payment has already been made.');
+    }
+
+    const appliedAdjustments = generation.calculationDetails?.appliedAdjustments || [];
+    const advanceSnapshots = generation.calculationDetails?.advances || [];
+
+    if (appliedAdjustments.length > 0) {
+      const adjustmentIds = appliedAdjustments
+        .map((adjustment: any) => adjustment.id)
+        .filter((id: unknown): id is number => typeof id === 'number');
+
+      if (adjustmentIds.length > 0) {
+        const { error: adjustmentsError } = await supabase
+          .from('payroll_adjustments')
+          .update({
+            is_applied: false,
+            applied_to_generation_id: null,
+          })
+          .eq('school_id', schoolId)
+          .in('id', adjustmentIds)
+          .eq('applied_to_generation_id', generationId);
+
+        if (adjustmentsError) throw adjustmentsError;
+      }
+    }
+
+    for (const advanceSnapshot of advanceSnapshots) {
+      if (!advanceSnapshot?.id || !advanceSnapshot?.deductionAmount) {
+        continue;
+      }
+
+      const advance = await this.getAdvance(schoolId, advanceSnapshot.id);
+      if (!advance) {
+        continue;
+      }
+
+      const restoredBalance = Math.min(
+        advance.amount,
+        advance.remainingBalance + advanceSnapshot.deductionAmount
+      );
+
+      const { error: advanceError } = await supabase
+        .from('payroll_advances')
+        .update({
+          remaining_balance: restoredBalance,
+          status: restoredBalance > 0 ? 'active' : 'completed',
+        })
+        .eq('school_id', schoolId)
+        .eq('id', advance.id);
+
+      if (advanceError) throw advanceError;
+    }
+
+    const { error: itemsError } = await supabase
+      .from('payroll_generation_items')
+      .delete()
+      .eq('school_id', schoolId)
+      .eq('generation_id', generationId);
+
+    if (itemsError) throw itemsError;
+
+    const { error } = await supabase
+      .from('payroll_generations')
+      .delete()
+      .eq('school_id', schoolId)
+      .eq('id', generationId);
+
+    if (error) throw error;
+
+    await logAudit(
+      schoolId,
+      'payroll_generation',
+      generationId,
+      'delete',
+      generation,
+      undefined,
+      userId
+    );
+  },
+
   // Payroll Payments
   async getPayrollPayments(
     schoolId: number,
@@ -1457,6 +1661,10 @@ export const payrollService = {
         .select(`
           *,
           payroll_generations (*, staff (id, name, role)),
+          payroll_payment_items (
+            *,
+            payroll_generations (*, staff (id, name, role))
+          ),
           users!payroll_payments_received_by_fkey (id, name, email)
         `)
         .eq('school_id', schoolId);
@@ -1474,8 +1682,24 @@ export const payrollService = {
       id: item.id,
       schoolId: item.school_id,
       generationId: item.generation_id,
+      paymentGroupId: item.payment_group_id || undefined,
       paymentDate: item.payment_date,
       amount: parseFloat(item.amount),
+      totalRemainingBeforePayment: parseFloat(item.total_remaining_before_payment || '0'),
+      remainingAfterPayment: parseFloat(item.remaining_after_payment || '0'),
+      oldBalanceAmount: parseFloat(item.old_balance_amount || '0'),
+      currentMonthGross: parseFloat(item.current_month_gross || '0'),
+      currentMonthDeductions: parseFloat(item.current_month_deductions || '0'),
+      priorPaymentsCurrentMonth: parseFloat(item.prior_payments_current_month || '0'),
+      netAmount: parseFloat(item.net_amount || '0'),
+      attendancePresent: item.attendance_present ?? 0,
+      attendanceLeave: item.attendance_leave ?? 0,
+      attendanceAbsent: item.attendance_absent ?? 0,
+      attendanceLate: item.attendance_late ?? 0,
+      absentDeductionAmount: parseFloat(item.absent_deduction_amount || '0'),
+      leaveDeductionAmount: parseFloat(item.leave_deduction_amount || '0'),
+      lateDeductionAmount: parseFloat(item.late_deduction_amount || '0'),
+      advanceDeductionAmount: parseFloat(item.advance_deduction_amount || '0'),
       paymentMode: item.payment_mode,
       referenceNo: item.reference_no,
       remarks: item.remarks,
@@ -1483,22 +1707,21 @@ export const payrollService = {
       receivedBy: item.received_by,
       createdAt: item.created_at,
       updatedAt: item.updated_at,
-      generation: item.payroll_generations ? {
-        id: item.payroll_generations.id,
-        schoolId: item.payroll_generations.school_id,
-        staffId: item.payroll_generations.staff_id,
-        payrollMonth: item.payroll_generations.payroll_month,
-        payrollYear: item.payroll_generations.payroll_year,
-        totalEarnings: parseFloat(item.payroll_generations.total_earnings || '0'),
-        totalDeductions: parseFloat(item.payroll_generations.total_deductions || '0'),
-        netSalary: parseFloat(item.payroll_generations.net_salary),
-        status: item.payroll_generations.status,
-        staff: item.payroll_generations.staff ? {
-          id: item.payroll_generations.staff.id,
-          name: item.payroll_generations.staff.name,
-          role: item.payroll_generations.staff.role,
-        } : undefined,
-      } : undefined,
+      generation: mapPayrollGenerationSummary(item.payroll_generations),
+      items: (item.payroll_payment_items || [])
+        .map((paymentItem: any): PayrollPaymentItem => ({
+          id: paymentItem.id,
+          schoolId: paymentItem.school_id,
+          paymentId: paymentItem.payment_id,
+          generationId: paymentItem.generation_id,
+          amountDueBeforePayment: parseFloat(paymentItem.amount_due_before_payment || '0'),
+          paidAmount: parseFloat(paymentItem.paid_amount || '0'),
+          remainingAfterPayment: parseFloat(paymentItem.remaining_after_payment || '0'),
+          displayOrder: paymentItem.display_order || 0,
+          createdAt: paymentItem.created_at,
+          generation: mapPayrollGenerationSummary(paymentItem.payroll_generations),
+        }))
+        .sort((a: PayrollPaymentItem, b: PayrollPaymentItem) => a.displayOrder - b.displayOrder),
       receivedByUser: item.users ? {
         id: item.users.id,
         name: item.users.name,
@@ -1512,35 +1735,73 @@ export const payrollService = {
     paymentInput: ProcessPaymentInput,
     userId?: number
   ): Promise<PayrollPayment> {
-    if (userId) await setAuditUser(userId);
-    
-    // Verify generation exists and is approved or paid (for partial payments)
-    const generation = await this.getPayrollGeneration(schoolId, paymentInput.generationId);
-    if (!generation) {
+    const targetGeneration = await this.getPayrollGeneration(schoolId, paymentInput.generationId);
+    if (!targetGeneration) {
       throw new Error('Payroll generation not found');
     }
-    if (generation.status !== 'approved' && generation.status !== 'paid') {
-      throw new Error('Only approved or paid payrolls can receive payments');
+
+    const generationsWithBalance = await this.getEmployeePayrollGenerationsWithBalance(schoolId, targetGeneration.staffId);
+    const payableGenerations = generationsWithBalance
+      .filter(item => item.generation.status === 'approved' || item.generation.status === 'paid');
+    const targetBalance = payableGenerations.find(item => item.generation.id === paymentInput.generationId);
+
+    if (!targetBalance) {
+      throw new Error('Selected payroll month is not payable');
     }
-    
-    // Check if there's remaining balance for payment
-    const payments = await this.getPayrollPayments(schoolId, {});
-    const generationPayments = payments.filter(p => p.generationId === paymentInput.generationId && p.status === 'completed');
-    const totalPaid = generationPayments.reduce((sum, p) => sum + p.amount, 0);
-    const remainingBalance = generation.netSalary - totalPaid;
-    
-    if (paymentInput.amount > remainingBalance) {
-      throw new Error(`Payment amount cannot exceed remaining balance of Rs. ${remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`);
+
+    if (paymentInput.amount > targetBalance.remainingBalance) {
+      throw new Error(`Payment amount cannot exceed remaining balance of Rs. ${targetBalance.remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`);
     }
-    
-    // Create payment
+
+    const latestGeneration = [...payableGenerations].sort((a, b) =>
+      (b.generation.payrollYear * 100 + b.generation.payrollMonth) - (a.generation.payrollYear * 100 + a.generation.payrollMonth)
+    )[0]?.generation;
+
+    if (!latestGeneration) {
+      throw new Error('No approved payroll month found for this employee');
+    }
+
+    const latestPeriod = latestGeneration.payrollYear * 100 + latestGeneration.payrollMonth;
+    const oldBalanceAmount = payableGenerations
+      .filter(item => item.generation.payrollYear * 100 + item.generation.payrollMonth < latestPeriod)
+      .reduce((sum, item) => sum + item.remainingBalance, 0);
+    const currentMonthGross = latestGeneration.grossSalary || latestGeneration.totalEarnings || 0;
+    const currentMonthDeductions = latestGeneration.totalDeductions || 0;
+    const priorPaymentsCurrentMonth = payableGenerations.find(item => item.generation.id === latestGeneration.id)?.totalPaid || 0;
+    const totalRemainingBeforePayment = payableGenerations.reduce((sum, item) => sum + item.remainingBalance, 0);
+    const netAmount = oldBalanceAmount + currentMonthGross - currentMonthDeductions - priorPaymentsCurrentMonth;
+    const remainingAfterPayment = Math.max(0, totalRemainingBeforePayment - paymentInput.amount);
+    const attendanceSnapshot = getAttendanceSnapshot(latestGeneration);
+    const absentDeductionAmount = latestGeneration.absentDeductions || 0;
+    const leaveDeductionAmount = latestGeneration.leaveDeductions || 0;
+    const lateDeductionAmount = latestGeneration.lateDeductions || 0;
+    const advanceDeductionAmount = latestGeneration.advanceDeductions || 0;
+
+    if (userId) await setAuditUser(userId);
+
     const { data, error } = await supabase
       .from('payroll_payments')
       .insert({
         school_id: schoolId,
-        generation_id: paymentInput.generationId,
+        generation_id: latestGeneration.id,
+        payment_group_id: paymentInput.paymentGroupId || null,
         payment_date: paymentInput.paymentDate,
         amount: paymentInput.amount,
+        total_remaining_before_payment: totalRemainingBeforePayment,
+        remaining_after_payment: remainingAfterPayment,
+        old_balance_amount: oldBalanceAmount,
+        current_month_gross: currentMonthGross,
+        current_month_deductions: currentMonthDeductions,
+        prior_payments_current_month: priorPaymentsCurrentMonth,
+        net_amount: netAmount,
+        attendance_present: attendanceSnapshot.present,
+        attendance_leave: attendanceSnapshot.leave,
+        attendance_absent: attendanceSnapshot.absent,
+        attendance_late: attendanceSnapshot.late,
+        absent_deduction_amount: absentDeductionAmount,
+        leave_deduction_amount: leaveDeductionAmount,
+        late_deduction_amount: lateDeductionAmount,
+        advance_deduction_amount: advanceDeductionAmount,
         payment_mode: paymentInput.paymentMode,
         reference_no: paymentInput.referenceNo,
         remarks: paymentInput.remarks,
@@ -1549,38 +1810,41 @@ export const payrollService = {
       })
       .select()
       .single();
-    
+
     if (error) throw error;
-    
-    // Calculate new total paid amount (including this payment)
-    const newTotalPaid = totalPaid + paymentInput.amount;
-    
-    // Update generation status based on payment amount
-    // Only mark as 'paid' if total paid equals or exceeds net salary
-    if (newTotalPaid >= generation.netSalary) {
-      await supabase
-        .from('payroll_generations')
-        .update({ status: 'paid' })
-        .eq('id', paymentInput.generationId);
-    }
-    // If partial payment, keep status as 'approved' (or 'paid' if already paid)
-    
-    // Create expense entry for this payroll payment
+
+    const { error: paymentItemsError } = await supabase
+      .from('payroll_payment_items')
+      .insert({
+        school_id: schoolId,
+        payment_id: data.id,
+        generation_id: paymentInput.generationId,
+        amount_due_before_payment: targetBalance.remainingBalance,
+        paid_amount: paymentInput.amount,
+        remaining_after_payment: Math.max(0, targetBalance.remainingBalance - paymentInput.amount),
+        display_order: 0,
+      });
+
+    if (paymentItemsError) throw paymentItemsError;
+
+    const newRemainingForTarget = Math.max(0, targetBalance.remainingBalance - paymentInput.amount);
+    await supabase
+      .from('payroll_generations')
+      .update({ status: newRemainingForTarget <= 0 ? 'paid' : 'approved' })
+      .eq('id', paymentInput.generationId);
+
     try {
       const payrollCategoryId = await getOrCreatePayrollExpenseCategory(schoolId);
       const expensePaymentMethod = mapPaymentModeToExpenseMethod(paymentInput.paymentMode);
-      
-      // Get staff name for expense title and vendor name
-      const staffName = generation.staff?.name || 'Employee';
-      const staffRole = generation.staff?.role || '';
-      const monthName = new Date(generation.payrollYear, generation.payrollMonth - 1, 1).toLocaleString('default', { month: 'long' });
-      
-      const expenseDescription = `Payroll payment for ${staffName}${staffRole ? ` (${staffRole})` : ''} - ${monthName} ${generation.payrollYear}${paymentInput.remarks ? `. ${paymentInput.remarks}` : ''}. Payroll Payment ID: ${data.id}`;
-      
+      const staffName = latestGeneration.staff?.name || targetGeneration.staff?.name || 'Employee';
+      const staffRole = latestGeneration.staff?.role || targetGeneration.staff?.role || '';
+      const monthName = new Date(latestGeneration.payrollYear, latestGeneration.payrollMonth - 1, 1).toLocaleString('default', { month: 'long' });
+      const expenseDescription = `Payroll payment for ${staffName}${staffRole ? ` (${staffRole})` : ''} - ${monthName} ${latestGeneration.payrollYear}${paymentInput.remarks ? `. ${paymentInput.remarks}` : ''}. Payroll Payment ID: ${data.id}`;
+
       await expenseService.createExpense({
         schoolId,
         categoryId: payrollCategoryId,
-        title: `Payroll: ${staffName} - ${monthName} ${generation.payrollYear}`,
+        title: `Payroll: ${staffName} - ${monthName} ${latestGeneration.payrollYear}`,
         description: expenseDescription,
         amount: paymentInput.amount,
         expenseDate: paymentInput.paymentDate,
@@ -1588,41 +1852,258 @@ export const payrollService = {
         referenceNumber: paymentInput.referenceNo,
         vendorName: staffName,
         vendorContact: staffRole,
-        status: 'approved', // Payroll payments are automatically approved
+        status: 'approved',
         createdBy: userId,
       });
     } catch (expenseError) {
-      // Log the error but don't fail the payment creation
-      // The payment is already created, so we just log the expense creation failure
       console.error('Failed to create expense entry for payroll payment:', expenseError);
-      // Optionally, you could throw here if you want payment creation to fail if expense creation fails
-      // throw new Error('Payment created but failed to create expense entry. Please create it manually.');
     }
-    
+
     await logAudit(
       schoolId,
       'payroll_payment',
       data.id,
       'create',
       undefined,
-      paymentInput,
+      {
+        ...paymentInput,
+        totalRemainingBeforePayment,
+        remainingAfterPayment,
+        oldBalanceAmount,
+        currentMonthGross,
+        currentMonthDeductions,
+        priorPaymentsCurrentMonth,
+        netAmount,
+        attendanceSnapshot,
+        absentDeductionAmount,
+        leaveDeductionAmount,
+        lateDeductionAmount,
+        advanceDeductionAmount,
+      },
       userId
     );
-    
-    return {
-      id: data.id,
-      schoolId: data.school_id,
-      generationId: data.generation_id,
-      paymentDate: data.payment_date,
-      amount: parseFloat(data.amount),
-      paymentMode: data.payment_mode,
-      referenceNo: data.reference_no,
-      remarks: data.remarks,
-      status: data.status,
-      receivedBy: data.received_by,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-    };
+
+    const createdPayment = await this.getPayrollPayments(schoolId, {});
+    const payment = createdPayment.find(item => item.id === data.id);
+    if (!payment) {
+      throw new Error('Payment created but could not be reloaded');
+    }
+    return payment;
+  },
+
+  async processCombinedPayment(
+    schoolId: number,
+    input: {
+      staffId: number;
+      paymentDate: string;
+      amount: number;
+      paymentMode: 'cash' | 'bank_transfer' | 'cheque' | 'easypaisa_jazzcash' | 'other';
+      referenceNo?: string;
+      remarks?: string;
+    },
+    userId?: number
+  ): Promise<PayrollPayment[]> {
+    if (input.amount <= 0) {
+      throw new Error('Payment amount must be greater than 0');
+    }
+
+    const generationsWithBalance = await this.getEmployeePayrollGenerationsWithBalance(schoolId, input.staffId);
+    const payableGenerations = generationsWithBalance
+      .filter(item => item.remainingBalance > 0)
+      .sort((a, b) => {
+        if (a.generation.payrollYear !== b.generation.payrollYear) {
+          return a.generation.payrollYear - b.generation.payrollYear;
+        }
+        return a.generation.payrollMonth - b.generation.payrollMonth;
+      });
+
+    if (payableGenerations.length === 0) {
+      throw new Error('No unpaid payroll months found for this employee');
+    }
+
+    const totalPending = payableGenerations.reduce((sum, item) => sum + item.remainingBalance, 0);
+    if (input.amount > totalPending) {
+      throw new Error(`Payment amount cannot exceed pending balance of Rs. ${totalPending.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`);
+    }
+
+    const latestGeneration = [...payableGenerations].sort((a, b) =>
+      (b.generation.payrollYear * 100 + b.generation.payrollMonth) - (a.generation.payrollYear * 100 + a.generation.payrollMonth)
+    )[0]?.generation;
+    if (!latestGeneration) {
+      throw new Error('No approved payroll month found for this employee');
+    }
+
+    const latestPeriod = latestGeneration.payrollYear * 100 + latestGeneration.payrollMonth;
+    const oldBalanceAmount = payableGenerations
+      .filter(item => item.generation.payrollYear * 100 + item.generation.payrollMonth < latestPeriod)
+      .reduce((sum, item) => sum + item.remainingBalance, 0);
+    const currentMonthGross = latestGeneration.grossSalary || latestGeneration.totalEarnings || 0;
+    const currentMonthDeductions = latestGeneration.totalDeductions || 0;
+    const priorPaymentsCurrentMonth = payableGenerations.find(item => item.generation.id === latestGeneration.id)?.totalPaid || 0;
+    const netAmount = oldBalanceAmount + currentMonthGross - currentMonthDeductions - priorPaymentsCurrentMonth;
+    const remainingAfterPayment = Math.max(0, totalPending - input.amount);
+    const attendanceSnapshot = getAttendanceSnapshot(latestGeneration);
+    const absentDeductionAmount = latestGeneration.absentDeductions || 0;
+    const leaveDeductionAmount = latestGeneration.leaveDeductions || 0;
+    const lateDeductionAmount = latestGeneration.lateDeductions || 0;
+    const advanceDeductionAmount = latestGeneration.advanceDeductions || 0;
+    let remainingToAllocate = input.amount;
+    const paymentItemsPayload: Array<{
+      school_id: number;
+      generation_id: number;
+      amount_due_before_payment: number;
+      paid_amount: number;
+      remaining_after_payment: number;
+      display_order: number;
+    }> = [];
+
+    const sortedPayableGenerations = [...payableGenerations].sort((a, b) => {
+      if (a.generation.payrollYear !== b.generation.payrollYear) {
+        return a.generation.payrollYear - b.generation.payrollYear;
+      }
+      return a.generation.payrollMonth - b.generation.payrollMonth;
+    });
+
+    for (let index = 0; index < sortedPayableGenerations.length; index += 1) {
+      const item = sortedPayableGenerations[index];
+      if (remainingToAllocate <= 0) {
+        break;
+      }
+      const allocation = Math.min(item.remainingBalance, remainingToAllocate);
+      if (allocation <= 0) {
+        continue;
+      }
+
+      paymentItemsPayload.push({
+        school_id: schoolId,
+        generation_id: item.generation.id,
+        amount_due_before_payment: item.remainingBalance,
+        paid_amount: allocation,
+        remaining_after_payment: Math.max(0, item.remainingBalance - allocation),
+        display_order: index,
+      });
+      remainingToAllocate -= allocation;
+    }
+
+    if (paymentItemsPayload.length === 0) {
+      throw new Error('No payroll amounts were allocated for this payment');
+    }
+
+    if (userId) await setAuditUser(userId);
+
+    const { data, error } = await supabase
+      .from('payroll_payments')
+      .insert({
+        school_id: schoolId,
+        generation_id: latestGeneration.id,
+        payment_date: input.paymentDate,
+        amount: input.amount,
+        total_remaining_before_payment: totalPending,
+        remaining_after_payment: remainingAfterPayment,
+        old_balance_amount: oldBalanceAmount,
+        current_month_gross: currentMonthGross,
+        current_month_deductions: currentMonthDeductions,
+        prior_payments_current_month: priorPaymentsCurrentMonth,
+        net_amount: netAmount,
+        attendance_present: attendanceSnapshot.present,
+        attendance_leave: attendanceSnapshot.leave,
+        attendance_absent: attendanceSnapshot.absent,
+        attendance_late: attendanceSnapshot.late,
+        absent_deduction_amount: absentDeductionAmount,
+        leave_deduction_amount: leaveDeductionAmount,
+        late_deduction_amount: lateDeductionAmount,
+        advance_deduction_amount: advanceDeductionAmount,
+        payment_mode: input.paymentMode,
+        reference_no: input.referenceNo,
+        remarks: input.remarks,
+        status: 'completed',
+        received_by: userId,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    const { error: paymentItemsError } = await supabase
+      .from('payroll_payment_items')
+      .insert(
+        paymentItemsPayload.map(item => ({
+          ...item,
+          payment_id: data.id,
+        }))
+      );
+
+    if (paymentItemsError) throw paymentItemsError;
+
+    await Promise.all(
+      paymentItemsPayload.map(item =>
+        supabase
+          .from('payroll_generations')
+          .update({ status: item.remaining_after_payment <= 0 ? 'paid' : 'approved' })
+          .eq('id', item.generation_id)
+      )
+    );
+
+    try {
+      const payrollCategoryId = await getOrCreatePayrollExpenseCategory(schoolId);
+      const expensePaymentMethod = mapPaymentModeToExpenseMethod(input.paymentMode);
+      const staffName = latestGeneration.staff?.name || 'Employee';
+      const staffRole = latestGeneration.staff?.role || '';
+      const monthName = new Date(latestGeneration.payrollYear, latestGeneration.payrollMonth - 1, 1).toLocaleString('default', { month: 'long' });
+      const extraMonths = Math.max(0, paymentItemsPayload.length - 1);
+      const monthSuffix = extraMonths > 0 ? ` + ${extraMonths} more` : '';
+      const expenseDescription = `Payroll payment for ${staffName}${staffRole ? ` (${staffRole})` : ''} - ${monthName} ${latestGeneration.payrollYear}${monthSuffix}${input.remarks ? `. ${input.remarks}` : ''}. Payroll Payment ID: ${data.id}`;
+
+      await expenseService.createExpense({
+        schoolId,
+        categoryId: payrollCategoryId,
+        title: `Payroll: ${staffName} - ${monthName} ${latestGeneration.payrollYear}${monthSuffix}`,
+        description: expenseDescription,
+        amount: input.amount,
+        expenseDate: input.paymentDate,
+        paymentMethod: expensePaymentMethod,
+        referenceNumber: input.referenceNo,
+        vendorName: staffName,
+        vendorContact: staffRole,
+        status: 'approved',
+        createdBy: userId,
+      });
+    } catch (expenseError) {
+      console.error('Failed to create expense entry for payroll payment:', expenseError);
+    }
+
+    await logAudit(
+      schoolId,
+      'payroll_payment',
+      data.id,
+      'create',
+      undefined,
+      {
+        ...input,
+        paymentItemCount: paymentItemsPayload.length,
+        totalRemainingBeforePayment: totalPending,
+        remainingAfterPayment,
+        oldBalanceAmount,
+        currentMonthGross,
+        currentMonthDeductions,
+        priorPaymentsCurrentMonth,
+        netAmount,
+        attendanceSnapshot,
+        absentDeductionAmount,
+        leaveDeductionAmount,
+        lateDeductionAmount,
+        advanceDeductionAmount,
+      },
+      userId
+    );
+
+    const allPayments = await this.getPayrollPayments(schoolId, {});
+    const createdPayment = allPayments.find(payment => payment.id === data.id);
+    if (!createdPayment) {
+      throw new Error('Payment created but could not be reloaded');
+    }
+
+    return [createdPayment];
   },
 
   async deletePayment(
@@ -1632,7 +2113,6 @@ export const payrollService = {
   ): Promise<void> {
     if (userId) await setAuditUser(userId);
 
-    // Get the payment details before deletion for audit log
     const payments = await this.getPayrollPayments(schoolId, {});
     const payment = payments.find(p => p.id === paymentId);
     
@@ -1640,15 +2120,7 @@ export const payrollService = {
       throw new Error('Payment not found');
     }
 
-    // Get the generation to update its status
-    const generation = await this.getPayrollGeneration(schoolId, payment.generationId);
-    if (!generation) {
-      throw new Error('Payroll generation not found');
-    }
-
-    // Delete the associated expense entry if it exists
     try {
-      // Find expense by description pattern (contains "Payroll Payment ID: {paymentId}")
       const { data: expensesData, error: expensesError } = await supabase
         .from('expenses')
         .select('id, description')
@@ -1656,22 +2128,25 @@ export const payrollService = {
         .ilike('description', `%Payroll Payment ID: ${paymentId}%`);
       
       if (!expensesError && expensesData && expensesData.length > 0) {
-        // Delete all matching expenses (should be only one, but handle multiple just in case)
         for (const expense of expensesData) {
           try {
             await expenseService.deleteExpense(expense.id, schoolId);
           } catch (expenseDeleteError) {
             console.error(`Failed to delete expense ${expense.id} for payroll payment ${paymentId}:`, expenseDeleteError);
-            // Continue with payment deletion even if expense deletion fails
           }
         }
       }
     } catch (expenseError) {
-      // Log the error but don't fail the payment deletion
       console.error('Error deleting associated expense for payroll payment:', expenseError);
     }
 
-    // Delete the payment
+    const affectedGenerationIds = Array.from(new Set(
+      (payment.items && payment.items.length > 0
+        ? payment.items.map(item => item.generationId)
+        : [payment.generationId]
+      ).filter(Boolean)
+    ));
+
     const { error: deleteError } = await supabase
       .from('payroll_payments')
       .delete()
@@ -1680,22 +2155,17 @@ export const payrollService = {
 
     if (deleteError) throw deleteError;
 
-    // Recalculate total paid amount after deletion
-    // Only count completed payments in the total
-    const remainingPayments = payments.filter(
-      p => p.generationId === payment.generationId && 
-           p.id !== paymentId && 
-           p.status === 'completed'
-    );
-    const newTotalPaid = remainingPayments.reduce((sum, p) => sum + p.amount, 0);
-
-    // Update generation status based on new total paid amount
-    // If total paid is less than net salary, change status from 'paid' to 'approved'
-    if (newTotalPaid < generation.netSalary && generation.status === 'paid') {
+    const remainingPayments = payments.filter(p => p.id !== paymentId && p.status === 'completed');
+    for (const generationId of affectedGenerationIds) {
+      const generation = await this.getPayrollGeneration(schoolId, generationId);
+      if (!generation) continue;
+      const totalPaid = remainingPayments.reduce((sum, existingPayment) => {
+        return sum + getPayrollPaymentAppliedAmount(existingPayment, generationId);
+      }, 0);
       await supabase
         .from('payroll_generations')
-        .update({ status: 'approved' })
-        .eq('id', payment.generationId);
+        .update({ status: totalPaid >= generation.netSalary ? 'paid' : 'approved' })
+        .eq('id', generationId);
     }
 
     await logAudit(
@@ -1707,6 +2177,25 @@ export const payrollService = {
       undefined,
       userId
     );
+  },
+
+  async deletePaymentGroup(
+    schoolId: number,
+    paymentGroupId: string,
+    userId?: number
+  ): Promise<void> {
+    const payments = await this.getPayrollPayments(schoolId, {});
+    const groupedPayments = payments
+      .filter(payment => payment.paymentGroupId === paymentGroupId)
+      .sort((a, b) => b.id - a.id);
+
+    if (groupedPayments.length === 0) {
+      throw new Error('Payment group not found');
+    }
+
+    for (const payment of groupedPayments) {
+      await this.deletePayment(schoolId, payment.id, userId);
+    }
   },
 
   // Payroll Advances
@@ -1982,6 +2471,44 @@ export const payrollService = {
     };
   },
 
+  async deleteAdjustment(
+    schoolId: number,
+    adjustmentId: number,
+    userId?: number
+  ): Promise<void> {
+    if (userId) await setAuditUser(userId);
+
+    const adjustments = await this.getAdjustments(schoolId, {});
+    const adjustment = adjustments.find(adj => adj.id === adjustmentId);
+
+    if (!adjustment) {
+      throw new Error('Adjustment not found');
+    }
+
+    if (adjustment.isApplied || adjustment.appliedToGenerationId) {
+      throw new Error('Cannot delete adjustment. It has already been included in a payroll.');
+    }
+
+    const { error } = await supabase
+      .from('payroll_adjustments')
+      .delete()
+      .eq('school_id', schoolId)
+      .eq('id', adjustmentId)
+      .eq('is_applied', false);
+
+    if (error) throw error;
+
+    await logAudit(
+      schoolId,
+      'payroll_adjustment',
+      adjustmentId,
+      'delete',
+      adjustment,
+      undefined,
+      userId
+    );
+  },
+
   // Analytics and Summary
   async getPayrollSummary(
     schoolId: number,
@@ -2001,10 +2528,31 @@ export const payrollService = {
     
     const generations = data || [];
     const totalPayroll = generations.reduce((sum, g) => sum + parseFloat(g.net_salary), 0);
-    const paidGenerations = generations.filter(g => g.status === 'paid');
-    const totalPaid = paidGenerations.reduce((sum, g) => sum + parseFloat(g.net_salary), 0);
-    const pendingGenerations = generations.filter(g => g.status === 'approved');
-    const totalPending = pendingGenerations.reduce((sum, g) => sum + parseFloat(g.net_salary), 0);
+    const generationIds = generations.map(g => g.id);
+    const payments = generationIds.length > 0 ? await this.getPayrollPayments(schoolId, {}) : [];
+    const completedPayments = payments.filter(
+      payment => payment.status === 'completed' && generationIds.includes(payment.generationId)
+    );
+    const paidByGeneration = new Map<number, number>();
+
+    completedPayments.forEach((payment) => {
+      paidByGeneration.set(
+        payment.generationId,
+        (paidByGeneration.get(payment.generationId) || 0) + payment.amount
+      );
+    });
+
+    const totalPaid = completedPayments.reduce((sum, payment) => sum + payment.amount, 0);
+    const totalPending = generations.reduce((sum, generation) => {
+      const generationPaid = paidByGeneration.get(generation.id) || 0;
+      return sum + Math.max(0, parseFloat(generation.net_salary) - generationPaid);
+    }, 0);
+    const paidGenerations = generations.filter(
+      generation => (paidByGeneration.get(generation.id) || 0) >= parseFloat(generation.net_salary)
+    );
+    const pendingGenerations = generations.filter(
+      generation => (paidByGeneration.get(generation.id) || 0) < parseFloat(generation.net_salary)
+    );
     
     // Get total advances
     const { data: advancesData } = await supabase
@@ -2078,25 +2626,17 @@ export const payrollService = {
         return [];
       }
     
-    // Get all payments for these generations
-    const generationIds = approvedGenerations.map(g => g.id);
-    const allPayments = await this.getPayrollPayments(schoolId, {});
-    const paymentsByGeneration = new Map<number, PayrollPayment[]>();
-    
-    allPayments.forEach(payment => {
-      if (generationIds.includes(payment.generationId)) {
-        const existing = paymentsByGeneration.get(payment.generationId) || [];
-        existing.push(payment);
-        paymentsByGeneration.set(payment.generationId, existing);
-      }
-    });
-    
-    // Calculate balances for each generation
-    return approvedGenerations.map(generation => {
-      const payments = paymentsByGeneration.get(generation.id) || [];
-      const totalPaid = payments
-        .filter(p => p.status === 'completed')
-        .reduce((sum, p) => sum + p.amount, 0);
+      const allPayments = await this.getPayrollPayments(schoolId, {});
+      const completedPayments = allPayments.filter(payment => payment.status === 'completed');
+
+      return approvedGenerations.map(generation => {
+      const payments = completedPayments.filter(payment => {
+        if (payment.items && payment.items.length > 0) {
+          return payment.items.some(item => item.generationId === generation.id);
+        }
+        return payment.generationId === generation.id;
+      });
+      const totalPaid = payments.reduce((sum, payment) => sum + getPayrollPaymentAppliedAmount(payment, generation.id), 0);
       const remainingBalance = Math.max(0, generation.netSalary - totalPaid);
       
       let paymentStatus: 'unpaid' | 'partial' | 'paid' = 'unpaid';
@@ -2113,13 +2653,13 @@ export const payrollService = {
         paymentStatus,
         payments,
       };
-    }).sort((a, b) => {
+      }).sort((a, b) => {
       // Sort by year and month descending (newest first)
       if (a.generation.payrollYear !== b.generation.payrollYear) {
         return b.generation.payrollYear - a.generation.payrollYear;
       }
       return b.generation.payrollMonth - a.generation.payrollMonth;
-    });
+      });
     } catch (error) {
       console.error('Error in getEmployeePayrollGenerationsWithBalance:', error);
       throw error;
@@ -2373,6 +2913,19 @@ export const payrollService = {
       payrollYear: g.payroll_year,
       status: g.status,
     }));
+    const generationIds = generations.map((g: any) => g.id);
+    const payments = generationIds.length > 0 ? await this.getPayrollPayments(schoolId, {}) : [];
+    const completedPayments = payments.filter(
+      payment => payment.status === 'completed' && generationIds.includes(payment.generationId)
+    );
+    const paidByGeneration = new Map<number, number>();
+
+    completedPayments.forEach((payment) => {
+      paidByGeneration.set(
+        payment.generationId,
+        (paidByGeneration.get(payment.generationId) || 0) + payment.amount
+      );
+    });
 
     // Monthly totals (last 12 months)
     const monthlyMap = new Map<string, { total: number; paid: number; pending: number }>();
@@ -2389,12 +2942,10 @@ export const payrollService = {
       const monthKey = `${monthNames[g.payrollMonth - 1]} ${g.payrollYear}`;
       if (monthlyMap.has(monthKey)) {
         const monthData = monthlyMap.get(monthKey)!;
+        const generationPaid = paidByGeneration.get(g.id) || 0;
         monthData.total += g.netSalary;
-        if (g.status === 'paid') {
-          monthData.paid += g.netSalary;
-        } else {
-          monthData.pending += g.netSalary;
-        }
+        monthData.paid += generationPaid;
+        monthData.pending += Math.max(0, g.netSalary - generationPaid);
       }
     });
     
@@ -2426,12 +2977,19 @@ export const payrollService = {
     // Payment status summary
     const statusMap = new Map<string, { total: number; count: number }>();
     generations.forEach((g: any) => {
-      const status = g.status;
+      const generationPaid = paidByGeneration.get(g.id) || 0;
+      let status = 'unpaid';
+      if (generationPaid >= g.netSalary) {
+        status = 'paid';
+      } else if (generationPaid > 0) {
+        status = 'partial';
+      }
+
       if (!statusMap.has(status)) {
         statusMap.set(status, { total: 0, count: 0 });
       }
       const statusData = statusMap.get(status)!;
-      statusData.total += g.netSalary;
+      statusData.total += status === 'paid' ? g.netSalary : Math.max(0, g.netSalary - generationPaid);
       statusData.count += 1;
     });
     
@@ -2509,4 +3067,3 @@ export const payrollService = {
     };
   },
 };
-

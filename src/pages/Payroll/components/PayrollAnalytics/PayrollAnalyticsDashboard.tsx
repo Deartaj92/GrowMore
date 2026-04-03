@@ -39,6 +39,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import Loader from '../../../../components/Loader';
+import { usePayrollDisplaySettings } from '../../PayrollDisplaySettingsContext';
 import {
   StatsGrid,
   StatCard,
@@ -94,6 +95,7 @@ const PayrollAnalyticsDashboard: React.FC = () => {
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
   const { user } = useAuth() as any;
   const { showToast } = useToast();
+  const { formatCurrency, roundAmount } = usePayrollDisplaySettings();
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<PayrollSummary | null>(null);
   const [analytics, setAnalytics] = useState<PayrollAnalytics | null>(null);
@@ -127,10 +129,6 @@ const PayrollAnalyticsDashboard: React.FC = () => {
   if (loading) {
     return <Loader />;
   }
-
-  const formatCurrency = (amount: number) => {
-    return `Rs. ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
 
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
@@ -261,7 +259,7 @@ const PayrollAnalyticsDashboard: React.FC = () => {
                 <YAxis 
                   stroke={theme.TEXT_SECONDARY}
                   style={{ fontSize: '0.75rem' }}
-                  tickFormatter={(value) => `Rs. ${(value / 1000).toFixed(0)}k`}
+                  tickFormatter={(value) => `Rs. ${(roundAmount(value) / 1000).toFixed(0)}k`}
                 />
                 <Tooltip
                   contentStyle={{
@@ -321,7 +319,7 @@ const PayrollAnalyticsDashboard: React.FC = () => {
                     <YAxis 
                       stroke={theme.TEXT_SECONDARY}
                       style={{ fontSize: '0.75rem' }}
-                      tickFormatter={(value) => `Rs. ${(value / 1000).toFixed(0)}k`}
+                      tickFormatter={(value) => `Rs. ${(roundAmount(value) / 1000).toFixed(0)}k`}
                     />
                     <Tooltip
                       contentStyle={{

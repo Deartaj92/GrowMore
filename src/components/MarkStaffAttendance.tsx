@@ -21,7 +21,8 @@ import {
   Save,
   Refresh,
   Close,
-  Work
+  Work,
+  AttachMoney
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import NoSessionsFound from './NoSessionsFound';
@@ -190,6 +191,7 @@ const MobileStatusGrid = styled.div`
 `;
 
 const EnhancedStatusButton = styled.button<{ $active: boolean; $color: string }>`
+  position: relative;
   width: 28px;
   height: 28px;
   border-radius: 50%;
@@ -220,6 +222,7 @@ const DesktopStatusRow = styled.div`
 `;
 
 const DesktopStatusButton = styled.button<{ $active: boolean; $color: string }>`
+  position: relative;
   min-width: 90px;
   padding: 0.45rem 1.1rem;
   border-radius: 22px;
@@ -239,6 +242,26 @@ const DesktopStatusButton = styled.button<{ $active: boolean; $color: string }>`
     color: #fff;
     outline: none;
     box-shadow: 0 0 8px 2px ${({ $color }) => $color}33;
+  }
+`;
+
+const PaidLeaveBadge = styled.span`
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #16a34a;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 2px ${({ theme }) => theme.CARD};
+  pointer-events: none;
+
+  svg {
+    font-size: 0.58rem;
   }
 `;
 
@@ -337,6 +360,7 @@ interface StaffMember {
   name: string;
   role: string;
   status?: 'present' | 'absent' | 'leave' | 'late';
+  paidLeave?: boolean;
   picture_url?: string;
   remarks?: string;
   check_in_time?: string | null;
@@ -596,6 +620,10 @@ const MarkStaffAttendance: React.FC = () => {
   const [loadingSession, setLoadingSession] = useState(true);
   const [hasAnyStaff, setHasAnyStaff] = useState<boolean | null>(null);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
+  const [leaveDecisionStaff, setLeaveDecisionStaff] = useState<{
+    staffId: number;
+    staffName: string;
+  } | null>(null);
 
   // Stats - memoized to prevent unnecessary recalculations
   const statusHash = staffMembers.map(s => `${s.id}:${s.status || 'none'}`).join(',');
@@ -876,7 +904,7 @@ const MarkStaffAttendance: React.FC = () => {
       // Fetch attendance records for this date
       const { data: attendanceData, error: attendanceError } = await supabase
         .from('staff_attendance_records')
-        .select('staff_id, status, remarks, check_in_time, check_out_time, source')
+        .select('staff_id, status, paid_leave, remarks, check_in_time, check_out_time, source')
         .eq('date', date)
         .eq('school_id', user.school_id)
         .eq('session_id', sessionId);
@@ -901,6 +929,7 @@ const MarkStaffAttendance: React.FC = () => {
       (attendanceData || []).forEach((rec: any) => {
         attendanceMap.set(rec.staff_id, {
           status: rec.status,
+          paid_leave: !!rec.paid_leave,
           remarks: rec.remarks,
           check_in_time: rec.check_in_time,
           check_out_time: rec.check_out_time,
@@ -918,6 +947,7 @@ const MarkStaffAttendance: React.FC = () => {
           name: staff.name,
           role: staff.role,
           status: att ? att.status : (isOnLeave ? 'leave' : undefined),
+          paidLeave: att ? !!att.paid_leave : false,
           picture_url: staff.picture_url,
           remarks: att ? att.remarks || '' : '',
           check_in_time: att ? att.check_in_time || null : null,
@@ -948,13 +978,14 @@ const MarkStaffAttendance: React.FC = () => {
     }
   }, [date, user?.school_id, sessionId]);
 
-  const handleStatusChange = (staffId: number, status: 'present' | 'absent' | 'leave' | 'late') => {
+  const applyStatusChange = useCallback((staffId: number, status: 'present' | 'absent' | 'leave' | 'late', paidLeave: boolean = false) => {
     setStaffMembers(prev =>
       prev.map(staff =>
         staff.id === staffId
           ? ({
               ...staff,
               status: status.toLowerCase() as 'present' | 'absent' | 'leave' | 'late',
+              paidLeave: status === 'leave' ? paidLeave : false,
               check_in_time: status === 'present' || status === 'late'
                 ? getManualAttendanceTimestamp(date, staff.check_in_time)
                 : null,
@@ -967,13 +998,55 @@ const MarkStaffAttendance: React.FC = () => {
     setSelectedRows(prev => prev.includes(staffId) ? prev : [...prev, staffId]);
     setStatusBounce({ id: staffId, status: status.toLowerCase() });
     setTimeout(() => setStatusBounce(null), 600);
-  };
+  }, [date]);
+
+  const handleStatusChange = useCallback(async (staffId: number, status: 'present' | 'absent' | 'leave' | 'late') => {
+    if (status !== 'leave' || !user?.school_id || !sessionId || !date) {
+      applyStatusChange(staffId, status);
+      return;
+    }
+
+    try {
+      const monthStart = `${date.slice(0, 7)}-01`;
+      const monthEnd = format(new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)), 0), 'yyyy-MM-dd');
+
+      const { data: monthlyLeaveAbsenceRecords, error } = await supabase
+        .from('staff_attendance_records')
+        .select('date, status')
+        .eq('school_id', user.school_id)
+        .eq('session_id', sessionId)
+        .eq('staff_id', staffId)
+        .gte('date', monthStart)
+        .lte('date', monthEnd)
+        .in('status', ['absent', 'leave']);
+
+      if (error) throw error;
+
+      const monthlyLeaveOrAbsentExists = (monthlyLeaveAbsenceRecords || []).length > 0;
+
+      if (monthlyLeaveOrAbsentExists) {
+        const staff = staffMembers.find(member => member.id === staffId);
+        setLeaveDecisionStaff({
+          staffId,
+          staffName: staff?.name || 'Staff Member',
+        });
+        return;
+      }
+
+      applyStatusChange(staffId, status, false);
+    } catch (error) {
+      console.error('Error checking leave history:', error);
+      toast.showToast('Could not verify previous leave history. Leave marked as unpaid by default.', 'error');
+      applyStatusChange(staffId, status, false);
+    }
+  }, [applyStatusChange, user?.school_id, sessionId, date, staffMembers, toast]);
 
   const handleBulkMark = useCallback((status: 'present' | 'absent' | 'leave') => {
     setStaffMembers(prev =>
       prev.map(staff => ({
         ...staff,
         status,
+        paidLeave: false,
         check_in_time: status === 'present' ? getManualAttendanceTimestamp(date, staff.check_in_time) : null,
         check_out_time: status === 'present' ? staff.check_out_time : null,
         source: 'manual'
@@ -1040,10 +1113,10 @@ const MarkStaffAttendance: React.FC = () => {
     const availableStaff = filteredStaff.filter(s => !s.isOnHoliday);
     if (allChecked) {
       setSelectedRows(prev => prev.filter(id => !availableStaff.some(s => s.id === id)));
-      setStaffMembers(prev => prev.map(s => availableStaff.some(f => f.id === s.id) ? { ...s, status: undefined } : s));
+      setStaffMembers(prev => prev.map(s => availableStaff.some(f => f.id === s.id) ? { ...s, status: undefined, paidLeave: false } : s));
     } else {
       setSelectedRows(prev => Array.from(new Set([...prev, ...availableStaff.map(s => s.id)])));
-      setStaffMembers(prev => prev.map(s => availableStaff.some(f => f.id === s.id) ? { ...s, status: 'present' } : s));
+      setStaffMembers(prev => prev.map(s => availableStaff.some(f => f.id === s.id) ? { ...s, status: 'present', paidLeave: false } : s));
     }
   };
 
@@ -1055,10 +1128,10 @@ const MarkStaffAttendance: React.FC = () => {
     }
     setSelectedRows(prev => {
       if (prev.includes(staffId)) {
-        setStaffMembers(staff => staff.map(s => s.id === staffId ? { ...s, status: undefined } : s));
+        setStaffMembers(staff => staff.map(s => s.id === staffId ? { ...s, status: undefined, paidLeave: false } : s));
         return prev.filter(id => id !== staffId);
       } else {
-        setStaffMembers(staff => staff.map(s => s.id === staffId ? { ...s, status: 'present' } : s));
+        setStaffMembers(staff => staff.map(s => s.id === staffId ? { ...s, status: 'present', paidLeave: false } : s));
         return [...prev, staffId];
       }
     });
@@ -1098,11 +1171,12 @@ const MarkStaffAttendance: React.FC = () => {
       }
       
       setProgress(30);
-      const attendanceRecords = staffToSave.map(staff => ({
-        staff_id: staff.id,
-        date,
-        status: typeof staff.status === 'string' ? staff.status.toLowerCase() : staff.status,
-        remarks: staff.remarks || null,
+        const attendanceRecords = staffToSave.map(staff => ({
+          staff_id: staff.id,
+          date,
+          status: typeof staff.status === 'string' ? staff.status.toLowerCase() : staff.status,
+          paid_leave: staff.status === 'leave' ? !!staff.paidLeave : false,
+          remarks: staff.remarks || null,
         check_in_time: staff.status === 'present' || staff.status === 'late'
           ? getManualAttendanceTimestamp(date, staff.check_in_time)
           : null,
@@ -1168,7 +1242,7 @@ const MarkStaffAttendance: React.FC = () => {
 
       setProgress(80);
       // Set all staff to present after deletion
-      setStaffMembers(prev => prev.map(s => ({ ...s, status: 'present' })));
+      setStaffMembers(prev => prev.map(s => ({ ...s, status: 'present', paidLeave: false })));
       setHasAttendanceRecords(false);
       
       setProgress(100);
@@ -1490,6 +1564,7 @@ const MarkStaffAttendance: React.FC = () => {
                       {isOnHoliday && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#f59e42', fontWeight: 600 }}>(Holiday)</span>}
                       {!staff.rfid_uid && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#f59e42', fontWeight: 600 }}>(No Card)</span>}
                       {staff.isOnLeave && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#4a6cf7', fontWeight: 600 }}>(Leave)</span>}
+                      {staff.status === 'leave' && staff.paidLeave && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#16a34a', fontWeight: 700 }}>(Paid Leave)</span>}
                     </StaffName>
                     <StaffRole style={{ opacity: isOnHoliday ? 0.6 : 1 }}>{staff.role}</StaffRole>
                   </NameBlock>
@@ -1518,6 +1593,11 @@ const MarkStaffAttendance: React.FC = () => {
                         style={{ opacity: isOnHoliday ? 0.5 : 1, cursor: isOnHoliday ? 'not-allowed' : 'pointer' }}
                       >
                         L
+                        {staff.status === 'leave' && staff.paidLeave && (
+                          <PaidLeaveBadge theme={themeObj} title="Paid Leave" aria-label="Paid Leave">
+                            <AttachMoney />
+                          </PaidLeaveBadge>
+                        )}
                       </EnhancedStatusButton>
                       <EnhancedStatusButton
                         $active={staff.status === 'late'}
@@ -1632,6 +1712,11 @@ const MarkStaffAttendance: React.FC = () => {
                           style={{ opacity: isOnHoliday ? 0.5 : 1, cursor: isOnHoliday ? 'not-allowed' : 'pointer' }}
                         >
                           Leave
+                          {staff.status === 'leave' && staff.paidLeave && (
+                            <PaidLeaveBadge theme={themeObj} title="Paid Leave" aria-label="Paid Leave">
+                              <AttachMoney />
+                            </PaidLeaveBadge>
+                          )}
                         </DesktopStatusButton>
                         <DesktopStatusButton
                           $active={staff.status === 'late'}
@@ -1828,6 +1913,80 @@ const MarkStaffAttendance: React.FC = () => {
             style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }}
           />
         </div>
+      )}
+
+      {leaveDecisionStaff && (
+        <>
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: '#0006',
+              zIndex: 3999
+            }}
+            onClick={() => setLeaveDecisionStaff(null)}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: theme === 'dark' ? darkTheme.CARD : lightTheme.CARD,
+              border: `1px solid ${themeObj.BORDER}`,
+              borderRadius: 14,
+              padding: '1.2rem',
+              width: 'min(92vw, 440px)',
+              zIndex: 4000,
+              boxShadow: '0 20px 50px rgba(0,0,0,0.25)'
+            }}
+          >
+            <h3 style={{ margin: '0 0 0.5rem 0', color: themeObj.TEXT_PRIMARY, fontSize: '1rem' }}>Leave Type</h3>
+            <p style={{ margin: '0 0 1rem 0', color: themeObj.TEXT_SECONDARY, fontSize: '0.9rem', lineHeight: 1.45 }}>
+              <strong>{leaveDecisionStaff.staffName}</strong> already has an absent or leave entry earlier in this month.
+              Choose whether this leave should be treated as paid or unpaid.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => {
+                  applyStatusChange(leaveDecisionStaff.staffId, 'leave', true);
+                  setLeaveDecisionStaff(null);
+                }}
+                style={{
+                  padding: '0.65rem 1rem',
+                  borderRadius: 10,
+                  border: `1px solid ${themeObj.BORDER}`,
+                  background: 'transparent',
+                  color: themeObj.TEXT_PRIMARY,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Paid Leave
+              </button>
+              <button
+                onClick={() => {
+                  applyStatusChange(leaveDecisionStaff.staffId, 'leave', false);
+                  setLeaveDecisionStaff(null);
+                }}
+                style={{
+                  padding: '0.65rem 1rem',
+                  borderRadius: 10,
+                  border: `1px solid ${themeObj.ACCENT}`,
+                  background: themeObj.ACCENT,
+                  color: '#fff',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Unpaid Leave
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </PageContainer>
   );
