@@ -539,7 +539,26 @@ const FeedSub = styled.div`
 `;
 
 const FeedTime = styled.div`
-  font-size: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  text-align: right;
+  min-width: 112px;
+`;
+
+const FeedAttendanceStatus = styled.div<{ $status: 'present' | 'late' }>`
+  font-size: 1.08rem;
+  font-weight: 900;
+  line-height: 1;
+  color: ${({ $status }) => $status === 'late' ? '#f59e0b' : '#22c55e'};
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+`;
+
+const FeedTimeLabel = styled.div`
+  font-size: 0.84rem;
+  font-weight: 600;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   white-space: nowrap;
 `;
@@ -608,6 +627,7 @@ interface ScanResult {
     sub: string;
     time: string;
     personType: Mode;
+    attendanceStatus?: 'present' | 'late';
     isNew?: boolean;
 }
 
@@ -1350,9 +1370,10 @@ const RFIDAttendancePage: React.FC = () => {
                 addFeedItem({
                     type: 'success',
                     name: `${p.name}${isOffline ? ' (Offline)' : ''}`,
-                    sub: `${isLate ? 'LATE • ' : ''}${subLabel}`,
+                    sub: subLabel,
                     time,
-                    personType
+                    personType,
+                    attendanceStatus: isLate ? 'late' : 'present',
                 });
 
                 if (isOffline) {
@@ -1568,9 +1589,10 @@ const RFIDAttendancePage: React.FC = () => {
                 addFeedItem({
                     type: 'success',
                     name: `${p.name}${isOffline ? ' (Offline)' : ''}`,
-                    sub: `${isLate ? 'LATE • ' : ''}${subLabel}`,
+                    sub: subLabel,
                     time,
-                    personType
+                    personType,
+                    attendanceStatus: isLate ? 'late' : 'present',
                 });
 
                 if (isOffline) {
@@ -2011,39 +2033,6 @@ const RFIDAttendancePage: React.FC = () => {
                             }
                         `}</style>
 
-                        {/* Students Column */}
-                        <FeedSection theme={themeObj}>
-                            <SectionHeader theme={themeObj} $mode="student">
-                                <span>Students</span>
-                                <span style={{ opacity: 0.6 }}>{feed.filter(i => i.personType === 'student').length}</span>
-                            </SectionHeader>
-                            <SectionBody>
-                                <FeedList>
-                                    {feed.filter(i => i.personType === 'student').length === 0 ? (
-                                        <EmptyFeed theme={themeObj}>
-                                            <Scan style={{ fontSize: 32, opacity: 0.3 }} />
-                                            <span>No student scans</span>
-                                        </EmptyFeed>
-                                    ) : (
-                                        feed.filter(i => i.personType === 'student').map(item => (
-                                            <FeedItem key={item.id} $type={item.type} $personType={item.personType} $new={item.isNew} theme={themeObj}>
-                                                <FeedIcon $type={item.type} $personType={item.personType}>
-                                                    {item.type === 'success' ? <UserCheck style={{ fontSize: 16 }} /> :
-                                                        item.type === 'warn' ? <AlertCircle style={{ fontSize: 16 }} /> :
-                                                            <XCircle style={{ fontSize: 16 }} />}
-                                                </FeedIcon>
-                                                <FeedInfo>
-                                                    <FeedName theme={themeObj}>{item.name}</FeedName>
-                                                    <FeedSub theme={themeObj}>{item.sub}</FeedSub>
-                                                </FeedInfo>
-                                                <FeedTime theme={themeObj}>{item.time}</FeedTime>
-                                            </FeedItem>
-                                        ))
-                                    )}
-                                </FeedList>
-                            </SectionBody>
-                        </FeedSection>
-
                         {/* Employees Column */}
                         <FeedSection theme={themeObj}>
                             <SectionHeader theme={themeObj} $mode="employee">
@@ -2069,7 +2058,54 @@ const RFIDAttendancePage: React.FC = () => {
                                                     <FeedName theme={themeObj}>{item.name}</FeedName>
                                                     <FeedSub theme={themeObj}>{item.sub}</FeedSub>
                                                 </FeedInfo>
-                                                <FeedTime theme={themeObj}>{item.time}</FeedTime>
+                                                <FeedTime>
+                                                    {item.attendanceStatus && (
+                                                        <FeedAttendanceStatus $status={item.attendanceStatus}>
+                                                            {item.attendanceStatus === 'late' ? 'Late' : 'Present'}
+                                                        </FeedAttendanceStatus>
+                                                    )}
+                                                    <FeedTimeLabel theme={themeObj}>{item.time}</FeedTimeLabel>
+                                                </FeedTime>
+                                            </FeedItem>
+                                        ))
+                                    )}
+                                </FeedList>
+                            </SectionBody>
+                        </FeedSection>
+
+                        {/* Students Column */}
+                        <FeedSection theme={themeObj}>
+                            <SectionHeader theme={themeObj} $mode="student">
+                                <span>Students</span>
+                                <span style={{ opacity: 0.6 }}>{feed.filter(i => i.personType === 'student').length}</span>
+                            </SectionHeader>
+                            <SectionBody>
+                                <FeedList>
+                                    {feed.filter(i => i.personType === 'student').length === 0 ? (
+                                        <EmptyFeed theme={themeObj}>
+                                            <Scan style={{ fontSize: 32, opacity: 0.3 }} />
+                                            <span>No student scans</span>
+                                        </EmptyFeed>
+                                    ) : (
+                                        feed.filter(i => i.personType === 'student').map(item => (
+                                            <FeedItem key={item.id} $type={item.type} $personType={item.personType} $new={item.isNew} theme={themeObj}>
+                                                <FeedIcon $type={item.type} $personType={item.personType}>
+                                                    {item.type === 'success' ? <UserCheck style={{ fontSize: 16 }} /> :
+                                                        item.type === 'warn' ? <AlertCircle style={{ fontSize: 16 }} /> :
+                                                            <XCircle style={{ fontSize: 16 }} />}
+                                                </FeedIcon>
+                                                <FeedInfo>
+                                                    <FeedName theme={themeObj}>{item.name}</FeedName>
+                                                    <FeedSub theme={themeObj}>{item.sub}</FeedSub>
+                                                </FeedInfo>
+                                                <FeedTime>
+                                                    {item.attendanceStatus && (
+                                                        <FeedAttendanceStatus $status={item.attendanceStatus}>
+                                                            {item.attendanceStatus === 'late' ? 'Late' : 'Present'}
+                                                        </FeedAttendanceStatus>
+                                                    )}
+                                                    <FeedTimeLabel theme={themeObj}>{item.time}</FeedTimeLabel>
+                                                </FeedTime>
                                             </FeedItem>
                                         ))
                                     )}
