@@ -33,6 +33,15 @@ if ('serviceWorker' in navigator) {
       return;
     }
 
+    let hasPendingReload = false;
+    const reloadForFreshWorker = () => {
+      if (hasPendingReload) return;
+      hasPendingReload = true;
+      window.location.reload();
+    };
+
+    navigator.serviceWorker.addEventListener('controllerchange', reloadForFreshWorker);
+
     navigator.serviceWorker.register(swUrl).then((registration) => {
       registration.update();
 
@@ -42,7 +51,7 @@ if ('serviceWorker' in navigator) {
 
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            window.location.reload();
+            registration.update();
           }
         });
       });

@@ -12,7 +12,6 @@
   [build.environment]
     NODE_VERSION = "20"
     PUBLIC_URL = "/"
-    REACT_APP_VERSION = "1.4.2"
     # Increase Node memory limit for large builds (8GB for Netlify)
     NODE_OPTIONS = "--max-old-space-size=2048"
     # Disable source maps in production to reduce bundle size
@@ -57,13 +56,18 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-# Don't cache the service worker or HTML files
+# Don't cache the service worker, manifest, or HTML shell
 [[headers]]
   for = "/index.html"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
 
 [[headers]]
-  for = "/service-worker.js"
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/manifest.json"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"

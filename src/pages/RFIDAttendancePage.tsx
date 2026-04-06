@@ -32,7 +32,7 @@ import {
     Save as SaveIcon,
     Sensors as NfcIcon,
 } from '@mui/icons-material';
-import { rfidOfflineService } from '../services/rfidOfflineService';
+import { CachedAttendanceHistoryItem, rfidOfflineService } from '../services/rfidOfflineService';
 import {
     clayCardStyle,
     clayButtonStyle,
@@ -506,18 +506,24 @@ const SectionBody = styled.div`
   max-height: 430px; /* ~6 rows + headers and gaps */
 `;
 
-const FeedItem = styled.div<{ $type: 'success' | 'error' | 'warn'; $personType?: string; $new?: boolean }>`
+const FeedItem = styled.div<{ $type: 'success' | 'error' | 'warn'; $personType?: string; $new?: boolean; $attendanceStatus?: 'present' | 'late' | 'checked_out' }>`
   ${clayInsetStyle}
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
   border-radius: ${CARD_RADIUS_MD};
-  border: 1px solid ${({ $type, $personType }) =>
+  border: 1px solid ${({ $type, $personType, $attendanceStatus }) =>
+        $attendanceStatus === 'late' ? 'rgba(245, 158, 11, 0.38)' :
+        $attendanceStatus === 'checked_out' ? 'rgba(59, 130, 246, 0.38)' :
+        $attendanceStatus === 'present' ? 'rgba(34,197,94,0.35)' :
         $type === 'success' ? ($personType === 'employee' ? 'rgba(168, 85, 247, 0.25)' : 'rgba(34,197,94,0.25)') :
             $type === 'error' ? 'rgba(239,68,68,0.25)' :
                 'rgba(234,179,8,0.25)'};
-  background: ${({ $type, $personType }) =>
+  background: ${({ $type, $personType, $attendanceStatus }) =>
+        $attendanceStatus === 'late' ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(245, 158, 11, 0.04))' :
+        $attendanceStatus === 'checked_out' ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.14), rgba(59, 130, 246, 0.04))' :
+        $attendanceStatus === 'present' ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.14), rgba(34, 197, 94, 0.04))' :
         $type === 'success' ? ($personType === 'employee' ? 'rgba(168, 85, 247, 0.06)' : 'rgba(34,197,94,0.06)') :
             $type === 'error' ? 'rgba(239,68,68,0.06)' :
                 'rgba(234,179,8,0.06)'};
@@ -583,11 +589,11 @@ const FeedTime = styled.div`
   min-width: 112px;
 `;
 
-const FeedAttendanceStatus = styled.div<{ $status: 'present' | 'late' }>`
+const FeedAttendanceStatus = styled.div<{ $status: 'present' | 'late' | 'checked_out' }>`
   font-size: 1.08rem;
   font-weight: 900;
   line-height: 1;
-  color: ${({ $status }) => $status === 'late' ? '#f59e0b' : '#22c55e'};
+  color: ${({ $status }) => $status === 'late' ? '#f59e0b' : $status === 'checked_out' ? '#3b82f6' : '#22c55e'};
   text-transform: uppercase;
   letter-spacing: 0.05em;
 `;
@@ -693,7 +699,7 @@ interface ScanResult {
     subAccent?: string;
     time: string;
     personType: Mode;
-    attendanceStatus?: 'present' | 'late';
+    attendanceStatus?: 'present' | 'late' | 'checked_out';
     attendanceLateCount?: number;
     isNew?: boolean;
 }
@@ -710,6 +716,58 @@ const getLocalToday = () => new Date().toISOString().slice(0, 10);
 
 const buildDailyScanStorageKey = (schoolId: number | string) =>
     `rfid-attendance:daily-scan-history:${schoolId}`;
+
+const formatRecordedFeedTime = (value?: string | null) => {
+    if (!value) return '';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+};
+
+const buildFeedItemFromHistory = (item: CachedAttendanceHistoryItem): ScanResult[] => {
+    const personType: Mode = item.person_type === 'employee' ? 'employee' : 'student';
+    const baseSub = personType === 'student'
+        ? `${item.class_name || ''}${item.section_name ? ` (${item.section_name})` : ''}`.trim()
+        : item.role || 'Staff';
+    const subAccent = personType === 'student'
+        ? (getStudentDisplayId({ id: item.person_id, roll_number: item.roll_number }) ? String(getStudentDisplayId({ id: item.person_id, roll_number: item.roll_number })) : undefined)
+        : String(item.person_id);
+    const entries: Array<ScanResult & { sortTime: string }> = [];
+
+    if (item.check_in_time) {
+        entries.push({
+            id: `history-in-${item.key}`,
+            type: 'success',
+            name: item.name,
+            fatherName: personType === 'student' ? item.father_name : undefined,
+            sub: baseSub,
+            subAccent,
+            time: formatRecordedFeedTime(item.check_in_time),
+            personType,
+            attendanceStatus: item.status === 'late' ? 'late' : 'present',
+            isNew: false,
+            sortTime: item.check_in_time,
+        });
+    }
+
+    if (personType === 'employee' && item.check_out_time) {
+        entries.push({
+            id: `history-out-${item.key}`,
+            type: 'success',
+            name: `${item.name} (OUT)`,
+            sub: `Checked Out • ${item.role || 'Staff'}`,
+            time: formatRecordedFeedTime(item.check_out_time),
+            personType: 'employee',
+            attendanceStatus: 'checked_out',
+            isNew: false,
+            sortTime: item.check_out_time,
+        });
+    }
+
+    return entries
+        .sort((a, b) => b.sortTime.localeCompare(a.sortTime))
+        .map(({ sortTime, ...entry }) => entry);
+};
 
 const SecondaryBtn = styled.button`
   ${clayButtonStyle}
@@ -1015,27 +1073,56 @@ const RFIDAttendancePage: React.FC = () => {
         }
     }, [user?.school_id]);
 
+    const loadHistoryFeed = useCallback(async (date: string) => {
+        if (!user?.school_id) return;
+
+        try {
+            const history = isOnline
+                ? await rfidOfflineService.cacheDailyAttendanceHistory(user.school_id, date)
+                : await rfidOfflineService.getCachedDailyAttendanceHistory(user.school_id, date);
+
+            const historyFeed = history
+                .flatMap(buildFeedItemFromHistory)
+                .sort((a, b) => {
+                    const timeA = history.find(item => `history-out-${item.key}` === a.id)?.check_out_time
+                        || history.find(item => `history-in-${item.key}` === a.id)?.check_in_time
+                        || '';
+                    const timeB = history.find(item => `history-out-${item.key}` === b.id)?.check_out_time
+                        || history.find(item => `history-in-${item.key}` === b.id)?.check_in_time
+                        || '';
+                    return timeB.localeCompare(timeA);
+                })
+                .map(item => ({ ...item, isNew: false }));
+
+            setFeed(historyFeed);
+            setPresentCount(history.filter(item => !!item.check_in_time).length);
+            setUnknownCount(0);
+            setDupCount(0);
+        } catch (error) {
+            console.error('Failed to load RFID attendance history:', error);
+            setFeed([]);
+            setPresentCount(0);
+            setUnknownCount(0);
+            setDupCount(0);
+        }
+    }, [isOnline, user?.school_id]);
+
     useEffect(() => {
         if (!user?.school_id) return;
 
         const storageKey = buildDailyScanStorageKey(user.school_id);
+        const activeToday = getLocalToday();
+
         try {
             const raw = localStorage.getItem(storageKey);
-            const activeToday = getLocalToday();
 
             if (selectedDate !== activeToday) {
-                setFeed([]);
-                setPresentCount(0);
-                setUnknownCount(0);
-                setDupCount(0);
+                loadHistoryFeed(selectedDate);
                 return;
             }
 
             if (!raw) {
-                setFeed([]);
-                setPresentCount(0);
-                setUnknownCount(0);
-                setDupCount(0);
+                loadHistoryFeed(selectedDate);
                 return;
             }
 
@@ -1043,10 +1130,7 @@ const RFIDAttendancePage: React.FC = () => {
 
             if (!parsed || parsed.date !== activeToday) {
                 localStorage.removeItem(storageKey);
-                setFeed([]);
-                setPresentCount(0);
-                setUnknownCount(0);
-                setDupCount(0);
+                loadHistoryFeed(selectedDate);
                 return;
             }
 
@@ -1057,12 +1141,9 @@ const RFIDAttendancePage: React.FC = () => {
         } catch (error) {
             console.warn('Failed to restore RFID daily scan history:', error);
             localStorage.removeItem(storageKey);
-            setFeed([]);
-            setPresentCount(0);
-            setUnknownCount(0);
-            setDupCount(0);
+            loadHistoryFeed(selectedDate);
         }
-    }, [selectedDate, user?.school_id]);
+    }, [isOnline, loadHistoryFeed, selectedDate, user?.school_id]);
 
     useEffect(() => {
         if (!user?.school_id) return;
@@ -1093,6 +1174,9 @@ const RFIDAttendancePage: React.FC = () => {
     useEffect(() => {
         if (user?.school_id) {
             rfidOfflineService.cacheMappings(String(user.school_id));
+            rfidOfflineService.cacheDailyAttendanceHistory(user.school_id, selectedDate).catch(error => {
+                console.warn('Failed to prime cached RFID attendance history:', error);
+            });
             rfidOfflineService.getQueue().then(q => setQueueCount(q.length));
         }
 
@@ -1104,6 +1188,9 @@ const RFIDAttendancePage: React.FC = () => {
             if (success > 0) {
                 // If on this page, maybe refresh the feed or just let the counts update
                 console.log(`[RFIDPage] Background sync detected: ${success} success`);
+                if (selectedDate !== getLocalToday()) {
+                    loadHistoryFeed(selectedDate);
+                }
             }
         };
 
@@ -1161,7 +1248,7 @@ const RFIDAttendancePage: React.FC = () => {
             }
         };
         fetchSettings();
-    }, [user?.school_id]);
+    }, [loadHistoryFeed, selectedDate, user?.school_id]);
 
     const loadAutomationOverview = useCallback(async () => {
         if (!user?.school_id) {
@@ -1316,24 +1403,6 @@ const RFIDAttendancePage: React.FC = () => {
         }
     };
 
-    const determineStatus = useCallback((personType: Mode): 'present' | 'late' => {
-        if (!attnSettings) return 'present';
-        const markLateEnabled = personType === 'student'
-            ? attnSettings.student_mark_late_enabled
-            : attnSettings.staff_mark_late_enabled;
-        if (!markLateEnabled) return 'present';
-        const startTimeStr = personType === 'student' ? attnSettings.student_start_time : attnSettings.staff_start_time;
-        if (!startTimeStr) return 'present';
-
-        const [startH, startM] = startTimeStr.split(':').map(Number);
-        const now = new Date();
-        const startLimit = new Date();
-        startLimit.setHours(startH, startM, 0, 0);
-        startLimit.setMinutes(startLimit.getMinutes() + (attnSettings.grace_period_minutes || 0));
-
-        return now > startLimit ? 'late' : 'present';
-    }, [attnSettings]);
-
     const processUID = useCallback(async (uid: string) => {
         if (!uid || !user?.school_id || isProcessingRef.current) return;
         isProcessingRef.current = true;
@@ -1447,13 +1516,14 @@ const RFIDAttendancePage: React.FC = () => {
                     name: `${p.name} (OUT)`,
                     sub: `Checked Out • ${p.role || 'Staff'}`,
                     time,
-                    personType: 'employee'
+                    personType: 'employee',
+                    attendanceStatus: 'checked_out'
                 });
                 showToast('Employee Checked Out!', 'success');
             } else {
                 // 'new' or 'offline'
                 const isOffline = result.type === 'offline';
-                const isLate = determineStatus(personType) === 'late' && result.attendance_status === 'late';
+                const isLate = result.attendance_status === 'late';
                 const lateCount = isLate
                     ? await fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: isOffline })
                     : undefined;
@@ -1511,7 +1581,7 @@ const RFIDAttendancePage: React.FC = () => {
                 resetTimerRef.current = null;
             }, 4000);
         }
-    }, [user?.school_id, addFeedItem, selectedDate, fetchPersonMonthlyLateCount, determineStatus]);
+    }, [user?.school_id, addFeedItem, selectedDate, fetchPersonMonthlyLateCount]);
 
     const handleStartNfc = async () => {
         // --- 1. Pure Native Android APK (PhoneGap-NFC) ---
@@ -1677,12 +1747,13 @@ const RFIDAttendancePage: React.FC = () => {
                     name: `${p.name} (OUT)`,
                     sub: `Checked Out • ${p.role || 'Staff'}`,
                     time,
-                    personType: 'employee'
+                    personType: 'employee',
+                    attendanceStatus: 'checked_out'
                 });
                 showToast('Employee Checked Out!', 'success');
             } else {
                 const isOffline = result.type === 'offline';
-                const isLate = determineStatus(personType) === 'late' && result.attendance_status === 'late';
+                const isLate = result.attendance_status === 'late';
                 const lateCount = isLate
                     ? await fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: isOffline })
                     : undefined;
@@ -1729,7 +1800,7 @@ const RFIDAttendancePage: React.FC = () => {
 
         window.addEventListener('rfid-scan-processed', handleGlobalScan);
         return () => window.removeEventListener('rfid-scan-processed', handleGlobalScan);
-    }, [addFeedItem, fetchPersonMonthlyLateCount, determineStatus, showToast]);
+    }, [addFeedItem, fetchPersonMonthlyLateCount, showToast]);
 
     const clearFeedData = () => {
         setFeed([]);
@@ -2540,7 +2611,7 @@ const RFIDAttendancePage: React.FC = () => {
                                         </EmptyFeed>
                                     ) : (
                                         filteredEmployeeFeed.map(item => (
-                                            <FeedItem key={item.id} $type={item.type} $personType={item.personType} $new={item.isNew} theme={themeObj}>
+                                            <FeedItem key={item.id} $type={item.type} $personType={item.personType} $new={item.isNew} $attendanceStatus={item.attendanceStatus} theme={themeObj}>
                                                 <FeedIcon $type={item.type} $personType={item.personType}>
                                                     {item.type === 'success' ? <UserCheck style={{ fontSize: 16 }} /> :
                                                         item.type === 'warn' ? <AlertCircle style={{ fontSize: 16 }} /> :
@@ -2563,7 +2634,9 @@ const RFIDAttendancePage: React.FC = () => {
                                                         <FeedAttendanceStatus $status={item.attendanceStatus}>
                                                             {item.attendanceStatus === 'late'
                                                                 ? `Late${item.attendanceLateCount ? ` (${item.attendanceLateCount})` : ''}`
-                                                                : 'Present'}
+                                                                : item.attendanceStatus === 'checked_out'
+                                                                    ? 'Check Out'
+                                                                    : 'Present'}
                                                         </FeedAttendanceStatus>
                                                     )}
                                                     <FeedTimeLabel theme={themeObj}>{item.time}</FeedTimeLabel>
@@ -2590,7 +2663,7 @@ const RFIDAttendancePage: React.FC = () => {
                                         </EmptyFeed>
                                     ) : (
                                         filteredStudentFeed.map(item => (
-                                            <FeedItem key={item.id} $type={item.type} $personType={item.personType} $new={item.isNew} theme={themeObj}>
+                                            <FeedItem key={item.id} $type={item.type} $personType={item.personType} $new={item.isNew} $attendanceStatus={item.attendanceStatus} theme={themeObj}>
                                                 <FeedIcon $type={item.type} $personType={item.personType}>
                                                     {item.type === 'success' ? <UserCheck style={{ fontSize: 16 }} /> :
                                                         item.type === 'warn' ? <AlertCircle style={{ fontSize: 16 }} /> :
@@ -2613,7 +2686,9 @@ const RFIDAttendancePage: React.FC = () => {
                                                         <FeedAttendanceStatus $status={item.attendanceStatus}>
                                                             {item.attendanceStatus === 'late'
                                                                 ? `Late${item.attendanceLateCount ? ` (${item.attendanceLateCount})` : ''}`
-                                                                : 'Present'}
+                                                                : item.attendanceStatus === 'checked_out'
+                                                                    ? 'Check Out'
+                                                                    : 'Present'}
                                                         </FeedAttendanceStatus>
                                                     )}
                                                     <FeedTimeLabel theme={themeObj}>{item.time}</FeedTimeLabel>
