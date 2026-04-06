@@ -5,6 +5,23 @@ import { supabase } from '../supabaseClient';
 import { pushNotificationService } from '../services/pushNotificationService';
 import { Capacitor } from '@capacitor/core';
 
+const PUSH_INIT_SESSION_KEY = 'gm_push_init_session';
+const PUSH_ALERT_SESSION_KEY = 'gm_push_alert_shown_session';
+
+const openAndroidNotificationSettings = async () => {
+  try {
+    const appSettingsPlugin = (window as any)?.Capacitor?.Plugins?.AppSettings;
+    if (appSettingsPlugin?.openNotificationSettings) {
+      await appSettingsPlugin.openNotificationSettings();
+      return true;
+    }
+  } catch (error) {
+    console.error('[PushNotifications] Failed to open notification settings:', error);
+  }
+
+  return false;
+};
+
 interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
@@ -133,6 +150,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const lastNotificationTimeRef = useRef<number>(0);
   const isRefreshingRef = useRef(false); // Prevent concurrent refresh calls
   const isLoadingMoreRef = useRef(false); // Prevent concurrent loadMore calls
+  const pushInitAttemptRef = useRef<string | null>(null);
   const PAGE_SIZE = 20;
 
   // Keep preferences ref in sync
@@ -1768,8 +1786,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     };
   }, [user?.staff_id, user?.school_id, user?.role, studentInfo?.school_id, parentInfo?.id, parentInfo?.school_id]);
 
-  // Robust Push Initialization for push notifications
-  // Always requests permission on each app start if not granted
+  // Push initialization for native app
+  // Runs once per app session for the active user and shows the denied message only once per session.
   useEffect(() => {
     const checkAndInitPush = async () => {
       const latestStudentInfo = studentInfo || getStudentInfo();
@@ -1778,33 +1796,49 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       const userType: 'staff' | 'student' = latestStudentInfo?.id ? 'student' : 'staff';
 
       if (userId && schoolId) {
-        // Initialize Capacitor push (mobile) - always requests permission on each start
+        const sessionIdentity = `${userType}:${schoolId}:${userId}`;
+
+        // Initialize Capacitor push (mobile) only once per app session for this user.
         if (Capacitor.isNativePlatform()) {
+          const storedIdentity = sessionStorage.getItem(PUSH_INIT_SESSION_KEY);
+          if (pushInitAttemptRef.current === sessionIdentity || storedIdentity === sessionIdentity) {
+            return true;
+          }
+
+          pushInitAttemptRef.current = sessionIdentity;
+          sessionStorage.setItem(PUSH_INIT_SESSION_KEY, sessionIdentity);
+
           const permResult = await pushNotificationService.initCapacitorPush(userId, schoolId, userType);
-          
-          // If permission is denied, show helpful message to user on each app start
-          if (permResult && !permResult.granted) {
-            if (permResult.status === 'denied') {
-              // Permission was denied - show message asking user to enable in settings
-              // On Android, we can't show the system dialog again, but we can guide user to settings
-              // This message will be shown on EVERY app start until permission is granted
+
+          if (permResult?.granted) {
+            sessionStorage.removeItem(PUSH_ALERT_SESSION_KEY);
+          } else if (permResult?.status === 'denied') {
+            const alertIdentity = sessionStorage.getItem(PUSH_ALERT_SESSION_KEY);
+            if (alertIdentity !== sessionIdentity) {
+              sessionStorage.setItem(PUSH_ALERT_SESSION_KEY, sessionIdentity);
+
               const platform = Capacitor.getPlatform();
-              const message = platform === 'android' 
-                ? 'Notification permission is required. Please enable notifications:\n\nSettings > Apps > Grow More > Notifications > Allow notifications'
+              const message = platform === 'android'
+                ? 'Notification permission is required.\n\nTap OK to open Grow More notification settings.'
                 : 'Notification permission is required. Please enable notifications in your device settings.';
-              
-              // Show alert to user (will be shown on each app start until permission is granted)
-              // Using setTimeout to ensure it shows after app is fully loaded
+
               setTimeout(() => {
+                if (platform === 'android') {
+                  const shouldOpenSettings = window.confirm(message);
+                  if (shouldOpenSettings) {
+                    openAndroidNotificationSettings().catch(() => {
+                      alert('Please enable notifications here:\n\nSettings > Apps > Grow More > Notifications > Allow notifications');
+                    });
+                  }
+                  return;
+                }
+
                 alert(message);
               }, 1000);
-            } else if (permResult.status === 'prompt') {
-              // Permission is still in prompt state (shouldn't happen after request, but handle it)
-              console.log('[PushNotifications] Permission still in prompt state');
             }
           }
         }
-        
+
         // Initialize Electron push (desktop)
         if (window.electronAPI) {
           pushNotificationService.initElectronPush(userId, schoolId, userType);
@@ -1814,28 +1848,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       return false;
     };
 
-    // Try immediately
     checkAndInitPush().catch(err => {
       console.error('[PushNotifications] Failed to initialize push notifications:', err);
     });
-
-    // Retry every 2 seconds until successful (max 5 attempts)
-    let attempts = 0;
-    const interval = setInterval(() => {
-      attempts++;
-      checkAndInitPush().then(success => {
-        if (success || attempts >= 5) {
-          clearInterval(interval);
-        }
-      }).catch(err => {
-        console.error('[PushNotifications] Retry failed:', err);
-        if (attempts >= 5) {
-          clearInterval(interval);
-        }
-      });
-    }, 2000);
-
-    return () => clearInterval(interval);
   }, [user?.staff_id, user?.school_id, studentInfo?.id, studentInfo?.school_id]);
 
   const value: NotificationContextType = {

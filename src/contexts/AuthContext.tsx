@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase, setAuthContext } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { crypt, gen_salt } from '../utils/crypto';
+import { rfidOfflineService } from '../services/rfidOfflineService';
 
 // Save school_id to native Android SharedPreferences so the background NFC service can read it
 const saveSchoolIdNative = async (schoolId: number | undefined) => {
@@ -78,6 +79,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
           saveSchoolIdNative(parsedUser.school_id); // Sync school_id to native for background NFC scanning on load
+          if (parsedUser?.school_id) {
+            rfidOfflineService.cacheMappings(String(parsedUser.school_id)).catch(error => {
+              console.warn('Failed to warm native RFID cache from stored session:', error);
+            });
+          }
         } catch (error) {
           localStorage.removeItem('user');
         }
@@ -161,6 +167,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(user);
         localStorage.setItem('user', JSON.stringify(user));
         saveSchoolIdNative(user.school_id); // Allow background NFC service to read school_id
+        if (user.school_id) {
+          rfidOfflineService.cacheMappings(String(user.school_id)).catch(error => {
+            console.warn('Failed to warm native RFID cache after super admin login:', error);
+          });
+        }
         navigate('/welcome', { replace: true });
         clearNavigationHistory('/welcome');
         setLoading(false);
@@ -220,6 +231,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(user);
         localStorage.setItem('user', JSON.stringify(user));
         saveSchoolIdNative(user.school_id); // Allow background NFC service to read school_id
+        if (user.school_id) {
+          rfidOfflineService.cacheMappings(String(user.school_id)).catch(error => {
+            console.warn('Failed to warm native RFID cache after login:', error);
+          });
+        }
 
         // Don't redirect here - let Login.tsx or InitialRouteHandler handle redirects based on permissions
         // This allows permission checks to happen before navigation

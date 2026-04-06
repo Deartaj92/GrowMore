@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { rfidOfflineService, RFIDMapping } from '../services/rfidOfflineService';
+import { rfidOfflineService } from '../services/rfidOfflineService';
 import { useToast } from './useToast';
 import { Capacitor } from '@capacitor/core';
 
@@ -9,23 +9,7 @@ const GlobalNFCListener: React.FC = () => {
     const { user } = useAuth();
     const location = useLocation();
 
-    // Theme sync for when outside the main Layout provider
-    const [currentTheme, setCurrentTheme] = useState(localStorage.getItem('theme') || 'dark');
-    useEffect(() => {
-        const syncTheme = () => {
-            const stored = localStorage.getItem('theme');
-            if (stored === 'light' || stored === 'dark') setCurrentTheme(stored);
-        };
-        const interval = setInterval(syncTheme, 1000);
-        window.addEventListener('storage', syncTheme);
-        return () => {
-            clearInterval(interval);
-            window.removeEventListener('storage', syncTheme);
-        };
-    }, []);
-
     const { showToast } = useToast();
-    const isDark = currentTheme === 'dark';
 
     const lastScanRef = useRef<{ uid: string, time: number }>({ uid: '', time: 0 });
 
@@ -34,12 +18,15 @@ const GlobalNFCListener: React.FC = () => {
 
     // Always track the current route so the closure has access to it
     const isAttendancePageRef = useRef(false);
+    const isRfidCardAssignmentPageRef = useRef(false);
     useEffect(() => {
         isAttendancePageRef.current = location.pathname.includes('/rfid-scanner');
+        isRfidCardAssignmentPageRef.current = location.pathname.includes('/rfid-cards');
     }, [location.pathname]);
 
     const processUID = async (rawUid: string) => {
         if (!user?.school_id) return;
+        if (isRfidCardAssignmentPageRef.current) return;
 
         const uid = rawUid.trim().toUpperCase();
         const now = Date.now();
@@ -121,7 +108,7 @@ const GlobalNFCListener: React.FC = () => {
 
     // 1. Native NFC Listener (Mobile Android)
     useEffect(() => {
-        if (!user?.school_id || !Capacitor.isNativePlatform()) {
+        if (!user?.school_id || !Capacitor.isNativePlatform() || isRfidCardAssignmentPageRef.current) {
             return;
         }
 
@@ -129,7 +116,12 @@ const GlobalNFCListener: React.FC = () => {
             const tagId = event.tag && event.tag.id;
             if (!tagId) return;
 
-            const uid = tagId.map((b: number) => ('00' + b.toString(16)).slice(-2)).join('').toUpperCase();
+            const uid = tagId
+                .map((b: number) => {
+                    const normalized = (b & 0xFF).toString(16).toUpperCase();
+                    return normalized.length === 1 ? `0${normalized}` : normalized;
+                })
+                .join('');
             processUID(uid);
         };
 
@@ -159,14 +151,14 @@ const GlobalNFCListener: React.FC = () => {
                 nfc.removeTagDiscoveredListener(handleNativeScan);
             }
         };
-    }, [user?.school_id]);
+    }, [location.pathname, user?.school_id]);
 
     // 2. USB RFID Keyboard Wedge Listener (Web / Desktop / USB OTG)
     useEffect(() => {
-        if (!user?.school_id) return;
+        if (!user?.school_id || isRfidCardAssignmentPageRef.current) return;
 
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (isAttendancePageRef.current) return;
+            if (isAttendancePageRef.current || isRfidCardAssignmentPageRef.current) return;
 
             const target = e.target as HTMLElement;
             if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
@@ -193,7 +185,7 @@ const GlobalNFCListener: React.FC = () => {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [user?.school_id]);
+    }, [location.pathname, user?.school_id]);
 
     return null;
 };

@@ -32,6 +32,19 @@ const retrieveToken = (platform: string): string | null => {
   }
 };
 
+const getNativeNotificationSetupStatus = async (): Promise<{ nativePushConfigured: boolean; platform?: string } | null> => {
+  try {
+    const appSettingsPlugin = (window as any)?.Capacitor?.Plugins?.AppSettings;
+    if (appSettingsPlugin?.getNotificationSetupStatus) {
+      return await appSettingsPlugin.getNotificationSetupStatus();
+    }
+  } catch (error) {
+    console.warn('[PushNotifications] Failed to read native notification setup status:', error);
+  }
+
+  return null;
+};
+
 export const pushNotificationService = {
   /**
    * Register the device token with the backend
@@ -90,6 +103,12 @@ export const pushNotificationService = {
     }
 
     try {
+      const nativeSetupStatus = await getNativeNotificationSetupStatus();
+      if (Capacitor.getPlatform() === 'android' && nativeSetupStatus?.nativePushConfigured === false) {
+        console.warn('[PushNotifications] Android push registration skipped because Firebase is not configured for this build.');
+        return { granted: false, status: 'firebase_not_configured' };
+      }
+
       // Always check permission on each app run
       let permStatus = await PushNotifications.checkPermissions();
       console.log('[PushNotifications] Current permission status:', permStatus);

@@ -13,6 +13,7 @@ import { darkTheme, lightTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/useToast';
 import { supabase } from '../supabaseClient';
+import { rfidOfflineService } from '../services/rfidOfflineService';
 import { fetchAllRows } from '../utils/paginationHelper';
 import { sortClasses } from '../utils/classUtils';
 import {
@@ -438,6 +439,9 @@ const RFIDCardAssignmentPage: React.FC = () => {
                     .range(from, to);
             });
             setPeople((data as any as PersonRow[]) || []);
+            rfidOfflineService.cacheMappings(String(user.school_id)).catch(error => {
+                console.warn('Failed to refresh native RFID mapping cache:', error);
+            });
         } catch (e: any) {
             toast.showToast('Failed to load data: ' + (e?.message || ''), 'error');
         } finally {
@@ -575,6 +579,9 @@ const RFIDCardAssignmentPage: React.FC = () => {
             setEditingId(null);
             setEditValue('');
             setEditAttendanceMode('hybrid');
+            rfidOfflineService.cacheMappings(String(user.school_id)).catch(error => {
+                console.warn('Failed to refresh native RFID mapping cache after save:', error);
+            });
             toast.showToast(cleanUID ? 'RFID card settings saved successfully' : 'RFID card removed', 'success');
         } catch (e: any) {
             toast.showToast('Failed to save: ' + (e?.message || ''), 'error');
@@ -596,6 +603,9 @@ const RFIDCardAssignmentPage: React.FC = () => {
 
             if (error) throw error;
             setPeople(prev => prev.map(p => p.id === personId ? { ...p, rfid_uid: null, attendance_mode: 'manual_only' } : p));
+            rfidOfflineService.cacheMappings(String(user.school_id)).catch(error => {
+                console.warn('Failed to refresh native RFID mapping cache after removal:', error);
+            });
             toast.showToast('RFID card removed', 'success');
         } catch (e: any) {
             toast.showToast('Failed to remove: ' + (e?.message || ''), 'error');

@@ -8,6 +8,10 @@ const STORE_CONFIG = 'config';
 const STORE_DAILY_HISTORY = 'daily_history';
 const KEY_ACTIVE_SESSION = 'active_session';
 const KEY_ATTN_SETTINGS = 'attn_settings';
+const NATIVE_RFID_CACHE_PREFIX = 'native_rfid_mappings_';
+const NATIVE_ATTN_SETTINGS_PREFIX = 'native_attn_settings_';
+const NATIVE_ACTIVE_SESSION_PREFIX = 'native_active_session_';
+const NATIVE_DAILY_HISTORY_PREFIX = 'native_daily_history_';
 
 export interface RFIDMapping {
     rfid_uid: string;
@@ -66,6 +70,63 @@ export interface CachedAttendanceHistoryItem {
 
 class RFIDOfflineService {
     private db: IDBDatabase | null = null;
+
+    private async persistNativeBackgroundCache(
+        schoolId: string,
+        mappings: RFIDMapping[],
+        settings?: any,
+        sessionId?: number | null
+    ): Promise<void> {
+        try {
+            const { Capacitor } = await import('@capacitor/core');
+            if (!Capacitor.isNativePlatform()) return;
+
+            const { Preferences } = await import('@capacitor/preferences');
+            if (!Preferences) return;
+
+            await Preferences.set({
+                key: `${NATIVE_RFID_CACHE_PREFIX}${schoolId}`,
+                value: JSON.stringify(mappings),
+            });
+
+            if (settings) {
+                await Preferences.set({
+                    key: `${NATIVE_ATTN_SETTINGS_PREFIX}${schoolId}`,
+                    value: JSON.stringify(settings),
+                });
+            }
+
+            if (sessionId) {
+                await Preferences.set({
+                    key: `${NATIVE_ACTIVE_SESSION_PREFIX}${schoolId}`,
+                    value: String(sessionId),
+                });
+            }
+        } catch (error) {
+            console.warn('Failed to persist native RFID background cache:', error);
+        }
+    }
+
+    private async persistNativeDailyHistory(
+        schoolId: number | string,
+        date: string,
+        historyItems: CachedAttendanceHistoryItem[]
+    ): Promise<void> {
+        try {
+            const { Capacitor } = await import('@capacitor/core');
+            if (!Capacitor.isNativePlatform()) return;
+
+            const { Preferences } = await import('@capacitor/preferences');
+            if (!Preferences) return;
+
+            await Preferences.set({
+                key: `${NATIVE_DAILY_HISTORY_PREFIX}${schoolId}_${date}`,
+                value: JSON.stringify(historyItems),
+            });
+        } catch (error) {
+            console.warn('Failed to persist native RFID daily history cache:', error);
+        }
+    }
 
     private buildDailyHistoryKey(
         schoolId: number | string,
@@ -163,8 +224,10 @@ class RFIDOfflineService {
             store.clear();
 
             // Add new mappings
+            const serializedMappings: RFIDMapping[] = [];
+
             students?.forEach(s => {
-                store.add({
+                const mapping: RFIDMapping = {
                     rfid_uid: s.rfid_uid,
                     person_id: s.id,
                     name: s.name,
@@ -178,11 +241,13 @@ class RFIDOfflineService {
                     picture_url: s.picture_url,
                     father_name: s.father_name,
                     status: (s as any).status || 'active',
-                });
+                };
+                store.add(mapping);
+                serializedMappings.push(mapping);
             });
 
             staff?.forEach(s => {
-                store.add({
+                const mapping: RFIDMapping = {
                     rfid_uid: s.rfid_uid,
                     person_id: s.id,
                     name: s.name,
@@ -191,33 +256,42 @@ class RFIDOfflineService {
                     role: s.role,
                     picture_url: s.picture_url,
                     status: (s as any).status || 'active',
-                });
+                };
+                store.add(mapping);
+                serializedMappings.push(mapping);
             });
+
+            let sessionId: number | null = null;
+            let settingsPayload: any = null;
+
+            try {
+                const { data: session } = await supabase
+                    .from('sessions')
+                    .select('id')
+                    .eq('school_id', schoolId)
+                    .eq('is_active', true)
+                    .maybeSingle();
+                if (session?.id) {
+                    sessionId = session.id;
+                    await this.cacheConfig(KEY_ACTIVE_SESSION, session.id);
+                }
+
+                const { data: settings } = await supabase
+                    .from('attendance_settings')
+                    .select('*')
+                    .eq('school_id', schoolId)
+                    .maybeSingle();
+                if (settings) {
+                    settingsPayload = settings;
+                    await this.cacheConfig(KEY_ATTN_SETTINGS, settings);
+                }
+            } catch (e) {
+                console.warn('Failed to cache active session or settings:', e);
+            }
+
+            await this.persistNativeBackgroundCache(schoolId, serializedMappings, settingsPayload, sessionId);
         } catch (error) {
             console.error('Failed to cache RFID mappings:', error);
-        }
-
-        // Also cache active session and settings
-        try {
-            const { data: session } = await supabase
-                .from('sessions')
-                .select('id')
-                .eq('school_id', schoolId)
-                .eq('is_active', true)
-                .maybeSingle();
-            if (session) {
-                await this.cacheConfig(KEY_ACTIVE_SESSION, session.id);
-            }
-            const { data: settings } = await supabase
-                .from('attendance_settings')
-                .select('*')
-                .eq('school_id', schoolId)
-                .maybeSingle();
-            if (settings) {
-                await this.cacheConfig(KEY_ATTN_SETTINGS, settings);
-            }
-        } catch (e) {
-            console.warn('Failed to cache active session or settings:', e);
         }
     }
 
@@ -381,6 +455,8 @@ class RFIDOfflineService {
             tx.onabort = () => reject(tx.error);
         });
 
+        await this.persistNativeDailyHistory(schoolId, date, historyItems);
+
         return historyItems;
     }
 
@@ -396,6 +472,9 @@ class RFIDOfflineService {
             tx.onerror = () => reject(tx.error);
             tx.onabort = () => reject(tx.error);
         });
+
+        const history = await this.getCachedDailyAttendanceHistory(item.school_id, item.date);
+        await this.persistNativeDailyHistory(item.school_id, item.date, history);
     }
 
     /**
