@@ -53,8 +53,12 @@ window.electronAPI = {
     ipcRenderer.on('TOKEN_UPDATED', (_, token) => callback(token));
   },
   onPushNotificationReceived: (callback) => ipcRenderer.on('NOTIFICATION_RECEIVED', (_, notification) => callback(notification)),
+  onRfidScan: (callback) => {
+    ipcRenderer.on('rfid-global-scan', (_, uid) => callback(uid));
+  },
+  showRfidScanNotification: (payload) => ipcRenderer.send('rfid-scan-notification', payload),
   // Listen for show download modal on close event
   onShowDownloadModalOnClose: (callback) => {
     ipcRenderer.on('show-download-modal-on-close', callback);
   },
-}; 
+};

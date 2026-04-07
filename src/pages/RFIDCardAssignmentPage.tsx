@@ -16,6 +16,7 @@ import { supabase } from '../supabaseClient';
 import { rfidOfflineService } from '../services/rfidOfflineService';
 import { fetchAllRows } from '../utils/paginationHelper';
 import { sortClasses } from '../utils/classUtils';
+import { buildRfidUidCandidates, normalizeDesktopScannerUid, sanitizeRfidUid } from '../utils/rfidUtils';
 import {
     CreditCard,
     Search,
@@ -400,6 +401,9 @@ const RFIDCardAssignmentPage: React.FC = () => {
     const [isNfcSupported, setIsNfcSupported] = useState(false);
     const [isNfcScanning, setIsNfcScanning] = useState(false);
     const nfcAbortControllerRef = useRef<AbortController | null>(null);
+    const editScanBufferRef = useRef('');
+    const editScanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lastEditKeyTsRef = useRef(0);
 
     useEffect(() => {
         setIsNfcSupported(('NDEFReader' in window) || (!!(window as any).nfc));
@@ -488,10 +492,11 @@ const RFIDCardAssignmentPage: React.FC = () => {
     const totalCount = people.length;
 
     // Handle RFID assignment
-    const handleSave = async (personId: number) => {
+    const handleSave = async (personId: number, uidOverride?: string) => {
         if (!user?.school_id) return;
         const table = mode === 'students' ? 'students' : 'staff';
-        const cleanUID = editValue.trim().toUpperCase().replace(/[^A-F0-9]/g, '');
+        const cleanUID = sanitizeRfidUid(uidOverride ?? editValue);
+        const uidCandidates = buildRfidUidCandidates(cleanUID);
 
         if (cleanUID && cleanUID.length < 4) {
             toast.showToast('RFID UID must be at least 4 characters', 'error');
@@ -517,7 +522,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
                     .from(table)
                     .select(sameSelect)
                     .eq('school_id', user.school_id)
-                    .eq('rfid_uid', cleanUID)
+                    .in('rfid_uid', uidCandidates)
                     .neq('id', personId)
                     .maybeSingle();
 
@@ -542,7 +547,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
                     .from(otherTable)
                     .select(otherSelect)
                     .eq('school_id', user.school_id)
-                    .eq('rfid_uid', cleanUID)
+                    .in('rfid_uid', uidCandidates)
                     .maybeSingle();
 
                 if (existingOtherData) {
@@ -624,6 +629,11 @@ const RFIDCardAssignmentPage: React.FC = () => {
             nfcAbortControllerRef.current = null;
             setIsNfcScanning(false);
         }
+        if (editScanTimerRef.current) {
+            clearTimeout(editScanTimerRef.current);
+            editScanTimerRef.current = null;
+        }
+        editScanBufferRef.current = '';
         setEditingId(null);
         setEditValue('');
         setEditAttendanceMode('hybrid');
@@ -694,7 +704,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
             ndef.onreading = ({ serialNumber }: any) => {
                 console.log("NFC Card detected:", serialNumber);
                 if (serialNumber) {
-                    const cleanUID = serialNumber.replace(/:/g, '').toUpperCase();
+                    const cleanUID = sanitizeRfidUid(serialNumber);
                     setEditValue(cleanUID);
                     if (cleanUID.length >= 4) {
                         toast.showToast(`Card detected: ${cleanUID}`, "success");
@@ -711,12 +721,63 @@ const RFIDCardAssignmentPage: React.FC = () => {
 
     // Handle keyboard input from USB reader in edit field
     const handleEditKeyDown = (e: React.KeyboardEvent, personId: number) => {
+        const key = e.key.toUpperCase();
+        const isHexKey = /^[0-9A-F]$/.test(key);
+        const now = Date.now();
+        const isLikelyScannerInput = isHexKey && (editScanBufferRef.current.length > 0 || now - lastEditKeyTsRef.current < 35);
+
+        if (isLikelyScannerInput) {
+            e.preventDefault();
+            editScanBufferRef.current += key;
+            lastEditKeyTsRef.current = now;
+
+            if (editScanTimerRef.current) {
+                clearTimeout(editScanTimerRef.current);
+            }
+
+            editScanTimerRef.current = setTimeout(() => {
+                if (editScanBufferRef.current.length >= 4) {
+                    setEditValue(normalizeDesktopScannerUid(editScanBufferRef.current));
+                }
+                editScanBufferRef.current = '';
+                editScanTimerRef.current = null;
+            }, 120);
+            return;
+        }
+
         if (e.key === 'Enter') {
             e.preventDefault();
+            if (editScanBufferRef.current.length >= 4) {
+                const normalizedUid = normalizeDesktopScannerUid(editScanBufferRef.current);
+                if (editScanTimerRef.current) {
+                    clearTimeout(editScanTimerRef.current);
+                    editScanTimerRef.current = null;
+                }
+                editScanBufferRef.current = '';
+                setEditValue(normalizedUid);
+                handleSave(personId, normalizedUid);
+                return;
+            }
+
             handleSave(personId);
         }
         if (e.key === 'Escape') {
+            if (editScanTimerRef.current) {
+                clearTimeout(editScanTimerRef.current);
+                editScanTimerRef.current = null;
+            }
+            editScanBufferRef.current = '';
             cancelEdit();
+        }
+
+        if (isHexKey) {
+            lastEditKeyTsRef.current = now;
+        } else {
+            editScanBufferRef.current = '';
+            if (editScanTimerRef.current) {
+                clearTimeout(editScanTimerRef.current);
+                editScanTimerRef.current = null;
+            }
         }
     };
 
@@ -847,7 +908,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
                                                                 autoFocus
                                                                 placeholder="Tap card or type UID..."
                                                                 value={editValue}
-                                                                onChange={e => setEditValue(e.target.value)}
+                                                                onChange={e => setEditValue(sanitizeRfidUid(e.target.value))}
                                                                 onKeyDown={e => handleEditKeyDown(e, person.id)}
                                                             />
                                                             {isNfcSupported ? (

@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useContext, useEffect, useRef, useState, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import styled, { keyframes, css } from 'styled-components';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { UNSAFE_NavigationContext, useLocation, useNavigate } from 'react-router-dom';
 
 // Add NDEFReader types for TypeScript
 declare global {
@@ -16,6 +16,7 @@ import { darkTheme, lightTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/useToast';
 import { supabase } from '../supabaseClient';
+import { normalizeDesktopScannerUid, sanitizeRfidUid } from '../utils/rfidUtils';
 import { getStudentDisplayId } from '../utils/studentUtils';
 import {
     CheckCircle,
@@ -87,13 +88,21 @@ const rippleRed = keyframes`
 
 const Page = styled.div`
   width: 100%;
-  min-height: 100%;
+  min-height: calc(100vh - 72px);
+  height: calc(100vh - 72px);
   background: ${({ theme }) => getLayoutPalette(theme).shellBg};
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   padding: 0.75rem;
   box-sizing: border-box;
+  overflow: hidden;
+
+  @media (max-width: 960px) {
+    height: auto;
+    min-height: calc(100vh - 72px);
+    overflow: visible;
+  }
 
   @media (max-width: 768px) { padding: 0.5rem; gap: 0.5rem; }
 `;
@@ -275,9 +284,11 @@ const MainGrid = styled.div`
   gap: 0.75rem;
   flex: 1;
   min-height: 0;
+  align-items: stretch;
 
   @media (max-width: 960px) {
     grid-template-columns: 1fr;
+    min-height: auto;
   }
 `;
 
@@ -289,7 +300,9 @@ const ScannerCard = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: space-between;
   gap: 1.2rem;
+  min-height: 0;
 `;
 
 const ScanArea = styled.div<{ $status: 'idle' | 'success' | 'error' }>`
@@ -405,6 +418,7 @@ const FeedCard = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
 `;
 
 const FeedHeader = styled.div`
@@ -503,7 +517,7 @@ const SectionHeader = styled.div<{ $mode?: 'student' | 'employee' }>`
 const SectionBody = styled.div`
   flex: 1;
   overflow-y: auto;
-  max-height: 430px; /* ~6 rows + headers and gaps */
+  min-height: 0;
 `;
 
 const FeedItem = styled.div<{ $type: 'success' | 'error' | 'warn'; $personType?: string; $new?: boolean; $attendanceStatus?: 'present' | 'late' | 'checked_out' }>`
@@ -1060,9 +1074,8 @@ const RFIDAttendancePage: React.FC = () => {
     const [showSuccess, setShowSuccess] = useState(false);
     const [syncStats, setSyncStats] = useState({ success: 0, failed: 0 });
     const [scannedPerson, setScannedPerson] = useState<{ name: string; picture_url?: string } | null>(null);
-    const bypassNavigationGuardRef = useRef(false);
-    const currentPathRef = useRef(`${location.pathname}${location.search}${location.hash}`);
-    const pendingNavigationRef = useRef<{ path: string; replace?: boolean } | null>(null);
+    const navigationContext = useContext(UNSAFE_NavigationContext);
+    const pendingNavigationRef = useRef<{ path: string; replace?: boolean; retry?: () => void } | null>(null);
 
     const clearPersistedDailyHistory = useCallback(() => {
         if (!user?.school_id) return;
@@ -1413,7 +1426,7 @@ const RFIDAttendancePage: React.FC = () => {
             resetTimerRef.current = null;
         }
 
-        const cleanUID = uid.trim().toUpperCase().replace(/[^A-F0-9]/g, '');
+        const cleanUID = sanitizeRfidUid(uid);
         if (cleanUID.length < 4) {
             isProcessingRef.current = false;
             return;
@@ -1628,7 +1641,7 @@ const RFIDAttendancePage: React.FC = () => {
             ndef.onreading = ({ serialNumber }: any) => {
                 console.log("NFC Card detected:", serialNumber);
                 if (serialNumber) {
-                    const cleanUID = serialNumber.replace(/:/g, '').toUpperCase();
+                    const cleanUID = sanitizeRfidUid(serialNumber);
                     processUID(cleanUID);
                 }
             };
@@ -1647,7 +1660,7 @@ const RFIDAttendancePage: React.FC = () => {
 
         if (e.key === 'Enter') {
             // Card scan complete – process the buffered UID
-            const uid = bufferRef.current;
+            const uid = normalizeDesktopScannerUid(bufferRef.current);
             bufferRef.current = '';
             if (timerRef.current) clearTimeout(timerRef.current);
             if (uid.length >= 4) processUID(uid);
@@ -1656,7 +1669,7 @@ const RFIDAttendancePage: React.FC = () => {
             // Auto-flush if no Enter comes within 100ms (some readers don't send Enter)
             if (timerRef.current) clearTimeout(timerRef.current);
             timerRef.current = setTimeout(() => {
-                const uid = bufferRef.current;
+                const uid = normalizeDesktopScannerUid(bufferRef.current);
                 bufferRef.current = '';
                 if (uid.length >= 4) processUID(uid);
             }, 120);
@@ -1935,11 +1948,11 @@ const RFIDAttendancePage: React.FC = () => {
             pendingNavigationRef.current = null;
 
             if (pendingNavigation) {
-                bypassNavigationGuardRef.current = true;
-                navigate(pendingNavigation.path, { replace: !!pendingNavigation.replace });
-                window.setTimeout(() => {
-                    bypassNavigationGuardRef.current = false;
-                }, 0);
+                if (pendingNavigation.retry) {
+                    pendingNavigation.retry();
+                } else {
+                    navigate(pendingNavigation.path, { replace: !!pendingNavigation.replace });
+                }
             }
         } catch (error) {
             showToast('Failed to verify password.', 'error');
@@ -1948,72 +1961,37 @@ const RFIDAttendancePage: React.FC = () => {
         }
     };
 
-    useEffect(() => {
-        currentPathRef.current = `${location.pathname}${location.search}${location.hash}`;
-    }, [location.hash, location.pathname, location.search]);
 
     useEffect(() => {
-        const originalPushState = window.history.pushState.bind(window.history);
-        const originalReplaceState = window.history.replaceState.bind(window.history);
+        const navigatorWithBlock = navigationContext?.navigator as any;
+        if (!navigatorWithBlock?.block) {
+            return;
+        }
 
-        const getNextPath = (url?: string | URL | null) => {
-            if (!url) return currentPathRef.current;
-            const resolved = new URL(String(url), window.location.origin);
-            return `${resolved.pathname}${resolved.search}${resolved.hash}`;
-        };
+        const unblock = navigatorWithBlock.block((tx: any) => {
+            const nextLocation = tx.location;
+            const nextPath = `${nextLocation.pathname}${nextLocation.search}${nextLocation.hash}`;
+            const currentPath = `${location.pathname}${location.search}${location.hash}`;
 
-        const blockNavigation = (path: string, replace = false) => {
-            if (bypassNavigationGuardRef.current || path === currentPathRef.current) {
-                return false;
+            if (nextPath === currentPath) {
+                tx.retry();
+                return;
             }
 
-            pendingNavigationRef.current = { path, replace };
+            pendingNavigationRef.current = {
+                path: nextPath,
+                replace: tx.action === 'REPLACE',
+                retry: () => {
+                    unblock();
+                    tx.retry();
+                },
+            };
             setLeavePassword('');
             setShowLeavePasswordModal(true);
-            return true;
-        };
+        });
 
-        window.history.pushState = function (data, unused, url) {
-            const nextPath = getNextPath(url);
-            if (blockNavigation(nextPath, false)) {
-                return;
-            }
-            originalPushState(data, unused, url);
-        };
-
-        window.history.replaceState = function (data, unused, url) {
-            const nextPath = getNextPath(url);
-            if (blockNavigation(nextPath, true)) {
-                return;
-            }
-            originalReplaceState(data, unused, url);
-        };
-
-        const handlePopState = () => {
-            const nextPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-            if (bypassNavigationGuardRef.current || nextPath === currentPathRef.current) {
-                return;
-            }
-
-            pendingNavigationRef.current = { path: nextPath, replace: false };
-            setLeavePassword('');
-            setShowLeavePasswordModal(true);
-
-            bypassNavigationGuardRef.current = true;
-            originalPushState(window.history.state, '', currentPathRef.current);
-            window.setTimeout(() => {
-                bypassNavigationGuardRef.current = false;
-            }, 0);
-        };
-
-        window.addEventListener('popstate', handlePopState);
-
-        return () => {
-            window.history.pushState = originalPushState;
-            window.history.replaceState = originalReplaceState;
-            window.removeEventListener('popstate', handlePopState);
-        };
-    }, []);
+        return unblock;
+    }, [location.hash, location.pathname, location.search, navigationContext]);
 
     const filteredEmployeeFeed = feed.filter(item => item.personType === 'employee' && matchesFeedSearch(item, feedSearch));
     const filteredStudentFeed = feed.filter(item => item.personType === 'student' && matchesFeedSearch(item, feedSearch));

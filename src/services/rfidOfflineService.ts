@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { buildRfidUidCandidates, sanitizeRfidUid } from '../utils/rfidUtils';
 
 const DB_NAME = 'rfid_attendance_db';
 const DB_VERSION = 4;
@@ -482,19 +483,35 @@ class RFIDOfflineService {
      */
     async lookupRFID(rfid_uid: string): Promise<RFIDMapping | null> {
         const db = await this.getDB();
+        const candidates = buildRfidUidCandidates(rfid_uid);
         return new Promise((resolve) => {
             const tx = db.transaction(STORE_MAPPINGS, 'readonly');
             const store = tx.objectStore(STORE_MAPPINGS);
-            const request = store.get(rfid_uid.toUpperCase());
+            let candidateIndex = 0;
 
-            request.onsuccess = () => {
-                const result = request.result || null;
-                if (result) {
-                    result.attendance_mode = this.normalizeAttendanceMode(result.attendance_mode, true);
+            const tryNextCandidate = () => {
+                if (candidateIndex >= candidates.length) {
+                    resolve(null);
+                    return;
                 }
-                resolve(result);
+
+                const request = store.get(candidates[candidateIndex]);
+                candidateIndex += 1;
+
+                request.onsuccess = () => {
+                    const result = request.result || null;
+                    if (result) {
+                        result.attendance_mode = this.normalizeAttendanceMode(result.attendance_mode, true);
+                        resolve(result);
+                        return;
+                    }
+
+                    tryNextCandidate();
+                };
+                request.onerror = () => tryNextCandidate();
             };
-            request.onerror = () => resolve(null);
+
+            tryNextCandidate();
         });
     }
 
@@ -744,8 +761,9 @@ class RFIDOfflineService {
      * Handles both online and offline tagging.
      */
     async markAttendance(uid: string, schoolId: number, targetDate?: string): Promise<{ success: boolean; person: RFIDMapping | null; type: MarkResultType; attendance_status?: string; recorded_time?: string }> {
-        const cleanUID = uid.trim().toUpperCase().replace(/[^A-F0-9]/g, '');
+        const cleanUID = sanitizeRfidUid(uid);
         if (cleanUID.length < 4) return { success: false, person: null, type: 'error' };
+        const uidCandidates = buildRfidUidCandidates(cleanUID);
 
         const today = targetDate || new Date().toISOString().split('T')[0];
         const now = new Date().toISOString();
@@ -759,7 +777,7 @@ class RFIDOfflineService {
                 // Try online lookup as fallback
                 const { data: student } = await supabase.from('students')
                     .select('id, name, father_name, roll_number, picture_url, status, attendance_mode, class_id, section_id, classes:class_id(name), sections:section_id(name)')
-                    .eq('school_id', schoolId).eq('rfid_uid', cleanUID).maybeSingle();
+                    .eq('school_id', schoolId).in('rfid_uid', uidCandidates).maybeSingle();
 
                 if (student) {
                     person = {
@@ -780,7 +798,7 @@ class RFIDOfflineService {
                 } else {
                     const { data: staff } = await supabase.from('staff')
                         .select('id, name, picture_url, role, status, attendance_mode')
-                        .eq('school_id', schoolId).eq('rfid_uid', cleanUID).maybeSingle();
+                        .eq('school_id', schoolId).in('rfid_uid', uidCandidates).maybeSingle();
 
                     if (staff) {
                         person = {

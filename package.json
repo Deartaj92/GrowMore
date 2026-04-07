@@ -165,6 +165,7 @@
     "jspdf-autotable": "^5.0.2",
     "lodash": "^4.17.21",
     "multer": "^1.4.5-lts.2",
+    "node-global-key-listener": "^0.3.0",
     "pdf-lib": "^1.17.1",
     "pg": "^8.15.6",
     "phonegap-nfc": "^1.2.0",

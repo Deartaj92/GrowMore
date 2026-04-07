@@ -4,6 +4,32 @@ import { useNavigate } from 'react-router-dom';
 import { crypt, gen_salt } from '../utils/crypto';
 import { rfidOfflineService } from '../services/rfidOfflineService';
 
+const getLocalDateKey = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const warmRfidCaches = async (schoolId: number | undefined, contextLabel: string) => {
+  if (!schoolId) return;
+
+  try {
+    await rfidOfflineService.cacheMappings(String(schoolId));
+  } catch (error) {
+    console.warn(`Failed to warm RFID mapping cache ${contextLabel}:`, error);
+  }
+
+  if (!navigator.onLine) return;
+
+  try {
+    await rfidOfflineService.cacheDailyAttendanceHistory(schoolId, getLocalDateKey());
+  } catch (error) {
+    console.warn(`Failed to warm RFID daily history cache ${contextLabel}:`, error);
+  }
+};
+
 // Save school_id to native Android SharedPreferences so the background NFC service can read it
 const saveSchoolIdNative = async (schoolId: number | undefined) => {
   if (!schoolId) return;
@@ -79,11 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
           saveSchoolIdNative(parsedUser.school_id); // Sync school_id to native for background NFC scanning on load
-          if (parsedUser?.school_id) {
-            rfidOfflineService.cacheMappings(String(parsedUser.school_id)).catch(error => {
-              console.warn('Failed to warm native RFID cache from stored session:', error);
-            });
-          }
+          warmRfidCaches(parsedUser.school_id, 'from stored session');
         } catch (error) {
           localStorage.removeItem('user');
         }
@@ -167,11 +189,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(user);
         localStorage.setItem('user', JSON.stringify(user));
         saveSchoolIdNative(user.school_id); // Allow background NFC service to read school_id
-        if (user.school_id) {
-          rfidOfflineService.cacheMappings(String(user.school_id)).catch(error => {
-            console.warn('Failed to warm native RFID cache after super admin login:', error);
-          });
-        }
+        warmRfidCaches(user.school_id, 'after super admin login');
         navigate('/welcome', { replace: true });
         clearNavigationHistory('/welcome');
         setLoading(false);
@@ -231,11 +249,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(user);
         localStorage.setItem('user', JSON.stringify(user));
         saveSchoolIdNative(user.school_id); // Allow background NFC service to read school_id
-        if (user.school_id) {
-          rfidOfflineService.cacheMappings(String(user.school_id)).catch(error => {
-            console.warn('Failed to warm native RFID cache after login:', error);
-          });
-        }
+        warmRfidCaches(user.school_id, 'after login');
 
         // Don't redirect here - let Login.tsx or InitialRouteHandler handle redirects based on permissions
         // This allows permission checks to happen before navigation

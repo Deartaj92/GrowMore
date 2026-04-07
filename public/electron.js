@@ -1,9 +1,10 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, shell, Notification, nativeImage } = require('electron');
 const path = require('path');
 const https = require('https');
 const fs = require('fs');
 const isDev = require('electron-is-dev');
 const AutoLaunch = require('auto-launch');
+const { GlobalKeyboardListener } = require('node-global-key-listener');
 
 // Set App User Model ID for Windows notifications
 app.setAppUserModelId('com.growmore.app');
@@ -52,19 +53,187 @@ let mainWindow;
 let backgroundWindow = null; // Hidden window for push notifications
 let tray = null;
 let isQuitting = false;
+let autoLaunchEnabled = false;
+let globalKeyboardListener = null;
+let rfidScanBuffer = '';
+let rfidScanTimer = null;
+let lastForwardedScan = { uid: '', time: 0 };
+
+function sanitizeRfidUid(value) {
+  return String(value || '').trim().toUpperCase().replace(/[^A-F0-9]/g, '');
+}
+
+function normalizeDesktopScannerUid(value) {
+  const sanitized = sanitizeRfidUid(value);
+  if (sanitized.length < 8 || sanitized.length % 2 !== 0) {
+    return sanitized;
+  }
+
+  const bytes = sanitized.match(/.{1,2}/g);
+  if (!bytes) {
+    return sanitized;
+  }
+
+  return bytes.reverse().join('');
+}
+
+function getResourcePath(relativePath) {
+  if (isDev) {
+    return path.join(__dirname, '..', relativePath);
+  }
+  return path.join(process.resourcesPath, relativePath);
+}
+
+function getNotificationFallbackIconPath() {
+  const iconPath = getResourcePath('assets/patternLogo.ico');
+  return fs.existsSync(iconPath) ? iconPath : undefined;
+}
+
+function downloadFileBuffer(url) {
+  return new Promise((resolve, reject) => {
+    const requestUrl = new URL(url);
+    const client = requestUrl.protocol === 'http:' ? require('http') : require('https');
+
+    client.get(url, (response) => {
+      if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+        const redirected = response.headers.location.startsWith('http')
+          ? response.headers.location
+          : new URL(response.headers.location, url).href;
+        response.resume();
+        downloadFileBuffer(redirected).then(resolve).catch(reject);
+        return;
+      }
+
+      if (response.statusCode !== 200) {
+        response.resume();
+        reject(new Error(`HTTP ${response.statusCode}`));
+        return;
+      }
+
+      const chunks = [];
+      response.on('data', (chunk) => chunks.push(chunk));
+      response.on('end', () => resolve(Buffer.concat(chunks)));
+      response.on('error', reject);
+    }).on('error', reject);
+  });
+}
+
+async function resolveNotificationIcon(imageUrl) {
+  if (!imageUrl) {
+    return getNotificationFallbackIconPath();
+  }
+
+  try {
+    if (String(imageUrl).startsWith('data:image/')) {
+      const icon = nativeImage.createFromDataURL(String(imageUrl));
+      return icon.isEmpty() ? getNotificationFallbackIconPath() : icon;
+    }
+
+    if (/^https?:\/\//i.test(String(imageUrl))) {
+      const buffer = await downloadFileBuffer(String(imageUrl));
+      const icon = nativeImage.createFromBuffer(buffer);
+      return icon.isEmpty() ? getNotificationFallbackIconPath() : icon;
+    }
+
+    if (fs.existsSync(String(imageUrl))) {
+      const icon = nativeImage.createFromPath(String(imageUrl));
+      return icon.isEmpty() ? getNotificationFallbackIconPath() : icon;
+    }
+  } catch (error) {
+    console.warn('[Electron RFID] Failed to resolve notification image:', error);
+  }
+
+  return getNotificationFallbackIconPath();
+}
+
+function shouldUseBackgroundRfidCapture() {
+  if (isQuitting) return false;
+  if (!mainWindow || mainWindow.isDestroyed()) return true;
+  if (mainWindow.isMinimized()) return true;
+  if (!mainWindow.isVisible()) return true;
+  if (!mainWindow.isFocused()) return true;
+  return false;
+}
+
+function forwardRfidScanToBackground(uid) {
+  const cleanUid = normalizeDesktopScannerUid(uid);
+  if (cleanUid.length < 4) return;
+
+  const now = Date.now();
+  if (lastForwardedScan.uid === cleanUid && now - lastForwardedScan.time < 2000) {
+    return;
+  }
+  lastForwardedScan = { uid: cleanUid, time: now };
+
+  if (!backgroundWindow || backgroundWindow.isDestroyed()) {
+    createBackgroundWindow();
+  }
+
+  if (backgroundWindow && !backgroundWindow.isDestroyed()) {
+    backgroundWindow.webContents.send('rfid-global-scan', cleanUid);
+  }
+}
+
+function flushRfidScanBuffer() {
+  const uid = rfidScanBuffer;
+  rfidScanBuffer = '';
+  if (rfidScanTimer) {
+    clearTimeout(rfidScanTimer);
+    rfidScanTimer = null;
+  }
+
+  if (uid.length >= 4) {
+    forwardRfidScanToBackground(uid);
+  }
+}
+
+function mapGlobalKeyToHexChar(keyName) {
+  const normalized = String(keyName || '').toUpperCase().trim();
+  if (/^[0-9A-F]$/.test(normalized)) {
+    return normalized;
+  }
+  if (normalized.startsWith('NUMPAD ')) {
+    const digit = normalized.replace('NUMPAD ', '');
+    if (/^[0-9]$/.test(digit)) return digit;
+  }
+  return null;
+}
+
+async function setupGlobalRfidKeyboardListener() {
+  if (globalKeyboardListener) return;
+  try {
+    globalKeyboardListener = new GlobalKeyboardListener({
+      windows: {
+        onError: (errorCode) => console.error('[Electron RFID] Global keyboard listener error:', errorCode),
+      },
+    });
+
+    await globalKeyboardListener.addListener((event) => {
+      if (event.state !== 'DOWN') return;
+      if (!shouldUseBackgroundRfidCapture()) return;
+
+      const keyName = String(event.name || '').toUpperCase();
+      if (keyName === 'ENTER' || keyName === 'RETURN') {
+        flushRfidScanBuffer();
+        return;
+      }
+
+      const nextChar = mapGlobalKeyToHexChar(keyName);
+      if (!nextChar) return;
+
+      rfidScanBuffer += nextChar;
+      if (rfidScanTimer) clearTimeout(rfidScanTimer);
+      rfidScanTimer = setTimeout(flushRfidScanBuffer, 120);
+    });
+
+    console.log('[Electron RFID] Global keyboard listener started');
+  } catch (error) {
+    console.error('[Electron RFID] Failed to start global keyboard listener:', error);
+    globalKeyboardListener = null;
+  }
+}
 
 function createWindow() {
-  // Determine correct paths for dev vs production
-  const getResourcePath = (relativePath) => {
-    if (isDev) {
-      return path.join(__dirname, '..', relativePath);
-    } else {
-      // In production, __dirname is the build folder (app.asar/build)
-      // Resources are in app.asar/../resources
-      return path.join(process.resourcesPath, relativePath);
-    }
-  };
-
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 700,
@@ -176,14 +345,6 @@ function createBackgroundWindow() {
     return;
   }
 
-  const getResourcePath = (relativePath) => {
-    if (isDev) {
-      return path.join(__dirname, '..', relativePath);
-    } else {
-      return path.join(process.resourcesPath, relativePath);
-    }
-  };
-
   // Create a minimal hidden window for push notifications
   backgroundWindow = new BrowserWindow({
     width: 1, // Minimal size
@@ -266,17 +427,8 @@ function createBackgroundWindow() {
 
 // Create Tray Icon
 function createTray() {
-  // Use same path resolution as main window icon
-  const getResourcePath = (relativePath) => {
-    if (isDev) {
-      return path.join(__dirname, '..', relativePath);
-    } else {
-      return path.join(process.resourcesPath, relativePath);
-    }
-  };
-
   const iconPath = getResourcePath('assets/patternLogo.ico');
-  const trayIcon = require('electron').nativeImage.createFromPath(iconPath);
+  const trayIcon = nativeImage.createFromPath(iconPath);
 
   tray = new Menu.buildFromTemplate([
     {
@@ -341,6 +493,7 @@ if (!gotTheLock) {
     // Create background window first for push notifications
     // This window stays alive even when main window is closed
     createBackgroundWindow();
+    await setupGlobalRfidKeyboardListener();
     
     // Create tray (always needed for notifications)
     tray = createTray();
@@ -438,6 +591,14 @@ app.on('window-all-closed', () => {
 // Handle app quit - destroy background window too
 app.on('before-quit', () => {
   isQuitting = true;
+  if (rfidScanTimer) {
+    clearTimeout(rfidScanTimer);
+    rfidScanTimer = null;
+  }
+  if (globalKeyboardListener) {
+    globalKeyboardListener.kill();
+    globalKeyboardListener = null;
+  }
   // Destroy background window when quitting
   if (backgroundWindow && !backgroundWindow.isDestroyed()) {
     backgroundWindow.destroy();
@@ -954,3 +1115,19 @@ ipcMain.handle('show-item-in-folder', async (event, filePath) => {
   }
 });
 
+ipcMain.on('rfid-scan-notification', async (_event, payload) => {
+  try {
+    if (!Notification.isSupported()) return;
+
+    const icon = await resolveNotificationIcon(payload?.imageUrl);
+    const notification = new Notification({
+      title: payload?.title || 'RFID Scan',
+      body: payload?.body || 'Attendance processed',
+      icon,
+      silent: !!payload?.silent,
+    });
+    notification.show();
+  } catch (error) {
+    console.error('[Electron RFID] Failed to show scan notification:', error);
+  }
+});

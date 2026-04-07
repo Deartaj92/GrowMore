@@ -2,8 +2,17 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { rfidOfflineService } from '../services/rfidOfflineService';
+import { normalizeDesktopScannerUid } from '../utils/rfidUtils';
 import { useToast } from './useToast';
 import { Capacitor } from '@capacitor/core';
+
+const getLocalDateKey = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
 
 const GlobalNFCListener: React.FC = () => {
     const { user } = useAuth();
@@ -15,6 +24,7 @@ const GlobalNFCListener: React.FC = () => {
 
     const bufferRef = useRef('');
     const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const electronListenerAttachedRef = useRef(false);
 
     // Always track the current route so the closure has access to it
     const isAttendancePageRef = useRef(false);
@@ -24,7 +34,46 @@ const GlobalNFCListener: React.FC = () => {
         isRfidCardAssignmentPageRef.current = location.pathname.includes('/rfid-cards');
     }, [location.pathname]);
 
-    const processUID = async (rawUid: string) => {
+    useEffect(() => {
+        const schoolId = user?.school_id;
+        if (!schoolId) return;
+
+        let cancelled = false;
+
+        const refreshAttendanceCaches = async () => {
+            if (cancelled || !navigator.onLine) return;
+
+            try {
+                await rfidOfflineService.cacheMappings(String(schoolId));
+                await rfidOfflineService.cacheDailyAttendanceHistory(schoolId, getLocalDateKey());
+            } catch (error) {
+                console.warn('Failed to refresh global RFID attendance caches:', error);
+            }
+        };
+
+        refreshAttendanceCaches();
+
+        const intervalId = window.setInterval(refreshAttendanceCaches, 60000);
+        const handleOnline = () => {
+            refreshAttendanceCaches();
+        };
+
+        window.addEventListener('online', handleOnline);
+
+        return () => {
+            cancelled = true;
+            window.clearInterval(intervalId);
+            window.removeEventListener('online', handleOnline);
+        };
+    }, [user?.school_id]);
+
+    const showElectronScanNotification = (payload: { title: string; body: string; silent?: boolean; imageUrl?: string }) => {
+        if (window.electronAPI?.showRfidScanNotification) {
+            window.electronAPI.showRfidScanNotification(payload);
+        }
+    };
+
+    const processUID = async (rawUid: string, source: 'default' | 'electron-background' = 'default') => {
         if (!user?.school_id) return;
         if (isRfidCardAssignmentPageRef.current) return;
 
@@ -100,6 +149,14 @@ const GlobalNFCListener: React.FC = () => {
 
             if (title) {
                 showToast(`${title}: ${sub}`, type);
+                if (source === 'electron-background') {
+                    showElectronScanNotification({
+                        title,
+                        body: sub,
+                        silent: false,
+                        imageUrl: p?.picture_url,
+                    });
+                }
             }
         } catch (err) {
             console.error('Global NFC Handler Error:', err);
@@ -168,7 +225,7 @@ const GlobalNFCListener: React.FC = () => {
             if (e.key === 'Shift' || e.key === 'CapsLock' || e.key === 'Alt' || e.key === 'Control') return;
 
             if (e.key === 'Enter') {
-                const uid = bufferRef.current;
+                const uid = normalizeDesktopScannerUid(bufferRef.current);
                 bufferRef.current = '';
                 if (timerRef.current) clearTimeout(timerRef.current);
                 if (uid.length >= 4) processUID(uid);
@@ -176,7 +233,7 @@ const GlobalNFCListener: React.FC = () => {
                 bufferRef.current += e.key;
                 if (timerRef.current) clearTimeout(timerRef.current);
                 timerRef.current = setTimeout(() => {
-                    const uid = bufferRef.current;
+                    const uid = normalizeDesktopScannerUid(bufferRef.current);
                     bufferRef.current = '';
                     if (uid.length >= 4) processUID(uid);
                 }, 120);
@@ -186,6 +243,16 @@ const GlobalNFCListener: React.FC = () => {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [location.pathname, user?.school_id]);
+
+    useEffect(() => {
+        if (!user?.school_id || !window.electronAPI?.onRfidScan) return;
+        if (electronListenerAttachedRef.current) return;
+
+        window.electronAPI.onRfidScan((uid: string) => {
+            processUID(uid, 'electron-background');
+        });
+        electronListenerAttachedRef.current = true;
+    }, [user?.school_id]);
 
     return null;
 };
