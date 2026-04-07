@@ -119,7 +119,11 @@ const GlobalNFCListener: React.FC = () => {
                 sub = `Not Active (${statusLabel})`;
             } else if (result.success && p) {
                 let statusStr = 'Present';
-                if (result.type === 'out') {
+                if (result.type === 'offline') {
+                    statusStr = 'Scan successful';
+                    type = 'success';
+                }
+                else if (result.type === 'out') {
                     statusStr = 'Checked Out';
                     type = 'info';
                 }

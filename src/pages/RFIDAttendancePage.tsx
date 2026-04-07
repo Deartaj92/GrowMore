@@ -1199,11 +1199,9 @@ const RFIDAttendancePage: React.FC = () => {
             const { success, failed } = e.detail;
             rfidOfflineService.getQueue().then(q => setQueueCount(q.length));
             if (success > 0) {
-                // If on this page, maybe refresh the feed or just let the counts update
                 console.log(`[RFIDPage] Background sync detected: ${success} success`);
-                if (selectedDate !== getLocalToday()) {
-                    loadHistoryFeed(selectedDate);
-                }
+                clearPersistedDailyHistory();
+                loadHistoryFeed(selectedDate);
             }
         };
 
@@ -1216,7 +1214,7 @@ const RFIDAttendancePage: React.FC = () => {
             window.removeEventListener('offline', handleOffline);
             window.removeEventListener('offline-sync-completed', handleSyncCompleted);
         };
-    }, [user?.school_id]);
+    }, [clearPersistedDailyHistory, loadHistoryFeed, selectedDate, user?.school_id]);
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -1534,14 +1532,42 @@ const RFIDAttendancePage: React.FC = () => {
                 });
                 showToast('Employee Checked Out!', 'success');
             } else {
-                // 'new' or 'offline'
                 const isOffline = result.type === 'offline';
                 const isLate = result.attendance_status === 'late';
+                if (isOffline) {
+                    setScanStatus('success');
+                    setStatusMsg(`Scan successful: ${p.name}`);
+                    setPresentCount(c => c + 1);
+
+                    const studentDisplayId = getStudentDisplayId({ id: p.person_id, roll_number: p.roll_number });
+                    const subLabel = p.type === 'student'
+                        ? `${p.class_name || ''}${p.section_name ? ` (${p.section_name})` : ''}`.trim()
+                        : p.role || 'Staff';
+                    const subAccent = p.type === 'student'
+                        ? (studentDisplayId ? String(studentDisplayId) : undefined)
+                        : (p.person_id ? String(p.person_id) : undefined);
+
+                    addFeedItem({
+                        type: 'success',
+                        name: `${p.name} (Pending Sync)`,
+                        fatherName: personType === 'student' ? p.father_name : undefined,
+                        sub: `${subLabel} • Scan successful`,
+                        subAccent,
+                        time,
+                        personType,
+                    });
+
+                    const q = await rfidOfflineService.getQueue();
+                    setQueueCount(q.length);
+                    showToast('Scan successful', 'success');
+                    return;
+                }
+
                 const lateCount = isLate
-                    ? await fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: isOffline })
+                    ? await fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: false })
                     : undefined;
                 setScanStatus('success');
-                setStatusMsg(`${isOffline ? '(Offline) ' : ''}✓ ${p.name}`);
+                setStatusMsg(`✓ ${p.name}`);
                 setPresentCount(c => c + 1);
 
                 const studentDisplayId = getStudentDisplayId({ id: p.person_id, roll_number: p.roll_number });
@@ -1554,7 +1580,7 @@ const RFIDAttendancePage: React.FC = () => {
 
                 addFeedItem({
                     type: 'success',
-                    name: `${p.name}${isOffline ? ' (Offline)' : ''}`,
+                    name: p.name,
                     fatherName: personType === 'student' ? p.father_name : undefined,
                     sub: subLabel,
                     subAccent,
@@ -1563,11 +1589,6 @@ const RFIDAttendancePage: React.FC = () => {
                     attendanceStatus: isLate ? 'late' : 'present',
                     attendanceLateCount: lateCount,
                 });
-
-                if (isOffline) {
-                    const q = await rfidOfflineService.getQueue();
-                    setQueueCount(q.length);
-                }
 
                 // Show big message
                 showToast(isLate ? 'Marked as Late Arrival!' : 'Marked as Present!', 'success');
@@ -1767,11 +1788,39 @@ const RFIDAttendancePage: React.FC = () => {
             } else {
                 const isOffline = result.type === 'offline';
                 const isLate = result.attendance_status === 'late';
+                if (isOffline) {
+                    setScanStatus('success');
+                    setStatusMsg(`Scan successful: ${p.name}`);
+                    setPresentCount(c => c + 1);
+
+                    const studentDisplayId = getStudentDisplayId({ id: p.person_id, roll_number: p.roll_number });
+                    const subLabel = p.type === 'student'
+                        ? `${p.class_name || ''}${p.section_name ? ` (${p.section_name})` : ''}`.trim()
+                        : p.role || 'Staff';
+                    const subAccent = p.type === 'student'
+                        ? (studentDisplayId ? String(studentDisplayId) : undefined)
+                        : (p.person_id ? String(p.person_id) : undefined);
+
+                    addFeedItem({
+                        type: 'success',
+                        name: `${p.name} (Pending Sync)`,
+                        fatherName: personType === 'student' ? p.father_name : undefined,
+                        sub: `${subLabel} • Scan successful`,
+                        subAccent,
+                        time,
+                        personType,
+                    });
+
+                    rfidOfflineService.getQueue().then(q => setQueueCount(q.length));
+                    showToast('Scan successful', 'success');
+                    return;
+                }
+
                 const lateCount = isLate
-                    ? await fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: isOffline })
+                    ? await fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: false })
                     : undefined;
                 setScanStatus('success');
-                setStatusMsg(`${isOffline ? '(Offline) ' : ''}✓ ${p.name}`);
+                setStatusMsg(`✓ ${p.name}`);
                 setPresentCount(c => c + 1);
 
                 const studentDisplayId = getStudentDisplayId({ id: p.person_id, roll_number: p.roll_number });
@@ -1784,7 +1833,7 @@ const RFIDAttendancePage: React.FC = () => {
 
                 addFeedItem({
                     type: 'success',
-                    name: `${p.name}${isOffline ? ' (Offline)' : ''}`,
+                    name: p.name,
                     fatherName: personType === 'student' ? p.father_name : undefined,
                     sub: subLabel,
                     subAccent,
@@ -1793,10 +1842,6 @@ const RFIDAttendancePage: React.FC = () => {
                     attendanceStatus: isLate ? 'late' : 'present',
                     attendanceLateCount: lateCount,
                 });
-
-                if (isOffline) {
-                    rfidOfflineService.getQueue().then(q => setQueueCount(q.length));
-                }
 
                 showToast(isLate ? 'Marked as Late Arrival!' : 'Marked as Present!', 'success');
             }

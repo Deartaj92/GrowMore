@@ -1,8 +1,9 @@
+import { Capacitor } from '@capacitor/core';
 import { supabase } from '../supabaseClient';
 import { buildRfidUidCandidates, sanitizeRfidUid } from '../utils/rfidUtils';
 
 const DB_NAME = 'rfid_attendance_db';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const STORE_MAPPINGS = 'mappings';
 const STORE_QUEUE = 'scan_queue';
 const STORE_CONFIG = 'config';
@@ -40,12 +41,20 @@ export interface QueuedScan {
     session_id: number | null;
     date: string;
     timestamp: string;
-    scan_type: 'in' | 'out'; // Track if entering or leaving
+    scan_type?: 'in' | 'out';
     class_id?: number;
     section_id?: number;
+    platform?: 'web' | 'electron' | 'mobile';
+    sync_status?: 'pending' | 'synced';
+    sequence_order?: number;
+    synced_at?: string | null;
     source: 'rfid-offline';
     status?: string;
 }
+
+type RuntimePlatform = 'web' | 'electron' | 'mobile';
+type ScanMode = 'online' | 'offline';
+type ScanHistoryAction = 'present' | 'late' | 'checkout' | 'ignored' | 'already_checked_out';
 
 export interface CachedAttendanceHistoryItem {
     key: string;
@@ -162,6 +171,218 @@ class RFIDOfflineService {
         return attendanceMode || (hasCard ? 'hybrid' : 'manual_only');
     }
 
+    private getRuntimePlatform(): RuntimePlatform {
+        if (typeof window !== 'undefined' && window.electronAPI) {
+            return 'electron';
+        }
+        if (Capacitor.isNativePlatform()) {
+            return 'mobile';
+        }
+        return 'web';
+    }
+
+    private normalizeTimeValue(value?: string | null): string | null {
+        if (!value) return null;
+        const trimmed = value.trim();
+        if (!trimmed) return null;
+        return trimmed.length === 5 ? `${trimmed}:00` : trimmed;
+    }
+
+    private addMinutesToTime(timeValue?: string | null, minutesToAdd: number = 0): string | null {
+        const normalized = this.normalizeTimeValue(timeValue);
+        if (!normalized) return null;
+
+        const [hoursRaw, minutesRaw, secondsRaw] = normalized.split(':').map(Number);
+        const totalSeconds = ((hoursRaw * 60) + minutesRaw + minutesToAdd) * 60 + (secondsRaw || 0);
+        const daySeconds = ((totalSeconds % 86400) + 86400) % 86400;
+        const hours = Math.floor(daySeconds / 3600);
+        const minutes = Math.floor((daySeconds % 3600) / 60);
+        const seconds = daySeconds % 60;
+
+        return [hours, minutes, seconds].map(part => String(part).padStart(2, '0')).join(':');
+    }
+
+    private getLocalTimestampParts(timestamp: string, timezone?: string | null): { date: string; time: string } {
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+            timeZone: timezone || 'Asia/Karachi',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hourCycle: 'h23',
+        });
+
+        const partMap = formatter.formatToParts(new Date(timestamp)).reduce<Record<string, string>>((acc, part) => {
+            if (part.type !== 'literal') {
+                acc[part.type] = part.value;
+            }
+            return acc;
+        }, {});
+
+        return {
+            date: `${partMap.year}-${partMap.month}-${partMap.day}`,
+            time: `${partMap.hour}:${partMap.minute}:${partMap.second}`,
+        };
+    }
+
+    private compareTimestampToLocalTime(timestamp: string, targetDate: string, targetTime?: string | null, timezone?: string | null): number {
+        const normalizedTargetTime = this.normalizeTimeValue(targetTime);
+        if (!normalizedTargetTime) return 1;
+
+        const localParts = this.getLocalTimestampParts(timestamp, timezone);
+        if (localParts.date < targetDate) return -1;
+        if (localParts.date > targetDate) return 1;
+        if (localParts.time < normalizedTargetTime) return -1;
+        if (localParts.time > normalizedTargetTime) return 1;
+        return 0;
+    }
+
+    private computeAttendanceStatus(
+        personType: 'student' | 'employee',
+        timestamp: string,
+        targetDate: string,
+        settings: any
+    ): 'present' | 'late' {
+        if (!settings) return 'present';
+
+        const timezone = settings.timezone || 'Asia/Karachi';
+        const markLateEnabled = personType === 'student'
+            ? settings.student_mark_late_enabled !== false
+            : settings.staff_mark_late_enabled !== false;
+
+        if (!markLateEnabled) return 'present';
+
+        const startTime = personType === 'student' ? settings.student_start_time : settings.staff_start_time;
+        const lateThreshold = this.addMinutesToTime(startTime, Number(settings.grace_period_minutes || 0));
+
+        if (!lateThreshold) return 'present';
+
+        return this.compareTimestampToLocalTime(timestamp, targetDate, lateThreshold, timezone) > 0 ? 'late' : 'present';
+    }
+
+    private isCheckoutAllowed(timestamp: string, targetDate: string, settings: any): boolean {
+        const checkoutTime = this.normalizeTimeValue(settings?.staff_end_time);
+        if (!checkoutTime) return true;
+        return this.compareTimestampToLocalTime(timestamp, targetDate, checkoutTime, settings?.timezone || 'Asia/Karachi') >= 0;
+    }
+
+    private async getServerTimestamp(): Promise<string | null> {
+        try {
+            const { data, error } = await supabase.rpc('get_server_timestamp');
+            if (error) return null;
+            if (typeof data === 'string') return data;
+            if (data && typeof data === 'object' && typeof (data as any).timestamp === 'string') {
+                return (data as any).timestamp;
+            }
+            return null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    private async getActiveSessionId(schoolId: number): Promise<number | null> {
+        const cachedSession = await this.getConfig(KEY_ACTIVE_SESSION);
+        if (navigator.onLine) {
+            const { data: session } = await supabase
+                .from('sessions')
+                .select('id')
+                .eq('school_id', schoolId)
+                .eq('is_active', true)
+                .maybeSingle();
+
+            if (session?.id) {
+                await this.cacheConfig(KEY_ACTIVE_SESSION, session.id);
+                return Number(session.id);
+            }
+        }
+
+        return cachedSession ? Number(cachedSession) : null;
+    }
+
+    private async getAttendanceSettings(schoolId: number): Promise<any> {
+        let settings = await this.getConfig(KEY_ATTN_SETTINGS);
+        if (navigator.onLine) {
+            const { data: onlineSettings } = await supabase
+                .from('attendance_settings')
+                .select('*')
+                .eq('school_id', schoolId)
+                .maybeSingle();
+
+            if (onlineSettings) {
+                settings = onlineSettings;
+                await this.cacheConfig(KEY_ATTN_SETTINGS, onlineSettings);
+            }
+        }
+        return settings;
+    }
+
+    private buildHistoryItem(
+        schoolId: number,
+        date: string,
+        person: RFIDMapping,
+        fields: Partial<CachedAttendanceHistoryItem>
+    ): CachedAttendanceHistoryItem {
+        return {
+            key: this.buildDailyHistoryKey(schoolId, date, person.type, person.person_id),
+            school_id: schoolId,
+            date,
+            person_id: person.person_id,
+            person_type: person.type,
+            name: person.name,
+            father_name: person.father_name,
+            roll_number: person.roll_number,
+            role: person.role,
+            class_id: person.class_id,
+            section_id: person.section_id,
+            class_name: person.class_name,
+            section_name: person.section_name,
+            picture_url: person.picture_url,
+            ...fields,
+        };
+    }
+
+    private async logScanHistory(entry: {
+        schoolId: number;
+        userId?: number | null;
+        role?: 'student' | 'employee' | 'unknown';
+        timestamp: string;
+        platform: RuntimePlatform;
+        mode: ScanMode;
+        actionTaken: ScanHistoryAction;
+        metadata?: Record<string, any>;
+    }): Promise<void> {
+        try {
+            const { error } = await supabase.from('attendance_scan_history').insert({
+                school_id: entry.schoolId,
+                user_id: entry.userId ?? null,
+                role: entry.role ?? 'unknown',
+                timestamp: entry.timestamp,
+                platform: entry.platform,
+                mode: entry.mode,
+                action_taken: entry.actionTaken,
+                metadata: entry.metadata || {},
+            });
+
+            if (error) {
+                console.warn('Failed to write attendance scan history:', error.message);
+            }
+        } catch (error) {
+            console.warn('Failed to write attendance scan history:', error);
+        }
+    }
+
+    private normalizeQueuedScan(scan: QueuedScan): QueuedScan {
+        return {
+            ...scan,
+            platform: scan.platform || 'web',
+            sync_status: scan.sync_status || 'pending',
+            sequence_order: Number(scan.sequence_order || (scan.id ?? 0)),
+            synced_at: scan.synced_at || null,
+        };
+    }
+
     private async getDB(): Promise<IDBDatabase> {
         if (this.db) return this.db;
 
@@ -182,6 +403,16 @@ class RFIDOfflineService {
                 if (!db.objectStoreNames.contains(STORE_DAILY_HISTORY)) {
                     const historyStore = db.createObjectStore(STORE_DAILY_HISTORY, { keyPath: 'key' });
                     historyStore.createIndex('by_school_date', ['school_id', 'date'], { unique: false });
+                }
+
+                if (db.objectStoreNames.contains(STORE_QUEUE)) {
+                    const queueStore = request.transaction?.objectStore(STORE_QUEUE);
+                    if (queueStore && !queueStore.indexNames.contains('by_sync_status')) {
+                        queueStore.createIndex('by_sync_status', 'sync_status', { unique: false });
+                    }
+                    if (queueStore && !queueStore.indexNames.contains('by_school_date')) {
+                        queueStore.createIndex('by_school_date', ['school_id', 'date'], { unique: false });
+                    }
                 }
             };
 
@@ -522,7 +753,13 @@ class RFIDOfflineService {
         const db = await this.getDB();
         const tx = db.transaction(STORE_QUEUE, 'readwrite');
         const store = tx.objectStore(STORE_QUEUE);
-        store.add(scan);
+        store.add(this.normalizeQueuedScan({
+            ...scan,
+            platform: scan.platform || this.getRuntimePlatform(),
+            sync_status: 'pending',
+            sequence_order: scan.sequence_order || Date.now(),
+            synced_at: null,
+        }));
     }
 
     /**
@@ -534,76 +771,247 @@ class RFIDOfflineService {
             const tx = db.transaction(STORE_QUEUE, 'readonly');
             const store = tx.objectStore(STORE_QUEUE);
             const request = store.getAll();
-            request.onsuccess = () => resolve(request.result || []);
+            request.onsuccess = () => {
+                const pending = ((request.result || []) as QueuedScan[])
+                    .map(item => this.normalizeQueuedScan(item))
+                    .filter(item => item.sync_status !== 'synced')
+                    .sort((a, b) => {
+                        const sequenceDiff = Number(a.sequence_order || 0) - Number(b.sequence_order || 0);
+                        if (sequenceDiff !== 0) return sequenceDiff;
+                        return a.timestamp.localeCompare(b.timestamp);
+                    });
+                resolve(pending);
+            };
             request.onerror = () => resolve([]);
         });
     }
 
     /**
-     * Remove a scan from the queue after successful sync
+     * Mark a queued scan as synced while keeping it in local history for the day.
      */
-    async removeFromQueue(id: number): Promise<void> {
+    async markQueueItemSynced(id: number): Promise<void> {
         const db = await this.getDB();
-        const tx = db.transaction(STORE_QUEUE, 'readwrite');
-        const store = tx.objectStore(STORE_QUEUE);
-        store.delete(id);
+        await new Promise<void>((resolve, reject) => {
+            const tx = db.transaction(STORE_QUEUE, 'readwrite');
+            const store = tx.objectStore(STORE_QUEUE);
+            const getRequest = store.get(id);
+
+            getRequest.onsuccess = () => {
+                const existing = getRequest.result as QueuedScan | undefined;
+                if (!existing) {
+                    resolve();
+                    return;
+                }
+
+                store.put({
+                    ...this.normalizeQueuedScan(existing),
+                    sync_status: 'synced',
+                    synced_at: new Date().toISOString(),
+                });
+            };
+
+            getRequest.onerror = () => reject(getRequest.error);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error);
+        });
     }
 
-    private deriveEffectiveHistoryState(
-        baseRecord: CachedAttendanceHistoryItem | null,
-        queueEntries: QueuedScan[],
-        fallbackPerson: RFIDMapping,
-        schoolId: number,
-        date: string
-    ): CachedAttendanceHistoryItem | null {
-        let current: CachedAttendanceHistoryItem | null = baseRecord
-            ? { ...baseRecord }
-            : null;
+    private async applyScanToServer(params: {
+        person: RFIDMapping;
+        schoolId: number;
+        date: string;
+        timestamp: string;
+        sessionId: number | null;
+        settings: any;
+        mode: ScanMode;
+        platform: RuntimePlatform;
+    }): Promise<{ success: boolean; type: MarkResultType; attendance_status?: string; recorded_time?: string; actionTaken: ScanHistoryAction }> {
+        const { person, schoolId, date, timestamp, sessionId, settings, mode, platform } = params;
+        const table = person.type === 'student' ? 'attendance_records' : 'staff_attendance_records';
+        const idCol = person.type === 'student' ? 'student_id' : 'staff_id';
+        const computedStatus = this.computeAttendanceStatus(person.type, timestamp, date, settings);
+        const recordSource = mode === 'offline' ? 'rfid-offline' : 'rfid';
 
-        const orderedQueue = [...queueEntries].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+        const { data: existing, error: existingError } = await supabase
+            .from(table)
+            .select('id, status, source, check_in_time, check_out_time')
+            .eq(idCol, person.person_id)
+            .eq('date', date)
+            .eq('school_id', schoolId)
+            .maybeSingle();
 
-        for (const queued of orderedQueue) {
-            if (!current) {
-                current = {
-                    key: this.buildDailyHistoryKey(schoolId, date, fallbackPerson.type, fallbackPerson.person_id),
-                    school_id: schoolId,
-                    date,
-                    person_id: fallbackPerson.person_id,
-                    person_type: fallbackPerson.type,
-                    name: fallbackPerson.name,
-                    father_name: fallbackPerson.father_name,
-                    roll_number: fallbackPerson.roll_number,
-                    role: fallbackPerson.role,
-                    class_id: queued.class_id ?? fallbackPerson.class_id,
-                    section_id: queued.section_id ?? fallbackPerson.section_id,
-                    class_name: fallbackPerson.class_name,
-                    section_name: fallbackPerson.section_name,
-                    picture_url: fallbackPerson.picture_url,
-                    status: queued.status || 'present',
-                    check_in_time: queued.scan_type === 'in' ? queued.timestamp : null,
-                    check_out_time: queued.scan_type === 'out' ? queued.timestamp : null,
-                    source: queued.source,
-                    updated_at: queued.timestamp,
+        if (existingError) throw existingError;
+
+        if (existing) {
+            if (person.type === 'employee' && this.isEmployeeActiveAttendance(existing)) {
+                if (!this.isCheckoutAllowed(timestamp, date, settings)) {
+                    await this.logScanHistory({
+                        schoolId,
+                        userId: person.person_id,
+                        role: person.type,
+                        timestamp,
+                        platform,
+                        mode,
+                        actionTaken: 'ignored',
+                        metadata: { reason: 'checkout_too_early', attendance_table: table, attendance_record_id: existing.id },
+                    });
+                    return { success: false, type: 'error_checkout_early', attendance_status: existing.status || computedStatus, recorded_time: existing.check_in_time || timestamp, actionTaken: 'ignored' };
+                }
+
+                const { error: outError } = await supabase
+                    .from(table)
+                    .update({ check_out_time: timestamp })
+                    .eq('id', existing.id)
+                    .is('check_out_time', null);
+
+                if (outError) throw outError;
+
+                await this.upsertCachedAttendanceHistoryItem(this.buildHistoryItem(schoolId, date, person, {
+                    status: existing.status,
+                    check_in_time: existing.check_in_time,
+                    check_out_time: timestamp,
+                    source: existing.source || recordSource,
+                    updated_at: timestamp,
+                }));
+
+                await this.logScanHistory({
+                    schoolId,
+                    userId: person.person_id,
+                    role: person.type,
+                    timestamp,
+                    platform,
+                    mode,
+                    actionTaken: 'checkout',
+                    metadata: { attendance_table: table, attendance_record_id: existing.id },
+                });
+
+                return { success: true, type: 'out', attendance_status: existing.status || computedStatus, recorded_time: timestamp, actionTaken: 'checkout' };
+            }
+
+            if (person.type === 'employee' && existing.check_out_time) {
+                await this.logScanHistory({
+                    schoolId,
+                    userId: person.person_id,
+                    role: person.type,
+                    timestamp,
+                    platform,
+                    mode,
+                    actionTaken: 'already_checked_out',
+                    metadata: { attendance_table: table, attendance_record_id: existing.id },
+                });
+                return { success: true, type: 'already_out', attendance_status: existing.status || computedStatus, recorded_time: existing.check_out_time, actionTaken: 'already_checked_out' };
+            }
+
+            if (existing.status === 'absent' || (!existing.check_in_time && !this.isEmployeeActiveAttendance(existing))) {
+                const updatePayload: any = {
+                    session_id: sessionId,
+                    status: computedStatus,
+                    source: recordSource,
+                    check_in_time: timestamp,
+                    check_out_time: null,
                 };
-                continue;
+
+                if (person.type === 'student') {
+                    if (person.class_id) updatePayload.class_id = person.class_id;
+                    if (person.section_id) updatePayload.section_id = person.section_id;
+                }
+
+                const { error: updateError } = await supabase
+                    .from(table)
+                    .update(updatePayload)
+                    .eq('id', existing.id);
+
+                if (updateError) throw updateError;
+
+                await this.upsertCachedAttendanceHistoryItem(this.buildHistoryItem(schoolId, date, person, {
+                    status: computedStatus,
+                    check_in_time: timestamp,
+                    check_out_time: null,
+                    source: recordSource,
+                    updated_at: timestamp,
+                }));
+
+                await this.logScanHistory({
+                    schoolId,
+                    userId: person.person_id,
+                    role: person.type,
+                    timestamp,
+                    platform,
+                    mode,
+                    actionTaken: computedStatus === 'late' ? 'late' : 'present',
+                    metadata: { attendance_table: table, attendance_record_id: existing.id, restored_from_absent: true },
+                });
+
+                return { success: true, type: 'new', attendance_status: computedStatus, recorded_time: timestamp, actionTaken: computedStatus === 'late' ? 'late' : 'present' };
             }
 
-            if (queued.scan_type === 'in') {
-                current.status = queued.status || current.status || 'present';
-                current.check_in_time = queued.timestamp;
-                current.check_out_time = null;
-                current.source = queued.source;
-                current.class_id = queued.class_id ?? current.class_id;
-                current.section_id = queued.section_id ?? current.section_id;
-            } else {
-                current.check_out_time = queued.timestamp;
-                current.source = queued.source;
-            }
+            await this.logScanHistory({
+                schoolId,
+                userId: person.person_id,
+                role: person.type,
+                timestamp,
+                platform,
+                mode,
+                actionTaken: 'ignored',
+                metadata: { reason: 'duplicate_scan', attendance_table: table, attendance_record_id: existing.id },
+            });
 
-            current.updated_at = queued.timestamp;
+            return { success: true, type: 'already', attendance_status: existing.status || computedStatus, recorded_time: existing.check_in_time || timestamp, actionTaken: 'ignored' };
         }
 
-        return current;
+        const payload: any = {
+            [idCol]: person.person_id,
+            school_id: schoolId,
+            session_id: sessionId,
+            date,
+            status: computedStatus,
+            source: recordSource,
+            check_in_time: timestamp,
+        };
+
+        if (person.type === 'student') {
+            if (person.class_id) payload.class_id = person.class_id;
+            if (person.section_id) payload.section_id = person.section_id;
+        }
+
+        const { error: insertError } = await supabase.from(table).insert(payload);
+        if (insertError && insertError.code !== '23505') throw insertError;
+
+        if (insertError?.code === '23505') {
+            await this.logScanHistory({
+                schoolId,
+                userId: person.person_id,
+                role: person.type,
+                timestamp,
+                platform,
+                mode,
+                actionTaken: 'ignored',
+                metadata: { reason: 'unique_conflict_duplicate', attendance_table: table },
+            });
+            return { success: true, type: 'already', attendance_status: computedStatus, recorded_time: timestamp, actionTaken: 'ignored' };
+        }
+
+        await this.upsertCachedAttendanceHistoryItem(this.buildHistoryItem(schoolId, date, person, {
+            status: computedStatus,
+            check_in_time: timestamp,
+            check_out_time: null,
+            source: recordSource,
+            updated_at: timestamp,
+        }));
+
+        await this.logScanHistory({
+            schoolId,
+            userId: person.person_id,
+            role: person.type,
+            timestamp,
+            platform,
+            mode,
+            actionTaken: computedStatus === 'late' ? 'late' : 'present',
+            metadata: { attendance_table: table },
+        });
+
+        return { success: true, type: 'new', attendance_status: computedStatus, recorded_time: timestamp, actionTaken: computedStatus === 'late' ? 'late' : 'present' };
     }
 
     /**
@@ -620,117 +1028,36 @@ class RFIDOfflineService {
         const total = queue.length;
         const datesToRefresh = new Set<string>();
 
-        // Get fallback session ID if needed
-        const cachedSession = await this.getConfig(KEY_ACTIVE_SESSION);
-
         for (let i = 0; i < total; i++) {
-            const scan = queue[i];
+            const scan = this.normalizeQueuedScan(queue[i]);
             if (onProgress) onProgress(i + 1, total);
 
             try {
-                const table = scan.person_type === 'student' ? 'attendance_records' : 'staff_attendance_records';
-                const idCol = scan.person_type === 'student' ? 'student_id' : 'staff_id';
+                const settings = await this.getAttendanceSettings(scan.school_id);
+                const sessionId = scan.session_id || await this.getActiveSessionId(scan.school_id);
+                const person: RFIDMapping = {
+                    rfid_uid: scan.rfid_uid,
+                    person_id: scan.person_id,
+                    type: scan.person_type,
+                    name: scan.person_type === 'student' ? `Student ${scan.person_id}` : `Staff ${scan.person_id}`,
+                    class_id: scan.class_id,
+                    section_id: scan.section_id,
+                };
 
-                if (scan.scan_type === 'out') {
-                    // Update existing record for check-out
-                    const { error } = await supabase.from(table)
-                        .update({ check_out_time: scan.timestamp })
-                        .eq(idCol, scan.person_id)
-                        .eq('date', scan.date)
-                        .is('check_out_time', null); // Only update if not already checked out
+                await this.applyScanToServer({
+                    person,
+                    schoolId: scan.school_id,
+                    date: scan.date,
+                    timestamp: scan.timestamp,
+                    sessionId,
+                    settings,
+                    mode: 'offline',
+                    platform: scan.platform || 'web',
+                });
 
-                    if (!error) {
-                        if (scan.id) await this.removeFromQueue(scan.id);
-                        datesToRefresh.add(`${scan.school_id}:${scan.date}`);
-                        successCount++;
-                    } else {
-                        failedCount++;
-                    }
-                } else {
-                    const { data: existing } = await supabase.from(table)
-                        .select('id, status, source, check_in_time, check_out_time')
-                        .eq(idCol, scan.person_id)
-                        .eq('date', scan.date)
-                        .eq('school_id', scan.school_id)
-                        .maybeSingle();
-
-                    if (scan.person_type === 'employee' && existing && this.isEmployeeActiveAttendance(existing)) {
-                        const { error } = await supabase.from(table)
-                            .update({ check_out_time: scan.timestamp })
-                            .eq('id', existing.id)
-                            .is('check_out_time', null);
-
-                        if (!error) {
-                            if (scan.id) await this.removeFromQueue(scan.id);
-                            datesToRefresh.add(`${scan.school_id}:${scan.date}`);
-                            successCount++;
-                        } else {
-                            failedCount++;
-                        }
-                        continue;
-                    }
-
-                    if (existing && (existing.status === 'absent' || (!existing.check_in_time && !this.isEmployeeActiveAttendance(existing)))) {
-                        const updatePayload: any = {
-                            session_id: Number(scan.session_id || cachedSession),
-                            status: scan.status || 'present',
-                            source: 'rfid',
-                            check_in_time: scan.timestamp,
-                        };
-
-                        if (scan.person_type === 'student') {
-                            if (scan.class_id) updatePayload.class_id = Number(scan.class_id);
-                            if (scan.section_id) updatePayload.section_id = Number(scan.section_id);
-                        }
-
-                        const { error } = await supabase.from(table)
-                            .update(updatePayload)
-                            .eq('id', existing.id);
-
-                        if (!error) {
-                            if (scan.id) await this.removeFromQueue(scan.id);
-                            datesToRefresh.add(`${scan.school_id}:${scan.date}`);
-                            successCount++;
-                        } else {
-                            failedCount++;
-                        }
-                        continue;
-                    }
-
-                    if (existing) {
-                        if (scan.id) await this.removeFromQueue(scan.id);
-                        successCount++;
-                        continue;
-                    }
-
-                    // Insert new record for check-in
-                    const payload: any = {
-                        school_id: Number(scan.school_id),
-                        session_id: Number(scan.session_id || cachedSession),
-                        date: scan.date,
-                        status: scan.status || 'present',
-                        source: 'rfid',
-                        check_in_time: scan.timestamp,
-                    };
-
-                    if (scan.person_type === 'student') {
-                        payload.student_id = Number(scan.person_id);
-                        if (scan.class_id) payload.class_id = Number(scan.class_id);
-                        if (scan.section_id) payload.section_id = Number(scan.section_id);
-                    } else {
-                        payload.staff_id = Number(scan.person_id);
-                    }
-
-                    const { error } = await supabase.from(table).insert(payload);
-
-                    if (!error || error.code === '23505') {
-                        if (scan.id) await this.removeFromQueue(scan.id);
-                        datesToRefresh.add(`${scan.school_id}:${scan.date}`);
-                        successCount++;
-                    } else {
-                        failedCount++;
-                    }
-                }
+                if (scan.id) await this.markQueueItemSynced(scan.id);
+                datesToRefresh.add(`${scan.school_id}:${scan.date}`);
+                successCount++;
             } catch (error) {
                 console.error('Error syncing individual queue item:', error);
                 failedCount++;
@@ -765,8 +1092,7 @@ class RFIDOfflineService {
         if (cleanUID.length < 4) return { success: false, person: null, type: 'error' };
         const uidCandidates = buildRfidUidCandidates(cleanUID);
 
-        const today = targetDate || new Date().toISOString().split('T')[0];
-        const now = new Date().toISOString();
+        const platform = this.getRuntimePlatform();
 
         try {
             // 1. Lookup the person
@@ -815,7 +1141,22 @@ class RFIDOfflineService {
                 }
             }
 
-            if (!person) return { success: false, person: null, type: 'error' };
+            if (!person) {
+                if (navigator.onLine) {
+                    const timestamp = (await this.getServerTimestamp()) || new Date().toISOString();
+                    await this.logScanHistory({
+                        schoolId,
+                        userId: null,
+                        role: 'unknown',
+                        timestamp,
+                        platform,
+                        mode: 'online',
+                        actionTaken: 'ignored',
+                        metadata: { reason: 'unknown_card', rfid_uid: cleanUID },
+                    });
+                }
+                return { success: false, person: null, type: 'error' };
+            }
 
             const effectiveAttendanceMode = this.normalizeAttendanceMode(person.attendance_mode, true);
 
@@ -833,334 +1174,93 @@ class RFIDOfflineService {
             }
 
             if (effectiveAttendanceMode === 'manual_only') {
+                if (navigator.onLine) {
+                    const timestamp = (await this.getServerTimestamp()) || new Date().toISOString();
+                    await this.logScanHistory({
+                        schoolId,
+                        userId: person.person_id,
+                        role: person.type,
+                        timestamp,
+                        platform,
+                        mode: 'online',
+                        actionTaken: 'ignored',
+                        metadata: { reason: 'manual_only_policy' },
+                    });
+                }
                 return { success: false, person, type: 'error_manual_only' };
             }
 
             // 1b. Check if person is active
             if (person.status && person.status !== 'active') {
+                if (navigator.onLine) {
+                    const timestamp = (await this.getServerTimestamp()) || new Date().toISOString();
+                    await this.logScanHistory({
+                        schoolId,
+                        userId: person.person_id,
+                        role: person.type,
+                        timestamp,
+                        platform,
+                        mode: 'online',
+                        actionTaken: 'ignored',
+                        metadata: { reason: 'inactive_person', status: person.status },
+                    });
+                }
                 return { success: false, person, type: 'error_inactive' };
             }
 
-            // 2. Fetch Settings and Compute Late Status
-            let settings = await this.getConfig(KEY_ATTN_SETTINGS);
-            if (navigator.onLine) {
-                const { data: olSettings } = await supabase.from('attendance_settings')
-                    .select('*').eq('school_id', schoolId).maybeSingle();
-                if (olSettings) {
-                    settings = olSettings;
-                    await this.cacheConfig(KEY_ATTN_SETTINGS, olSettings);
-                }
-            }
+            const settings = await this.getAttendanceSettings(schoolId);
+            const onlineTimestamp = navigator.onLine ? (await this.getServerTimestamp()) || new Date().toISOString() : new Date().toISOString();
+            const today = targetDate || this.getLocalTimestampParts(onlineTimestamp, settings?.timezone || 'Asia/Karachi').date;
 
-            let checkStatus = 'present';
-            if (settings) {
-                const markLateEnabled = person.type === 'student'
-                    ? settings.student_mark_late_enabled !== false
-                    : settings.staff_mark_late_enabled !== false;
-                const startTimeStr = person.type === 'student' ? settings.student_start_time : settings.staff_start_time;
-                if (markLateEnabled && startTimeStr) {
-                    const [startH, startM] = startTimeStr.split(':').map(Number);
-                    const startLimit = new Date();
-                    startLimit.setHours(startH, startM, 0, 0);
-                    startLimit.setMinutes(startLimit.getMinutes() + (settings.grace_period_minutes || 0));
-                    if (new Date() > startLimit) checkStatus = 'late';
-                }
-            }
-
-            let cachedHistory = await this.getCachedDailyAttendanceHistory(schoolId, today);
+            await this.getCachedDailyAttendanceHistory(schoolId, today);
             if (navigator.onLine) {
                 try {
-                    cachedHistory = await this.cacheDailyAttendanceHistory(schoolId, today);
+                    await this.cacheDailyAttendanceHistory(schoolId, today);
                 } catch (historyError) {
                     console.warn('Failed to refresh cached attendance history before scan:', historyError);
                 }
             }
 
-            // 3. Mark attendance
             if (navigator.onLine) {
-                const table = person.type === 'student' ? 'attendance_records' : 'staff_attendance_records';
-                const idCol = person.type === 'student' ? 'student_id' : 'staff_id';
-
-                // Check for duplicate or check-out
-                const { data: existing } = await supabase.from(table)
-                    .select('id, status, source, check_in_time, check_out_time')
-                    .eq(idCol, person.person_id)
-                    .eq('date', today)
-                    .eq('school_id', schoolId)
-                    .maybeSingle();
-
-                if (existing) {
-                    if (person.type === 'employee' && this.isEmployeeActiveAttendance(existing)) {
-                        // Check if checkout is allowed yet
-                        if (settings && settings.staff_end_time) {
-                            const [endH, endM] = settings.staff_end_time.split(':').map(Number);
-                            const endLimit = new Date();
-                            endLimit.setHours(endH, endM, 0, 0);
-                            if (new Date() < endLimit) {
-                                return { success: false, person: person as RFIDMapping, type: 'error_checkout_early' };
-                            }
-                        }
-
-                        const { error: outError } = await supabase.from(table)
-                            .update({ check_out_time: now })
-                            .eq('id', existing.id)
-                            .is('check_out_time', null);
-                        if (outError) throw outError;
-                        await this.upsertCachedAttendanceHistoryItem({
-                            key: this.buildDailyHistoryKey(schoolId, today, 'employee', person.person_id),
-                            school_id: schoolId,
-                            date: today,
-                            person_id: person.person_id,
-                            person_type: 'employee',
-                            name: person.name,
-                            role: person.role,
-                            picture_url: person.picture_url,
-                            status: existing.status,
-                            check_in_time: existing.check_in_time,
-                            check_out_time: now,
-                            source: existing.source || 'rfid',
-                            updated_at: now,
-                        });
-                        return { success: true, person, type: 'out', attendance_status: checkStatus, recorded_time: now };
-                    }
-
-                    if (existing.status === 'absent' || (!existing.check_in_time && !this.isEmployeeActiveAttendance(existing))) {
-                        const cachedSession = await this.getConfig(KEY_ACTIVE_SESSION);
-                        const { data: session } = await supabase.from('sessions')
-                            .select('id').eq('school_id', schoolId).eq('is_active', true).maybeSingle();
-                        const session_id = session?.id || cachedSession;
-
-                        const updatePayload: any = {
-                            session_id,
-                            status: checkStatus,
-                            source: 'rfid',
-                            check_in_time: now,
-                        };
-
-                        if (person.type === 'student') {
-                            if (person.class_id) updatePayload.class_id = person.class_id;
-                            if (person.section_id) updatePayload.section_id = person.section_id;
-                        }
-
-                        const { error: updateError } = await supabase.from(table)
-                            .update(updatePayload)
-                            .eq('id', existing.id);
-                        if (updateError) throw updateError;
-                        await this.upsertCachedAttendanceHistoryItem({
-                            key: this.buildDailyHistoryKey(schoolId, today, person.type, person.person_id),
-                            school_id: schoolId,
-                            date: today,
-                            person_id: person.person_id,
-                            person_type: person.type,
-                            name: person.name,
-                            father_name: person.father_name,
-                            roll_number: person.roll_number,
-                            role: person.role,
-                            class_id: person.class_id,
-                            section_id: person.section_id,
-                            class_name: person.class_name,
-                            section_name: person.section_name,
-                            picture_url: person.picture_url,
-                            status: checkStatus,
-                            check_in_time: now,
-                            check_out_time: existing.check_out_time || null,
-                            source: 'rfid',
-                            updated_at: now,
-                        });
-
-                        return { success: true, person, type: 'new', attendance_status: checkStatus, recorded_time: now };
-                    }
-                    if (person.type === 'employee' && existing.check_out_time) {
-                        return { success: true, person, type: 'already_out', attendance_status: checkStatus, recorded_time: existing.check_out_time };
-                    }
-                    return { success: true, person, type: 'already', attendance_status: checkStatus, recorded_time: existing.check_in_time };
-                }
-
-                // Get session
-                const cachedSession = await this.getConfig(KEY_ACTIVE_SESSION);
-                const { data: session } = await supabase.from('sessions')
-                    .select('id').eq('school_id', schoolId).eq('is_active', true).maybeSingle();
-                const session_id = session?.id || cachedSession;
-
-                const payload: any = {
-                    [idCol]: person.person_id,
-                    school_id: schoolId,
-                    session_id,
+                const sessionId = await this.getActiveSessionId(schoolId);
+                const result = await this.applyScanToServer({
+                    person,
+                    schoolId,
                     date: today,
-                    status: checkStatus,
-                    source: 'rfid',
-                    check_in_time: now
+                    timestamp: onlineTimestamp,
+                    sessionId,
+                    settings,
+                    mode: 'online',
+                    platform,
+                });
+
+                return {
+                    success: result.success,
+                    person,
+                    type: result.type,
+                    attendance_status: result.attendance_status,
+                    recorded_time: result.recorded_time,
                 };
-                if (person.type === 'student') {
-                    if (person.class_id) payload.class_id = person.class_id;
-                    if (person.section_id) payload.section_id = person.section_id;
-                }
-
-                const { error } = await supabase.from(table).insert(payload);
-                if (error && error.code !== '23505') throw error;
-
-                if (!error) {
-                    await this.upsertCachedAttendanceHistoryItem({
-                        key: this.buildDailyHistoryKey(schoolId, today, person.type, person.person_id),
-                        school_id: schoolId,
-                        date: today,
-                        person_id: person.person_id,
-                        person_type: person.type,
-                        name: person.name,
-                        father_name: person.father_name,
-                        roll_number: person.roll_number,
-                        role: person.role,
-                        class_id: person.class_id,
-                        section_id: person.section_id,
-                        class_name: person.class_name,
-                        section_name: person.section_name,
-                        picture_url: person.picture_url,
-                        status: checkStatus,
-                        check_in_time: now,
-                        check_out_time: null,
-                        source: 'rfid',
-                        updated_at: now,
-                    });
-                }
-
-                return { success: true, person, type: error?.code === '23505' ? 'already' : 'new', attendance_status: checkStatus, recorded_time: now };
             } else {
-                // Offline queuing with check-in/check-out detection against both
-                // cached online history and local queued scans.
                 const currentPerson = person as RFIDMapping;
-                const queue = await this.getQueue();
-                const personQueue = queue
-                    .filter(q => q.person_id === currentPerson.person_id && q.person_type === currentPerson.type && q.date === today)
-                    .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-                const baseRecord = cachedHistory.find(item =>
-                    item.person_id === currentPerson.person_id &&
-                    item.person_type === currentPerson.type
-                ) || null;
-                const effectiveState = this.deriveEffectiveHistoryState(baseRecord, personQueue, currentPerson, schoolId, today);
-
-                if (currentPerson.type === 'employee' && effectiveState?.check_out_time) {
-                    return {
-                        success: true,
-                        person: currentPerson,
-                        type: 'already_out',
-                        attendance_status: (effectiveState.status as string) || checkStatus,
-                        recorded_time: effectiveState.check_out_time || undefined
-                    };
-                }
-
-                if (effectiveState?.check_in_time && !effectiveState.check_out_time) {
-                    if (currentPerson.type === 'student') {
-                        return {
-                            success: true,
-                            person: currentPerson,
-                            type: 'already',
-                            attendance_status: (effectiveState.status as string) || checkStatus,
-                            recorded_time: effectiveState.check_in_time || undefined
-                        };
-                    }
-
-                    if (settings && settings.staff_end_time) {
-                        const [endH, endM] = settings.staff_end_time.split(':').map(Number);
-                        const endLimit = new Date();
-                        endLimit.setHours(endH, endM, 0, 0);
-                        if (new Date() < endLimit) {
-                            return { success: false, person: currentPerson, type: 'error_checkout_early' };
-                        }
-                    }
-
-                    const cachedSession = await this.getConfig(KEY_ACTIVE_SESSION);
-                    const queuedOutScan: QueuedScan = {
-                        rfid_uid: cleanUID,
-                        person_id: currentPerson.person_id,
-                        person_type: currentPerson.type,
-                        school_id: schoolId,
-                        session_id: cachedSession || null,
-                        date: today,
-                        timestamp: now,
-                        scan_type: 'out',
-                        class_id: currentPerson.class_id,
-                        section_id: currentPerson.section_id,
-                        source: 'rfid-offline',
-                        status: checkStatus
-                    };
-                    await this.queueScan(queuedOutScan);
-                    const historyBase: CachedAttendanceHistoryItem = effectiveState
-                        ? { ...effectiveState }
-                        : {
-                            key: this.buildDailyHistoryKey(schoolId, today, currentPerson.type, currentPerson.person_id),
-                            school_id: schoolId,
-                            date: today,
-                            person_id: currentPerson.person_id,
-                            person_type: currentPerson.type,
-                            name: currentPerson.name,
-                            father_name: currentPerson.father_name,
-                            roll_number: currentPerson.roll_number,
-                            role: currentPerson.role,
-                            class_id: currentPerson.class_id,
-                            section_id: currentPerson.section_id,
-                            class_name: currentPerson.class_name,
-                            section_name: currentPerson.section_name,
-                            picture_url: currentPerson.picture_url,
-                            status: checkStatus,
-                            check_in_time: now,
-                            source: 'rfid-offline',
-                        };
-                    await this.upsertCachedAttendanceHistoryItem({
-                        ...historyBase,
-                        check_out_time: now,
-                        updated_at: now,
-                    });
-                    return { success: true, person: currentPerson, type: 'out', attendance_status: checkStatus, recorded_time: now };
-                }
-
-                if (effectiveState && (effectiveState.status === 'present' || effectiveState.status === 'late')) {
-                    return {
-                        success: true,
-                        person: currentPerson,
-                        type: 'already',
-                        attendance_status: (effectiveState.status as string) || checkStatus,
-                        recorded_time: effectiveState.check_in_time || undefined
-                    };
-                }
-
-                const cachedSession = await this.getConfig(KEY_ACTIVE_SESSION);
-                const queuedInScan: QueuedScan = {
+                const now = new Date().toISOString();
+                const sessionId = await this.getActiveSessionId(schoolId);
+                await this.queueScan({
                     rfid_uid: cleanUID,
                     person_id: currentPerson.person_id,
                     person_type: currentPerson.type,
                     school_id: schoolId,
-                    session_id: cachedSession || null,
+                    session_id: sessionId,
                     date: today,
                     timestamp: now,
-                    scan_type: 'in',
                     class_id: currentPerson.class_id,
                     section_id: currentPerson.section_id,
+                    platform,
+                    sync_status: 'pending',
+                    sequence_order: Date.now(),
                     source: 'rfid-offline',
-                    status: checkStatus
-                };
-                await this.queueScan(queuedInScan);
-                await this.upsertCachedAttendanceHistoryItem({
-                    key: this.buildDailyHistoryKey(schoolId, today, currentPerson.type, currentPerson.person_id),
-                    school_id: schoolId,
-                    date: today,
-                    person_id: currentPerson.person_id,
-                    person_type: currentPerson.type,
-                    name: currentPerson.name,
-                    father_name: currentPerson.father_name,
-                    roll_number: currentPerson.roll_number,
-                    role: currentPerson.role,
-                    class_id: currentPerson.class_id,
-                    section_id: currentPerson.section_id,
-                    class_name: currentPerson.class_name,
-                    section_name: currentPerson.section_name,
-                    picture_url: currentPerson.picture_url,
-                    status: checkStatus,
-                    check_in_time: now,
-                    check_out_time: null,
-                    source: 'rfid-offline',
-                    updated_at: now,
                 });
-                return { success: true, person: currentPerson, type: 'offline', attendance_status: checkStatus, recorded_time: now };
+                return { success: true, person: currentPerson, type: 'offline', recorded_time: now };
             }
 
         } catch (error) {
