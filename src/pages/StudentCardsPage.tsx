@@ -8,6 +8,7 @@ import Loader from '../components/Loader';
 import { Print, Badge as BadgeIcon, TableView } from '@mui/icons-material';
 import { pdf } from '@react-pdf/renderer';
 import StudentCardsPDFDocument from '../components/StudentCardsPDFDocument';
+import * as XLSX from 'xlsx';
 import { getStudentDisplayId } from '../utils/studentUtils';
 import {
   CARD_RADIUS_LG,
@@ -977,7 +978,7 @@ const StudentCardsPage = () => {
   const [selectedPresetKey, setSelectedPresetKey] = useState<string>(DEFAULT_CARD_COLOR_SCHEME.key);
   const [cardColors, setCardColors] = useState<CardColorScheme>(DEFAULT_CARD_COLOR_SCHEME);
   const [hasSavedColors, setHasSavedColors] = useState(false);
-  const cardDesign: CardDesignVariant = 'classic';
+  const [cardDesign, setCardDesign] = useState<CardDesignVariant>('classic');
 
   useEffect(() => {
     setPageHeader('Student Cards');
@@ -1006,6 +1007,7 @@ const StudentCardsPage = () => {
           setCardColors(savedScheme);
           setSelectedPresetKey(savedScheme.key);
           setHasSavedColors(true);
+          setCardDesign(data.settings.designVariant === 'modern' ? 'modern' : 'classic');
           localStorage.setItem(buildStudentCardColorsStorageKey(schoolId), JSON.stringify(savedScheme));
           return;
         }
@@ -1135,7 +1137,7 @@ const StudentCardsPage = () => {
   const handleDownloadPDF = async () => {
     setIsGeneratingPDF(true);
     try {
-      const docWithDesign = <StudentCardsPDFDocument students={students} schoolProfile={schoolProfile} classes={classes} sections={sections} colorScheme={cardColors} designVariant={cardDesign} />;
+      const docWithDesign = <StudentCardsPDFDocument students={students} schoolProfile={schoolProfile} classes={classes} sections={sections} colorScheme={cardColors} designVariant={cardDesign === 'modern' ? 'classic' : cardDesign} />;
       const asPdf = pdf(docWithDesign);
       const blob = await asPdf.toBlob();
       const url = URL.createObjectURL(blob);
@@ -1161,15 +1163,6 @@ const StudentCardsPage = () => {
         return;
       }
 
-      const escapeCell = (value: unknown) => {
-        const text = value === null || value === undefined ? '' : String(value);
-        return text
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;');
-      };
-
       const formatDate = (value: string | null | undefined) => {
         if (!value) return '';
         const date = new Date(value);
@@ -1191,51 +1184,51 @@ const StudentCardsPage = () => {
           father: student.father_name || '',
           class_section: `${studentClass?.name || ''}${studentSection?.name ? ` (${studentSection.name})` : ''}`.trim(),
           dob,
-          phone: student.phone || student.contact_number || '',
+          phone: student.phone || student.contact_number || '03159498390',
+          address: student.address || 'Muslim City Road, Balu',
         };
       });
 
-      const headers = [
-        ['Roll No', 'Name', 'Father', 'DOB', 'Class + Section', 'Phone'],
+      const worksheetData = [
+        ['Roll No', 'Name', 'Father', 'DOB', 'Class + Section', 'Phone', 'Address'],
+        ...rows.map((row) => [
+          String(row.roll_no ?? ''),
+          row.name,
+          row.father,
+          row.dob,
+          row.class_section,
+          String(row.phone ?? ''),
+          row.address,
+        ]),
       ];
 
-      const bodyRows = rows.map((row) => ([
-        { value: row.roll_no, text: true },
-        { value: row.name, text: false },
-        { value: row.father, text: false },
-        { value: row.dob, text: true },
-        { value: row.class_section, text: false },
-        { value: row.phone, text: true },
-      ]));
+      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+      const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
 
-      const html = `
-        <html>
-          <head>
-            <meta charset="utf-8" />
-          </head>
-          <body>
-            <table border="1">
-              <thead>
-                <tr>${headers[0].map((cell) => `<th>${escapeCell(cell)}</th>`).join('')}</tr>
-              </thead>
-              <tbody>
-                ${bodyRows.map((row) => `<tr>${row.map((cell) => `<td${cell.text ? ' style="mso-number-format:\\@;"' : ''}>${escapeCell(cell.value)}</td>`).join('')}</tr>`).join('')}
-              </tbody>
-            </table>
-          </body>
-        </html>
-      `;
+      for (let rowIndex = 1; rowIndex <= range.e.r; rowIndex += 1) {
+        const rollCellRef = XLSX.utils.encode_cell({ r: rowIndex, c: 0 });
+        const dobCellRef = XLSX.utils.encode_cell({ r: rowIndex, c: 3 });
+        const phoneCellRef = XLSX.utils.encode_cell({ r: rowIndex, c: 5 });
 
-      const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'Student_Cards_Data.xls';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast.showToast('Student data exported for Excel', 'success');
+        if (worksheet[rollCellRef]) worksheet[rollCellRef].t = 's';
+        if (worksheet[dobCellRef]) worksheet[dobCellRef].t = 's';
+        if (worksheet[phoneCellRef]) worksheet[phoneCellRef].t = 's';
+      }
+
+      worksheet['!cols'] = [
+        { wch: 12 },
+        { wch: 24 },
+        { wch: 24 },
+        { wch: 14 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 32 },
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Students');
+      XLSX.writeFile(workbook, 'Student_Cards_Data.xlsx');
+      toast.showToast('Student data exported as Excel file', 'success');
     } catch (error) {
       console.error('Failed to export student data:', error);
       toast.showToast('Failed to export Excel file', 'error');
@@ -1273,7 +1266,7 @@ const StudentCardsPage = () => {
               school_id: schoolId,
               settings: {
                 ...cardColors,
-                designVariant: 'classic',
+                designVariant: cardDesign,
               },
             },
             { onConflict: 'school_id' }
@@ -1310,6 +1303,7 @@ const StudentCardsPage = () => {
         setCardColors(DEFAULT_CARD_COLOR_SCHEME);
         setSelectedPresetKey(DEFAULT_CARD_COLOR_SCHEME.key);
         setHasSavedColors(false);
+        setCardDesign('classic');
         toast.showToast('Student card colors reset to default', 'success');
       } catch (error) {
         console.error('Failed to reset student card colors:', error);
@@ -1695,9 +1689,24 @@ const StudentCardsPage = () => {
       <ControlsPanel>
         <ControlsRow>
           <ControlBlock>
+            <ControlLabel>Card design</ControlLabel>
+            <HelperText>
+              Switch the on-screen preview between the standard card and the optional modern layout.
+            </HelperText>
+            <DesignToggleGroup>
+              <DesignToggleButton type="button" $active={cardDesign === 'classic'} onClick={() => setCardDesign('classic')}>
+                Classic Default
+              </DesignToggleButton>
+              <DesignToggleButton type="button" $active={cardDesign === 'modern'} onClick={() => setCardDesign('modern')}>
+                Modern Optional
+              </DesignToggleButton>
+            </DesignToggleGroup>
+          </ControlBlock>
+
+          <ControlBlock>
             <ControlLabel>Card colors</ControlLabel>
             <HelperText>
-              Pick a ready-made palette or fine-tune each color for the standard student card design.
+              Pick a ready-made palette or fine-tune each color for the active student card design.
             </HelperText>
           </ControlBlock>
         </ControlsRow>
@@ -1798,8 +1807,8 @@ const StudentCardsPage = () => {
         <PrintContainer id="print-section">
           <PrintGlobalStyle />
           {students.map(student => (
-            <CardTemplate key={student.id} $variant="classic" data-student-card="true">
-              {renderClassicCard(student)}
+            <CardTemplate key={student.id} $variant={cardDesign} data-student-card="true">
+              {cardDesign === 'modern' ? renderModernCard(student) : renderClassicCard(student)}
             </CardTemplate>
           ))}
         </PrintContainer>
