@@ -62,6 +62,7 @@
       "build/**/*",
       "public/electron.js",
       "public/preload.js",
+      "!node_modules/node-global-key-listener/bin/MacKeyServer",
       "!**/*.map"
     ],
     "directories": {

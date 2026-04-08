@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/useToast';
 import { PageHeaderContext } from '../components/Layout';
 import Loader from '../components/Loader';
-import { Print, Badge as BadgeIcon } from '@mui/icons-material';
+import { Print, Badge as BadgeIcon, TableView } from '@mui/icons-material';
 import { pdf } from '@react-pdf/renderer';
 import StudentCardsPDFDocument from '../components/StudentCardsPDFDocument';
 import { getStudentDisplayId } from '../utils/studentUtils';
@@ -18,6 +18,77 @@ import {
   clayInputStyle,
   minimalSelectMenuStyle,
 } from '../styles/DesignSystem';
+
+type CardColorScheme = {
+  key: string;
+  label: string;
+  description: string;
+  topCurve: string;
+  mainCurve: string;
+  bottomBorder: string;
+  idPill: string;
+  nameHighlight: string;
+};
+
+type CardDesignVariant = 'classic' | 'modern';
+
+const DEFAULT_CARD_COLOR_SCHEME: CardColorScheme = {
+  key: 'classic',
+  label: 'Classic Green',
+  description: 'Current card style with the familiar green and navy header.',
+  topCurve: '#2cb742',
+  mainCurve: '#191636',
+  bottomBorder: '#4ab44b',
+  idPill: '#d32f2f',
+  nameHighlight: '#d32f2f',
+};
+
+const CARD_COLOR_PRESETS: CardColorScheme[] = [
+  DEFAULT_CARD_COLOR_SCHEME,
+  {
+    key: 'royal',
+    label: 'Royal Blue',
+    description: 'Clean blue tones with a polished school-brand look.',
+    topCurve: '#2f80ed',
+    mainCurve: '#143a7b',
+    bottomBorder: '#4da3ff',
+    idPill: '#f05a28',
+    nameHighlight: '#f05a28',
+  },
+  {
+    key: 'sunrise',
+    label: 'Iqra',
+    description: 'A clean light-and-dark treatment built around the student uniform sand tone.',
+    topCurve: '#FFC370',
+    mainCurve: '#CE8A2C',
+    bottomBorder: '#e3b56a',
+    idPill: '#c9964f',
+    nameHighlight: '#c9964f',
+  },
+  {
+    key: 'teal',
+    label: 'Teal Fresh',
+    description: 'Modern teal palette with softer contrast for easy reading.',
+    topCurve: '#14b8a6',
+    mainCurve: '#134e4a',
+    bottomBorder: '#2dd4bf',
+    idPill: '#0f766e',
+    nameHighlight: '#0f766e',
+  },
+];
+
+const buildStudentCardColorsStorageKey = (schoolId: number | string) => `student_card_colors_${schoolId}`;
+
+const normalizeCardColorScheme = (value: any): CardColorScheme => ({
+  key: typeof value?.key === 'string' ? value.key : DEFAULT_CARD_COLOR_SCHEME.key,
+  label: typeof value?.label === 'string' ? value.label : DEFAULT_CARD_COLOR_SCHEME.label,
+  description: typeof value?.description === 'string' ? value.description : DEFAULT_CARD_COLOR_SCHEME.description,
+  topCurve: typeof value?.topCurve === 'string' ? value.topCurve : DEFAULT_CARD_COLOR_SCHEME.topCurve,
+  mainCurve: typeof value?.mainCurve === 'string' ? value.mainCurve : DEFAULT_CARD_COLOR_SCHEME.mainCurve,
+  bottomBorder: typeof value?.bottomBorder === 'string' ? value.bottomBorder : DEFAULT_CARD_COLOR_SCHEME.bottomBorder,
+  idPill: typeof value?.idPill === 'string' ? value.idPill : DEFAULT_CARD_COLOR_SCHEME.idPill,
+  nameHighlight: typeof value?.nameHighlight === 'string' ? value.nameHighlight : DEFAULT_CARD_COLOR_SCHEME.nameHighlight,
+});
 
 const Container = styled.div`
   display: flex;
@@ -116,6 +187,194 @@ const SegmentedGroup = styled.div`
   }
 `;
 
+const ControlsPanel = styled.div`
+  ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    return css`
+      ${clayPanelStyle}
+      border: 1px solid ${layout.shellBorder};
+      box-shadow: ${layout.surfaceShadow};
+      background: ${layout.surfaceBg};
+    `;
+  }}
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  border-radius: ${CARD_RADIUS_LG};
+  padding: 0.95rem;
+  margin-bottom: 0.75rem;
+`;
+
+const ControlsRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  align-items: stretch;
+`;
+
+const ControlBlock = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 220px;
+  flex: 1;
+`;
+
+const ControlLabel = styled.div`
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+`;
+
+const HelperText = styled.div`
+  font-size: 0.72rem;
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+  line-height: 1.35;
+`;
+
+const PresetGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.7rem;
+`;
+
+const PresetButton = styled.button<{ $active: boolean; $scheme: CardColorScheme }>`
+  border-radius: 16px;
+  padding: 0.8rem;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  border: 1px solid ${({ theme, $active }) => $active ? theme.ACCENT : getLayoutPalette(theme).surfaceBorder};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  box-shadow: ${({ theme, $active }) => $active ? `0 12px 24px ${theme.ACCENT}22` : getLayoutPalette(theme).surfaceShadow};
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+`;
+
+const PresetSwatches = styled.div`
+  display: flex;
+  gap: 0.45rem;
+  margin-bottom: 0.65rem;
+`;
+
+const Swatch = styled.span<{ $color: string }>`
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: ${({ $color }) => $color};
+  border: 1px solid rgba(255,255,255,0.55);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08);
+`;
+
+const PresetTitle = styled.div`
+  font-size: 0.82rem;
+  font-weight: 800;
+  margin-bottom: 0.15rem;
+`;
+
+const PresetDescription = styled.div`
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+`;
+
+const ColorEditorGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+`;
+
+const ColorField = styled.label`
+  ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    return css`
+      background: ${layout.shellBg};
+      border: 1px solid ${layout.surfaceBorder};
+    `;
+  }}
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  border-radius: 14px;
+  padding: 0.65rem 0.75rem;
+  cursor: pointer;
+`;
+
+const ColorInput = styled.input`
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+`;
+
+const ColorMeta = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+`;
+
+const ColorName = styled.span`
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+`;
+
+const ColorValue = styled.span`
+  font-size: 0.68rem;
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+`;
+
+const SecondaryButton = styled.button`
+  ${({ theme }) => {
+    const layout = getLayoutPalette(theme);
+    return css`
+      background: ${layout.surfaceBg};
+      color: ${theme.TEXT_PRIMARY};
+      border: 1px solid ${layout.surfaceBorder};
+      box-shadow: ${layout.surfaceShadow};
+    `;
+  }}
+  height: ${SEGMENTED_HEIGHT};
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+`;
+
+const DesignToggleGroup = styled.div`
+  display: inline-flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+`;
+
+const DesignToggleButton = styled.button<{ $active: boolean }>`
+  ${({ theme, $active }) => {
+    const layout = getLayoutPalette(theme);
+    const buttons = getButtonPalette(theme);
+    return css`
+      background: ${$active ? buttons.primaryBg : layout.surfaceBg};
+      color: ${$active ? buttons.primaryText : theme.TEXT_PRIMARY};
+      border: 1px solid ${$active ? theme.ACCENT : layout.surfaceBorder};
+      box-shadow: ${$active ? buttons.primaryShadow : layout.surfaceShadow};
+    `;
+  }}
+  min-height: 34px;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+`;
+
 const SegmentedSelect = styled.select<{ first?: boolean; last?: boolean }>`
   ${clayInputStyle}
   ${minimalSelectMenuStyle}
@@ -192,16 +451,16 @@ const PrintContainer = styled.div`
   }
 `;
 
-const CardTemplate = styled.div`
-  width: 3.375in;
-  height: 2.125in;
+const CardTemplate = styled.div<{ $variant: CardDesignVariant }>`
+  width: ${({ $variant }) => $variant === 'modern' ? '2.2in' : '3.375in'};
+  height: ${({ $variant }) => $variant === 'modern' ? '3.5in' : '2.125in'};
   background: #ffffff;
-  border-radius: 6px;
+  border-radius: ${({ $variant }) => $variant === 'modern' ? '18px' : '6px'};
   border: 1px solid #e5e7eb;
   position: relative;
   page-break-inside: avoid;
   overflow: hidden;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+  box-shadow: ${({ $variant }) => $variant === 'modern' ? '0 18px 40px rgba(15, 23, 42, 0.18)' : '0 4px 10px rgba(0,0,0,0.08)'};
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 
@@ -213,7 +472,7 @@ const CardTemplate = styled.div`
   }
 `;
 
-const CardBackground = styled.div`
+const CardBackground = styled.div<{ $scheme: CardColorScheme }>`
   position: absolute;
   top: 0;
   left: 0;
@@ -228,7 +487,7 @@ const CardBackground = styled.div`
     left: -10%;
     width: 120%;
     height: 118px;
-    background: #2cb742; /* green curve */
+    background: ${({ $scheme }) => $scheme.topCurve};
     border-radius: 50%;
     transform: rotate(2deg);
   }
@@ -240,19 +499,19 @@ const CardBackground = styled.div`
     left: -15%;
     width: 130%;
     height: 110px;
-    background: #191636; /* navy curve */
+    background: ${({ $scheme }) => $scheme.mainCurve};
     border-radius: 50%;
     transform: rotate(5deg);
   }
 `;
 
-const BottomBorder = styled.div`
+const BottomBorder = styled.div<{ $scheme: CardColorScheme }>`
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
   height: 5px;
-  background: #4ab44b;
+  background: ${({ $scheme }) => $scheme.bottomBorder};
   z-index: 10;
 `;
 
@@ -404,8 +663,8 @@ const IdPillWrapper = styled.div`
   margin-left: -20px;
 `;
 
-const IdPill = styled.div`
-  background: #d32f2f;
+const IdPill = styled.div<{ $scheme: CardColorScheme }>`
+  background: ${({ $scheme }) => $scheme.idPill};
   color: white;
   font-size: 0.45rem;
   font-weight: 800;
@@ -438,11 +697,243 @@ const InfoSeparator = styled.span`
   font-weight: 700;
 `;
 
-const InfoValue = styled.span<{ $highlight?: boolean }>`
+const InfoValue = styled.span<{ $highlight?: boolean; $scheme: CardColorScheme }>`
   flex: 1;
   font-weight: ${({ $highlight }) => $highlight ? '800' : '600'};
-  color: ${({ $highlight }) => $highlight ? '#d32f2f' : '#374151'};
+  color: ${({ $highlight, $scheme }) => $highlight ? $scheme.nameHighlight : '#374151'};
 `;
+
+const ModernCardLayer = styled.div<{ $scheme: CardColorScheme }>`
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 0;
+  background:
+    radial-gradient(circle at top center, ${({ $scheme }) => `${$scheme.topCurve}22`} 0%, transparent 30%),
+    linear-gradient(180deg, #20395f 0%, #0f2340 100%);
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    border-radius: 14px;
+    border: 2px solid ${({ $scheme }) => `${$scheme.topCurve}cc`};
+    pointer-events: none;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 90px;
+    background:
+      linear-gradient(135deg, transparent 0%, transparent 70%, ${({ $scheme }) => `${$scheme.topCurve}aa`} 70%, ${({ $scheme }) => `${$scheme.topCurve}aa`} 72%, transparent 72%, transparent 100%),
+      linear-gradient(45deg, transparent 0%, transparent 78%, ${({ $scheme }) => `${$scheme.topCurve}88`} 78%, ${({ $scheme }) => `${$scheme.topCurve}88`} 80%, transparent 80%, transparent 100%);
+    opacity: 0.9;
+  }
+`;
+
+const ModernContentWrapper = styled(CardContentWrapper)`
+  padding: 18px 14px 14px 14px;
+`;
+
+const ModernHeader = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-height: 86px;
+`;
+
+const ModernLogoWrapper = styled.div`
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.98);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.2);
+
+  img {
+    width: 84%;
+    height: 84%;
+    object-fit: contain;
+  }
+`;
+
+const ModernHeaderText = styled.div`
+  min-width: 0;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+  text-align: center;
+`;
+
+const ModernSchoolName = styled.div`
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.08;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+`;
+
+const ModernSchoolAddress = styled.div`
+  font-size: 0.34rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.8);
+  letter-spacing: 0.04em;
+`;
+
+const ModernBody = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  padding-top: 8px;
+`;
+
+const ModernPhotoFrame = styled.div<{ $scheme: CardColorScheme }>`
+  width: 108px;
+  height: 126px;
+  border-radius: 18px;
+  padding: 4px;
+  background: linear-gradient(180deg, ${({ $scheme }) => `${$scheme.topCurve}ee`} 0%, ${({ $scheme }) => `${$scheme.mainCurve}bb`} 100%);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.24);
+`;
+
+const ModernPhotoInner = styled.div`
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #ece5d7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const ModernTitle = styled.div`
+  font-size: 0.36rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.72);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+`;
+
+const ModernStudentName = styled.div`
+  font-size: 0.9rem;
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 1.05;
+  text-align: center;
+  max-width: 100%;
+`;
+
+const ModernInfoPanel = styled.div`
+  width: 100%;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 14px;
+  padding: 10px 10px 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+`;
+
+const ModernProgramPill = styled.div<{ $scheme: CardColorScheme }>`
+  align-self: stretch;
+  background: ${({ $scheme }) => `${$scheme.topCurve}1e`};
+  border: 1px solid ${({ $scheme }) => `${$scheme.topCurve}99`};
+  color: ${({ $scheme }) => $scheme.topCurve};
+  border-radius: 12px;
+  padding: 6px 8px;
+  font-size: 0.48rem;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.15;
+  text-transform: uppercase;
+`;
+
+const ModernInfoRow = styled.div`
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 6px;
+  align-items: start;
+  font-size: 0.46rem;
+`;
+
+const ModernInfoLabel = styled.span`
+  font-weight: 800;
+  color: rgba(255,255,255,0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+`;
+
+const ModernInfoValue = styled.span`
+  font-weight: 700;
+  color: #ffffff;
+`;
+
+const ModernFooter = styled.div`
+  width: 100%;
+  margin-top: auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+`;
+
+const ModernIdentityTag = styled.div<{ $scheme: CardColorScheme }>`
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: ${({ $scheme }) => `${$scheme.idPill}20`};
+  border: 1px solid ${({ $scheme }) => `${$scheme.idPill}99`};
+  color: #ffffff;
+  font-size: 0.42rem;
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: 0.06em;
+`;
+
+const ModernQrBox = styled.div<{ $scheme: CardColorScheme }>`
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  border: 1px solid ${({ $scheme }) => `${$scheme.topCurve}88`};
+  background:
+    linear-gradient(90deg, ${({ $scheme }) => `${$scheme.topCurve}50`} 8%, transparent 8%, transparent 92%, ${({ $scheme }) => `${$scheme.topCurve}50`} 92%),
+    linear-gradient(${({ $scheme }) => `${$scheme.topCurve}50`} 8%, transparent 8%, transparent 92%, ${({ $scheme }) => `${$scheme.topCurve}50`} 92%),
+    radial-gradient(circle at 28% 28%, ${({ $scheme }) => $scheme.topCurve} 0 10%, transparent 11%),
+    radial-gradient(circle at 72% 28%, ${({ $scheme }) => $scheme.topCurve} 0 10%, transparent 11%),
+    radial-gradient(circle at 28% 72%, ${({ $scheme }) => $scheme.topCurve} 0 10%, transparent 11%),
+    radial-gradient(circle at 72% 72%, ${({ $scheme }) => $scheme.topCurve} 0 10%, transparent 11%);
+`;
+
+const SAMPLE_MODERN_BLUE = '#4AA9D8';
+const SAMPLE_MODERN_BLUE_LIGHT = '#BFE8FB';
+const SAMPLE_MODERN_NAME = '#43AEE3';
+const MODERN_BRAND_TITLE = 'AL-HARAM';
+const MODERN_BRAND_SUBTITLE = 'Public School & Iqra Academy';
 
 const EmptyState = styled.div`
   text-align: center;
@@ -483,10 +974,75 @@ const StudentCardsPage = () => {
   const [sessionEndDate, setSessionEndDate] = useState<string | null>(null);
 
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [selectedPresetKey, setSelectedPresetKey] = useState<string>(DEFAULT_CARD_COLOR_SCHEME.key);
+  const [cardColors, setCardColors] = useState<CardColorScheme>(DEFAULT_CARD_COLOR_SCHEME);
+  const [hasSavedColors, setHasSavedColors] = useState(false);
+  const cardDesign: CardDesignVariant = 'classic';
 
   useEffect(() => {
     setPageHeader('Student Cards');
   }, [setPageHeader]);
+
+  useEffect(() => {
+    const schoolId = user?.school_id;
+    if (!schoolId) return;
+    let isMounted = true;
+
+    const loadSavedCardColors = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('student_card_settings')
+          .select('settings')
+          .eq('school_id', schoolId)
+          .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') {
+          throw error;
+        }
+
+        if (data?.settings) {
+          const savedScheme = normalizeCardColorScheme(data.settings);
+          if (!isMounted) return;
+          setCardColors(savedScheme);
+          setSelectedPresetKey(savedScheme.key);
+          setHasSavedColors(true);
+          localStorage.setItem(buildStudentCardColorsStorageKey(schoolId), JSON.stringify(savedScheme));
+          return;
+        }
+      } catch (error) {
+        console.warn('Failed to load student card colors from Supabase, using local fallback:', error);
+      }
+
+      try {
+        const raw = localStorage.getItem(buildStudentCardColorsStorageKey(schoolId));
+        if (!raw) {
+          if (!isMounted) return;
+          setCardColors(DEFAULT_CARD_COLOR_SCHEME);
+          setSelectedPresetKey(DEFAULT_CARD_COLOR_SCHEME.key);
+          setHasSavedColors(false);
+          return;
+        }
+
+        const savedScheme = normalizeCardColorScheme(JSON.parse(raw));
+        if (!isMounted) return;
+        setCardColors(savedScheme);
+        setSelectedPresetKey(savedScheme.key);
+        setHasSavedColors(true);
+      } catch (error) {
+        console.warn('Failed to load saved student card colors:', error);
+        if (!isMounted) return;
+        setCardColors(DEFAULT_CARD_COLOR_SCHEME);
+        setSelectedPresetKey(DEFAULT_CARD_COLOR_SCHEME.key);
+        setHasSavedColors(false);
+      }
+    };
+
+    loadSavedCardColors();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.school_id]);
 
   useEffect(() => {
     if (!user?.school_id) return;
@@ -579,8 +1135,8 @@ const StudentCardsPage = () => {
   const handleDownloadPDF = async () => {
     setIsGeneratingPDF(true);
     try {
-      const doc = <StudentCardsPDFDocument students={students} schoolProfile={schoolProfile} classes={classes} sections={sections} />;
-      const asPdf = pdf(doc);
+      const docWithDesign = <StudentCardsPDFDocument students={students} schoolProfile={schoolProfile} classes={classes} sections={sections} colorScheme={cardColors} designVariant={cardDesign} />;
+      const asPdf = pdf(docWithDesign);
       const blob = await asPdf.toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -598,7 +1154,495 @@ const StudentCardsPage = () => {
     }
   };
 
+  const handleExportExcel = () => {
+    try {
+      if (!students.length) {
+        toast.showToast('No students available to export', 'error');
+        return;
+      }
+
+      const escapeCell = (value: unknown) => {
+        const text = value === null || value === undefined ? '' : String(value);
+        return text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      };
+
+      const formatDate = (value: string | null | undefined) => {
+        if (!value) return '';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '';
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}-${month}-${year}`;
+      };
+
+      const rows = students.map((student) => {
+        const studentClass = classes.find(c => c.id === student.class_id);
+        const studentSection = student.section_id ? sections.find(s => s.id === student.section_id) : null;
+        const dob = formatDate(student.dob);
+
+        return {
+          roll_no: getStudentDisplayId({ id: student.id, roll_number: student.roll_number }),
+          name: student.name || '',
+          father: student.father_name || '',
+          class_section: `${studentClass?.name || ''}${studentSection?.name ? ` (${studentSection.name})` : ''}`.trim(),
+          dob,
+          phone: student.phone || student.contact_number || '',
+        };
+      });
+
+      const headers = [
+        ['Roll No', 'Name', 'Father', 'DOB', 'Class + Section', 'Phone'],
+      ];
+
+      const bodyRows = rows.map((row) => ([
+        { value: row.roll_no, text: true },
+        { value: row.name, text: false },
+        { value: row.father, text: false },
+        { value: row.dob, text: true },
+        { value: row.class_section, text: false },
+        { value: row.phone, text: true },
+      ]));
+
+      const html = `
+        <html>
+          <head>
+            <meta charset="utf-8" />
+          </head>
+          <body>
+            <table border="1">
+              <thead>
+                <tr>${headers[0].map((cell) => `<th>${escapeCell(cell)}</th>`).join('')}</tr>
+              </thead>
+              <tbody>
+                ${bodyRows.map((row) => `<tr>${row.map((cell) => `<td${cell.text ? ' style="mso-number-format:\\@;"' : ''}>${escapeCell(cell.value)}</td>`).join('')}</tr>`).join('')}
+              </tbody>
+            </table>
+          </body>
+        </html>
+      `;
+
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'Student_Cards_Data.xls';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.showToast('Student data exported for Excel', 'success');
+    } catch (error) {
+      console.error('Failed to export student data:', error);
+      toast.showToast('Failed to export Excel file', 'error');
+    }
+  };
+
+  const applyPreset = (presetKey: string) => {
+    const preset = CARD_COLOR_PRESETS.find(item => item.key === presetKey);
+    if (!preset) return;
+    setSelectedPresetKey(preset.key);
+    setCardColors(preset);
+  };
+
+  const updateCardColor = (field: keyof Omit<CardColorScheme, 'key' | 'label' | 'description'>, value: string) => {
+    setSelectedPresetKey('custom');
+    setCardColors(prev => ({
+      ...prev,
+      key: 'custom',
+      label: 'Custom',
+      description: 'Personalized colors chosen for this batch of student cards.',
+      [field]: value,
+    }));
+  };
+
+  const handleSaveCardColors = () => {
+    const schoolId = user?.school_id;
+    if (!schoolId) return;
+
+    const saveCardColors = async () => {
+      try {
+        const { error } = await supabase
+          .from('student_card_settings')
+          .upsert(
+            {
+              school_id: schoolId,
+              settings: {
+                ...cardColors,
+                designVariant: 'classic',
+              },
+            },
+            { onConflict: 'school_id' }
+          );
+
+        if (error) throw error;
+
+        localStorage.setItem(buildStudentCardColorsStorageKey(schoolId), JSON.stringify(cardColors));
+        setHasSavedColors(true);
+        toast.showToast('Student card colors saved', 'success');
+      } catch (error) {
+        console.error('Failed to save student card colors:', error);
+        toast.showToast('Failed to save card colors', 'error');
+      }
+    };
+
+    saveCardColors();
+  };
+
+  const handleResetSavedCardColors = () => {
+    const schoolId = user?.school_id;
+    if (!schoolId) return;
+
+    const resetSavedCardColors = async () => {
+      try {
+        const { error } = await supabase
+          .from('student_card_settings')
+          .delete()
+          .eq('school_id', schoolId);
+
+        if (error) throw error;
+
+        localStorage.removeItem(buildStudentCardColorsStorageKey(schoolId));
+        setCardColors(DEFAULT_CARD_COLOR_SCHEME);
+        setSelectedPresetKey(DEFAULT_CARD_COLOR_SCHEME.key);
+        setHasSavedColors(false);
+        toast.showToast('Student card colors reset to default', 'success');
+      } catch (error) {
+        console.error('Failed to reset student card colors:', error);
+        toast.showToast('Failed to reset card colors', 'error');
+      }
+    };
+
+    resetSavedCardColors();
+  };
+
   const filteredSections = sections.filter(s => s.class_id.toString() === selectedClass);
+
+  const renderClassicCard = (student: any) => (
+    <>
+      <CardBackground $scheme={cardColors} />
+      <BottomBorder $scheme={cardColors} />
+
+      <CardContentWrapper>
+        <HeaderContent>
+          {schoolProfile?.logo_url && (
+            <SchoolLogoWrapper>
+              <img src={schoolProfile.logo_url} alt="Logo" />
+            </SchoolLogoWrapper>
+          )}
+          <HeaderTextCol>
+            <SchoolName>{schoolProfile?.name || 'YOUR SCHOOL NAME HERE'}</SchoolName>
+            <SchoolAddress>{schoolProfile?.address || 'YOUR SCHOOL ADDRESS HERE'}</SchoolAddress>
+          </HeaderTextCol>
+        </HeaderContent>
+
+        <CardBody>
+          <LeftSection>
+            <PhotoOuterView>
+              <PhotoContainer>
+                {student.picture_url ? (
+                  <img src={student.picture_url} alt={student.name} />
+                ) : (
+                  <BadgeIcon style={{ fontSize: 36, color: '#ccc' }} />
+                )}
+              </PhotoContainer>
+            </PhotoOuterView>
+
+            <SignatureSection>
+              <SignatureImgPlaceholder />
+              <SignatureText>Principal</SignatureText>
+            </SignatureSection>
+          </LeftSection>
+
+          <RightSection>
+            <IdPillWrapper>
+              <IdPill $scheme={cardColors}>IDENTITY CARD</IdPill>
+            </IdPillWrapper>
+
+            <InfoGrid>
+              <InfoRow>
+                <InfoLabel>Name</InfoLabel><InfoSeparator>:</InfoSeparator><InfoValue $scheme={cardColors} $highlight>{student.name}</InfoValue>
+              </InfoRow>
+              <InfoRow>
+                <InfoLabel>Father's Name</InfoLabel><InfoSeparator>:</InfoSeparator><InfoValue $scheme={cardColors}>{student.father_name || '-'}</InfoValue>
+              </InfoRow>
+              <InfoRow>
+                <InfoLabel>Class</InfoLabel><InfoSeparator>:</InfoSeparator><InfoValue $scheme={cardColors}>{classes.find(c => c.id === student.class_id)?.name || '-'} {student.section_id && sections.find(s => s.id === student.section_id) ? `(${sections.find(s => s.id === student.section_id)?.name})` : ''}</InfoValue>
+              </InfoRow>
+              <InfoRow>
+                <InfoLabel>Date of Birth</InfoLabel><InfoSeparator>:</InfoSeparator><InfoValue $scheme={cardColors}>{student.dob ? new Date(student.dob).toLocaleDateString() : '-'}</InfoValue>
+              </InfoRow>
+              <InfoRow>
+                <InfoLabel>Roll No.</InfoLabel><InfoSeparator>:</InfoSeparator><InfoValue $scheme={cardColors}>{getStudentDisplayId({ id: student.id, roll_number: student.roll_number })}</InfoValue>
+              </InfoRow>
+              {(student.guardian_phone || student.emergency_contact) && (
+                <InfoRow>
+                  <InfoLabel>Contact No.</InfoLabel><InfoSeparator>:</InfoSeparator><InfoValue $scheme={cardColors}>{student.guardian_phone || student.emergency_contact}</InfoValue>
+                </InfoRow>
+              )}
+            </InfoGrid>
+          </RightSection>
+        </CardBody>
+      </CardContentWrapper>
+    </>
+  );
+
+  const getModernNameBadgeStyle = (name: string) => {
+    const length = name.trim().length;
+
+    if (length >= 24) {
+      return {
+        fontSize: '0.62rem',
+        padding: '6px 10px',
+        maxWidth: '98%',
+      };
+    }
+
+    if (length >= 20) {
+      return {
+        fontSize: '0.68rem',
+        padding: '6px 12px',
+        maxWidth: '96%',
+      };
+    }
+
+    if (length >= 16) {
+      return {
+        fontSize: '0.78rem',
+        padding: '6px 14px',
+        maxWidth: '92%',
+      };
+    }
+
+    return {
+      fontSize: '0.94rem',
+      padding: '6px 16px',
+      maxWidth: '86%',
+    };
+  };
+
+  const renderModernCard = (student: any) => (
+    <>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: '#ffffff',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          data-export-role="modern-header"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '42%',
+            background: SAMPLE_MODERN_BLUE,
+            borderBottomLeftRadius: 34,
+            borderBottomRightRadius: 34,
+            boxShadow: '0 16px 24px rgba(0,0,0,0.18)',
+          }}
+        />
+      </div>
+
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 2,
+            width: '100%',
+            height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+            padding: '14px 12px 14px 12px',
+            boxSizing: 'border-box',
+          }}
+        >
+        {[0, 8, 16].map((offset, index) => (
+          <div
+            key={`modern-outline-${index}`}
+            style={{
+              position: 'absolute',
+              left: 10 + offset,
+              right: 10 + offset,
+              top: `calc(42% + ${offset}px)`,
+              bottom: 10 + offset,
+              borderLeft: `2px solid ${SAMPLE_MODERN_BLUE_LIGHT}`,
+              borderRight: `2px solid ${SAMPLE_MODERN_BLUE_LIGHT}`,
+              borderBottom: `2px solid ${SAMPLE_MODERN_BLUE_LIGHT}`,
+              borderBottomLeftRadius: 26 - (index * 4),
+              borderBottomRightRadius: 26 - (index * 4),
+              pointerEvents: 'none',
+              opacity: 0.95 - (index * 0.18),
+            }}
+          />
+        ))}
+        <div
+          style={{
+            marginTop: 4,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            width: '100%',
+            padding: '0 8px',
+            transform: 'translateX(-16px)',
+          }}
+        >
+          {schoolProfile?.logo_url && (
+            <img
+              src={schoolProfile.logo_url}
+              alt="School logo"
+              style={{
+                width: 35,
+                height: 35,
+                objectFit: 'contain',
+                flexShrink: 0,
+                filter: 'drop-shadow(0 0 0.8px rgba(255,255,255,0.95)) drop-shadow(0 0 1.2px rgba(255,255,255,0.95))',
+              }}
+            />
+          )}
+          <div
+            style={{
+              minWidth: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              justifyContent: 'center',
+            }}
+          >
+            <div
+              style={{
+                color: '#ffffff',
+                fontWeight: 900,
+                fontSize: '1.61rem',
+                lineHeight: 0.95,
+                letterSpacing: '0.5px',
+                textAlign: 'left',
+                textTransform: 'uppercase',
+                textShadow: '0 4px 8px rgba(0,0,0,0.22)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {MODERN_BRAND_TITLE}
+            </div>
+            <div
+              style={{
+                color: '#ffffff',
+                fontWeight: 600,
+                fontSize: '0.66rem',
+                lineHeight: 1.05,
+                letterSpacing: '0.2px',
+                textAlign: 'left',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {MODERN_BRAND_SUBTITLE}
+            </div>
+          </div>
+        </div>
+
+        <div
+          data-export-role="modern-id-badge-wrap"
+          style={{
+            position: 'absolute',
+            top: '25.5%',
+            left: 0,
+            right: 0,
+            zIndex: 5,
+            pointerEvents: 'none',
+            display: 'flex',
+            justifyContent: 'center',
+          }}
+        >
+          <div
+            data-export-role="modern-id-badge"
+            style={{
+              padding: '4px 12px',
+              borderRadius: 999,
+              background: 'rgba(255,255,255,0.94)',
+              border: `1.5px solid ${SAMPLE_MODERN_BLUE_LIGHT}`,
+              color: SAMPLE_MODERN_NAME,
+              fontSize: '0.44rem',
+              fontWeight: 800,
+              letterSpacing: '0.7px',
+              textTransform: 'uppercase',
+              boxShadow: '0 6px 14px rgba(0,0,0,0.10)',
+            }}
+          >
+            Student ID Card
+          </div>
+        </div>
+
+        <div
+          data-export-role="modern-photo-frame"
+          style={{
+            marginTop: 60,
+            width: 132,
+            height: 154,
+            borderRadius: '24px 0 30px 0',
+            background: '#ffffff',
+            padding: 4,
+            boxShadow: '0 18px 30px rgba(0,0,0,0.22)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              borderRadius: '20px 0 26px 0',
+              overflow: 'hidden',
+              background: '#ececec',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {student.picture_url ? (
+              <img
+                src={student.picture_url}
+                alt={student.name}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center center' }}
+              />
+            ) : (
+              <BadgeIcon style={{ fontSize: 44, color: '#bcc5cf' }} />
+            )}
+          </div>
+        </div>
+
+        <div
+          data-export-role="modern-name-badge"
+          style={{
+            marginTop: 22,
+            transform: 'translateY(-10px)',
+            color: SAMPLE_MODERN_NAME,
+            fontWeight: 900,
+            lineHeight: 1,
+            textAlign: 'center',
+            whiteSpace: 'nowrap',
+            background: '#ffffff',
+            border: `2px solid ${SAMPLE_MODERN_BLUE_LIGHT}`,
+            borderRadius: 18,
+            boxShadow: '0 10px 22px rgba(0,0,0,0.12)',
+            position: 'relative',
+            zIndex: 4,
+            ...getModernNameBadgeStyle(student.name || ''),
+          }}
+        >
+          {student.name}
+        </div>
+      </div>
+    </>
+  );
 
   if (loading) return <Loader />;
 
@@ -628,6 +1672,15 @@ const StudentCardsPage = () => {
           </SegmentedSelect>
 
           <SegmentedButton
+            onClick={handleExportExcel}
+            disabled={!students.length || fetching}
+            style={{ opacity: (!students.length || fetching) ? 0.5 : 1 }}
+          >
+            <TableView style={{ fontSize: 16 }} />
+            Export Excel
+          </SegmentedButton>
+
+          <SegmentedButton
             last
             onClick={handleDownloadPDF}
             disabled={!students.length || fetching || isGeneratingPDF}
@@ -639,77 +1692,114 @@ const StudentCardsPage = () => {
         </SegmentedGroup>
       </Header>
 
+      <ControlsPanel>
+        <ControlsRow>
+          <ControlBlock>
+            <ControlLabel>Card colors</ControlLabel>
+            <HelperText>
+              Pick a ready-made palette or fine-tune each color for the standard student card design.
+            </HelperText>
+          </ControlBlock>
+        </ControlsRow>
+
+        <ControlsRow>
+          <ControlBlock>
+            <PresetGrid>
+              {CARD_COLOR_PRESETS.map((preset) => (
+                <PresetButton
+                  key={preset.key}
+                  type="button"
+                  $active={selectedPresetKey === preset.key}
+                  $scheme={preset}
+                  onClick={() => applyPreset(preset.key)}
+                >
+                  <PresetSwatches>
+                    <Swatch $color={preset.topCurve} />
+                    <Swatch $color={preset.mainCurve} />
+                    <Swatch $color={preset.bottomBorder} />
+                    <Swatch $color={preset.idPill} />
+                  </PresetSwatches>
+                  <PresetTitle>{preset.label}</PresetTitle>
+                  <PresetDescription>{preset.description}</PresetDescription>
+                </PresetButton>
+              ))}
+            </PresetGrid>
+          </ControlBlock>
+        </ControlsRow>
+
+        <ControlsRow>
+          <ControlBlock>
+            <ControlLabel>Customize colors</ControlLabel>
+            <ColorEditorGrid>
+              <ColorField>
+                <ColorInput type="color" value={cardColors.topCurve} onChange={(e) => updateCardColor('topCurve', e.target.value)} />
+                <ColorMeta>
+                  <ColorName>Top curve</ColorName>
+                  <ColorValue>{cardColors.topCurve}</ColorValue>
+                </ColorMeta>
+              </ColorField>
+              <ColorField>
+                <ColorInput type="color" value={cardColors.mainCurve} onChange={(e) => updateCardColor('mainCurve', e.target.value)} />
+                <ColorMeta>
+                  <ColorName>Main header</ColorName>
+                  <ColorValue>{cardColors.mainCurve}</ColorValue>
+                </ColorMeta>
+              </ColorField>
+              <ColorField>
+                <ColorInput type="color" value={cardColors.bottomBorder} onChange={(e) => updateCardColor('bottomBorder', e.target.value)} />
+                <ColorMeta>
+                  <ColorName>Bottom border</ColorName>
+                  <ColorValue>{cardColors.bottomBorder}</ColorValue>
+                </ColorMeta>
+              </ColorField>
+              <ColorField>
+                <ColorInput type="color" value={cardColors.idPill} onChange={(e) => updateCardColor('idPill', e.target.value)} />
+                <ColorMeta>
+                  <ColorName>ID badge</ColorName>
+                  <ColorValue>{cardColors.idPill}</ColorValue>
+                </ColorMeta>
+              </ColorField>
+              <ColorField>
+                <ColorInput type="color" value={cardColors.nameHighlight} onChange={(e) => updateCardColor('nameHighlight', e.target.value)} />
+                <ColorMeta>
+                  <ColorName>Student name</ColorName>
+                  <ColorValue>{cardColors.nameHighlight}</ColorValue>
+                </ColorMeta>
+              </ColorField>
+            </ColorEditorGrid>
+          </ControlBlock>
+
+          <ControlBlock style={{ flex: '0 0 auto', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.65rem', minHeight: '100%' }}>
+              <HelperText>
+                {selectedPresetKey === 'custom'
+                  ? 'Using a custom palette for preview and PDF export.'
+                  : hasSavedColors
+                    ? `Using saved ${cardColors.label} colors for this school.`
+                    : `Using ${cardColors.label} as the active card style.`}
+              </HelperText>
+              <SecondaryButton type="button" onClick={handleSaveCardColors}>
+                Save colors
+              </SecondaryButton>
+              <SecondaryButton type="button" onClick={() => applyPreset(DEFAULT_CARD_COLOR_SCHEME.key)}>
+                Reset default
+              </SecondaryButton>
+              <SecondaryButton type="button" onClick={handleResetSavedCardColors}>
+                Clear saved
+              </SecondaryButton>
+            </div>
+          </ControlBlock>
+        </ControlsRow>
+      </ControlsPanel>
+
       {fetching ? (
         <Loader />
       ) : students.length > 0 ? (
         <PrintContainer id="print-section">
           <PrintGlobalStyle />
           {students.map(student => (
-            <CardTemplate key={student.id}>
-              <CardBackground />
-              <BottomBorder />
-
-              <CardContentWrapper>
-                <HeaderContent>
-                  {schoolProfile?.logo_url && (
-                    <SchoolLogoWrapper>
-                      <img src={schoolProfile.logo_url} alt="Logo" />
-                    </SchoolLogoWrapper>
-                  )}
-                  <HeaderTextCol>
-                    <SchoolName>{schoolProfile?.name || 'YOUR SCHOOL NAME HERE'}</SchoolName>
-                    <SchoolAddress>{schoolProfile?.address || 'YOUR SCHOOL ADDRESS HERE'}</SchoolAddress>
-                  </HeaderTextCol>
-                </HeaderContent>
-
-                <CardBody>
-                  <LeftSection>
-                    <PhotoOuterView>
-                      <PhotoContainer>
-                        {student.picture_url ? (
-                          <img src={student.picture_url} alt={student.name} />
-                        ) : (
-                          <BadgeIcon style={{ fontSize: 36, color: '#ccc' }} />
-                        )}
-                      </PhotoContainer>
-                    </PhotoOuterView>
-
-                    <SignatureSection>
-                      <SignatureImgPlaceholder />
-                      <SignatureText>Principal</SignatureText>
-                    </SignatureSection>
-                  </LeftSection>
-
-                  <RightSection>
-                    <IdPillWrapper>
-                      <IdPill>IDENTITY CARD</IdPill>
-                    </IdPillWrapper>
-
-                    <InfoGrid>
-                      <InfoRow>
-                        <InfoLabel>Name</InfoLabel><InfoSeparator>:</InfoSeparator><InfoValue $highlight>{student.name}</InfoValue>
-                      </InfoRow>
-                      <InfoRow>
-                        <InfoLabel>Father's Name</InfoLabel><InfoSeparator>:</InfoSeparator><InfoValue>{student.father_name || '-'}</InfoValue>
-                      </InfoRow>
-                      <InfoRow>
-                        <InfoLabel>Class</InfoLabel><InfoSeparator>:</InfoSeparator><InfoValue>{classes.find(c => c.id === student.class_id)?.name || '-'} {student.section_id && sections.find(s => s.id === student.section_id) ? `(${sections.find(s => s.id === student.section_id)?.name})` : ''}</InfoValue>
-                      </InfoRow>
-                      <InfoRow>
-                        <InfoLabel>Date of Birth</InfoLabel><InfoSeparator>:</InfoSeparator><InfoValue>{student.dob ? new Date(student.dob).toLocaleDateString() : '-'}</InfoValue>
-                      </InfoRow>
-                      <InfoRow>
-                        <InfoLabel>Roll No.</InfoLabel><InfoSeparator>:</InfoSeparator><InfoValue>{getStudentDisplayId({ id: student.id, roll_number: student.roll_number })}</InfoValue>
-                      </InfoRow>
-                      {(student.guardian_phone || student.emergency_contact) && (
-                        <InfoRow>
-                          <InfoLabel>Contact No.</InfoLabel><InfoSeparator>:</InfoSeparator><InfoValue>{student.guardian_phone || student.emergency_contact}</InfoValue>
-                        </InfoRow>
-                      )}
-                    </InfoGrid>
-                  </RightSection>
-                </CardBody>
-              </CardContentWrapper>
+            <CardTemplate key={student.id} $variant="classic" data-student-card="true">
+              {renderClassicCard(student)}
             </CardTemplate>
           ))}
         </PrintContainer>
