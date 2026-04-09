@@ -11,7 +11,8 @@ import {
   RadioButtonUnchecked as UncheckIcon,
   Class as ClassIcon,
   Book as SubjectIcon,
-  PictureAsPdf as PdfIcon
+  PictureAsPdf as PdfIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import jsPDF from 'jspdf';
 import {
@@ -129,6 +130,7 @@ const FormGroup = styled.div`
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  min-width: 0;
 `;
 
 const Label = styled.label`
@@ -143,6 +145,76 @@ const Label = styled.label`
     font-size: 1rem;
     opacity: 0.7;
   }
+`;
+
+const SelectedStudentsPanel = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  padding: 0.75rem;
+  border: 1px solid ${({ theme }) => getFieldPalette(theme).border};
+  border-radius: 14px;
+  background: ${({ theme }) => getFieldPalette(theme).bg};
+`;
+
+const StudentChip = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+  min-height: 34px;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  background: ${({ theme }) => `${theme.ACCENT}12`};
+  border: 1px solid ${({ theme }) => `${theme.ACCENT}24`};
+  color: ${({ theme }) => getFieldPalette(theme).text};
+`;
+
+const StudentChipText = styled.span`
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.84rem;
+  font-weight: 600;
+`;
+
+const ChipRemoveButton = styled.button`
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border: none;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.1);
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+`;
+
+const SelectedStudentsMeta = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: -0.1rem;
+`;
+
+const SelectedStudentsCount = styled.div`
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: ${({ theme }) => getLayoutPalette(theme).shellMutedText};
+`;
+
+const TextActionButton = styled.button`
+  border: none;
+  background: transparent;
+  color: ${({ theme }) => theme.ACCENT};
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
 `;
 
 const SubjectGrid = styled.div`
@@ -454,8 +526,9 @@ const NotebookTagGenerator: React.FC = () => {
   // Filters
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [selectedSection, setSelectedSection] = useState<string>('all');
-  const [selectedStudent, setSelectedStudent] = useState<string>('all');
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [studentToAdd, setStudentToAdd] = useState<string>('');
+  const [selectedStudents, setSelectedStudents] = useState<any[]>([]);
+  const [selectedSubjectsByClass, setSelectedSubjectsByClass] = useState<Record<string, string[]>>({});
 
   const [classSubjectsMapping, setClassSubjectsMapping] = useState<any[]>([]);
 
@@ -614,6 +687,14 @@ const NotebookTagGenerator: React.FC = () => {
           });
 
         setStudents(mappedStudents);
+        setSelectedStudents(prevSelected =>
+          prevSelected.map((selectedStudent: any) => {
+            const refreshed = mappedStudents.find(
+              (student: any) => student.id?.toString() === selectedStudent.id?.toString()
+            );
+            return refreshed || selectedStudent;
+          })
+        );
       } catch (err: any) {
         console.error('Error fetching students from class history:', err);
         toast.showToast('Failed to fetch students', 'error');
@@ -626,29 +707,58 @@ const NotebookTagGenerator: React.FC = () => {
   }, [activeSessionId, selectedClass, selectedSection, user, toast]);
 
   const handleSubjectToggle = (subjectId: string) => {
-    setSelectedSubjects(prev => 
-      prev.includes(subjectId) 
-        ? prev.filter(id => id !== subjectId) 
-        : [...prev, subjectId]
+    if (selectedClass === 'all') return;
+
+    setSelectedSubjectsByClass(prev => {
+      const current = prev[selectedClass] || [];
+      return {
+        ...prev,
+        [selectedClass]: current.includes(subjectId)
+          ? current.filter(id => id !== subjectId)
+          : [...current, subjectId]
+      };
+    });
+  };
+
+  const addStudentToSelection = (studentId: string) => {
+    const student = students.find(item => item.id.toString() === studentId);
+    if (!student) return;
+
+    setSelectedStudents(prev =>
+      prev.some((item: any) => item.id.toString() === studentId)
+        ? prev
+        : [...prev, student]
+    );
+    setStudentToAdd('');
+  };
+
+  const removeStudentFromSelection = (studentId: string) => {
+    setSelectedStudents(prev =>
+      prev.filter((student: any) => student.id.toString() !== studentId)
     );
   };
 
+  const clearStudentSelection = () => {
+    setSelectedStudents([]);
+  };
+
   const handleSelectAllSubjects = () => {
-    const classSubjects = uniqueSubjects
+    if (selectedClass === 'all') return;
+
+    const classSubjects = visibleSubjects
       .filter(Boolean)
       .map((subject: any) => subject.name);
     
     // If all are already selected, clear. Otherwise select all.
     const uniqueClassSubjects = Array.from(new Set(classSubjects));
-    const currentlySelectedNames = selectedSubjects;
+    const currentlySelectedNames = selectedSubjectsByClass[selectedClass] || [];
     
     const allSelected = uniqueClassSubjects.every(name => currentlySelectedNames.includes(name));
     
-    if (allSelected) {
-      setSelectedSubjects([]);
-    } else {
-      setSelectedSubjects(uniqueClassSubjects);
-    }
+    setSelectedSubjectsByClass(prev => ({
+      ...prev,
+      [selectedClass]: allSelected ? [] : uniqueClassSubjects
+    }));
   };
 
   const drawRoundedRect = (
@@ -837,7 +947,7 @@ const NotebookTagGenerator: React.FC = () => {
         }
       }
 
-      const fileName = `Notebook_Tags_${selectedClass}.pdf`;
+      const fileName = `Notebook_Tags_${selectedClass !== 'all' ? selectedClass : 'selected'}.pdf`;
       pdf.save(fileName);
       toast.showToast(`Professional PDF generated (${totalTags} tags)!`, 'success');
     } catch (error) {
@@ -848,38 +958,76 @@ const NotebookTagGenerator: React.FC = () => {
     }
   };
 
-  if (loading) return <Loader />;
-
   const filteredSections = selectedClass === 'all'
     ? sections
     : sections.filter(s => s.class_id.toString() === selectedClass);
 
-  const availableClassIds = Array.from(
-    new Set(
-      students
-        .map(student => student.class_id?.toString())
-        .filter(Boolean)
-    )
-  );
+  useEffect(() => {
+    if (
+      selectedSection !== 'all' &&
+      !filteredSections.some(section => section.id.toString() === selectedSection)
+    ) {
+      setSelectedSection('all');
+    }
+  }, [filteredSections, selectedSection]);
 
-  const classSubjects = subjects.filter(s =>
-    classSubjectsMapping.some(m =>
-      availableClassIds.includes(m.class_id?.toString()) && m.subject_id === s.id
-    )
-  );
-  
-  // Get unique subject names
-  const uniqueSubjects = Array.from(new Set(classSubjects.map(s => s.name)))
-    .map(name => classSubjects.find(s => s.name === name));
+  const visibleSubjects = selectedClass === 'all'
+    ? []
+    : Array.from(
+        new Set(
+          subjects
+            .filter(s =>
+              classSubjectsMapping.some(m =>
+                m.class_id?.toString() === selectedClass && m.subject_id === s.id
+              )
+            )
+            .map(subject => subject.name)
+        )
+      ).map(name => subjects.find(s => s.name === name));
 
-  const filteredStudents = selectedStudent === 'all'
-    ? students
-    : students.filter(student => student.id.toString() === selectedStudent);
+  const filteredStudents = selectedStudents;
+  const currentClassSelectedSubjects = selectedClass === 'all'
+    ? []
+    : (selectedSubjectsByClass[selectedClass] || []);
+
+  const subjectsByClassId = new Map<string, Set<string>>();
+  classSubjectsMapping.forEach((mapping: any) => {
+    const classId = mapping.class_id?.toString();
+    const subject = subjects.find(s => s.id?.toString() === mapping.subject_id?.toString());
+    if (!classId || !subject?.name) return;
+
+    if (!subjectsByClassId.has(classId)) {
+      subjectsByClassId.set(classId, new Set<string>());
+    }
+
+    subjectsByClassId.get(classId)?.add(subject.name);
+  });
+
+  useEffect(() => {
+    setSelectedSubjectsByClass(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(classId => {
+        const allowedSubjects = new Set(
+          subjects
+            .filter(s =>
+              classSubjectsMapping.some(m => m.class_id?.toString() === classId && m.subject_id === s.id)
+            )
+            .map(subject => subject.name)
+        );
+        next[classId] = (next[classId] || []).filter(subjectName => allowedSubjects.has(subjectName));
+      });
+      return next;
+    });
+  }, [subjects, classSubjectsMapping]);
 
   const tagsToRender: any[] = [];
-  if (filteredStudents.length > 0 && selectedSubjects.length > 0) {
+  if (filteredStudents.length > 0) {
     filteredStudents.forEach(student => {
-      selectedSubjects.forEach(subjectName => {
+      const studentClassSubjects = subjectsByClassId.get(student.class_id?.toString() || '') || new Set<string>();
+      const classScopedSelections = selectedSubjectsByClass[student.class_id?.toString() || ''] || [];
+      classScopedSelections
+        .filter(subjectName => studentClassSubjects.has(subjectName))
+        .forEach(subjectName => {
         const teacherName = findTeacherForTag(student, subjectName);
         tagsToRender.push({
           student,
@@ -889,9 +1037,11 @@ const NotebookTagGenerator: React.FC = () => {
           className: classes.find(c => c.id.toString() === student.class_id.toString())?.name || '-',
           sectionName: sections.find(s => s.id.toString() === student.section_id?.toString())?.name || ''
         });
-      });
+        });
     });
   }
+
+  if (loading) return <Loader />;
 
   return (
     <Container>
@@ -902,13 +1052,12 @@ const NotebookTagGenerator: React.FC = () => {
           <FilterGroup>
             <FormGroup>
               <Label><ClassIcon /> Class</Label>
-              <ClaySelect 
-                value={selectedClass} 
+              <ClaySelect
+                value={selectedClass}
                 onChange={(e) => {
                   setSelectedClass(e.target.value);
                   setSelectedSection('all');
-                  setSelectedStudent('all');
-                  setSelectedSubjects([]);
+                  setStudentToAdd('');
                 }}
               >
                 <option value="all">All Classes</option>
@@ -922,8 +1071,7 @@ const NotebookTagGenerator: React.FC = () => {
                 value={selectedSection} 
                 onChange={(e) => {
                   setSelectedSection(e.target.value);
-                  setSelectedStudent('all');
-                  setSelectedSubjects([]);
+                  setStudentToAdd('');
                 }}
               >
                 <option value="all">All Sections</option>
@@ -934,11 +1082,11 @@ const NotebookTagGenerator: React.FC = () => {
             <FormGroup>
               <Label><TagIcon /> Student</Label>
               <ClaySelect
-                value={selectedStudent}
-                onChange={(e) => setSelectedStudent(e.target.value)}
+                value={studentToAdd}
+                onChange={(e) => addStudentToSelection(e.target.value)}
                 disabled={students.length === 0}
               >
-                <option value="all">All Students</option>
+                <option value="">Select Student To Add</option>
                 {students.map(student => (
                   <option key={student.id} value={student.id}>
                     {[getStudentRoll(student), student.name, student.father_name]
@@ -954,10 +1102,10 @@ const NotebookTagGenerator: React.FC = () => {
             <ClayButton 
               $variant="secondary"
               onClick={handleSelectAllSubjects}
-              disabled={uniqueSubjects.length === 0}
+              disabled={selectedClass === 'all' || visibleSubjects.length === 0}
             >
-              {selectedSubjects.length === uniqueSubjects.length && uniqueSubjects.length > 0 ? <UncheckIcon /> : <CheckIcon />}
-              {selectedSubjects.length === uniqueSubjects.length && uniqueSubjects.length > 0 ? 'Deselect All' : 'All Subjects'}
+              {currentClassSelectedSubjects.length === visibleSubjects.length && visibleSubjects.length > 0 ? <UncheckIcon /> : <CheckIcon />}
+              {currentClassSelectedSubjects.length === visibleSubjects.length && visibleSubjects.length > 0 ? 'Deselect All' : 'All Subjects'}
             </ClayButton>
             
             <ClayButton 
@@ -972,17 +1120,49 @@ const NotebookTagGenerator: React.FC = () => {
           </Actions>
         </ControlRow>
 
-        {uniqueSubjects.length > 0 && (
+        {selectedStudents.length > 0 && (
+          <FormGroup>
+            <SelectedStudentsMeta>
+              <SelectedStudentsCount>
+                {selectedStudents.length} student{selectedStudents.length === 1 ? '' : 's'} selected
+              </SelectedStudentsCount>
+              <TextActionButton type="button" onClick={clearStudentSelection}>
+                Clear List
+              </TextActionButton>
+            </SelectedStudentsMeta>
+
+            <SelectedStudentsPanel>
+              {selectedStudents.map((student: any) => (
+                <StudentChip key={student.id}>
+                  <StudentChipText>
+                    {[getStudentRoll(student), student.name, student.father_name]
+                      .filter(Boolean)
+                      .join(' - ')}
+                  </StudentChipText>
+                  <ChipRemoveButton
+                    type="button"
+                    onClick={() => removeStudentFromSelection(student.id.toString())}
+                    aria-label={`Remove ${student.name}`}
+                  >
+                    <CloseIcon style={{ fontSize: '0.9rem' }} />
+                  </ChipRemoveButton>
+                </StudentChip>
+              ))}
+            </SelectedStudentsPanel>
+          </FormGroup>
+        )}
+
+        {selectedClass !== 'all' && visibleSubjects.length > 0 && (
           <FormGroup>
             <Label><SubjectIcon /> Subjects</Label>
             <SubjectGrid>
-              {uniqueSubjects.map(s => s && (
+              {visibleSubjects.map(s => s && (
                 <SubjectPill 
                   key={s.id} 
-                  $selected={selectedSubjects.includes(s.name)}
+                  $selected={currentClassSelectedSubjects.includes(s.name)}
                   onClick={() => handleSubjectToggle(s.name)}
                 >
-                  {selectedSubjects.includes(s.name) ? <CheckIcon fontSize="small" /> : <UncheckIcon fontSize="small" />}
+                  {currentClassSelectedSubjects.includes(s.name) ? <CheckIcon fontSize="small" /> : <UncheckIcon fontSize="small" />}
                   {s.name}
                 </SubjectPill>
               ))}
@@ -1044,9 +1224,11 @@ const NotebookTagGenerator: React.FC = () => {
       ) : (
         <EmptyState>
           <TagIcon />
-          {selectedSubjects.length === 0
-            ? 'Select one or more subjects to generate notebook tags.'
-            : 'No active-session students found for the selected filters.'}
+          {selectedStudents.length === 0
+            ? 'Add students to the list to generate notebook tags.'
+            : selectedClass === 'all'
+              ? 'Select a class to choose subjects for that class.'
+              : 'Select one or more subjects for the current class to generate notebook tags.'}
         </EmptyState>
       )}
     </Container>

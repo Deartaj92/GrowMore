@@ -1187,11 +1187,15 @@ const StudentCardsPage = () => {
           phone: student.phone || student.contact_number || '03159498390',
           address: student.address || 'Muslim City Road, Balu',
         };
-      });
+      }).map((row, index) => ({
+        serial_no: index + 1,
+        ...row,
+      }));
 
       const worksheetData = [
-        ['Roll No', 'Name', 'Father', 'DOB', 'Class + Section', 'Phone', 'Address'],
+        ['SNo', 'Roll No', 'Name', 'Father', 'DOB', 'Class', 'Phone', 'Address'],
         ...rows.map((row) => [
+          row.serial_no,
           String(row.roll_no ?? ''),
           row.name,
           row.father,
@@ -1206,9 +1210,9 @@ const StudentCardsPage = () => {
       const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
 
       for (let rowIndex = 1; rowIndex <= range.e.r; rowIndex += 1) {
-        const rollCellRef = XLSX.utils.encode_cell({ r: rowIndex, c: 0 });
-        const dobCellRef = XLSX.utils.encode_cell({ r: rowIndex, c: 3 });
-        const phoneCellRef = XLSX.utils.encode_cell({ r: rowIndex, c: 5 });
+        const rollCellRef = XLSX.utils.encode_cell({ r: rowIndex, c: 1 });
+        const dobCellRef = XLSX.utils.encode_cell({ r: rowIndex, c: 4 });
+        const phoneCellRef = XLSX.utils.encode_cell({ r: rowIndex, c: 6 });
 
         if (worksheet[rollCellRef]) worksheet[rollCellRef].t = 's';
         if (worksheet[dobCellRef]) worksheet[dobCellRef].t = 's';
@@ -1216,6 +1220,7 @@ const StudentCardsPage = () => {
       }
 
       worksheet['!cols'] = [
+        { wch: 10 },
         { wch: 12 },
         { wch: 24 },
         { wch: 24 },

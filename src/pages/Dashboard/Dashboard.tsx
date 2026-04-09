@@ -117,30 +117,8 @@ const Dashboard: React.FC = () => {
   const [absentDate, setAbsentDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dashboardDate, setDashboardDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [fineDate, setFineDate] = useState(() => new Date().toISOString().slice(0, 10));
-  // Calculate admissions date range based on dashboardDate
-  // to = dashboardDate, from = one year before dashboardDate
-  const calculateAdmissionsDateRange = useCallback((toDate: string) => {
-    const to = new Date(toDate);
-    const from = new Date(to);
-    from.setFullYear(from.getFullYear() - 1);
-    return {
-      from: from.toISOString().slice(0, 10),
-      to: to.toISOString().slice(0, 10)
-    };
-  }, []);
-
-  const [admissionsDateFrom, setAdmissionsDateFrom] = useState(() => {
-    const range = calculateAdmissionsDateRange(new Date().toISOString().slice(0, 10));
-    return range.from;
-  });
+  const [admissionsDateFrom, setAdmissionsDateFrom] = useState(() => new Date().toISOString().slice(0, 10));
   const [admissionsDateTo, setAdmissionsDateTo] = useState(() => new Date().toISOString().slice(0, 10));
-
-  // Update admissions date range when dashboardDate changes
-  useEffect(() => {
-    const range = calculateAdmissionsDateRange(dashboardDate);
-    setAdmissionsDateFrom(range.from);
-    setAdmissionsDateTo(range.to);
-  }, [dashboardDate, calculateAdmissionsDateRange]);
 
   // Accounts date range state
   const [accountsDateFrom, setAccountsDateFrom] = useState(() => {
@@ -371,6 +349,7 @@ const Dashboard: React.FC = () => {
     admissionsChart: [] as any[],
     withdrawalsChart: [] as any[],
     genderData: [] as any[],
+    recentStudents: [] as any[],
     gradeDistribution: [] as any[],
     latestAdmissions: [] as any[],
     todaysBirthdays: [] as any[],
@@ -428,14 +407,40 @@ const Dashboard: React.FC = () => {
 
     const { data: sessionData } = await supabase
       .from('sessions')
-      .select('id')
+      .select('id, start_date, end_date')
       .eq('is_active', true)
       .eq('school_id', user?.school_id)
+      .order('start_date', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     sessionCacheRef.current = { data: sessionData, timestamp: now };
     return sessionData;
   }, [user?.school_id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncAdmissionsRangeToLatestActiveSession = async () => {
+      if (!user?.school_id) return;
+
+      const latestActiveSession = await getCachedSession();
+      if (cancelled || !latestActiveSession) return;
+
+      if (latestActiveSession.start_date) {
+        setAdmissionsDateFrom(latestActiveSession.start_date);
+      }
+      if (latestActiveSession.end_date) {
+        setAdmissionsDateTo(latestActiveSession.end_date);
+      }
+    };
+
+    syncAdmissionsRangeToLatestActiveSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.school_id, getCachedSession]);
 
   // ==========================================
   // HELPER FUNCTIONS
@@ -3379,9 +3384,10 @@ const Dashboard: React.FC = () => {
   const withdrawalsChartData = useMemo(() => admissionsData.withdrawalsChart || [], [admissionsData.withdrawalsChart]);
   const genderChartData = useMemo(() => admissionsData.genderData || [], [admissionsData.genderData]);
   const classStrengths = useMemo(() => {
-    if (!students.length || !classes.length) return [];
+    const rangeStudents = admissionsData.recentStudents || [];
+    if (!rangeStudents.length || !classes.length) return [];
     const strengthMap = new Map<string, { boys: number; girls: number }>();
-    students.forEach(student => {
+    rangeStudents.forEach((student: any) => {
       const className = getClassName(student.class_id);
       if (!strengthMap.has(className)) {
         strengthMap.set(className, { boys: 0, girls: 0 });
@@ -3399,7 +3405,7 @@ const Dashboard: React.FC = () => {
       girls: counts.girls,
       total: counts.boys + counts.girls
     })).sort((a, b) => compareClassNames(a.name, b.name));
-  }, [students, classes, getClassName]);
+  }, [admissionsData.recentStudents, classes, getClassName]);
 
   // ==========================================
   // RENDER

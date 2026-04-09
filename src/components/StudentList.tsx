@@ -24,10 +24,12 @@ import {
   Phone as PhoneIcon,
   LocationOn as LocationIcon,
   Sms as SmsIcon,
+  TableView as TableViewIcon,
   WhatsApp as WhatsAppIcon,
   Person as PersonIcon,
 } from '@mui/icons-material';
 import { Textfit } from '@techstack/react-textfit';
+import * as XLSX from 'xlsx';
 import GlowingCards, { GlowingCard } from './ui/glowing-cards';
 import {
   clayCardStyle,
@@ -1825,6 +1827,7 @@ const StudentList: React.FC = () => {
   const [loadingClasses, setLoadingClasses] = useState(false);
   const [loadingSections, setLoadingSections] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [exportExcelLoading, setExportExcelLoading] = useState(false);
   const [classFilter, setClassFilter] = useState('');
   const [sectionFilter, setSectionFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -2476,8 +2479,19 @@ const StudentList: React.FC = () => {
           delete cleanedForm[key];
         }
       });
+      const avatarFile = formData._newAvatarFile;
+      const avatarBase64 = typeof (formData as any)._newAvatarBase64 === 'string'
+        ? (formData as any)._newAvatarBase64
+        : '';
+      const hasNewAvatarFile =
+        avatarFile &&
+        typeof avatarFile === 'object' &&
+        'size' in avatarFile &&
+        'type' in avatarFile;
+      const hasNewAvatarBase64 = avatarBase64.startsWith('data:image/');
+
       // Handle avatar upload/removal
-      if (formData._newAvatarFile || (formData as any)._newAvatarBase64) {
+      if (hasNewAvatarFile || hasNewAvatarBase64) {
         // Delete old image if it exists
         if (editingStudent && editingStudent.picture_url) {
           const url = editingStudent.picture_url;
@@ -2490,8 +2504,7 @@ const StudentList: React.FC = () => {
             }
           }
         }
-
-        let file: any = formData._newAvatarFile;
+        let file: any = avatarFile;
 
         // If it's totally lost, notify the user. 
         if (!file || (!('size' in file) && !('type' in file))) {
@@ -2639,6 +2652,99 @@ const StudentList: React.FC = () => {
     const month = (date.getMonth() + 1).toString().padStart(2, '0'); // getMonth() returns 0-11
     const year = date.getFullYear();
     return `${day}-${month}-${year}`;
+  };
+
+  const handleExportStudentsExcel = async () => {
+    if (!filtered.length) return;
+
+    setExportExcelLoading(true);
+    try {
+      const sortedStudents = [...filtered].sort((a, b) => Number(a.id) - Number(b.id));
+      const grouped: Record<string, typeof sortedStudents> = {};
+
+      sortedStudents.forEach((stu) => {
+        const className = stu.classes?.name || '-';
+        const sectionName = stu.sections?.name ? ` (${stu.sections.name})` : '';
+        const groupKey = className + sectionName;
+        if (!grouped[groupKey]) grouped[groupKey] = [];
+        grouped[groupKey].push(stu);
+      });
+
+      Object.keys(grouped).forEach((groupKey) => {
+        grouped[groupKey].sort((a, b) => Number(a.id) - Number(b.id));
+      });
+
+      const classObjects = Object.keys(grouped).map((groupKey) => {
+        const className = groupKey.split(' (')[0];
+        return { name: className, groupKey };
+      });
+
+      const sortedGroupKeys = sortClasses(classObjects).map((obj) => obj.groupKey);
+      const orderedStudents = sortedGroupKeys.flatMap((groupKey) => grouped[groupKey]);
+
+      const rows = orderedStudents
+        .map((student) => ({
+          roll_no: getStudentDisplayId({ id: student.id, roll_number: student.roll_number }),
+          name: student.name || '',
+          father: student.father_name || '',
+          dob: student.dob ? formatDate(new Date(student.dob)) : '',
+          class_section: `${student.classes?.name || ''}${student.sections?.name ? ` (${student.sections.name})` : ''}`.trim(),
+          phone: student.phone || student.contact_number || '',
+          address: student.address || '',
+        }))
+        .map((row, index) => ({
+          serial_no: index + 1,
+          ...row,
+        }));
+
+      const worksheetData = [
+        ['SNo', 'Roll No', 'Name', 'Father', 'DOB', 'Class', 'Phone', 'Address'],
+        ...rows.map((row) => [
+          row.serial_no,
+          String(row.roll_no ?? ''),
+          row.name,
+          row.father,
+          row.dob,
+          row.class_section,
+          String(row.phone ?? ''),
+          row.address,
+        ]),
+      ];
+
+      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+      const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+
+      for (let rowIndex = 1; rowIndex <= range.e.r; rowIndex += 1) {
+        const rollCellRef = XLSX.utils.encode_cell({ r: rowIndex, c: 1 });
+        const dobCellRef = XLSX.utils.encode_cell({ r: rowIndex, c: 4 });
+        const phoneCellRef = XLSX.utils.encode_cell({ r: rowIndex, c: 6 });
+
+        if (worksheet[rollCellRef]) worksheet[rollCellRef].t = 's';
+        if (worksheet[dobCellRef]) worksheet[dobCellRef].t = 's';
+        if (worksheet[phoneCellRef]) worksheet[phoneCellRef].t = 's';
+      }
+
+      worksheet['!cols'] = [
+        { wch: 10 },
+        { wch: 12 },
+        { wch: 24 },
+        { wch: 24 },
+        { wch: 14 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 32 },
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Students');
+      XLSX.writeFile(workbook, 'Students_List.xlsx');
+      showToast('Students exported as Excel file', 'success');
+    } catch (error) {
+      console.error('Failed to export students Excel:', error);
+      showToast('Failed to export Excel file', 'error');
+    } finally {
+      setExportExcelLoading(false);
+    }
   };
 
   const handleExportStudentsPdf = async () => {
@@ -3196,8 +3302,43 @@ const StudentList: React.FC = () => {
                   </SegmentedSelect>
                   <SegmentedButton
                     theme={theme === 'dark' ? darkTheme : lightTheme}
+                    onClick={handleExportStudentsExcel}
+                    disabled={exportExcelLoading || exportLoading}
+                    title="Export students to Excel"
+                    style={{
+                      minWidth: 110,
+                      maxWidth: 130,
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      background: theme === 'dark' ? '#444' : '#f3f4f6',
+                      border: `1.5px solid ${theme === 'dark' ? '#555' : '#e5e7eb'}`,
+                      color: theme === 'dark' ? '#C0C0C0' : '#444',
+                      fontWeight: 700
+                    }}
+                  >
+                    {exportExcelLoading ? (
+                      <div style={{
+                        width: 15,
+                        height: 15,
+                        border: '2px solid #e0e7ff',
+                        borderTop: '2px solid #4a6cf7',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }} />
+                    ) : (
+                      <TableViewIcon style={{ fontSize: 15 }} />
+                    )}
+                    <span style={{ fontWeight: 700, display: 'inline-block' }}>
+                      {exportExcelLoading ? 'Exporting...' : 'Excel'}
+                    </span>
+                  </SegmentedButton>
+                  <SegmentedButton
+                    theme={theme === 'dark' ? darkTheme : lightTheme}
                     onClick={handleExportStudentsPdf}
-                    disabled={exportLoading}
+                    disabled={exportLoading || exportExcelLoading}
                     title="Export students to PDF"
                     style={{
                       minWidth: 110,
@@ -3298,8 +3439,31 @@ const StudentList: React.FC = () => {
                 </SegmentedSelect>
                 <SegmentedButton
                   theme={theme === 'dark' ? darkTheme : lightTheme}
+                  onClick={handleExportStudentsExcel}
+                  disabled={exportExcelLoading || exportLoading}
+                  title="Export students to Excel"
+                  style={{ width: '100%', justifyContent: 'center' }}
+                >
+                  {exportExcelLoading ? (
+                    <div style={{
+                      width: 15,
+                      height: 15,
+                      border: '2px solid #e0e7ff',
+                      borderTop: '2px solid #4a6cf7',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }} />
+                  ) : (
+                    <TableViewIcon style={{ fontSize: 15 }} />
+                  )}
+                  <span style={{ fontWeight: 700 }}>
+                    {exportExcelLoading ? 'Exporting...' : 'Excel'}
+                  </span>
+                </SegmentedButton>
+                <SegmentedButton
+                  theme={theme === 'dark' ? darkTheme : lightTheme}
                   onClick={handleExportStudentsPdf}
-                  disabled={exportLoading}
+                  disabled={exportLoading || exportExcelLoading}
                   title="Export students to PDF"
                   style={{ width: '100%', gridColumn: '1 / -1', justifyContent: 'center' }}
                 >

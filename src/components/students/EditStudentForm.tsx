@@ -494,11 +494,16 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
     try {
       setIsSubmitting(true);
       
+      const hasNewAvatarPreview =
+        Boolean(avatarFileRef.current) &&
+        typeof editAvatar === 'string' &&
+        editAvatar.startsWith('data:image/');
+
       // Get the actual File object from ref (preserves File instance)
       const submitData = {
         ...formData,
         _newAvatarFile: avatarFileRef.current || formData._newAvatarFile,
-        _newAvatarBase64: editAvatar
+        _newAvatarBase64: hasNewAvatarPreview ? editAvatar : null
       };
       
       await onSubmit(submitData);
