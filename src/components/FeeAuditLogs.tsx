@@ -16,6 +16,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { FeeAuditLog } from '../types/fee';
 import FeeAuditSetupInstructions from './FeeAuditSetupInstructions';
 import { getStudentDisplayId } from '../utils/studentUtils';
+import { formatAppDateTime } from '../utils/dateUtils';
 import Loader from './Loader';
 
 // Styled Components
@@ -755,7 +756,7 @@ const FeeAuditLogs: React.FC<FeeAuditLogsProps> = ({
 
   // Format timestamp
   const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString();
+    return formatAppDateTime(timestamp);
   };
 
   // Format JSON for display

@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { StudentInfo } from '../types';
+import { formatAppDate } from '../../../utils/dateUtils';
 
 const Card = styled.div`
   background: ${({ theme }) => theme.CARD};
@@ -86,7 +87,7 @@ export const StudentInfoCard: React.FC<StudentInfoCardProps> = ({ student }) => 
         {student.dateOfAdmission && (
           <InfoItem>
             <Label>DoA</Label>
-            <Value>{new Date(student.dateOfAdmission).toLocaleDateString()}</Value>
+            <Value>{formatAppDate(student.dateOfAdmission)}</Value>
           </InfoItem>
         )}
         {student.campus && (
@@ -120,4 +121,3 @@ export const StudentInfoCard: React.FC<StudentInfoCardProps> = ({ student }) => 
     </Card>
   );
 };
-

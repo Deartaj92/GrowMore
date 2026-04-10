@@ -6,6 +6,7 @@ import { sortClasses } from '../utils/classUtils';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { examinationService } from '../services/examinationService';
 import { Examination } from '../types/examinations';
+import { formatAppDate } from '../utils/dateUtils';
 import {
   Assessment as AssessmentIcon,
   School as SchoolIcon,
@@ -1730,7 +1731,7 @@ const ExaminationAnalytics: React.FC = () => {
         doc.text(`Exam: ${selectedExam.name}`, margin, 23);
         
         // Date
-        doc.text(`Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth - margin - 50, 23, { align: 'right' });
+        doc.text(`Generated: ${formatAppDate(new Date())}`, pageWidth - margin - 50, 23, { align: 'right' });
         
         doc.setTextColor(0, 0, 0);
         return yPos;
@@ -2844,4 +2845,3 @@ const ExaminationAnalytics: React.FC = () => {
 };
 
 export default ExaminationAnalytics;
-

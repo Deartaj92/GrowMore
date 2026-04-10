@@ -36,6 +36,7 @@ import {
   HomeworkClassHeader
 } from '../../styles';
 import { sortClasses } from '../../../../utils/classUtils';
+import { formatAppDate } from '../../../../utils/dateUtils';
 
 interface HomeworkTabProps {
   showHomeworkDiary: boolean;
@@ -124,7 +125,7 @@ const HomeworkTab: React.FC<HomeworkTabProps> = ({
                       No Homework Assigned
                     </div>
                     <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>
-                      No homework has been assigned for {new Date(dashboardDate).toLocaleDateString()}
+                      No homework has been assigned for {formatAppDate(dashboardDate)}
                     </div>
                   </NoHomeworkData>
                 );
@@ -428,4 +429,3 @@ const HomeworkTab: React.FC<HomeworkTabProps> = ({
 };
 
 export default HomeworkTab;
-

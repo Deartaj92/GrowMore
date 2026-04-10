@@ -24,6 +24,7 @@ import {
 import { sortClasses } from '../utils/classUtils';
 import { fetchAllRows } from '../utils/paginationHelper';
 import { getSequenceNumber } from '../utils/studentUtils';
+import { formatAppDate } from '../utils/dateUtils';
 import {
   loadChallans,
   loadChallanItems,
@@ -1588,7 +1589,7 @@ const ChallansListPage: React.FC = () => {
                             Rs. {formatCurrency(Number(challan.total_amount || 0))}
                           </CenterTd>
                           <CenterTd>
-                            {challan.due_date ? new Date(challan.due_date).toLocaleDateString() : 'N/A'}
+                            {challan.due_date ? formatAppDate(challan.due_date, 'N/A') : 'N/A'}
                           </CenterTd>
                           <CenterTd>
                             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>

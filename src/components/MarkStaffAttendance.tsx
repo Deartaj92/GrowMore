@@ -5,6 +5,7 @@ import { ThemeContext, useProgress, darkTheme, lightTheme } from './Layout';
 import { useToast } from './useToast';
 import { usePageFooter } from './Layout/contexts/PageFooterContext';
 import { format, isSunday, parseISO } from 'date-fns';
+import AppDateField from './shared/AppDateField';
 import {
   CheckCircle,
   Cancel,
@@ -1460,14 +1461,13 @@ const MarkStaffAttendance: React.FC = () => {
           )}
         </div>
         <SegmentedGroup theme={theme === 'dark' ? darkTheme : lightTheme}>
-          <SegmentedInput
-            theme={theme === 'dark' ? darkTheme : lightTheme}
-            type="date"
+          <AppDateField
             value={date}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               setDate(e.target.value);
             }}
-            style={{ minWidth: 120 }}
+            fullWidth={false}
+            textFieldProps={{ InputLabelProps: { shrink: true }, sx: { minWidth: 170 } }}
           />
           <SegmentedInput
             theme={theme === 'dark' ? darkTheme : lightTheme}

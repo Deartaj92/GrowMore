@@ -5,6 +5,7 @@ import { ThemeContext } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId, getSequenceNumber } from '../utils/studentUtils';
+import { formatAppDate, formatAppDateForFilename } from '../utils/dateUtils';
 import { toast } from 'react-hot-toast';
 import { examinationConfigurationService, DMCColorConfiguration, ExaminationConfig } from '../services/examinationConfigurationService';
 import {
@@ -1842,7 +1843,7 @@ const DetailedMarksCertificate: React.FC = () => {
           percentage: Math.round(percentage * 10) / 10,
           grade: grade,
           position: 0, // Will be calculated after sorting
-          date: new Date().toLocaleDateString()
+          date: formatAppDate(new Date())
         });
       }
 
@@ -3196,19 +3197,10 @@ const DetailedMarksCertificate: React.FC = () => {
         toast.success('Generating PDF for mobile... Please wait.', { id: 'pdf-export' });
       }
 
-      // Format date as dd-mmm-yyyy
-      const formatDate = (date: Date) => {
-        const day = date.getDate().toString().padStart(2, '0');
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const month = months[date.getMonth()];
-        const year = date.getFullYear();
-        return `${day}-${month}-${year}`;
-      };
-
       // Save the PDF with mobile-friendly approach
       const versionSuffix = pdfVersion === 'colored' ? 'Colored' : pdfVersion === 'custom' ? 'Custom' : 'B&W';
       const sectionPart = selectedSection ? `(${selectedSection.name})` : '';
-      const fileName = `DMC_${selectedClass?.name}${sectionPart}_${selectedExamination?.name}_${versionSuffix}_${new Date().toLocaleDateString('en-GB')}.pdf`;
+      const fileName = `DMC_${selectedClass?.name}${sectionPart}_${selectedExamination?.name}_${versionSuffix}_${formatAppDateForFilename(new Date())}.pdf`;
       
       if (isMobileDevice) {
         // For mobile devices, use Capacitor Filesystem API approach

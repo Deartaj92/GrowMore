@@ -7,7 +7,9 @@ import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 import { supabase } from '../supabaseClient';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId } from '../utils/studentUtils';
+import { formatAppDate, formatAppDateTime, formatAppTime } from '../utils/dateUtils';
 import { activityTrackingService } from '../services/activityTrackingService';
+import AppDateField from '../components/shared/AppDateField';
 import {
   EventBusy as EventBusyIcon,
   Search as SearchIcon,
@@ -31,7 +33,6 @@ import {
   Info as InfoIcon,
 } from '@mui/icons-material';
 import Loader from '../components/Loader';
-import { format } from 'date-fns';
 import {
   Dialog,
   DialogTitle,
@@ -1152,11 +1153,11 @@ const LeaveRequestsPage: React.FC = () => {
   
   // Helper functions
   const formatDate = (dateStr: string) => {
-    return format(new Date(dateStr), 'MMM dd, yyyy');
+    return formatAppDate(dateStr);
   };
   
   const formatDateTime = (dateStr: string) => {
-    return format(new Date(dateStr), 'MMM dd, yyyy hh:mm a');
+    return formatAppDateTime(dateStr);
   };
   
   const calculateDays = (startDate: string, endDate: string): number => {
@@ -1564,36 +1565,18 @@ const LeaveRequestsPage: React.FC = () => {
             <option value="cancelled">Cancelled</option>
           </SelectFilter>
           
-          <input
-            type="date"
+          <AppDateField
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            style={{
-              padding: '0.6rem 1rem',
-              border: `1px solid ${theme.BORDER}`,
-              borderRadius: '8px',
-              background: theme.BG,
-              color: theme.TEXT_PRIMARY,
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-            }}
-            placeholder="From Date"
+            fullWidth={false}
+            textFieldProps={{ InputLabelProps: { shrink: true }, sx: { minWidth: 170 } }}
           />
           
-          <input
-            type="date"
+          <AppDateField
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            style={{
-              padding: '0.6rem 1rem',
-              border: `1px solid ${theme.BORDER}`,
-              borderRadius: '8px',
-              background: theme.BG,
-              color: theme.TEXT_PRIMARY,
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-            }}
-            placeholder="To Date"
+            fullWidth={false}
+            textFieldProps={{ InputLabelProps: { shrink: true }, sx: { minWidth: 170 } }}
           />
         </FilterRow>
       </FiltersContainer>
@@ -1754,7 +1737,7 @@ const LeaveRequestsPage: React.FC = () => {
                           {formatDate(request.created_at)}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: theme.TEXT_SECONDARY }}>
-                          {format(new Date(request.created_at), 'hh:mm a')}
+                          {formatAppTime(request.created_at)}
                         </div>
                       </div>
                     </TableCell>
@@ -2087,7 +2070,7 @@ const LeaveRequestsPage: React.FC = () => {
                   </Box>
                   {selectedRequest.reviewed_at && (
                     <Box sx={{ mt: 1, fontSize: '0.85rem', color: theme.TEXT_SECONDARY }}>
-                      Reviewed on: {format(new Date(selectedRequest.reviewed_at), 'MMM dd, yyyy hh:mm a')}
+                      Reviewed on: {formatAppDateTime(selectedRequest.reviewed_at)}
                     </Box>
                   )}
                 </Box>
@@ -2135,4 +2118,3 @@ const LeaveRequestsPage: React.FC = () => {
 };
 
 export default LeaveRequestsPage;
-

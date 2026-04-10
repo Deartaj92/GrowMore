@@ -9,6 +9,7 @@ import { FeePlanForm } from './FeePlanForm';
 import { FeePlanFormData, FeePlanItemFormData } from '../types';
 import { useToast } from '../../../components/useToast';
 import { supabase } from '../../../supabaseClient';
+import { formatAppDate } from '../../../utils/dateUtils';
 
 const PlansListContainer = styled.div`
   display: flex;
@@ -367,7 +368,7 @@ export const FeePlansList: React.FC<FeePlansListProps> = ({
                       {' • '}
                     </>
                   )}
-                  Effective From: {new Date(plan.effectiveFrom).toLocaleDateString()} • 
+                  Effective From: {formatAppDate(plan.effectiveFrom)} •
                   Total: Rs. {totals.feeAfterDiscount.toFixed(2)} • 
                   Items: {plan.items.length}
                 </PlanRowSubtitle>
@@ -514,4 +515,3 @@ export const FeePlansList: React.FC<FeePlansListProps> = ({
     </PlansListContainer>
   );
 };
-

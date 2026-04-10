@@ -3,6 +3,7 @@ import { payrollService } from '../../services/payrollService';
 import { supabase } from '../../supabaseClient';
 import type { PayrollGeneration, PayrollPayment } from '../../types/payroll';
 import { formatPayrollCurrency } from './utils';
+import { formatAppDate, formatAppDateTime } from '../../utils/dateUtils';
 
 type SchoolReceiptProfile = {
   name: string;
@@ -19,10 +20,7 @@ const shortMonthLabel = (month: number, year: number) =>
 
 const paymentModeLabel = (mode?: string) => (mode || 'other').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 const formatReceiptDate = (dateValue?: string | null) => {
-  if (!dateValue) return '-';
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return dateValue;
-  return date.toLocaleDateString('en-GB');
+  return formatAppDate(dateValue);
 };
 
 const safeText = (value?: string | null) => value?.trim() || '-';
@@ -88,7 +86,7 @@ const drawCopy = (
   const attendance = generation.attendanceData?.summary;
   const receiptNo = `PR-${String(payment.id).padStart(5, '0')}`;
   const issueTime = payment.createdAt
-    ? new Date(payment.createdAt).toLocaleString()
+    ? formatAppDateTime(payment.createdAt)
     : formatReceiptDate(payment.paymentDate);
   const employeeName = generation.staff?.name || 'Employee';
   const employeeRole = generation.staff?.role || '-';

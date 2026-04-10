@@ -19,6 +19,7 @@ import { IncrementHistory as IncrementHistoryType } from '../types';
 import { ReverseIncrementModal } from './ReverseIncrementModal';
 import { CircularProgress } from '@mui/material';
 import { supabase } from '../../../supabaseClient';
+import { formatAppDateTime } from '../../../utils/dateUtils';
 
 const HistoryContainer = styled.div`
   display: flex;
@@ -513,7 +514,7 @@ export const IncrementHistoryComponent: React.FC<IncrementHistoryProps> = ({
 
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
+    return formatAppDateTime(dateString);
   };
 
   const formatIncrementValue = (type: string, value: number) => {
@@ -732,4 +733,3 @@ export const IncrementHistoryComponent: React.FC<IncrementHistoryProps> = ({
     </HistoryContainer>
   );
 };
-

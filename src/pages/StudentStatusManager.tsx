@@ -26,6 +26,8 @@ import { useLoading } from '../contexts/LoadingContext';
 import NoStudentsFound from '../components/NoStudentsFound';
 import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 import { fetchAllRows } from '../utils/paginationHelper';
+import { formatAppDateTime } from '../utils/dateUtils';
+import AppDateField from '../components/shared/AppDateField';
 
 import Loader from '../components/Loader';
 import {
@@ -3267,14 +3269,16 @@ const StudentStatusManager: React.FC = () => {
                   </ModalFormGroup>
                   <ModalFormGroup>
                     <ModalLabel htmlFor="deactivateDate">Date of deactivation:</ModalLabel>
-                    <ModalInput
+                    <AppDateField
+                      label="Date of deactivation"
+                      name="deactivateDate"
                       id="deactivateDate"
-                      type="date"
                       value={selectedStudent.deactivateDate || new Date().toISOString().split('T')[0]}
                       onChange={(e) => setSelectedStudent({ ...selectedStudent, deactivateDate: e.target.value })}
                       required
-                      min="2000-01-01"
-                      max="2100-12-31"
+                      minDate="2000-01-01"
+                      maxDate="2100-12-31"
+                      textFieldProps={{ InputLabelProps: { shrink: true } }}
                     />
                   </ModalFormGroup>
                 </>
@@ -3300,14 +3304,16 @@ const StudentStatusManager: React.FC = () => {
                   </ModalFormGroup>
                   <ModalFormGroup>
                     <ModalLabel htmlFor="suspendDate">Date of suspension:</ModalLabel>
-                    <ModalInput
+                    <AppDateField
+                      label="Date of suspension"
+                      name="suspendDate"
                       id="suspendDate"
-                      type="date"
                       value={selectedStudent.suspendDate || new Date().toISOString().split('T')[0]}
                       onChange={(e) => setSelectedStudent({ ...selectedStudent, suspendDate: e.target.value })}
                       required
-                      min="2000-01-01"
-                      max="2100-12-31"
+                      minDate="2000-01-01"
+                      maxDate="2100-12-31"
+                      textFieldProps={{ InputLabelProps: { shrink: true } }}
                     />
                   </ModalFormGroup>
                 </>
@@ -3372,14 +3378,16 @@ const StudentStatusManager: React.FC = () => {
                   </ModalFormGroup>
                   <ModalFormGroup>
                     <ModalLabel htmlFor="withdrawDate">Date of withdrawal:</ModalLabel>
-                    <ModalInput
+                    <AppDateField
+                      label="Date of withdrawal"
+                      name="withdrawDate"
                       id="withdrawDate"
-                      type="date"
                       value={selectedStudent.withdrawDate || new Date().toISOString().split('T')[0]}
                       onChange={(e) => setSelectedStudent({ ...selectedStudent, withdrawDate: e.target.value })}
                       required
-                      min="2000-01-01"
-                      max="2100-12-31"
+                      minDate="2000-01-01"
+                      maxDate="2100-12-31"
+                      textFieldProps={{ InputLabelProps: { shrink: true } }}
                     />
                   </ModalFormGroup>
                 </div>
@@ -3594,7 +3602,7 @@ const StudentStatusManager: React.FC = () => {
                       </StatusIcon>
                       {rec.action.charAt(0).toUpperCase() + rec.action.slice(1)}
                       <HistoryDate>
-                        {rec.created_at ? new Date(rec.created_at).toLocaleString() : ''}
+                        {rec.created_at ? formatAppDateTime(rec.created_at, '') : ''}
                       </HistoryDate>
                     </HistoryTitle>
 

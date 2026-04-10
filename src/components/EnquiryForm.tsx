@@ -20,6 +20,7 @@ import { enquiryService } from '../services/enquiryService';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './useToast';
 import { EnquiryType, EnquiryFormData, AdmissionDetails, JobDetails } from '../types/enquiry';
+import AppDateField from './shared/AppDateField';
 import {
   TextField,
   Button,
@@ -593,13 +594,10 @@ const EnquiryForm: React.FC<EnquiryFormProps> = ({ enquiryId, onSuccess, onCance
                 />
               </Grid>
               <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Date of Birth"
-                  type="date"
+                <AppDateField
                   value={admissionDetails.student_dob || ''}
-                  onChange={(e) => handleAdmissionDetailsChange('student_dob', e.target.value)}
-                  InputLabelProps={{ shrink: true }}
+                  onChangeValue={(value) => handleAdmissionDetailsChange('student_dob', value)}
+                  label="Date of Birth"
                 />
               </Grid>
               <Grid item xs={12} md={6}>
@@ -735,13 +733,10 @@ const EnquiryForm: React.FC<EnquiryFormProps> = ({ enquiryId, onSuccess, onCance
                 />
               </Grid>
               <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Availability Date"
-                  type="date"
+                <AppDateField
                   value={jobDetails.availability_date || ''}
-                  onChange={(e) => handleJobDetailsChange('availability_date', e.target.value)}
-                  InputLabelProps={{ shrink: true }}
+                  onChangeValue={(value) => handleJobDetailsChange('availability_date', value)}
+                  label="Availability Date"
                 />
               </Grid>
               <Grid item xs={12} md={6}>

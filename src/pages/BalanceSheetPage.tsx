@@ -8,6 +8,7 @@ import { useToast } from '../components/useToast';
 import { fetchAllRows } from '../utils/paginationHelper';
 import { useLoading } from '../contexts/LoadingContext';
 import Loader from '../components/Loader';
+import AppDateField from '../components/shared/AppDateField';
 import { incomeService } from '../services/incomeService';
 import {
   AccountBalance as AccountBalanceIcon,
@@ -610,11 +611,12 @@ const BalanceSheetPage: React.FC = () => {
             Balance Sheet
           </HeaderTitle>
           <HeaderActions>
-            <DateInput
-              type="date"
+            <AppDateField
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
+              maxDate={new Date().toISOString().split('T')[0]}
+              fullWidth={false}
+              textFieldProps={{ InputLabelProps: { shrink: true }, sx: { minWidth: 170 } }}
             />
           </HeaderActions>
         </Header>
@@ -785,6 +787,5 @@ const BalanceSheetPage: React.FC = () => {
 };
 
 export default BalanceSheetPage;
-
 
 

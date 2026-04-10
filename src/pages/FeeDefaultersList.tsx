@@ -20,6 +20,7 @@ import { useProgress } from '../components/Layout';
 import NoStudentsFound from '../components/NoStudentsFound';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
+import { formatAppDate } from '../utils/dateUtils';
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -4317,7 +4318,7 @@ const FeeDefaultersList: React.FC = () => {
                       <PaymentItem key={index}>
                         <div>
                           <PaymentDate>
-                            {new Date(payment.payment_date).toLocaleDateString('en-GB')}
+                            {formatAppDate(payment.payment_date)}
                           </PaymentDate>
                             <div style={{ fontSize: '0.8rem', color: (theme as any).TEXT_SECONDARY, marginTop: '2px' }}>
                             {payment.payment_mode || 'Cash'} • {payment.remarks || 'No remarks'}
@@ -4411,4 +4412,3 @@ const FeeDefaultersList: React.FC = () => {
 };
 
 export default FeeDefaultersList;
-

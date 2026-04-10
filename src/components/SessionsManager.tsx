@@ -18,11 +18,13 @@ import {
   RemoveCircleOutline as UnlinkIcon
 } from '@mui/icons-material';
 import { ThemeContext, darkTheme, lightTheme } from './Layout';
+import { formatAppDate } from '../utils/dateUtils';
 import { ThemeProvider } from 'styled-components';
 import { useToast } from './useToast';
 import { useAuth } from '../contexts/AuthContext';
 import NoSessionsFound from './NoSessionsFound';
 import Loader from './Loader';
+import AppDateField from './shared/AppDateField';
 
 // Styled Components (copied and adapted from ClassesManager)
 const PageContainer = styled.div`
@@ -865,13 +867,7 @@ interface Session {
 
 // Add date formatting helper at the top
 function formatDate(dateStr: string): string {
-  if (!dateStr) return '-';
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).replace(/ /g, '-');
+  return formatAppDate(dateStr);
 }
 
 const SessionsManager: React.FC = () => {
@@ -1445,20 +1441,22 @@ const SessionsManager: React.FC = () => {
                 </FormGroup>
                 <FormGroup>
                   <Label>Start Date</Label>
-                  <Input
-                    type="date"
+                  <AppDateField
+                    label="Start Date"
                     value={formData.start_date}
                     onChange={e => setFormData({ ...formData, start_date: e.target.value })}
                     required
+                    textFieldProps={{ InputLabelProps: { shrink: true } }}
                   />
                 </FormGroup>
                 <FormGroup>
                   <Label>End Date</Label>
-                  <Input
-                    type="date"
+                  <AppDateField
+                    label="End Date"
                     value={formData.end_date}
                     onChange={e => setFormData({ ...formData, end_date: e.target.value })}
                     required
+                    textFieldProps={{ InputLabelProps: { shrink: true } }}
                   />
                 </FormGroup>
                 <ModalActions>
@@ -1495,20 +1493,22 @@ const SessionsManager: React.FC = () => {
                 </FormGroup>
                 <FormGroup>
                   <Label>Start Date</Label>
-                  <Input
-                    type="date"
+                  <AppDateField
+                    label="Start Date"
                     value={formData.start_date}
                     onChange={e => setFormData({ ...formData, start_date: e.target.value })}
                     required
+                    textFieldProps={{ InputLabelProps: { shrink: true } }}
                   />
                 </FormGroup>
                 <FormGroup>
                   <Label>End Date</Label>
-                  <Input
-                    type="date"
+                  <AppDateField
+                    label="End Date"
                     value={formData.end_date}
                     onChange={e => setFormData({ ...formData, end_date: e.target.value })}
                     required
+                    textFieldProps={{ InputLabelProps: { shrink: true } }}
                   />
                 </FormGroup>
                 <ModalActions>
@@ -1562,4 +1562,4 @@ const SessionsManager: React.FC = () => {
   );
 };
 
-export default SessionsManager; 
+export default SessionsManager;

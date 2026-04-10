@@ -8,6 +8,7 @@ import { supabase } from '../supabaseClient';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
 import { fetchAllRows } from '../utils/paginationHelper';
+import { formatAppDate } from '../utils/dateUtils';
 import {
   History,
   Search as SearchIcon,
@@ -26,6 +27,7 @@ import {
   TrendingDown
 } from '@mui/icons-material';
 import Loader from '../components/Loader';
+import AppDateField from '../components/shared/AppDateField';
 import { useLoading } from '../contexts/LoadingContext';
 import { format } from 'date-fns';
 import { CircularProgress, Button, Box, Grid } from '@mui/material';
@@ -893,11 +895,7 @@ const PaymentHistoryPage: React.FC = () => {
   };
 
   const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = date.toLocaleDateString('en-US', { month: 'short' });
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
+    return formatAppDate(dateString);
   };
 
   const getPaymentDisplayId = (paymentId: number) => `S${user?.school_id || 0}-${paymentId}`;
@@ -1476,23 +1474,21 @@ const PaymentHistoryPage: React.FC = () => {
         <FilterRow>
           <FilterGroup>
             <FilterLabel theme={theme}>Date From</FilterLabel>
-            <SearchInput
-              theme={theme}
-              type="date"
+            <AppDateField
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              style={{ paddingLeft: '0.75rem' }}
+              fullWidth={false}
+              textFieldProps={{ InputLabelProps: { shrink: true }, sx: { minWidth: 170 } }}
             />
           </FilterGroup>
 
           <FilterGroup>
             <FilterLabel theme={theme}>Date To</FilterLabel>
-            <SearchInput
-              theme={theme}
-              type="date"
+            <AppDateField
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              style={{ paddingLeft: '0.75rem' }}
+              fullWidth={false}
+              textFieldProps={{ InputLabelProps: { shrink: true }, sx: { minWidth: 170 } }}
             />
           </FilterGroup>
         </FilterRow>
@@ -1681,4 +1677,3 @@ const PaymentHistoryPage: React.FC = () => {
 };
 
 export default PaymentHistoryPage;
-

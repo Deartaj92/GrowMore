@@ -10,6 +10,7 @@ import { examinationService } from '../services/examinationService';
 import { Examination } from '../types/examinations';
 import { ThemeContext } from '../components/Layout';
 import { fetchRenderSettings, isTeacherCardVisible, RenderSettings } from '../services/renderSettingsService';
+import { formatAppDate } from '../utils/dateUtils';
 
 // Capacitor App import for back button handling
 let CapacitorApp: any = null;
@@ -1028,7 +1029,7 @@ const WelcomePage: React.FC = () => {
             </CardHeader>
             <CardBody>
               <CardDescription>
-                Enter marks for {examination.exam_type} - {examination.start_date ? new Date(examination.start_date).toLocaleDateString('en-GB') : 'TBD'}
+                Enter marks for {examination.exam_type} - {examination.start_date ? formatAppDate(examination.start_date) : 'TBD'}
               </CardDescription>
               <CardAction $color="#ef4444">
                 Get Started
@@ -1108,4 +1109,4 @@ const WelcomePage: React.FC = () => {
   );
 };
 
-export default WelcomePage; 
+export default WelcomePage;

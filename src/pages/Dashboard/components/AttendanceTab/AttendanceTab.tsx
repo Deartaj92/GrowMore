@@ -36,6 +36,7 @@ import {
 import { supabase } from '../../../../supabaseClient';
 import { useToast } from '../../../../components/useToast';
 import { getStudentDisplayId } from '../../../../utils/studentUtils';
+import { formatAppDate } from '../../../../utils/dateUtils';
 import { whatsappSemiAutoService } from '../../../../services/whatsappSemiAuto';
 import { STATUS_OPTIONS, DELETE_OPTION } from '../../constants';
 import { getStatus } from '../../utils/dashboardUtils';
@@ -1098,7 +1099,7 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                             fontSize: '0.95rem',
                             opacity: 0.8
                           }}>
-                            No attendance has been recorded for {new Date(absentDate).toLocaleDateString()}
+                            No attendance has been recorded for {formatAppDate(absentDate)}
                           </div>
                         </div>
                       );
@@ -1135,7 +1136,7 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                             fontSize: '0.95rem',
                             opacity: 0.8
                           }}>
-                            All students are present on {new Date(absentDate).toLocaleDateString()}
+                            All students are present on {formatAppDate(absentDate)}
                           </div>
                         </div>
                       );

@@ -32,6 +32,7 @@ import {
   InputAdornment,
   Tooltip,
 } from '@mui/material';
+import AppDateField from '../components/shared/AppDateField';
 import {
   Person,
   School,
@@ -7269,14 +7270,13 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                 </FormControl>
               </Grid>
               <Grid item xs={12} md={6}>
-                <TextField
+                <AppDateField
                   fullWidth
                   label="Date of Joining"
                   name="joiningDate"
-                  type="date"
                   value={editForm.joiningDate}
                   onChange={handleEditFormChange}
-                  InputLabelProps={{ shrink: true }}
+                  textFieldProps={{ InputLabelProps: { shrink: true } }}
                 />
               </Grid>
 
@@ -7376,14 +7376,13 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                 />
               </Grid>
               <Grid item xs={12} md={6}>
-                <TextField
+                <AppDateField
                   fullWidth
                   label="Date of Birth"
                   name="dob"
-                  type="date"
                   value={editForm.dob}
                   onChange={handleEditFormChange}
-                  InputLabelProps={{ shrink: true }}
+                  textFieldProps={{ InputLabelProps: { shrink: true } }}
                 />
               </Grid>
               <Grid item xs={12}>

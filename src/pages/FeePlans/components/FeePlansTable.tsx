@@ -14,6 +14,7 @@ import { ThemeContext, darkTheme, lightTheme, useTheme } from '../../../componen
 import { fetchAllRows } from '../../../utils/paginationHelper';
 import { FeeStructure } from '../../../types/fee';
 import { Add as AddIcon } from '@mui/icons-material';
+import { formatAppDate } from '../../../utils/dateUtils';
 
 // Segmented pagination components (matching StudentList.tsx)
 const SEGMENTED_HEIGHT = '32px';
@@ -958,7 +959,7 @@ export const FeePlansTable: React.FC<FeePlansTableProps> = ({
                     {studentInfo?.className || '-'}
                     {studentInfo?.sectionName && ` / ${studentInfo.sectionName}`}
                   </TableCell>
-                  <TableCell>{new Date(plan.effectiveFrom).toLocaleDateString()}</TableCell>
+                  <TableCell>{formatAppDate(plan.effectiveFrom)}</TableCell>
                   <TableCell style={{ textAlign: 'right', fontWeight: 600 }}>
                     Rs. {totals.feeAfterDiscount.toFixed(2)}
                   </TableCell>
@@ -1173,4 +1174,3 @@ export const FeePlansTable: React.FC<FeePlansTableProps> = ({
     </TableContainer>
   );
 };
-

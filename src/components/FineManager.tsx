@@ -5,6 +5,7 @@ import { supabase } from '../supabaseClient';
 import { Save, Delete, Edit, Close, Info } from '@mui/icons-material';
 import { useToast } from './useToast';
 import { useAuth } from '../contexts/AuthContext';
+import { formatAppDate } from '../utils/dateUtils';
 import NoClassesFound from './NoClassesFound';
 import NoSectionsFound from './NoSectionsFound';
 import { useProgress } from '../components/Layout';
@@ -1432,7 +1433,7 @@ const FineManager: React.FC = () => {
                       </FineCardActions>
                     </FineCardTop>
                     <FineCardBody>
-                      <FineCardLabel>Effective from: {fine.effective_from ? new Date(fine.effective_from).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}</FineCardLabel>
+                      <FineCardLabel>Effective from: {formatAppDate(fine.effective_from)}</FineCardLabel>
                       <FineCardLabel>Created by: admin</FineCardLabel>
                     </FineCardBody>
                     <FineAmount>Rs. {Math.round(fine.absent_fine)}</FineAmount>

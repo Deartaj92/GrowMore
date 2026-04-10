@@ -14,6 +14,7 @@ import {
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import Loader from '../../../../components/Loader';
+import AppDateField from '../../../../components/shared/AppDateField';
 import { balanceSheetService } from '../../services/balanceSheetService';
 import { BalanceSheet } from '../../../../types/liability';
 import jsPDF from 'jspdf';
@@ -401,11 +402,11 @@ const BalanceSheetView: React.FC = () => {
           Balance Sheet
         </HeaderTitle>
         <HeaderActions theme={theme}>
-          <DateInput
-            theme={theme}
-            type="date"
+          <AppDateField
             value={asOfDate}
             onChange={(e) => setAsOfDate(e.target.value)}
+            fullWidth={false}
+            textFieldProps={{ InputLabelProps: { shrink: true }, sx: { minWidth: 170 } }}
           />
           <ActionButton theme={theme} onClick={fetchBalanceSheet}>
             <RefreshIcon style={{ fontSize: '1rem' }} />
@@ -576,7 +577,6 @@ const BalanceSheetView: React.FC = () => {
 };
 
 export default BalanceSheetView;
-
 
 
 

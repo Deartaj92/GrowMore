@@ -25,6 +25,8 @@ import {
 import { sortClasses } from '../utils/classUtils';
 import { fetchAllRows } from '../utils/paginationHelper';
 import { getSequenceNumber, getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
+import { formatAppDate } from '../utils/dateUtils';
+import AppDateField from '../components/shared/AppDateField';
 import {
   Dialog,
   DialogTitle,
@@ -836,8 +838,7 @@ const FeeArrearsManager: React.FC = () => {
   
   // Format date
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB');
+    return formatAppDate(dateString);
   };
   
   // Toggle bulk mode
@@ -1252,14 +1253,11 @@ const FeeArrearsManager: React.FC = () => {
                 </Select>
               </FormControl>
               
-              <TextField
-                label="Due Date *"
-                type="date"
+              <AppDateField
                 value={bulkFormData.due_date}
-                onChange={(e) => setBulkFormData({ ...bulkFormData, due_date: e.target.value })}
+                onChangeValue={(value) => setBulkFormData({ ...bulkFormData, due_date: value })}
+                label="Due Date *"
                 size="small"
-                InputLabelProps={{ shrink: true }}
-                fullWidth
               />
               
               <TextField
@@ -1564,13 +1562,12 @@ const FeeArrearsManager: React.FC = () => {
                 inputProps={{ min: 0, step: 0.01 }}
               />
               
-              <TextField
+              <AppDateField
                 label="Due Date *"
-                type="date"
                 value={formData.due_date}
                 onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
                 fullWidth
-                InputLabelProps={{ shrink: true }}
+                textFieldProps={{ InputLabelProps: { shrink: true } }}
               />
               
               <TextField
@@ -1597,4 +1594,3 @@ const FeeArrearsManager: React.FC = () => {
 };
 
 export default FeeArrearsManager;
-

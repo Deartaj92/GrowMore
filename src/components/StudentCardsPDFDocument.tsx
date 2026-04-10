@@ -1,6 +1,7 @@
 import React from 'react';
 import { Document, Page, View, Text, Image, StyleSheet, Svg, Path, Font } from '@react-pdf/renderer';
 import { getStudentDisplayId } from '../utils/studentUtils';
+import { formatAppDate } from '../utils/dateUtils';
 
 const SAMPLE_MODERN_BLUE = '#4AA9D8';
 const SAMPLE_MODERN_BLUE_LIGHT = '#BFE8FB';
@@ -452,7 +453,7 @@ const StudentCardsPDFDocument: React.FC<StudentCardsPDFDocumentProps> = ({
                                                     <View style={styles.infoRow}>
                                                         <Text style={styles.infoLabel}>DOB</Text>
                                                         <Text style={styles.infoSeparator}>:</Text>
-                                                        <Text style={styles.infoValue}>{student.dob ? new Date(student.dob).toLocaleDateString() : '-'}</Text>
+                                                        <Text style={styles.infoValue}>{formatAppDate(student.dob)}</Text>
                                                     </View>
                                                     <View style={styles.infoRow}>
                                                         <Text style={styles.infoLabel}>Roll No.</Text>

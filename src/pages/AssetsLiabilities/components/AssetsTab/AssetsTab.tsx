@@ -43,6 +43,7 @@ import {
 } from '@mui/material';
 import { format } from 'date-fns';
 import Loader from '../../../../components/Loader';
+import AppDateField from '../../../../components/shared/AppDateField';
 import { assetsService } from '../../services/assetsService';
 import { Asset, AssetCategory, AssetFilters, AssetDepreciation, DepreciationMethod, AssetStatus } from '../../../../types/asset';
 import { supabase } from '../../../../supabaseClient';
@@ -1528,16 +1529,17 @@ const AssetsTab: React.FC = () => {
               </Grid>
 
               <Grid item xs={12} sm={6}>
-                <TextField
+                <AppDateField
                   label="Purchase Date"
-                  type="date"
                   required
                   fullWidth
                   size="small"
                   value={formData.purchaseDate}
                   onChange={(e) => setFormData(prev => ({ ...prev, purchaseDate: e.target.value }))}
-                  InputLabelProps={{
-                    shrink: true,
+                  textFieldProps={{
+                    InputLabelProps: {
+                      shrink: true,
+                    },
                   }}
                 />
               </Grid>
@@ -2119,7 +2121,6 @@ const AssetCategoriesManager: React.FC<{
 };
 
 export default AssetsTab;
-
 
 
 

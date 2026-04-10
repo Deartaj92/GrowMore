@@ -24,11 +24,11 @@ import {
   Legend
 } from 'recharts';
 import {
-  DashboardDateInput
 } from '../../styles';
 import { formatCurrency } from '../../utils/dashboardUtils';
 import { AccountsData } from '../../services/accountsService';
 import CashFlowComponent from './CashFlowComponent';
+import AppDateField from '../../../../components/shared/AppDateField';
 
 import { clayCardStyle, isDark, CARD_RADIUS_LG } from '../../../../styles/DesignSystem';
 
@@ -172,24 +172,30 @@ const AccountsTab: React.FC<AccountsTabProps> = ({
         flexWrap: 'wrap',
         justifyContent: 'flex-end'
       }}>
-        <DashboardDateInput
-          type="date"
+        <AppDateField
           value={accountsDateFrom}
-          onChange={(e) => {
-            const newDate = e.target.value;
-            setAccountsDateFrom(newDate);
-          }}
+          onChangeValue={setAccountsDateFrom}
           title="From Date"
+          fullWidth={false}
+          textFieldProps={{
+            sx: {
+              minWidth: 140,
+              '& .MuiOutlinedInput-root': { borderRadius: '12px' }
+            }
+          }}
         />
         <span style={{ color: isDark ? '#888' : '#666', fontWeight: 500 }}>to</span>
-        <DashboardDateInput
-          type="date"
+        <AppDateField
           value={accountsDateTo}
-          onChange={(e) => {
-            const newDate = e.target.value;
-            setAccountsDateTo(newDate);
-          }}
+          onChangeValue={setAccountsDateTo}
           title="To Date"
+          fullWidth={false}
+          textFieldProps={{
+            sx: {
+              minWidth: 140,
+              '& .MuiOutlinedInput-root': { borderRadius: '12px' }
+            }
+          }}
         />
       </div>
 

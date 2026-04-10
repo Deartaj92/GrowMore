@@ -7,6 +7,7 @@ import { examinationService } from '../services/examinationService';
 import { Examination } from '../types/examinations';
 import { useLoading } from '../contexts/LoadingContext';
 import { usePageFooter } from './Layout/contexts/PageFooterContext';
+import { formatAppDate, formatAppDateForFilename } from '../utils/dateUtils';
 import {
   EmojiEvents as TrophyIcon,
   School as SchoolIcon,
@@ -1630,15 +1631,6 @@ const PositionHolders: React.FC = () => {
         currentY = (doc as any).lastAutoTable.finalY + 8;
       }
 
-      // Format date as dd-mmm-yyyy
-      const formatDate = (date: Date) => {
-        const day = date.getDate().toString().padStart(2, '0');
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const month = months[date.getMonth()];
-        const year = date.getFullYear();
-        return `${day}-${month}-${year}`;
-      };
-
       // Footer with color
       const finalY = (doc as any).lastAutoTable.finalY + 20;
       if (finalY > pageHeight - 20) {
@@ -1646,7 +1638,7 @@ const PositionHolders: React.FC = () => {
         doc.setFontSize(8);
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(74, 108, 247); // Blue color
-        doc.text('Generated on: ' + formatDate(new Date()), 20, 30);
+        doc.text('Generated on: ' + formatAppDate(new Date()), 20, 30);
 
         // Add colored footer line
         doc.setDrawColor(74, 108, 247);
@@ -1656,7 +1648,7 @@ const PositionHolders: React.FC = () => {
         doc.setFontSize(8);
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(74, 108, 247); // Blue color
-        doc.text('Generated on: ' + formatDate(new Date()), 20, finalY);
+        doc.text('Generated on: ' + formatAppDate(new Date()), 20, finalY);
 
         // Add colored footer line
         doc.setDrawColor(74, 108, 247);
@@ -1665,7 +1657,7 @@ const PositionHolders: React.FC = () => {
       }
 
       // Save the PDF with mobile-friendly approach
-      const fileName = `PositionHolders_${selectedExam?.name}_${new Date().toLocaleDateString('en-GB')}.pdf`;
+      const fileName = `PositionHolders_${selectedExam?.name}_${formatAppDateForFilename(new Date())}.pdf`;
 
       if (isMobileDevice) {
         // For mobile devices, use Capacitor Filesystem API approach

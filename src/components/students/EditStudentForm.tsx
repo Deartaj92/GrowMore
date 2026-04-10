@@ -25,6 +25,7 @@ import { useToast } from '../useToast';
 import imageCompression from 'browser-image-compression';
 import { useAuth } from '../../contexts/AuthContext';
 import { sortClasses } from '../../utils/classUtils';
+import AppDateField from '../shared/AppDateField';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-', 'Unknown'];
 const RELIGIONS = ['Muslim', 'Christianity', 'Hinduism', 'Sikhism', 'Other'];
@@ -616,16 +617,13 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
                 </Grid>
               )}
               <Grid item xs={12} sm={6} md={4}>
-                <CompactTextField
-                  fullWidth
-                  name="admission_date"
-                  type="date"
+                <AppDateField
+                  textFieldSlot={CompactTextField as React.ElementType}
                   value={formData.admission_date}
-                  onChange={handleTextChange}
+                  onChangeValue={(value) => setFormData(prev => ({ ...prev, admission_date: value }))}
                   required
                   label="Date of Admission"
                   size="small"
-                  InputLabelProps={{ shrink: true }}
                 />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
@@ -666,15 +664,12 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
             </SectionHeader>
             <Grid container spacing={1.5}>
               <Grid item xs={12} sm={6} md={4}>
-                <CompactTextField
-                  fullWidth
-                  name="dob"
-                  type="date"
+                <AppDateField
+                  textFieldSlot={CompactTextField as React.ElementType}
                   value={formData.dob}
-                  onChange={handleTextChange}
+                  onChangeValue={(value) => setFormData(prev => ({ ...prev, dob: value }))}
                   label="Date of Birth"
                   size="small"
-                  InputLabelProps={{ shrink: true }}
                 />
               </Grid>
               <Grid item xs={12} sm={6} md={4}>

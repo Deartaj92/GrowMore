@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './useToast';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
+import { formatAppDate } from '../utils/dateUtils';
 import { ThemeContext, darkTheme, lightTheme } from '../contexts/ThemeContext';
 import { supabase } from '../supabaseClient';
 import { testRecordService } from '../services/testRecordService';
@@ -1803,7 +1804,7 @@ const TestRecordMasterSheet: React.FC = (): JSX.Element => {
                     .filter(date => subjectData.subject_scores[date] !== '-')
                     .map((date) => (
                       <TestResultItem key={date}>
-                        <TestDate>{new Date(date).toLocaleDateString('en-GB')}</TestDate>
+                        <TestDate>{formatAppDate(date)}</TestDate>
                         <TestScore $score={String(subjectData.subject_scores[date])}>
                           {subjectData.subject_scores[date]}
                         </TestScore>

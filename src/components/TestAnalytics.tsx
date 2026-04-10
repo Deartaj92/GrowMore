@@ -28,6 +28,7 @@ import {
 } from '@mui/icons-material';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { formatAppDate } from '../utils/dateUtils';
 import { useToast } from './useToast';
 import Loader from './Loader';
 
@@ -2254,7 +2255,7 @@ const TestAnalytics: React.FC = () => {
         doc.setFontSize(8);
         doc.setTextColor(150, 150, 150);
         doc.text(
-          `Page ${i} of ${pageCount} | Generated on ${new Date().toLocaleDateString()}`,
+          `Page ${i} of ${pageCount} | Generated on ${formatAppDate(new Date())}`,
           105,
           285,
           { align: 'center' }
@@ -3038,4 +3039,3 @@ const TestAnalytics: React.FC = () => {
 };
 
 export default TestAnalytics;
-

@@ -1,6 +1,7 @@
 import styled, { useTheme } from 'styled-components';
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import AppDateField from './shared/AppDateField';
 
 const PageGrid = styled.div`
   display: flex;
@@ -325,7 +326,12 @@ const AdmissionForm: React.FC = () => {
               {classOptions.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
             <label style={{ fontWeight: 600, color: '#888', marginBottom: 2 }}>Date of Admission*</label>
-            <input type="date" value={form.admission_date} onChange={e => setForm({ ...form, admission_date: e.target.value })} />
+            <AppDateField
+              label="Date of Admission"
+              value={form.admission_date}
+              onChange={e => setForm({ ...form, admission_date: e.target.value })}
+              textFieldProps={{ InputLabelProps: { shrink: true } }}
+            />
             <label style={{ fontWeight: 600, color: '#888', marginBottom: 2 }}>Discount in Fee*</label>
             <input type="text" placeholder="In %" value={form.discount_in_fee} onChange={e => setForm({ ...form, discount_in_fee: e.target.value })} />
             <label style={{ fontWeight: 600, color: '#888', marginBottom: 2 }}>Mobile No. for SMS/WhatsApp</label>
@@ -340,7 +346,12 @@ const AdmissionForm: React.FC = () => {
             </div>
             <hr style={{ margin: '0 0 18px 0', border: 0, borderTop: '1.5px solid #e5e7eb' }} />
             <label style={{ fontWeight: 600, color: '#888', marginBottom: 2 }}>Date Of Birth</label>
-            <input type="date" value={form.dob} onChange={e => setForm({ ...form, dob: e.target.value })} />
+            <AppDateField
+              label="Date Of Birth"
+              value={form.dob}
+              onChange={e => setForm({ ...form, dob: e.target.value })}
+              textFieldProps={{ InputLabelProps: { shrink: true } }}
+            />
             <label style={{ fontWeight: 600, color: '#888', marginBottom: 2 }}>Student Birth Form ID / NIC</label>
             <input type="text" placeholder="Student Birth Form ID / NIC" value={form.student_id} onChange={e => setForm({ ...form, student_id: e.target.value })} />
             <label style={{ fontWeight: 600, color: '#888', marginBottom: 2 }}>Gender</label>

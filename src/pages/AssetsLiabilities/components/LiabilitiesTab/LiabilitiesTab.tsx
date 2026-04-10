@@ -42,6 +42,7 @@ import {
 } from '@mui/material';
 import { format } from 'date-fns';
 import Loader from '../../../../components/Loader';
+import AppDateField from '../../../../components/shared/AppDateField';
 import { liabilitiesService } from '../../services/liabilitiesService';
 import { Liability, LiabilityCategory, LiabilityFilters, LiabilityPayment, PaymentMethod, PaymentFrequency, LiabilityStatus } from '../../../../types/liability';
 import { supabase } from '../../../../supabaseClient';
@@ -1670,30 +1671,32 @@ const LiabilitiesTab: React.FC = () => {
               )}
 
               <Grid item xs={12} sm={6}>
-                <TextField
+                <AppDateField
                   label="Start Date"
-                  type="date"
                   required
                   fullWidth
                   size="small"
                   value={formData.startDate}
                   onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                  InputLabelProps={{
-                    shrink: true,
+                  textFieldProps={{
+                    InputLabelProps: {
+                      shrink: true,
+                    },
                   }}
                 />
               </Grid>
 
               <Grid item xs={12} sm={6}>
-                <TextField
+                <AppDateField
                   label="Due Date"
-                  type="date"
                   fullWidth
                   size="small"
                   value={formData.dueDate}
                   onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
-                  InputLabelProps={{
-                    shrink: true,
+                  textFieldProps={{
+                    InputLabelProps: {
+                      shrink: true,
+                    },
                   }}
                 />
               </Grid>
@@ -1999,16 +2002,17 @@ const LiabilitiesTab: React.FC = () => {
 
                 <Grid container spacing={2}>
                   <Grid item xs={12}>
-                    <TextField
+                    <AppDateField
                       label="Payment Date"
-                      type="date"
                       required
                       fullWidth
                       size="small"
                       value={paymentFormData.paymentDate}
                       onChange={(e) => setPaymentFormData(prev => ({ ...prev, paymentDate: e.target.value }))}
-                      InputLabelProps={{
-                        shrink: true,
+                      textFieldProps={{
+                        InputLabelProps: {
+                          shrink: true,
+                        },
                       }}
                     />
                   </Grid>
@@ -2426,7 +2430,6 @@ const LiabilityCategoriesManager: React.FC<{
 };
 
 export default LiabilitiesTab;
-
 
 
 

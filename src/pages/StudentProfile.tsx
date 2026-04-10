@@ -104,6 +104,7 @@ import { homeworkDiaryService } from '../services/homeworkDiaryService';
 import { ExamResult } from '../types/examinations';
 import { TestResult } from '../types/testRecords';
 import { HomeworkDiary } from '../types/homeworkDiary';
+import { formatAppDate, formatAppDateTime } from '../utils/dateUtils';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -6481,7 +6482,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                           <Box className="info-content">
                             <Typography className="info-label">Date of Birth</Typography>
                             <Typography className="info-value">
-                              {new Date(student.dob).toLocaleDateString()}
+                              {formatAppDate(student.dob)}
                             </Typography>
                           </Box>
                         </InfoItem>
@@ -6609,7 +6610,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                           <Box className="info-content">
                             <Typography className="info-label">Admission Date</Typography>
                             <Typography className="info-value">
-                              {new Date(student.admission_date).toLocaleDateString()}
+                              {formatAppDate(student.admission_date)}
                             </Typography>
                           </Box>
                         </InfoItem>
@@ -7139,11 +7140,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                                 ml: 1
                               }}
                             >
-                              {new Date(report.created_at).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}
+                              {formatAppDate(report.created_at)}
                               <Box component="span" sx={{ color: 'text.disabled' }}>|</Box>
                               <Box
                                 component="span"
@@ -7243,7 +7240,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                               <AccessTime fontSize="small" sx={{ color: 'text.secondary', opacity: 0.7 }} />
                               <Typography variant="caption" color="text.secondary">
-                                Last updated: {report.updates[0] && new Date(report.updates[0].created_at).toLocaleDateString()}
+                                Last updated: {report.updates[0] && formatAppDate(report.updates[0].created_at)}
                               </Typography>
                             </Box>
                           )}
@@ -7328,7 +7325,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                                       </Box>
                                     </Typography>
                                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                                      by {update.staff?.name} • {new Date(update.created_at).toLocaleString()}
+                                      by {update.staff?.name} • {formatAppDateTime(update.created_at)}
                                     </Typography>
                                   </Box>
                                   {update.update_note && (
@@ -7940,7 +7937,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                                           borderColor: 'divider'
                                         }}>
                                           <Typography variant="body2" color="text.secondary" fontWeight={500}>
-                                            {new Date(date).toLocaleDateString('en-GB')}
+                                            {formatAppDate(date)}
                                           </Typography>
                                           <Typography variant="body2" fontWeight={600} sx={{ color: scoreColor }}>
                                             {subjectData.subject_scores[date]}
@@ -8194,11 +8191,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                                   <TableRow key={payment.id}>
                                     <TableCell>
                                       {payment.payment_date
-                                        ? new Date(payment.payment_date).toLocaleDateString('en-GB', {
-                                          year: 'numeric',
-                                          month: 'short',
-                                          day: 'numeric'
-                                        })
+                                        ? formatAppDate(payment.payment_date)
                                         : '-'}
                                     </TableCell>
                                     <TableCell sx={{ color: 'success.main', fontWeight: 600 }}>
@@ -8911,7 +8904,7 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                                 title={
                                   <>
                                     <Typography variant="caption" display="block">
-                                      {week.startDate.toLocaleDateString()} - {week.endDate.toLocaleDateString()}
+                                      {formatAppDate(week.startDate)} - {formatAppDate(week.endDate)}
                                     </Typography>
                                     <Typography variant="caption" display="block">
                                       Attendance: {Math.round(week.percentage * 100)}%

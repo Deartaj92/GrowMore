@@ -13,6 +13,7 @@ import {
   SeenByEmpty,
 } from '../../styles';
 import { AnnouncementView } from '../../types';
+import { formatAppDateTime } from '../../../../utils/dateUtils';
 
 interface SeenByModalProps {
   isOpen: boolean;
@@ -51,7 +52,7 @@ const SeenByModal: React.FC<SeenByModalProps> = ({
               <SeenByName>{entry.viewer_name || entry.viewer_identifier}</SeenByName>
               <SeenByMeta>
                 <span>{entry.viewer_role || entry.viewer_type}</span>
-                {entry.seen_at && <span>{new Date(entry.seen_at).toLocaleString()}</span>}
+                {entry.seen_at && <span>{formatAppDateTime(entry.seen_at)}</span>}
               </SeenByMeta>
             </SeenByItem>
           ))}
@@ -62,4 +63,3 @@ const SeenByModal: React.FC<SeenByModalProps> = ({
 };
 
 export default SeenByModal;
-

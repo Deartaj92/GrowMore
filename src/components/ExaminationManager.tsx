@@ -23,6 +23,7 @@ import {
 import { useTheme, useMediaQuery } from '@mui/material';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { ThemeProvider } from 'styled-components';
+import { formatAppDate } from '../utils/dateUtils';
 import { useToast } from '../components/useToast';
 import { useAuth } from '../contexts/AuthContext';
 import { examinationService } from '../services/examinationService';
@@ -1772,7 +1773,7 @@ const ExaminationManager: React.FC = () => {
                               background: '#6366f1'
                             }} />
                             <span>
-                              {examination.start_date ? new Date(examination.start_date).toLocaleDateString('en-GB') : 'TBD'} - {examination.end_date ? new Date(examination.end_date).toLocaleDateString('en-GB') : 'TBD'}
+                              {examination.start_date ? formatAppDate(examination.start_date) : 'TBD'} - {examination.end_date ? formatAppDate(examination.end_date) : 'TBD'}
                             </span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1867,7 +1868,7 @@ const ExaminationManager: React.FC = () => {
                 >
                   {sessions.map((session) => (
                     <option key={session.id} value={session.id}>
-                      {session.name} ({session.start_date ? new Date(session.start_date).toLocaleDateString('en-GB') : 'TBD'} - {session.end_date ? new Date(session.end_date).toLocaleDateString('en-GB') : 'TBD'})
+                      {session.name} ({session.start_date ? formatAppDate(session.start_date) : 'TBD'} - {session.end_date ? formatAppDate(session.end_date) : 'TBD'})
                     </option>
                   ))}
                 </Select>

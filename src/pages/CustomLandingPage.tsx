@@ -16,9 +16,11 @@ import { Examination } from '../types/examinations';
 import { fetchRenderSettings, isTeacherCardVisible, isStudentCardVisible, isParentCardVisible, RenderSettings } from '../services/renderSettingsService';
 import { getStudentDisplayId, createStudentSlug } from '../utils/studentUtils';
 import { format } from 'date-fns';
+import { formatAppDate } from '../utils/dateUtils';
 import { isWeb as checkIsWeb } from '../utils/platformDetection';
 import { ExpandMore, ExpandLess, Receipt, History as HistoryIcon, CheckCircle, Cancel, Pending, CancelOutlined, ExitToApp as ExitIcon } from '@mui/icons-material';
 import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
+import AppDateField from '../components/shared/AppDateField';
 
 // Capacitor import for mobile back button handling
 let CapacitorApp: any = null;
@@ -4719,25 +4721,23 @@ const CustomLandingPage: React.FC = () => {
             </FormControl>
 
             <Box display="flex" gap={2}>
-              <TextField
+              <AppDateField
                 label="Start Date"
-                type="date"
                 value={leaveRequestForm.startDate}
                 onChange={(e) => setLeaveRequestForm({ ...leaveRequestForm, startDate: e.target.value })}
                 fullWidth
                 required
                 size="small"
-                InputLabelProps={{ shrink: true }}
+                textFieldProps={{ InputLabelProps: { shrink: true } }}
               />
-              <TextField
+              <AppDateField
                 label="End Date"
-                type="date"
                 value={leaveRequestForm.endDate}
                 onChange={(e) => setLeaveRequestForm({ ...leaveRequestForm, endDate: e.target.value })}
                 fullWidth
                 required
                 size="small"
-                InputLabelProps={{ shrink: true }}
+                textFieldProps={{ InputLabelProps: { shrink: true } }}
               />
             </Box>
 
@@ -6676,7 +6676,7 @@ const CustomLandingPage: React.FC = () => {
               </CardHeader>
               <CardBody>
                 <CardDescription>
-                  Enter marks for {examination.exam_type} - {examination.start_date ? new Date(examination.start_date).toLocaleDateString('en-GB') : 'TBD'}
+                  Enter marks for {examination.exam_type} - {examination.start_date ? formatAppDate(examination.start_date) : 'TBD'}
                 </CardDescription>
                 <CardAction $color="#ef4444">
                   Get Started
@@ -7318,4 +7318,3 @@ const CustomLandingPage: React.FC = () => {
 };
 
 export default CustomLandingPage;
-

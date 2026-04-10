@@ -6,6 +6,7 @@ import { supabase } from '../supabaseClient';
 import ReactDOM from 'react-dom';
 import { useToast } from '../contexts/ToastContext';
 import { fetchAllRows } from '../utils/paginationHelper';
+import { formatAppDate } from '../utils/dateUtils';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import jsPDF from 'jspdf';
 import autoTable, { CellHookData } from 'jspdf-autotable';
@@ -1068,11 +1069,7 @@ const TimeTableManager: React.FC = () => {
       doc.text(`Timetable for Session - ${sessionName}`, pageWidth / 2, 15, { align: 'center' });
 
       // Add printed date at bottom right
-      const currentDate = new Date().toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
+      const currentDate = formatAppDate(new Date());
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.text(`Printed on: ${currentDate}`, pageWidth - margin, pageHeight - 5, { align: 'right' });
@@ -2596,4 +2593,4 @@ const TimeTableManager: React.FC = () => {
   );
 };
 
-export default TimeTableManager; 
+export default TimeTableManager;

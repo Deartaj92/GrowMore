@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
 import { ReportUpdate } from '../../types/reports';
+import { formatAppDate } from '../../utils/dateUtils';
 
 const StyledDialog = styled(Dialog)(({ theme }) => ({
     zIndex: 1300,
@@ -164,7 +165,7 @@ export const EditUpdateForm: React.FC<EditUpdateFormProps> = ({
                             Status changed from <strong>{update.previous_status}</strong> to <strong>{update.new_status}</strong>
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                            Created by {update.staff?.name} • {new Date(update.created_at).toLocaleDateString()}
+                            Created by {update.staff?.name} • {formatAppDate(update.created_at)}
                         </Typography>
                     </Box>
 
@@ -203,4 +204,3 @@ export const EditUpdateForm: React.FC<EditUpdateFormProps> = ({
         </StyledDialog>
     );
 };
-

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useMemo, useCallback, memo, use
 import styled, { keyframes, DefaultTheme, css } from 'styled-components';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId } from '../utils/studentUtils';
+import { formatAppDateForFilename } from '../utils/dateUtils';
 
 // Spinner animation
 const spin = keyframes`
@@ -1648,7 +1649,7 @@ const MarksEntryManager: React.FC = () => {
 
 
       // Save the PDF with mobile-friendly approach
-      const fileName = `Marks Sheets_${new Date().toLocaleDateString('en-GB')}.pdf`;
+      const fileName = `Marks Sheets_${formatAppDateForFilename(new Date())}.pdf`;
 
       if (isMobileDevice) {
         // For mobile devices, use Capacitor Filesystem API approach (like BWT_Project)

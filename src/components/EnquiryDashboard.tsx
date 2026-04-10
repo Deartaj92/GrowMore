@@ -29,6 +29,7 @@ import { enquiryService } from '../services/enquiryService';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './useToast';
 import { EnquiryDashboardData, Enquiry, EnquiryFollowUp } from '../types/enquiry';
+import { formatAppDate, formatAppDateTime } from '../utils/dateUtils';
 import { CircularProgress, Button, TextField, FormControl, InputLabel, Select, MenuItem, Chip, Avatar, IconButton, Tooltip } from '@mui/material';
 import Loader from './Loader';
 
@@ -504,28 +505,6 @@ const EnquiryDashboard: React.FC = () => {
     return value.toFixed(2);
   };
 
-  // Format date
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      day: '2-digit', 
-      month: 'short', 
-      year: 'numeric' 
-    });
-  };
-
-  // Format datetime
-  const formatDateTime = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      day: '2-digit', 
-      month: 'short', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   // Handle refresh
   const handleRefresh = () => {
     loadDashboardData();
@@ -730,7 +709,7 @@ const EnquiryDashboard: React.FC = () => {
                         </PriorityBadge>
                       </TableCell>
                       <TableCell>
-                        {formatDate(enquiry.enquiry_date)}
+                        {formatAppDate(enquiry.enquiry_date)}
                       </TableCell>
                       <TableCell>
                         <Tooltip title="View Details">
@@ -792,7 +771,7 @@ const EnquiryDashboard: React.FC = () => {
                       />
                     </div>
                     <div style={{ fontSize: '0.8rem', color: (theme as any).TEXT_SECONDARY }}>
-                      {formatDate(enquiry.enquiry_date)}
+                      {formatAppDate(enquiry.enquiry_date)}
                     </div>
                   </div>
                   
@@ -887,7 +866,7 @@ const EnquiryDashboard: React.FC = () => {
                     color: (theme as any).TEXT_SECONDARY,
                     wordBreak: 'break-word'
                   }}>
-                    Due: {formatDateTime(followUp.follow_up_date)}
+                    Due: {formatAppDateTime(followUp.follow_up_date)}
                   </div>
                 </div>
               ))}
@@ -998,7 +977,7 @@ const EnquiryDashboard: React.FC = () => {
         color: (theme as any).TEXT_SECONDARY,
         fontSize: '0.8rem'
       }}>
-        Last updated: {lastUpdated.toLocaleString()}
+        Last updated: {formatAppDateTime(lastUpdated)}
       </div>
       </PageContainer>
     </ResponsiveStyles>

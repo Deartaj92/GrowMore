@@ -3,6 +3,7 @@ import styled, { css, keyframes } from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
+import { formatAppDate, formatAppDateForFilename } from '../utils/dateUtils';
 import { ThemeContext, darkTheme, lightTheme, useProgress } from './Layout';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from './useToast';
@@ -908,13 +909,7 @@ const WithdrawalRegister: React.FC = () => {
 
   // Format date helper
   const formatDate = (date: Date | string): string => {
-    if (!date) return '-';
-    const d = typeof date === 'string' ? new Date(date) : date;
-    if (isNaN(d.getTime())) return '-';
-    const day = d.getDate().toString().padStart(2, '0');
-    const month = (d.getMonth() + 1).toString().padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}-${month}-${year}`;
+    return formatAppDate(date);
   };
 
   // Export to PDF
@@ -1241,7 +1236,7 @@ const WithdrawalRegister: React.FC = () => {
         addFooter(i, actualTotalPages);
       }
       
-      const fileName = `Withdrawal_Register_${formatDate(new Date()).replace(/-/g, '_')}.pdf`;
+      const fileName = `Withdrawal_Register_${formatAppDateForFilename(new Date()).replace(/-/g, '_')}.pdf`;
       doc.save(fileName);
       showToast('Register exported successfully', 'success');
     } catch (error) {

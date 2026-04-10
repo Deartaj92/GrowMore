@@ -10,6 +10,8 @@ import { useLoading } from '../contexts/LoadingContext';
 import NoStudentsFound from '../components/NoStudentsFound';
 import { useProgress } from '../components/Layout';
 import { fetchAllRows } from '../utils/paginationHelper';
+import { formatAppDate } from '../utils/dateUtils';
+import AppDateField from '../components/shared/AppDateField';
 
 import Loader from '../components/Loader';
 import { getStudentDisplayId, matchesStudentSearch, fetchStudentByIdentifier, getSequenceNumber } from '../utils/studentUtils';
@@ -2402,17 +2404,20 @@ const FineCollection: React.FC = () => {
                 {/* Date Field */}
                 <CollectField>
                   <CollectLabel>Collection Date</CollectLabel>
-                  <CollectInput
-                    className="standalone" 
-                    type="date"
+                  <AppDateField
                     value={collectDate}
-                    autoComplete="new-password"
-                    data-form-type="other"
-                    data-lpignore="true"
-                    data-1p-ignore="true"
                     onChange={e => setCollectDate(e.target.value)}
-                    onKeyDown={handleFormKeyDown}
                     disabled={isCollectionDisabled}
+                    textFieldProps={{
+                      InputLabelProps: { shrink: true },
+                      autoComplete: 'new-password',
+                      onKeyDown: handleFormKeyDown,
+                      inputProps: {
+                        'data-form-type': 'other',
+                        'data-lpignore': 'true',
+                        'data-1p-ignore': 'true',
+                      },
+                    }}
                   />
                 </CollectField>
 
@@ -2500,7 +2505,7 @@ const FineCollection: React.FC = () => {
                   <tbody>
                     {paymentHistory.map((payment: any, idx: number) => (
                       <tr key={payment.id || idx}>
-                        <AttendanceTd>{new Date(payment.payment_date).toLocaleDateString()}</AttendanceTd>
+                        <AttendanceTd>{formatAppDate(payment.payment_date)}</AttendanceTd>
                         <AttendanceTd>{getDayShort(payment.payment_date)}</AttendanceTd>
                         <AttendanceTd>Rs. {payment.amount}</AttendanceTd>
                         <AttendanceTd>Rs. {payment.remission || 0}</AttendanceTd>
@@ -2556,4 +2561,4 @@ const FineCollection: React.FC = () => {
   );
 };
 
-export default FineCollection; 
+export default FineCollection;

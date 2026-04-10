@@ -23,7 +23,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../supabaseClient';
 import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
 import { fetchAllRows } from '../utils/paginationHelper';
+import { formatAppDateTime } from '../utils/dateUtils';
 import Loader from '../components/Loader';
+import AppDateField from '../components/shared/AppDateField';
 
 const Container = styled.div`
   width: 100%;
@@ -1757,21 +1759,21 @@ const UserAnnouncements: React.FC = () => {
 
             <HeaderControlGroup>
               <Label>Show from *</Label>
-              <Input
-                theme={theme}
-                type="date"
+              <AppDateField
                 value={showFrom}
                 onChange={e => setShowFrom(e.target.value)}
+                fullWidth={false}
+                textFieldProps={{ InputLabelProps: { shrink: true }, sx: { minWidth: 170 } }}
               />
             </HeaderControlGroup>
 
             <HeaderControlGroup>
               <Label>Show until (optional)</Label>
-              <Input
-                theme={theme}
-                type="date"
+              <AppDateField
                 value={expiresAt}
                 onChange={e => setExpiresAt(e.target.value)}
+                fullWidth={false}
+                textFieldProps={{ InputLabelProps: { shrink: true }, sx: { minWidth: 170 } }}
               />
             </HeaderControlGroup>
           </HeaderControls>
@@ -2250,7 +2252,7 @@ const UserAnnouncements: React.FC = () => {
                   </SeenByPrimaryRow>
                   <SeenByMeta>
                     <span>{entry.viewer_role || entry.viewer_type}</span>
-                    {entry.seen_at && <span>{new Date(entry.seen_at).toLocaleString()}</span>}
+                    {entry.seen_at && <span>{formatAppDateTime(entry.seen_at)}</span>}
                   </SeenByMeta>
                 </SeenByItem>
               ))}

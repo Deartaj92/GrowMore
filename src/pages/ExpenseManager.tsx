@@ -42,6 +42,7 @@ import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import AppDateField from '../components/shared/AppDateField';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -1298,20 +1299,28 @@ const ExpenseManager: React.FC = () => {
             <option value="other">Other</option>
           </FilterSelect>
           
-          <Input
-            type="date"
-            placeholder="Start Date"
+          <AppDateField
+            label="Start Date"
             value={filters.startDate || ''}
             onChange={(e) => setFilters({ ...filters, startDate: e.target.value || undefined })}
-            style={{ padding: '6px 10px', fontSize: '0.8rem' }}
+            fullWidth={false}
+            textFieldProps={{
+              placeholder: 'Start Date',
+              InputLabelProps: { shrink: true },
+              sx: { minWidth: 170 },
+            }}
           />
           
-          <Input
-            type="date"
-            placeholder="End Date"
+          <AppDateField
+            label="End Date"
             value={filters.endDate || ''}
             onChange={(e) => setFilters({ ...filters, endDate: e.target.value || undefined })}
-            style={{ padding: '6px 10px', fontSize: '0.8rem' }}
+            fullWidth={false}
+            textFieldProps={{
+              placeholder: 'End Date',
+              InputLabelProps: { shrink: true },
+              sx: { minWidth: 170 },
+            }}
           />
         </FiltersContainer>
 
@@ -1601,15 +1610,14 @@ const ExpenseManager: React.FC = () => {
                 </Grid>
 
                 <Grid item xs={12} sm={6}>
-                  <TextField
+                  <AppDateField
                     fullWidth
                     size="small"
                     label="Expense Date"
-                    type="date"
                     value={formData.expenseDate}
                     onChange={(e) => setFormData({ ...formData, expenseDate: e.target.value })}
                     required
-                    InputLabelProps={{ shrink: true }}
+                    textFieldProps={{ InputLabelProps: { shrink: true } }}
                   />
                 </Grid>
 
@@ -2010,4 +2018,3 @@ const ExpenseManager: React.FC = () => {
 };
 
 export default ExpenseManager;
-

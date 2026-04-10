@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
 import { Report, ReportStatus, ReportUpdate } from '../../types/reports';
+import { formatAppDateTime } from '../../utils/dateUtils';
 
 const StyledDialog = styled(Dialog)(({ theme }) => ({
     '& .MuiDialog-paper': {
@@ -122,11 +123,6 @@ export const ModifyReportModal: React.FC<ModifyReportModalProps> = ({
         }
     };
 
-    const formatDate = (date: string) => {
-        const d = new Date(date);
-        return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    };
-
     return (
         <StyledDialog
             open={open}
@@ -207,7 +203,7 @@ export const ModifyReportModal: React.FC<ModifyReportModalProps> = ({
                                         Updated by {update.staff?.name}
                                     </Typography>
                                     <Typography variant="caption" color="text.secondary">
-                                        {formatDate(update.created_at)}
+                                        {formatAppDateTime(update.created_at)}
                                     </Typography>
                                 </Box>
                                 <Typography variant="body2" sx={{ mb: 1 }}>
@@ -241,4 +237,4 @@ export const ModifyReportModal: React.FC<ModifyReportModalProps> = ({
             </FormActions>
         </StyledDialog>
     );
-}; 
+};

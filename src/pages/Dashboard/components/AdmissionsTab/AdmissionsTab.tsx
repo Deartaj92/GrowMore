@@ -26,9 +26,10 @@ import {
   LabelList
 } from 'recharts';
 import {
-  DashboardDateInput
 } from '../../styles';
 import { getCurrentMonthRange } from '../../utils/dashboardUtils';
+import { formatAppDate } from '../../../../utils/dateUtils';
+import AppDateField from '../../../../components/shared/AppDateField';
 
 // ===== STYLED COMPONENTS (Matching FeeAnalytics structure) =====
 
@@ -197,24 +198,30 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
     <Container>
       {/* Date Range Selector for Admissions */}
       <DateRangeContainer>
-        <DashboardDateInput
-          type="date"
+        <AppDateField
           value={admissionsDateFrom}
-          onChange={(e) => {
-            const newDate = e.target.value;
-            setAdmissionsDateFrom(newDate);
-          }}
+          onChangeValue={setAdmissionsDateFrom}
           title="From Date"
+          fullWidth={false}
+          textFieldProps={{
+            sx: {
+              minWidth: 140,
+              '& .MuiOutlinedInput-root': { borderRadius: '12px' }
+            }
+          }}
         />
         <DateSeparator theme={theme}>to</DateSeparator>
-        <DashboardDateInput
-          type="date"
+        <AppDateField
           value={admissionsDateTo}
-          onChange={(e) => {
-            const newDate = e.target.value;
-            setAdmissionsDateTo(newDate);
-          }}
+          onChangeValue={setAdmissionsDateTo}
           title="To Date"
+          fullWidth={false}
+          textFieldProps={{
+            sx: {
+              minWidth: 140,
+              '& .MuiOutlinedInput-root': { borderRadius: '12px' }
+            }
+          }}
         />
       </DateRangeContainer>
 
@@ -467,11 +474,7 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                 ) : (
                   latestAdmissions.map((admission: any, idx: number) => {
                     const admissionDate = admission.admissionDate || admission.admission_date
-                      ? new Date(admission.admissionDate || admission.admission_date).toLocaleDateString('en-GB', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric'
-                      })
+                      ? formatAppDate(admission.admissionDate || admission.admission_date, 'N/A')
                       : 'N/A';
 
                     const studentName = admission.name || 'N/A';
@@ -595,11 +598,7 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
                     marginBottom: '1rem',
                     opacity: 0.95
                   }}>
-                    {new Date().toLocaleDateString('en-GB', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric'
-                    })}
+                    {formatAppDate(new Date())}
                   </div>
                   <div style={{
                     fontSize: '1.5rem',

@@ -10,6 +10,7 @@ import { pdf } from '@react-pdf/renderer';
 import StudentCardsPDFDocument from '../components/StudentCardsPDFDocument';
 import * as XLSX from 'xlsx';
 import { getStudentDisplayId } from '../utils/studentUtils';
+import { formatAppDate } from '../utils/dateUtils';
 import {
   CARD_RADIUS_LG,
   clayPanelStyle,
@@ -1164,13 +1165,7 @@ const StudentCardsPage = () => {
       }
 
       const formatDate = (value: string | null | undefined) => {
-        if (!value) return '';
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return '';
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}-${month}-${year}`;
+        return formatAppDate(value, '');
       };
 
       const rows = students.map((student) => {
@@ -1373,7 +1368,7 @@ const StudentCardsPage = () => {
                 <InfoLabel>Class</InfoLabel><InfoSeparator>:</InfoSeparator><InfoValue $scheme={cardColors}>{classes.find(c => c.id === student.class_id)?.name || '-'} {student.section_id && sections.find(s => s.id === student.section_id) ? `(${sections.find(s => s.id === student.section_id)?.name})` : ''}</InfoValue>
               </InfoRow>
               <InfoRow>
-                <InfoLabel>Date of Birth</InfoLabel><InfoSeparator>:</InfoSeparator><InfoValue $scheme={cardColors}>{student.dob ? new Date(student.dob).toLocaleDateString() : '-'}</InfoValue>
+                <InfoLabel>Date of Birth</InfoLabel><InfoSeparator>:</InfoSeparator><InfoValue $scheme={cardColors}>{formatAppDate(student.dob)}</InfoValue>
               </InfoRow>
               <InfoRow>
                 <InfoLabel>Roll No.</InfoLabel><InfoSeparator>:</InfoSeparator><InfoValue $scheme={cardColors}>{getStudentDisplayId({ id: student.id, roll_number: student.roll_number })}</InfoValue>

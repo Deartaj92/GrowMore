@@ -27,6 +27,7 @@ import { enquiryService } from '../services/enquiryService';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './useToast';
 import { Enquiry, EnquiryFollowUp, EnquiryAttachment, EnquiryStatus } from '../types/enquiry';
+import { formatAppDate, formatAppDateTime } from '../utils/dateUtils';
 import FollowUpForm from './FollowUpForm';
 import Loader from './Loader';
 import {
@@ -415,28 +416,6 @@ const EnquiryDetail: React.FC = () => {
     loadEnquiryDetails(); // Reload data
   };
 
-  // Format date
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      day: '2-digit', 
-      month: 'short', 
-      year: 'numeric' 
-    });
-  };
-
-  // Format datetime
-  const formatDateTime = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      day: '2-digit', 
-      month: 'short', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   if (loading) {
     return (
       <PageContainer theme={theme}>
@@ -473,7 +452,7 @@ const EnquiryDetail: React.FC = () => {
               Enquiry #{enquiry.id}
             </Title>
             <Typography variant="body2" style={{ color: (theme as any).TEXT_SECONDARY }}>
-              {enquiry.enquiry_type?.name} • Submitted on {formatDate(enquiry.enquiry_date)}
+              {enquiry.enquiry_type?.name} • Submitted on {formatAppDate(enquiry.enquiry_date)}
             </Typography>
           </div>
         </HeaderLeft>
@@ -666,7 +645,7 @@ const EnquiryDetail: React.FC = () => {
                         <div>
                           <div>{followUp.subject}</div>
                           <div style={{ fontSize: '0.75rem', color: (theme as any).TEXT_SECONDARY }}>
-                            Due: {formatDateTime(followUp.follow_up_date)}
+                            Due: {formatAppDateTime(followUp.follow_up_date)}
                           </div>
                           {followUp.notes && (
                             <div style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>
@@ -725,24 +704,24 @@ const EnquiryDetail: React.FC = () => {
             </InfoRow>
             <InfoRow>
               <InfoLabel>Created Date</InfoLabel>
-              <InfoValue>{formatDateTime(enquiry.created_at || enquiry.enquiry_date)}</InfoValue>
+              <InfoValue>{formatAppDateTime(enquiry.created_at || enquiry.enquiry_date)}</InfoValue>
             </InfoRow>
             {enquiry.first_contact_date && (
               <InfoRow>
                 <InfoLabel>First Contact</InfoLabel>
-                <InfoValue>{formatDateTime(enquiry.first_contact_date)}</InfoValue>
+                <InfoValue>{formatAppDateTime(enquiry.first_contact_date)}</InfoValue>
               </InfoRow>
             )}
             {enquiry.last_contact_date && (
               <InfoRow>
                 <InfoLabel>Last Contact</InfoLabel>
-                <InfoValue>{formatDateTime(enquiry.last_contact_date)}</InfoValue>
+                <InfoValue>{formatAppDateTime(enquiry.last_contact_date)}</InfoValue>
               </InfoRow>
             )}
             {enquiry.resolved_date && (
               <InfoRow>
                 <InfoLabel>Resolved Date</InfoLabel>
-                <InfoValue>{formatDateTime(enquiry.resolved_date)}</InfoValue>
+                <InfoValue>{formatAppDateTime(enquiry.resolved_date)}</InfoValue>
               </InfoRow>
             )}
           </Card>
@@ -768,7 +747,7 @@ const EnquiryDetail: React.FC = () => {
                           <div>{attachment.description}</div>
                           <div style={{ fontSize: '0.75rem', color: (theme as any).TEXT_SECONDARY }}>
                             {attachment.file_size ? `${(attachment.file_size / 1024 / 1024).toFixed(2)} MB` : ''} • 
-                            Uploaded on {formatDate(attachment.uploaded_at || '')}
+                            Uploaded on {formatAppDate(attachment.uploaded_at || '')}
                           </div>
                         </div>
                       }

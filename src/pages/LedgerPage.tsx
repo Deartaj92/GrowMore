@@ -25,6 +25,7 @@ import {
   Warning
 } from '@mui/icons-material';
 import Loader from '../components/Loader';
+import AppDateField from '../components/shared/AppDateField';
 import { useLoading } from '../contexts/LoadingContext';
 import { format } from 'date-fns';
 
@@ -1261,21 +1262,21 @@ export default function LedgerPage() {
         <FilterRow>
           <FilterGroup theme={theme}>
             <FilterLabel theme={theme}>Date From</FilterLabel>
-            <DateInput
-              theme={theme}
-              type="date"
+            <AppDateField
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
+              fullWidth={false}
+              textFieldProps={{ InputLabelProps: { shrink: true }, sx: { minWidth: 170 } }}
             />
           </FilterGroup>
 
           <FilterGroup theme={theme}>
             <FilterLabel theme={theme}>Date To</FilterLabel>
-            <DateInput
-              theme={theme}
-              type="date"
+            <AppDateField
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
+              fullWidth={false}
+              textFieldProps={{ InputLabelProps: { shrink: true }, sx: { minWidth: 170 } }}
             />
           </FilterGroup>
         </FilterRow>
@@ -1445,4 +1446,3 @@ export default function LedgerPage() {
     </PageContainer>
   );
 }
-

@@ -5,6 +5,8 @@ import { supabase } from '../supabaseClient';
 import { Save, Delete, Edit, Close, Search, CheckCircle, RadioButtonUnchecked, Add, CalendarMonth, People, School } from '@mui/icons-material';
 import { useToast } from './useToast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { formatAppDate } from '../utils/dateUtils';
+import AppDateField from './shared/AppDateField';
 import {
   Dialog as MuiDialog,
   DialogContent as MuiDialogContent,
@@ -1824,13 +1826,7 @@ const HolidayManager: React.FC = () => {
   };
 
   const formatDate = (dateStr: string) => {
-    if (!dateStr) return '-';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    }).replace(/ /g, '-');
+    return formatAppDate(dateStr);
   };
 
   // Add this function to handle "Select All Sections" for a class
@@ -2179,29 +2175,21 @@ const HolidayManager: React.FC = () => {
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <TextField
-                    name="start_date"
-                    label="Start Date*"
-                    type="date"
+                  <AppDateField
                     value={editHolidayForm.start_date}
-                    onChange={handleEditHolidayChange}
+                    onChangeValue={(value) => setEditHolidayForm(prev => ({ ...prev, start_date: value }))}
+                    label="Start Date*"
                     required
-                    fullWidth
                     size="small"
-                    InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <TextField
-                    name="end_date"
-                    label="End Date*"
-                    type="date"
+                  <AppDateField
                     value={editHolidayForm.end_date}
-                    onChange={handleEditHolidayChange}
+                    onChangeValue={(value) => setEditHolidayForm(prev => ({ ...prev, end_date: value }))}
+                    label="End Date*"
                     required
-                    fullWidth
                     size="small"
-                    InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
                 <Grid item xs={12}>
@@ -2260,8 +2248,7 @@ const HolidayManager: React.FC = () => {
                   required
                 />
                 
-                <ModalSegmentedInput
-                  type="date"
+                <AppDateField
                   value={newHoliday.start_date}
                   onChange={(e) => {
                     const startDate = e.target.value;
@@ -2272,13 +2259,14 @@ const HolidayManager: React.FC = () => {
                     }));
                   }}
                   required
+                  textFieldProps={{ InputLabelProps: { shrink: true } }}
                 />
                 
-                <ModalSegmentedInput
-                  type="date"
+                <AppDateField
                   value={newHoliday.end_date}
                   onChange={(e) => setNewHoliday(prev => ({ ...prev, end_date: e.target.value }))}
                   required
+                  textFieldProps={{ InputLabelProps: { shrink: true } }}
                 />
                 
                 <ModalSegmentedCheckbox>
@@ -2371,4 +2359,4 @@ const HolidayManager: React.FC = () => {
   );
 };
 
-export default HolidayManager; 
+export default HolidayManager;

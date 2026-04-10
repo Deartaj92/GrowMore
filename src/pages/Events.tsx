@@ -50,6 +50,8 @@ import {
 } from '@mui/material';
 import { styled as muiStyled } from '@mui/material/styles';
 import Loader from '../components/Loader';
+import { formatAppDate, formatAppDateTime } from '../utils/dateUtils';
+import AppDateField from '../components/shared/AppDateField';
 
 const Container = styled.div<{ $theme?: any }>`
   width: 100%;
@@ -1316,8 +1318,8 @@ const Events: React.FC = () => {
                     <Box mt={2}>
                       <Typography variant="caption" display="block" color="text.secondary">
                         <CalendarIcon sx={{ fontSize: 14, verticalAlign: 'middle', mr: 0.5 }} />
-                        {new Date(event.start_date).toLocaleDateString()}
-                        {event.start_date !== event.end_date && ` - ${new Date(event.end_date).toLocaleDateString()}`}
+                        {formatAppDate(event.start_date)}
+                        {event.start_date !== event.end_date && ` - ${formatAppDate(event.end_date)}`}
                       </Typography>
                       {!event.is_all_day && event.start_time && (
                         <Typography variant="caption" display="block" color="text.secondary">
@@ -1520,20 +1522,20 @@ const Events: React.FC = () => {
                                   // Show both seen on and dismissed on on separate lines
                                   tooltipContent = (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                      <div>Seen on {new Date(viewEntry.seen_at).toLocaleString()}</div>
-                                      <div>Dismissed on {new Date(viewEntry.dismissed_at).toLocaleString()}</div>
+                                      <div>Seen on {formatAppDateTime(viewEntry.seen_at)}</div>
+                                      <div>Dismissed on {formatAppDateTime(viewEntry.dismissed_at)}</div>
                                     </div>
                                   );
                                 } else if (isDismissed) {
                                   // Fallback if dismissed_at is not set yet
                                   tooltipContent = (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                      <div>Seen on {new Date(viewEntry.seen_at).toLocaleString()}</div>
-                                      <div>Dismissed on {new Date(viewEntry.seen_at).toLocaleString()}</div>
+                                      <div>Seen on {formatAppDateTime(viewEntry.seen_at)}</div>
+                                      <div>Dismissed on {formatAppDateTime(viewEntry.seen_at)}</div>
                                     </div>
                                   );
                                 } else {
-                                  tooltipContent = `Seen on ${new Date(viewEntry.seen_at).toLocaleString()}`;
+                                  tooltipContent = `Seen on ${formatAppDateTime(viewEntry.seen_at)}`;
                                 }
                                 return (
                                   <Tooltip
@@ -1685,27 +1687,21 @@ const Events: React.FC = () => {
                   </FormControl>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="Start Date"
-                    type="date"
+                  <AppDateField
                     value={editingEvent.start_date || ''}
-                    onChange={(e) => setEditingEvent({ ...editingEvent, start_date: e.target.value })}
-                    fullWidth
+                    onChangeValue={(value) => setEditingEvent({ ...editingEvent, start_date: value })}
+                    label="Start Date"
                     required
                     size="small"
-                    InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="End Date"
-                    type="date"
+                  <AppDateField
                     value={editingEvent.end_date || ''}
-                    onChange={(e) => setEditingEvent({ ...editingEvent, end_date: e.target.value })}
-                    fullWidth
+                    onChangeValue={(value) => setEditingEvent({ ...editingEvent, end_date: value })}
+                    label="End Date"
                     required
                     size="small"
-                    InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
                 <Grid item xs={12}>
@@ -2286,14 +2282,13 @@ const Events: React.FC = () => {
                   </>
                 )}
                 <Grid item xs={12} sm={6}>
-                  <TextField
+                  <AppDateField
                     label="Expiry Date (Optional)"
-                    type="date"
                     value={editingNotice.expiry_date || ''}
                     onChange={(e) => setEditingNotice({ ...editingNotice, expiry_date: e.target.value || null })}
                     fullWidth
                     size="small"
-                    InputLabelProps={{ shrink: true }}
+                    textFieldProps={{ InputLabelProps: { shrink: true } }}
                     helperText="Leave empty for no expiry"
                   />
                 </Grid>
@@ -2440,7 +2435,7 @@ const Events: React.FC = () => {
                       )}
                     </Box>
                     <Typography variant="caption" color="text.secondary">
-                      {new Date(entry.seen_at).toLocaleString()}
+                      {formatAppDateTime(entry.seen_at)}
                     </Typography>
                   </Box>
                 ))}
@@ -2464,4 +2459,3 @@ const Events: React.FC = () => {
 };
 
 export default Events;
-

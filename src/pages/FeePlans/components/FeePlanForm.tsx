@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { FeePlanFormData } from '../types';
+import AppDateField from '../../../components/shared/AppDateField';
 
 const FormContainer = styled.div`
   background: ${({ theme }) => theme.CARD};
@@ -95,10 +96,10 @@ export const FeePlanForm: React.FC<FeePlanFormProps> = ({ formData, onChange }) 
       <FormGrid>
         <FormGroup>
           <Label>W.e.f (With effect from)</Label>
-          <Input
-            type="date"
+          <AppDateField
             value={formData.effectiveFrom}
             onChange={(e) => onChange({ effectiveFrom: e.target.value })}
+            textFieldProps={{ InputLabelProps: { shrink: true } }}
           />
         </FormGroup>
         <FormGroup>
@@ -114,4 +115,3 @@ export const FeePlanForm: React.FC<FeePlanFormProps> = ({ formData, onChange }) 
     </FormContainer>
   );
 };
-

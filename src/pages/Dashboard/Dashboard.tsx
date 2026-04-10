@@ -19,6 +19,7 @@ import { whatsappSemiAutoService, AttendanceNotificationData } from '../../servi
 import { fetchRenderSettings, isDashboardCardVisible, isGuestPageAccessible, RenderSettings } from '../../services/renderSettingsService';
 import { sortClasses } from '../../utils/classUtils';
 import { getStudentDisplayId } from '../../utils/studentUtils';
+import { formatAppDate, formatAppDateTime } from '../../utils/dateUtils';
 import { useCapacitorPdfSave } from '../../hooks/useCapacitorPdfSave';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -1856,12 +1857,7 @@ const Dashboard: React.FC = () => {
         second: '2-digit',
         hour12: true
       });
-      const dateStr = now.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
+      const dateStr = formatAppDate(now);
 
       // Check if mobile device
       const isMobile = window.innerWidth <= 768;
@@ -2387,7 +2383,7 @@ const Dashboard: React.FC = () => {
       doc.setFontSize(8);
       doc.setTextColor(128, 128, 128);
       doc.text(
-        `Generated on: ${new Date().toLocaleString()}`,
+        `Generated on: ${formatAppDateTime(new Date())}`,
         10,
         doc.internal.pageSize.height - 10
       );
@@ -2543,7 +2539,7 @@ const Dashboard: React.FC = () => {
       doc.setFontSize(8);
       doc.setTextColor(128, 128, 128);
       doc.text(
-        `Generated on: ${new Date().toLocaleString()}`,
+        `Generated on: ${formatAppDateTime(new Date())}`,
         10,
         doc.internal.pageSize.height - 10
       );
@@ -2782,7 +2778,7 @@ const Dashboard: React.FC = () => {
       doc.setFontSize(8);
       doc.setTextColor(128, 128, 128);
       doc.text(
-        `Generated on: ${new Date().toLocaleString()}`,
+        `Generated on: ${formatAppDateTime(new Date())}`,
         10,
         doc.internal.pageSize.height - 10
       );
@@ -3058,7 +3054,7 @@ const Dashboard: React.FC = () => {
       doc.setFontSize(8);
       doc.setTextColor(128, 128, 128);
       doc.text(
-        `Generated on: ${new Date().toLocaleString()}`,
+        `Generated on: ${formatAppDateTime(new Date())}`,
         10,
         doc.internal.pageSize.height - 10
       );
@@ -3282,7 +3278,7 @@ const Dashboard: React.FC = () => {
       doc.setFontSize(8);
       doc.setTextColor(128, 128, 128);
       doc.text(
-        `Generated on: ${new Date().toLocaleString()}`,
+        `Generated on: ${formatAppDateTime(new Date())}`,
         10,
         doc.internal.pageSize.height - 10
       );

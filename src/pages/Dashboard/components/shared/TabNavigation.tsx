@@ -10,8 +10,9 @@ import {
   AccountBalance,
   Lightbulb
 } from '@mui/icons-material';
-import { TabContainer, TabsWrapper, TabButton, DashboardDateInput, OverflowButton, TabsContainer, DropdownMenu, DropdownMenuItem } from '../../styles';
+import { TabContainer, TabsWrapper, TabButton, OverflowButton, TabsContainer, DropdownMenu, DropdownMenuItem } from '../../styles';
 import { DashboardTab } from '../../types';
+import AppDateField from '../../../../components/shared/AppDateField';
 
 interface TabNavigationProps {
   activeTab: DashboardTab;
@@ -253,14 +254,38 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
           </div>
         )}
       </TabsContainer>
-      <DashboardDateInput
-        type="date"
+      <AppDateField
         value={dashboardDate}
-        onChange={(e) => {
-          const newDate = e.target.value;
+        onChangeValue={(newDate) => {
           setDashboardDate(newDate);
           setAbsentDate(newDate);
           setFineDate(newDate);
+        }}
+        fullWidth={false}
+        textFieldProps={{
+          sx: {
+            minWidth: 140,
+            flexShrink: 0,
+            '& .MuiOutlinedInput-root': {
+              borderRadius: '12px',
+            },
+            '@media (max-width: 768px)': {
+              flex: 1,
+              minWidth: 0,
+              width: '100%',
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '10px',
+              },
+              '& .MuiInputBase-input': {
+                fontSize: '0.8rem',
+              }
+            },
+            '@media (max-width: 480px)': {
+              '& .MuiInputBase-input': {
+                fontSize: '0.75rem',
+              }
+            }
+          }
         }}
       />
     </TabContainer>
@@ -268,4 +293,3 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
 };
 
 export default TabNavigation;
-

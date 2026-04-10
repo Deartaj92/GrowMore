@@ -13,10 +13,12 @@ import NoStudentsFound from '../components/NoStudentsFound';
 import { useProgress } from '../components/Layout';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { getStudentDisplayId, matchesStudentSearch, getSequenceNumber } from '../utils/studentUtils';
+import { formatAppDate } from '../utils/dateUtils';
 import { ThemeProvider } from 'styled-components';
 import { useTheme as useMuiTheme, useMediaQuery } from '@mui/material';
 import { CircularProgress, TextField, Button, FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, SelectChangeEvent, Grid, Checkbox, FormControlLabel } from '@mui/material';
 import Loader from '../components/Loader';
+import AppDateField from '../components/shared/AppDateField';
 
 // ===== STYLED COMPONENTS =====
 
@@ -1288,11 +1290,7 @@ const FeeCollectionNew: React.FC = () => {
 
   // Helper function to format date as dd-mmm-yyyy
   const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = date.toLocaleDateString('en-US', { month: 'short' });
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
+    return formatAppDate(dateString);
   };
 
   // Generate fee invoice print preview
@@ -3458,15 +3456,14 @@ const FeeCollectionNew: React.FC = () => {
                     )}
 
                     <FormRow>
-                      <TextField
+                      <AppDateField
                         label="Payment Date"
-                        type="date"
                         value={paymentDate}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentDate(e.target.value)}
-                        onKeyDown={handleFormKeyDown}
                         fullWidth
                         size="small"
                         required
+                        textFieldProps={{ InputLabelProps: { shrink: true }, onKeyDown: handleFormKeyDown }}
                         disabled
                         InputLabelProps={{ shrink: true }}
                       />

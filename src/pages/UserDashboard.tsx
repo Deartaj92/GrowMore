@@ -16,6 +16,7 @@ import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 import { useAnnouncements } from '../components/Layout/hooks/useAnnouncements';
 import { getAnnouncementIdentity } from '../components/Layout/utils/announcementUtils';
 import AnnouncementModal from '../components/Layout/components/Modals/AnnouncementModal';
+import AppDateField from '../components/shared/AppDateField';
 
 const Container = styled.div`
   width: 100%;
@@ -1644,25 +1645,19 @@ const UserDashboard: React.FC = () => {
             </FormControl>
 
             <Box display="flex" gap={2}>
-              <TextField
-                label="Start Date"
-                type="date"
+              <AppDateField
                 value={leaveRequestForm.startDate}
-                onChange={(e) => setLeaveRequestForm({ ...leaveRequestForm, startDate: e.target.value })}
-                fullWidth
+                onChangeValue={(value) => setLeaveRequestForm({ ...leaveRequestForm, startDate: value })}
+                label="Start Date"
                 required
                 size="small"
-                InputLabelProps={{ shrink: true }}
               />
-              <TextField
-                label="End Date"
-                type="date"
+              <AppDateField
                 value={leaveRequestForm.endDate}
-                onChange={(e) => setLeaveRequestForm({ ...leaveRequestForm, endDate: e.target.value })}
-                fullWidth
+                onChangeValue={(value) => setLeaveRequestForm({ ...leaveRequestForm, endDate: value })}
+                label="End Date"
                 required
                 size="small"
-                InputLabelProps={{ shrink: true }}
               />
             </Box>
 
@@ -3183,4 +3178,3 @@ const UserDashboard: React.FC = () => {
 };
 
 export default UserDashboard;
-

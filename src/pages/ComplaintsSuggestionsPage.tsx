@@ -38,6 +38,7 @@ import {
   Select,
   MenuItem,
 } from '@mui/material';
+import AppDateField from '../components/shared/AppDateField';
 
 // Helper function to check if theme is dark
 const isDark = (themeObj: any) => themeObj.BG === '#252525';
@@ -949,46 +950,48 @@ const ComplaintsSuggestionsPage: React.FC = () => {
               </Select>
             </FormControl>
             <FilterRow>
-              <TextField
+              <AppDateField
                 fullWidth
                 size="small"
-                type="date"
                 label="Date From"
                 value={complaintDateFrom}
                 onChange={(e) => {
                   setComplaintDateFrom(e.target.value);
                   setComplaintCurrentPage(1);
                 }}
-                InputLabelProps={{ shrink: true }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    color: theme.TEXT_PRIMARY,
-                    '& fieldset': { borderColor: theme.BORDER },
-                    '&:hover fieldset': { borderColor: theme.ACCENT },
-                    '&.Mui-focused fieldset': { borderColor: theme.ACCENT },
+                textFieldProps={{
+                  InputLabelProps: { shrink: true },
+                  sx: {
+                    '& .MuiOutlinedInput-root': {
+                      color: theme.TEXT_PRIMARY,
+                      '& fieldset': { borderColor: theme.BORDER },
+                      '&:hover fieldset': { borderColor: theme.ACCENT },
+                      '&.Mui-focused fieldset': { borderColor: theme.ACCENT },
+                    },
+                    '& .MuiInputLabel-root': { color: theme.TEXT_SECONDARY },
                   },
-                  '& .MuiInputLabel-root': { color: theme.TEXT_SECONDARY },
                 }}
               />
-              <TextField
+              <AppDateField
                 fullWidth
                 size="small"
-                type="date"
                 label="Date To"
                 value={complaintDateTo}
                 onChange={(e) => {
                   setComplaintDateTo(e.target.value);
                   setComplaintCurrentPage(1);
                 }}
-                InputLabelProps={{ shrink: true }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    color: theme.TEXT_PRIMARY,
-                    '& fieldset': { borderColor: theme.BORDER },
-                    '&:hover fieldset': { borderColor: theme.ACCENT },
-                    '&.Mui-focused fieldset': { borderColor: theme.ACCENT },
+                textFieldProps={{
+                  InputLabelProps: { shrink: true },
+                  sx: {
+                    '& .MuiOutlinedInput-root': {
+                      color: theme.TEXT_PRIMARY,
+                      '& fieldset': { borderColor: theme.BORDER },
+                      '&:hover fieldset': { borderColor: theme.ACCENT },
+                      '&.Mui-focused fieldset': { borderColor: theme.ACCENT },
+                    },
+                    '& .MuiInputLabel-root': { color: theme.TEXT_SECONDARY },
                   },
-                  '& .MuiInputLabel-root': { color: theme.TEXT_SECONDARY },
                 }}
               />
             </FilterRow>
@@ -1038,46 +1041,48 @@ const ComplaintsSuggestionsPage: React.FC = () => {
               </Select>
             </FormControl>
             <FilterRow>
-              <TextField
+              <AppDateField
                 fullWidth
                 size="small"
-                type="date"
                 label="Date From"
                 value={suggestionDateFrom}
                 onChange={(e) => {
                   setSuggestionDateFrom(e.target.value);
                   setSuggestionCurrentPage(1);
                 }}
-                InputLabelProps={{ shrink: true }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    color: theme.TEXT_PRIMARY,
-                    '& fieldset': { borderColor: theme.BORDER },
-                    '&:hover fieldset': { borderColor: theme.ACCENT },
-                    '&.Mui-focused fieldset': { borderColor: theme.ACCENT },
+                textFieldProps={{
+                  InputLabelProps: { shrink: true },
+                  sx: {
+                    '& .MuiOutlinedInput-root': {
+                      color: theme.TEXT_PRIMARY,
+                      '& fieldset': { borderColor: theme.BORDER },
+                      '&:hover fieldset': { borderColor: theme.ACCENT },
+                      '&.Mui-focused fieldset': { borderColor: theme.ACCENT },
+                    },
+                    '& .MuiInputLabel-root': { color: theme.TEXT_SECONDARY },
                   },
-                  '& .MuiInputLabel-root': { color: theme.TEXT_SECONDARY },
                 }}
               />
-              <TextField
+              <AppDateField
                 fullWidth
                 size="small"
-                type="date"
                 label="Date To"
                 value={suggestionDateTo}
                 onChange={(e) => {
                   setSuggestionDateTo(e.target.value);
                   setSuggestionCurrentPage(1);
                 }}
-                InputLabelProps={{ shrink: true }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    color: theme.TEXT_PRIMARY,
-                    '& fieldset': { borderColor: theme.BORDER },
-                    '&:hover fieldset': { borderColor: theme.ACCENT },
-                    '&.Mui-focused fieldset': { borderColor: theme.ACCENT },
+                textFieldProps={{
+                  InputLabelProps: { shrink: true },
+                  sx: {
+                    '& .MuiOutlinedInput-root': {
+                      color: theme.TEXT_PRIMARY,
+                      '& fieldset': { borderColor: theme.BORDER },
+                      '&:hover fieldset': { borderColor: theme.ACCENT },
+                      '&.Mui-focused fieldset': { borderColor: theme.ACCENT },
+                    },
+                    '& .MuiInputLabel-root': { color: theme.TEXT_SECONDARY },
                   },
-                  '& .MuiInputLabel-root': { color: theme.TEXT_SECONDARY },
                 }}
               />
             </FilterRow>
@@ -1689,4 +1694,3 @@ const ComplaintsSuggestionsPage: React.FC = () => {
 };
 
 export default ComplaintsSuggestionsPage;
-

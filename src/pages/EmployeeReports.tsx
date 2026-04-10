@@ -68,6 +68,7 @@ import { supabase } from '../supabaseClient';
 import { useProgress } from '../components/Layout';
 import { useActivityTracking } from '../hooks/useActivityTracking';
 import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
+import { formatAppDate } from '../utils/dateUtils';
 import { useTheme as useMuiTheme } from '@mui/material/styles';
 
 // Type definitions
@@ -1454,7 +1455,7 @@ export const EmployeeReports = (): JSX.Element => {
                                                         </Box>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                         <Typography variant="caption" color="text.secondary">
-                                                            {report.incident_date ? new Date(report.incident_date).toLocaleDateString() : new Date(report.created_at).toLocaleDateString()}
+                                                            {formatAppDate(report.incident_date || report.created_at)}
                                                         </Typography>
                                                         <Typography variant="caption" color="text.secondary">|</Typography>
                                                         <Typography 
@@ -1664,7 +1665,7 @@ export const EmployeeReports = (): JSX.Element => {
                                                     <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1 }}>
                                                         <TimeIcon sx={{ color: 'text.secondary', opacity: 0.7 }} />
                                                         <Typography variant="caption" color="text.secondary">
-                                                            Last updated: {report.updates[0] && new Date(report.updates[0].created_at).toLocaleDateString()}
+                                                            Last updated: {report.updates[0] && formatAppDate(report.updates[0].created_at)}
                                                                                         </Typography>
                                                     </Box>
                                                 )}
@@ -1754,7 +1755,7 @@ export const EmployeeReports = (): JSX.Element => {
                                                                 </Typography>
                                                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', mt: 0.5 }}>
                                                                     <Typography variant="caption" color="text.secondary">
-                                                                        by {update.staff?.name} • {new Date(update.created_at).toLocaleDateString()}
+                                                                        by {update.staff?.name} • {formatAppDate(update.created_at)}
                                                                     </Typography>
                                                                     {user?.staff_id && update.updated_by === user.staff_id && (
                                                                         <IconButton
@@ -1858,7 +1859,7 @@ export const EmployeeReports = (): JSX.Element => {
                                                         </Box>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                         <Typography variant="caption" color="text.secondary">
-                                                            {report.incident_date ? new Date(report.incident_date).toLocaleDateString() : new Date(report.created_at).toLocaleDateString()}
+                                                            {formatAppDate(report.incident_date || report.created_at)}
                                                         </Typography>
                                                         <Typography variant="caption" color="text.secondary">|</Typography>
                                                         <Typography 
@@ -2068,7 +2069,7 @@ export const EmployeeReports = (): JSX.Element => {
                                                     <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1 }}>
                                                         <TimeIcon sx={{ color: 'text.secondary', opacity: 0.7 }} />
                                                         <Typography variant="caption" color="text.secondary">
-                                                            Last updated: {report.updates[0] && new Date(report.updates[0].created_at).toLocaleDateString()}
+                                                            Last updated: {report.updates[0] && formatAppDate(report.updates[0].created_at)}
                                                                                         </Typography>
                                                     </Box>
                                                 )}
@@ -2158,7 +2159,7 @@ export const EmployeeReports = (): JSX.Element => {
                                                                 </Typography>
                                                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', mt: 0.5 }}>
                                                                     <Typography variant="caption" color="text.secondary">
-                                                                        by {update.staff?.name} • {new Date(update.created_at).toLocaleDateString()}
+                                                                        by {update.staff?.name} • {formatAppDate(update.created_at)}
                                                                     </Typography>
                                                                     {user?.staff_id && update.updated_by === user.staff_id && (
                                                                         <IconButton
@@ -2344,4 +2345,4 @@ export const EmployeeReports = (): JSX.Element => {
             </MainContent>
         </PageContainer>
     );
-}; 
+};

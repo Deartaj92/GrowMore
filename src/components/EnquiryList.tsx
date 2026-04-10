@@ -22,6 +22,7 @@ import { enquiryService } from '../services/enquiryService';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './useToast';
 import { Enquiry, EnquiryType, EnquiryStatus, EnquiryFilters } from '../types/enquiry';
+import { formatAppDate, formatAppDateTime } from '../utils/dateUtils';
 import Loader from './Loader';
 import {
   TextField,
@@ -595,27 +596,6 @@ const EnquiryList: React.FC = () => {
     }
   };
 
-  // Format date
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      day: '2-digit', 
-      month: 'short', 
-      year: 'numeric' 
-    });
-  };
-
-  // Format datetime
-  const formatDateTime = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      day: '2-digit', 
-      month: 'short', 
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   if (loading && enquiries.length === 0) {
     return <Loader />;
   }
@@ -839,13 +819,13 @@ const EnquiryList: React.FC = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {formatDate(enquiry.enquiry_date)}
+                        {formatAppDate(enquiry.enquiry_date)}
                       </TableCell>
                       <TableCell>
                         {enquiry.follow_up_date ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem' }}>
                             <ScheduleIcon style={{ fontSize: '0.8rem', color: (theme as any).TEXT_SECONDARY }} />
-                            {formatDateTime(enquiry.follow_up_date)}
+                            {formatAppDateTime(enquiry.follow_up_date)}
                           </div>
                         ) : (
                           <span style={{ color: (theme as any).TEXT_SECONDARY, fontSize: '0.8rem' }}>
@@ -926,14 +906,14 @@ const EnquiryList: React.FC = () => {
                     
                     <MobileCardRow>
                       <MobileCardLabel>Date:</MobileCardLabel>
-                      <MobileCardValue>{formatDate(enquiry.enquiry_date)}</MobileCardValue>
+                      <MobileCardValue>{formatAppDate(enquiry.enquiry_date)}</MobileCardValue>
                     </MobileCardRow>
                     
                     {enquiry.follow_up_date && (
                       <MobileCardRow>
                         <MobileCardLabel>Follow-up:</MobileCardLabel>
                         <MobileCardValue style={{ fontSize: '0.8rem' }}>
-                          {formatDateTime(enquiry.follow_up_date)}
+                          {formatAppDateTime(enquiry.follow_up_date)}
                         </MobileCardValue>
                       </MobileCardRow>
                     )}

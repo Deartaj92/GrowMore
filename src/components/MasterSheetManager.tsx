@@ -8,6 +8,7 @@ import { supabase } from '../supabaseClient';
 import { examinationService } from '../services/examinationService';
 import { examinationSummaryService, ExaminationSummary } from '../services/examinationSummaryService';
 import { Examination, ExamMasterSheet } from '../types/examinations';
+import { formatAppDateForFilename } from '../utils/dateUtils';
 import { useNavigate } from 'react-router-dom';
 import { useLoading } from '../contexts/LoadingContext';
 import { usePageFooter } from './Layout/contexts/PageFooterContext';
@@ -2067,18 +2068,9 @@ const MasterSheetManager: React.FC = () => {
         }
       }
 
-      // Format date as dd-mmm-yyyy
-      const formatDate = (date: Date) => {
-        const day = date.getDate().toString().padStart(2, '0');
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const month = months[date.getMonth()];
-        const year = date.getFullYear();
-        return `${day}-${month}-${year}`;
-      };
-
       // Save the PDF with mobile-friendly approach
       const sectionPart = selectedSection ? `(${selectedSection.name})` : '';
-      const fileName = `MasterSheet_${selectedClass?.name}${sectionPart}_${selectedExam?.name}_${new Date().toLocaleDateString('en-GB')}.pdf`;
+      const fileName = `MasterSheet_${selectedClass?.name}${sectionPart}_${selectedExam?.name}_${formatAppDateForFilename(new Date())}.pdf`;
 
       if (isMobileDevice) {
         // For mobile devices, use Capacitor Filesystem API approach
@@ -2666,4 +2658,3 @@ const MasterSheetManager: React.FC = () => {
 };
 
 export default MasterSheetManager;
-

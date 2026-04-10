@@ -7,6 +7,7 @@ import { useToast } from '../components/useToast';
 import { supabase } from '../supabaseClient';
 import { fetchAllRows } from '../utils/paginationHelper';
 import { CircularProgress } from '@mui/material';
+import AppDateField from '../components/shared/AppDateField';
 import {
     PieChart as PieChartIcon,
     TrendingUp,
@@ -626,8 +627,8 @@ const StudentAttendanceAnalyticsPage: React.FC = () => {
                         ))}
                     </HeaderSegmentSelect>
 
-                    <HeaderSegmentInput theme={themeObj} type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-                    <HeaderSegmentInput theme={themeObj} type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                    <AppDateField value={fromDate} onChange={(e) => setFromDate(e.target.value)} fullWidth={false} textFieldProps={{ InputLabelProps: { shrink: true }, sx: { minWidth: 170 } }} />
+                    <AppDateField value={toDate} onChange={(e) => setToDate(e.target.value)} fullWidth={false} textFieldProps={{ InputLabelProps: { shrink: true }, sx: { minWidth: 170 } }} />
 
                     <HeaderSegmentSelect theme={themeObj} value={selectedClass} onChange={(e) => {
                         setSelectedClass(e.target.value);

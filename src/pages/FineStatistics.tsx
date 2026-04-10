@@ -7,6 +7,7 @@ import { MonetizationOn, TrendingUp, TrendingDown, PieChart as PieChartIcon, Lea
 import { useAuth } from '../contexts/AuthContext';
 import { fetchAllRows } from '../utils/paginationHelper';
 import { useLoading } from '../contexts/LoadingContext';
+import { formatAppDate } from '../utils/dateUtils';
 import NoStudentsFound from '../components/NoStudentsFound';
 import { useProgress } from '../components/Layout';
 
@@ -835,7 +836,7 @@ const FineStatistics: React.FC = () => {
                       <Td>{idx + 1}</Td>
                       <Td>{stu?.name || '-'}</Td>
                       <Td>{stu ? getClassName(stu.class_id) : '-'}</Td>
-                      <Td>{p.payment_date ? new Date(p.payment_date).toLocaleDateString() : '-'}</Td>
+                      <Td>{formatAppDate(p.payment_date)}</Td>
                       <Td>Rs. {p.amount}</Td>
                       <Td>Rs. {p.remission}</Td>
                     </tr>
@@ -878,4 +879,4 @@ const FineStatistics: React.FC = () => {
   );
 };
 
-export default FineStatistics; 
+export default FineStatistics;

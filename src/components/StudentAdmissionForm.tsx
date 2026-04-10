@@ -46,6 +46,7 @@ import { CreateFeePlanModal } from '../pages/FeePlans/components/CreateFeePlanMo
 import { FeeHead } from '../types/fee';
 import { StudentInfo } from '../pages/FeePlans/types';
 import { feeService } from '../services/feeService';
+import AppDateField from './shared/AppDateField';
 import {
   clayCardStyle,
   clayButtonStyle,
@@ -2288,14 +2289,11 @@ const StudentAdmissionForm: React.FC = () => {
                           </Field>
                         )}
                         <Field>
-                          <CompactTextField
-                            fullWidth
-                            name="admissionDate"
-                            label="Date of Admission"
-                            type="date"
+                          <AppDateField
+                            textFieldSlot={CompactTextField as React.ElementType}
                             value={form.admissionDate}
-                            onChange={handleInputChange}
-                            InputLabelProps={{ shrink: true }}
+                            onChangeValue={(value) => setForm(prev => ({ ...prev, admissionDate: value }))}
+                            label="Date of Admission"
                             size="small"
                             required
                           />
@@ -2395,14 +2393,11 @@ const StudentAdmissionForm: React.FC = () => {
                       </SectionHeader>
                       <ModernGrid>
                         <Field>
-                          <CompactTextField
-                            fullWidth
-                            name="dob"
-                            label="Date of Birth"
-                            type="date"
+                          <AppDateField
+                            textFieldSlot={CompactTextField as React.ElementType}
                             value={form.dob}
-                            onChange={handleInputChange}
-                            InputLabelProps={{ shrink: true }}
+                            onChangeValue={(value) => setForm(prev => ({ ...prev, dob: value }))}
+                            label="Date of Birth"
                             size="small"
                           />
                         </Field>

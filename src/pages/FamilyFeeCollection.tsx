@@ -8,6 +8,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { getStudentDisplayId } from '../utils/studentUtils';
 import { useToast } from '../components/useToast';
+import { formatAppDate } from '../utils/dateUtils';
+import AppDateField from '../components/shared/AppDateField';
 
 const PageContainer = styled.div`
   width: 100%;
@@ -609,11 +611,7 @@ const FamilyFeeCollection: React.FC = () => {
   };
 
   const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = date.toLocaleDateString('en-US', { month: 'short' });
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
+    return formatAppDate(dateString);
   };
 
   const getFamilyDisplayId = (familyId: number): string => {
@@ -1726,13 +1724,12 @@ const FamilyFeeCollection: React.FC = () => {
                   )}
 
                   <FormRow>
-                    <TextField
+                    <AppDateField
                       label="Payment Date"
-                      type="date"
                       value={paymentDate}
                       onChange={(e) => setPaymentDate(e.target.value)}
                       size="small"
-                      InputLabelProps={{ shrink: true }}
+                      textFieldProps={{ InputLabelProps: { shrink: true } }}
                       disabled
                     />
                   </FormRow>

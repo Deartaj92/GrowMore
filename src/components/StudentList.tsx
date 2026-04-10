@@ -3,6 +3,7 @@ import styled, { keyframes, DefaultTheme, css } from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
+import { formatAppDate, formatAppDateForFilename } from '../utils/dateUtils';
 import { ThemeContext, darkTheme, lightTheme, useProgress } from './Layout';
 import { useNavigate } from 'react-router-dom';
 import { EditStudentForm } from './students/EditStudentForm';
@@ -2654,14 +2655,6 @@ const StudentList: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
   }, [editingStudent, editForm, editLoading]);
 
-  // Helper function to format dates as dd-mm-yyyy
-  const formatDate = (date: Date): string => {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0'); // getMonth() returns 0-11
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
-  };
-
   const handleExportStudentsExcel = async () => {
     if (!filtered.length) return;
 
@@ -2695,7 +2688,7 @@ const StudentList: React.FC = () => {
           roll_no: getStudentDisplayId({ id: student.id, roll_number: student.roll_number }),
           name: student.name || '',
           father: student.father_name || '',
-          dob: student.dob ? formatDate(new Date(student.dob)) : '',
+          dob: formatAppDate(student.dob, ''),
           class_section: `${student.classes?.name || ''}${student.sections?.name ? ` (${student.sections.name})` : ''}`.trim(),
           phone: student.phone || student.contact_number || '',
           address: student.address || '',
@@ -2820,7 +2813,7 @@ const StudentList: React.FC = () => {
         doc.setFontSize(16);
         doc.text(groupKey, 105, margin + 10, { align: 'center' });
         doc.setFontSize(10);
-        doc.text(`Generated on: ${formatDate(new Date())}`, 210 - margin, margin, { align: 'right' });
+        doc.text(`Generated on: ${formatAppDate(new Date())}`, 210 - margin, margin, { align: 'right' });
 
         // Table columns
         const head = [
@@ -2836,8 +2829,8 @@ const StudentList: React.FC = () => {
             stu.name || '-',
             stu.father_name || '-',
             stu.phone || '-',
-            stu.dob ? formatDate(new Date(stu.dob)) : '-',
-            (stu.admission_date || stu.created_at) ? formatDate(new Date(stu.admission_date || stu.created_at)) : '-',
+            formatAppDate(stu.dob),
+            formatAppDate(stu.admission_date || stu.created_at),
             '' // Remarks blank
           ];
         });
@@ -2879,17 +2872,8 @@ const StudentList: React.FC = () => {
         });
       });
 
-      // Format date as dd-mmm-yyyy
-      const formatDateForFileName = (date: Date) => {
-        const day = date.getDate().toString().padStart(2, '0');
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const month = months[date.getMonth()];
-        const year = date.getFullYear();
-        return `${day}-${month}-${year}`;
-      };
-
       // Save the PDF with mobile-friendly approach
-      const fileName = `Students List (${formatDateForFileName(new Date())}).pdf`;
+      const fileName = `Students List (${formatAppDateForFilename(new Date())}).pdf`;
 
       if (isMobileDevice) {
         // For mobile devices, use Capacitor Filesystem API approach

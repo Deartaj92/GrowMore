@@ -20,6 +20,7 @@ import {
   AccessTime as TimeIcon,
 } from '@mui/icons-material';
 import { reportService } from '../../utils/reportService';
+import { formatAppDate } from '../../utils/dateUtils';
 import { Report as ImportedReport } from '../../types/reports';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../useToast';
@@ -196,7 +197,7 @@ export const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({
                 <Box sx={{ flex: 1 }} />
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography variant="caption" color="text.secondary">
-                    {report.incident_date ? new Date(report.incident_date).toLocaleDateString() : new Date(report.created_at).toLocaleDateString()}
+                    {formatAppDate(report.incident_date || report.created_at)}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">|</Typography>
                   <Typography
@@ -329,7 +330,7 @@ export const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
                         <TimeIcon sx={{ color: 'text.secondary', opacity: 0.7, fontSize: 16 }} />
                         <Typography variant="caption" color="text.secondary">
-                          Last updated: {new Date(report.updates[0].created_at).toLocaleDateString()}
+                          Last updated: {formatAppDate(report.updates[0].created_at)}
                         </Typography>
                       </Box>
                     )}
@@ -408,7 +409,7 @@ export const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({
                               </Box>
                             </Typography>
                             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                              by {update.staff?.name} • {new Date(update.created_at).toLocaleDateString()}
+                              by {update.staff?.name} • {formatAppDate(update.created_at)}
                             </Typography>
                           </Box>
                           {update.update_note && (
@@ -439,4 +440,3 @@ export const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({
     </Dialog>
   );
 };
-

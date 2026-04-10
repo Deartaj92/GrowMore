@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import { useTheme } from 'styled-components';
 import styled from 'styled-components';
 import DottedLoader from '../shared/DottedLoader';
+import AppDateField from '../../../../components/shared/AppDateField';
 import {
   CheckCircle,
   Cancel,
@@ -537,10 +538,11 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
             </CardTitle>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <AbsentsControls isExpanded={isAbsenteesExpanded} style={{ cursor: 'default' }} onClick={(e) => e.stopPropagation()}>
-                    <DateInput
-                      type="date"
+                    <AppDateField
                       value={absentDate}
                       onChange={(e) => setAbsentDate(e.target.value)}
+                      fullWidth={false}
+                      textFieldProps={{ InputLabelProps: { shrink: true }, sx: { minWidth: 170 } }}
                     />
                     <ExportButton
                       ref={exportDropdownRef}

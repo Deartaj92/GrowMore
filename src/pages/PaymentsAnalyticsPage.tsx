@@ -6,6 +6,7 @@ import { useToast } from '../components/useToast';
 import { supabase } from '../supabaseClient';
 import { fetchAllRows } from '../utils/paginationHelper';
 import { CircularProgress } from '@mui/material';
+import AppDateField from '../components/shared/AppDateField';
 import {
   Payments as PaymentsIcon,
   TrendingUp,
@@ -510,8 +511,8 @@ const PaymentsAnalyticsPage: React.FC = () => {
         </Title>
 
         <Filters>
-          <Input theme={themeObj} type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-          <Input theme={themeObj} type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+          <AppDateField value={fromDate} onChange={(e) => setFromDate(e.target.value)} fullWidth={false} textFieldProps={{ InputLabelProps: { shrink: true }, sx: { minWidth: 170 } }} />
+          <AppDateField value={toDate} onChange={(e) => setToDate(e.target.value)} fullWidth={false} textFieldProps={{ InputLabelProps: { shrink: true }, sx: { minWidth: 170 } }} />
 
           <Select theme={themeObj} value={selectedClass} onChange={(e) => {
             setSelectedClass(e.target.value);
@@ -724,5 +725,4 @@ const PaymentsAnalyticsPage: React.FC = () => {
 };
 
 export default PaymentsAnalyticsPage;
-
 

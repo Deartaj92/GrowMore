@@ -34,6 +34,7 @@ import * as Icons from '@mui/icons-material';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
+import AppDateField from '../components/shared/AppDateField';
 
 // =============== Styled layout components (adapted from ExpenseManager) ===============
 
@@ -1203,8 +1204,7 @@ const OtherIncomeManager: React.FC = () => {
             <option value="other">Other</option>
           </FilterSelect>
 
-          <TextField
-            type="date"
+          <AppDateField
             size="small"
             label="Start Date"
             value={filters.startDate || ''}
@@ -1214,12 +1214,10 @@ const OtherIncomeManager: React.FC = () => {
                 startDate: e.target.value || undefined,
               })
             }
-            InputLabelProps={{ shrink: true }}
-            sx={{ minWidth: 160 }}
+            textFieldProps={{ InputLabelProps: { shrink: true }, sx: { minWidth: 160 } }}
           />
 
-          <TextField
-            type="date"
+          <AppDateField
             size="small"
             label="End Date"
             value={filters.endDate || ''}
@@ -1229,8 +1227,7 @@ const OtherIncomeManager: React.FC = () => {
                 endDate: e.target.value || undefined,
               })
             }
-            InputLabelProps={{ shrink: true }}
-            sx={{ minWidth: 160 }}
+            textFieldProps={{ InputLabelProps: { shrink: true }, sx: { minWidth: 160 } }}
           />
         </FiltersContainer>
 
@@ -1596,15 +1593,14 @@ const OtherIncomeManager: React.FC = () => {
                 </Grid>
 
                 <Grid item xs={12} sm={6}>
-                  <TextField
+                  <AppDateField
                     fullWidth
                     size="small"
                     label="Income Date"
-                    type="date"
                     value={formData.incomeDate}
                     onChange={e => setFormData({ ...formData, incomeDate: e.target.value })}
                     required
-                    InputLabelProps={{ shrink: true }}
+                    textFieldProps={{ InputLabelProps: { shrink: true } }}
                   />
                 </Grid>
 
@@ -2049,5 +2045,4 @@ const ModalTitle = styled.h3`
 `;
 
 export default OtherIncomeManager;
-
 
