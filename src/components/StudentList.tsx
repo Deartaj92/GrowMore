@@ -2453,6 +2453,13 @@ const StudentList: React.FC = () => {
     setEditLoading(true);
 
     try {
+      const originalPictureUrl = editingStudent.picture_url || null;
+      const getStudentAvatarPath = (url: string | null | undefined) => {
+        if (!url) return null;
+        const match = url.match(/\/storage\/v1\/object\/public\/student-avatars\/([^?\s]+)/);
+        return match?.[1] || null;
+      };
+
       // Convert empty string numeric fields to null
       const numericFields = [
         'discount_in_fee', 'phone', 'form_b', 'father_income', 'mother_income', 'total_siblings', 'father_mobile', 'mother_mobile'
@@ -2489,21 +2496,11 @@ const StudentList: React.FC = () => {
         'size' in avatarFile &&
         'type' in avatarFile;
       const hasNewAvatarBase64 = avatarBase64.startsWith('data:image/');
+      const shouldRemoveAvatar = cleanedForm.picture_url === null;
+      let replacedAvatarPathToDelete: string | null = null;
 
       // Handle avatar upload/removal
       if (hasNewAvatarFile || hasNewAvatarBase64) {
-        // Delete old image if it exists
-        if (editingStudent && editingStudent.picture_url) {
-          const url = editingStudent.picture_url;
-          const match = url.match(/student-avatars\/([^?\s]+)/);
-          if (match && match[1]) {
-            const path = match[1];
-            const { error: removeError } = await supabase.storage.from('student-avatars').remove([path]);
-            if (removeError) {
-              // Failed to delete old avatar
-            }
-          }
-        }
         let file: any = avatarFile;
 
         // If it's totally lost, notify the user. 
@@ -2535,9 +2532,11 @@ const StudentList: React.FC = () => {
           .from('student-avatars')
           .getPublicUrl(fileName);
         cleanedForm.picture_url = publicUrlData?.publicUrl || null;
-      } else if (cleanedForm.picture_url === null) {
-        // Remove avatar
+        replacedAvatarPathToDelete = getStudentAvatarPath(originalPictureUrl);
+      } else if (shouldRemoveAvatar) {
         cleanedForm.picture_url = null;
+      } else if (cleanedForm.picture_url === originalPictureUrl) {
+        delete cleanedForm.picture_url;
       }
       // Log the payload for debugging
       const { data: updatedStudent, error } = await supabase
@@ -2569,6 +2568,15 @@ const StudentList: React.FC = () => {
       if (error) {
         showToast('Failed to update student: ' + error.message, 'error');
         return;
+      }
+
+      if (shouldRemoveAvatar) {
+        const removedAvatarPath = getStudentAvatarPath(originalPictureUrl);
+        if (removedAvatarPath) {
+          await supabase.storage.from('student-avatars').remove([removedAvatarPath]);
+        }
+      } else if (replacedAvatarPathToDelete) {
+        await supabase.storage.from('student-avatars').remove([replacedAvatarPathToDelete]);
       }
 
       // Update local state with the complete updated student data including class and section names
