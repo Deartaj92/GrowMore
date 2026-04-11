@@ -432,19 +432,18 @@ const StaffAddForm: React.FC = () => {
   const handleImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       let file = e.target.files[0];
-      if (file.size > 100 * 1024) {
-        try {
-          file = await imageCompression(file, {
-            maxSizeMB: 0.25,
-            maxWidthOrHeight: 800,
-            useWebWorker: true,
-            fileType: 'image/jpeg',
-            initialQuality: 0.85
-          });
-        } catch (err) {
-          showToast('Failed to compress image', 'error');
-          return;
-        }
+      try {
+        file = await imageCompression(file, {
+          maxSizeMB: 0.15,
+          maxWidthOrHeight: 500,
+          useWebWorker: true,
+          fileType: 'image/jpeg',
+          initialQuality: 0.6,
+          maxIteration: 10
+        });
+      } catch (err) {
+        showToast('Failed to compress image', 'error');
+        return;
       }
       const reader = new FileReader();
       reader.onload = ev => setImage(ev.target?.result as string);
@@ -499,13 +498,33 @@ const StaffAddForm: React.FC = () => {
     try {
       let picture_url = image;
       if (form.pictureFile) {
-        const fileExt = form.pictureFile.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const fileExt = 'jpg';
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
         const filePath = `staff/${fileName}`;
-        const { error: uploadError } = await supabase.storage
-          .from('staff-avatars')
-          .upload(filePath, form.pictureFile);
+        
+        let uploadError = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            const { error } = await supabase.storage
+              .from('staff-avatars')
+              .upload(filePath, form.pictureFile, {
+                contentType: 'image/jpeg',
+                upsert: true
+              });
+            if (!error) {
+              uploadError = null;
+              break;
+            }
+            uploadError = error;
+            if (attempt < 3) await new Promise(r => setTimeout(r, 500));
+          } catch (err) {
+            uploadError = err;
+            if (attempt < 3) await new Promise(r => setTimeout(r, 500));
+          }
+        }
+        
         if (uploadError) throw uploadError;
+        
         const { data: { publicUrl } } = supabase.storage
           .from('staff-avatars')
           .getPublicUrl(filePath);

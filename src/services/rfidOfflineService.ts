@@ -848,7 +848,7 @@ class RFIDOfflineService {
 
         const { data: existing, error: existingError } = await supabase
             .from(table)
-            .select('id, status, check_in_time, check_out_time')
+            .select('id, status, source, check_in_time, check_out_time')
             .eq(idCol, person.person_id)
             .eq('date', date)
             .eq('school_id', schoolId)
@@ -1185,9 +1185,13 @@ class RFIDOfflineService {
 
             if (navigator.onLine && person.attendance_mode !== effectiveAttendanceMode) {
                 const peopleTable = person.type === 'student' ? 'students' : 'staff';
-                supabase.from(peopleTable).update({ attendance_mode: effectiveAttendanceMode })
-                    .eq('id', person.person_id).eq('school_id', schoolId).then(({ error }) => {
-                        if (!error) person.attendance_mode = effectiveAttendanceMode;
+                const modeToSet = effectiveAttendanceMode;
+                const personId = person.person_id;
+                supabase.from(peopleTable).update({ attendance_mode: modeToSet })
+                    .eq('id', personId).eq('school_id', schoolId).then(({ error }) => {
+                        if (!error) {
+                            person.attendance_mode = modeToSet;
+                        }
                     });
             }
 
