@@ -181,6 +181,13 @@ export const attendanceMenuItems: MenuItem[] = [
     icon: React.createElement(AnalyticsIcon),
     path: '/attendance/analytics',
     color: '#0ea5e9'
+  },
+  {
+    title: 'Student Attendance Analytics',
+    description: 'View detailed student attendance, class performance, and irregular student insights',
+    icon: React.createElement(AnalyticsIcon),
+    path: '/attendance/student-analytics',
+    color: '#8b5cf6'
   }
 ];
 

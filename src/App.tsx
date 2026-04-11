@@ -1022,6 +1022,15 @@ const App: React.FC = () => {
                           />
 
                           <Route
+                            path="attendance/student-analytics"
+                            element={
+                              <ProtectedRoute requiredPermission="attendance-analytics">
+                                <StudentAttendanceAnalyticsPage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
                             path="attendance/staff-half-leaves"
                             element={
                               <ProtectedRoute requiredPermission="staff-half-leaves">

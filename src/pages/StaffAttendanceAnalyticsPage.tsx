@@ -618,6 +618,11 @@ const StaffAttendanceAnalyticsPage: React.FC = () => {
     })
   ), [attendance, filteredStaffIds, selectedSource]);
 
+  const staffWithAttendance = useMemo(() => {
+    const staffIdsWithRecords = new Set(filteredAttendance.map((r) => r.staff_id));
+    return filteredStaff.filter((member) => staffIdsWithRecords.has(member.id));
+  }, [filteredAttendance, filteredStaff]);
+
   const aggregatedStaff = useMemo(() => {
     const startMinutes = parseTimeToMinutes(settings?.staff_start_time) ?? 8 * 60;
     const endMinutes = parseTimeToMinutes(settings?.staff_end_time) ?? 14 * 60;
@@ -643,7 +648,7 @@ const StaffAttendanceAnalyticsPage: React.FC = () => {
       onTimeCount: number;
     }>();
 
-    filteredStaff.forEach((member) => {
+    staffWithAttendance.forEach((member) => {
       map.set(member.id, {
         id: member.id,
         name: member.name,
@@ -728,7 +733,7 @@ const StaffAttendanceAnalyticsPage: React.FC = () => {
         shiftAdherence: avgCheckOut !== null ? Math.round(((avgCheckOut - endMinutes) / 60) * 10) / 10 : null,
       };
     });
-  }, [filteredAttendance, filteredStaff, settings?.grace_period_minutes, settings?.staff_end_time, settings?.staff_start_time]);
+  }, [filteredAttendance, staffWithAttendance, settings?.grace_period_minutes, settings?.staff_end_time, settings?.staff_start_time]);
 
   const overview = useMemo(() => {
     const recordedDays = Array.from(new Set(filteredAttendance.map((item) => item.date))).sort();
@@ -993,7 +998,7 @@ const StaffAttendanceAnalyticsPage: React.FC = () => {
             onChange={(event) => setStaffQuery(event.target.value)}
           />
           <MiniNote theme={themeObj}>
-            <span>{filteredStaff.length} employee{filteredStaff.length === 1 ? '' : 's'} in current filter</span>
+            <span>{staffWithAttendance.length} employee{staffWithAttendance.length === 1 ? '' : 's'} with attendance</span>
             <span>{overview.recordedDays} recorded day{overview.recordedDays === 1 ? '' : 's'} in range</span>
           </MiniNote>
         </FilterCard>
@@ -1003,7 +1008,7 @@ const StaffAttendanceAnalyticsPage: React.FC = () => {
         <MetricCard theme={themeObj}>
           <MetricLabel theme={themeObj}><Groups fontSize="inherit" /> Attendance Coverage</MetricLabel>
           <MetricValue theme={themeObj}>{overview.attendanceRecords}</MetricValue>
-          <MetricMeta theme={themeObj}>{overview.recordedDays} recorded dates across {filteredStaff.length} filtered employees</MetricMeta>
+          <MetricMeta theme={themeObj}>{overview.recordedDays} recorded dates across {staffWithAttendance.length} employees with attendance</MetricMeta>
         </MetricCard>
         <MetricCard theme={themeObj}>
           <MetricLabel theme={themeObj}><CheckCircle fontSize="inherit" /> Present Rate</MetricLabel>
