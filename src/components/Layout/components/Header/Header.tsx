@@ -1936,8 +1936,8 @@ const Header: React.FC<HeaderProps> = ({
       color: '#ec4899'
     },
     {
-      title: 'Staff Attendance Analytics',
-      description: 'View comprehensive staff attendance analytics and trends',
+      title: 'Employee Attendance Analytics',
+      description: 'View detailed employee attendance, check-in, and checkout analytics',
       icon: <BarChartIcon />,
       path: '/attendance/staff-analytics',
       color: '#0ea5e9'
