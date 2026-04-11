@@ -1463,7 +1463,7 @@ const MarkStaffAttendance: React.FC = () => {
         <SegmentedGroup theme={theme === 'dark' ? darkTheme : lightTheme}>
           <AppDateField
             value={date}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            onChange={(e) => {
               setDate(e.target.value);
             }}
             fullWidth={false}
