@@ -2177,7 +2177,7 @@ const HolidayManager: React.FC = () => {
                 <Grid item xs={12} sm={6}>
                   <AppDateField
                     value={editHolidayForm.start_date}
-                    onChangeValue={(value) => setEditHolidayForm(prev => ({ ...prev, start_date: value }))}
+                    onChangeValue={(value) => setEditHolidayForm((prev: any) => ({ ...prev, start_date: value }))}
                     label="Start Date*"
                     required
                     size="small"
@@ -2186,7 +2186,7 @@ const HolidayManager: React.FC = () => {
                 <Grid item xs={12} sm={6}>
                   <AppDateField
                     value={editHolidayForm.end_date}
-                    onChangeValue={(value) => setEditHolidayForm(prev => ({ ...prev, end_date: value }))}
+                    onChangeValue={(value) => setEditHolidayForm((prev: any) => ({ ...prev, end_date: value }))}
                     label="End Date*"
                     required
                     size="small"
