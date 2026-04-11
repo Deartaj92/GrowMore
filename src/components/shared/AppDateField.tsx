@@ -2,6 +2,7 @@ import React from 'react';
 import dayjs from 'dayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import type { Dayjs } from 'dayjs';
+import type { TextFieldProps } from '@mui/material/TextField';
 
 type AppDateFieldProps = {
   id?: string;
@@ -21,7 +22,7 @@ type AppDateFieldProps = {
   className?: string;
   style?: React.CSSProperties;
   placeholder?: string;
-  textFieldSlot?: React.ElementType;
+  textFieldSlot?: React.ComponentType<TextFieldProps>;
   textFieldProps?: Record<string, any>;
 };
 
