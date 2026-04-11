@@ -2290,7 +2290,6 @@ const StudentAdmissionForm: React.FC = () => {
                         )}
                         <Field>
                           <AppDateField
-                            textFieldSlot={CompactTextField as React.ElementType}
                             value={form.admissionDate}
                             onChangeValue={(value) => setForm(prev => ({ ...prev, admissionDate: value }))}
                             label="Date of Admission"
@@ -2394,7 +2393,6 @@ const StudentAdmissionForm: React.FC = () => {
                       <ModernGrid>
                         <Field>
                           <AppDateField
-                            textFieldSlot={CompactTextField as React.ElementType}
                             value={form.dob}
                             onChangeValue={(value) => setForm(prev => ({ ...prev, dob: value }))}
                             label="Date of Birth"

@@ -7275,7 +7275,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                   label="Date of Joining"
                   name="joiningDate"
                   value={editForm.joiningDate}
-                  onChange={handleEditFormChange}
+                  onChange={(e) => setEditForm({ ...editForm, joiningDate: e.target.value })}
                   textFieldProps={{ InputLabelProps: { shrink: true } }}
                 />
               </Grid>
@@ -7381,7 +7381,7 @@ export const TeacherProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
                   label="Date of Birth"
                   name="dob"
                   value={editForm.dob}
-                  onChange={handleEditFormChange}
+                  onChange={(e) => setEditForm({ ...editForm, dob: e.target.value })}
                   textFieldProps={{ InputLabelProps: { shrink: true } }}
                 />
               </Grid>

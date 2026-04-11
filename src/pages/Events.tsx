@@ -2288,8 +2288,10 @@ const Events: React.FC = () => {
                     onChange={(e) => setEditingNotice({ ...editingNotice, expiry_date: e.target.value || null })}
                     fullWidth
                     size="small"
-                    textFieldProps={{ InputLabelProps: { shrink: true } }}
-                    helperText="Leave empty for no expiry"
+                    textFieldProps={{
+                      InputLabelProps: { shrink: true },
+                      helperText: 'Leave empty for no expiry',
+                    }}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>

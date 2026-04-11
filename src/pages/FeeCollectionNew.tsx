@@ -3459,13 +3459,12 @@ const FeeCollectionNew: React.FC = () => {
                       <AppDateField
                         label="Payment Date"
                         value={paymentDate}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentDate(e.target.value)}
+                        onChange={(e) => setPaymentDate(e.target.value)}
                         fullWidth
                         size="small"
                         required
                         textFieldProps={{ InputLabelProps: { shrink: true }, onKeyDown: handleFormKeyDown }}
                         disabled
-                        InputLabelProps={{ shrink: true }}
                       />
                     </FormRow>
 

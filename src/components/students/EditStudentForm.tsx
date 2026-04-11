@@ -618,7 +618,6 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
               )}
               <Grid item xs={12} sm={6} md={4}>
                 <AppDateField
-                  textFieldSlot={CompactTextField as React.ElementType}
                   value={formData.admission_date}
                   onChangeValue={(value) => setFormData(prev => ({ ...prev, admission_date: value }))}
                   required
@@ -665,7 +664,6 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
             <Grid container spacing={1.5}>
               <Grid item xs={12} sm={6} md={4}>
                 <AppDateField
-                  textFieldSlot={CompactTextField as React.ElementType}
                   value={formData.dob}
                   onChangeValue={(value) => setFormData(prev => ({ ...prev, dob: value }))}
                   label="Date of Birth"
