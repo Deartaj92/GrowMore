@@ -32,6 +32,7 @@ import {
     Settings as SettingsIcon,
     Save as SaveIcon,
     Sensors as NfcIcon,
+    Logout as LogoutIcon,
 } from '@mui/icons-material';
 import { CachedAttendanceHistoryItem, rfidOfflineService } from '../services/rfidOfflineService';
 import {
@@ -51,6 +52,17 @@ import {
 const pulse = keyframes`
   0%, 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.4); }
   50%       { box-shadow: 0 0 0 18px rgba(59,130,246,0); }
+`;
+
+const popupSlide = keyframes`
+  0% { opacity: 0; transform: scale(0.9) translateY(20px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+`;
+
+const popupPulse = keyframes`
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
 `;
 
 const slideIn = keyframes`
@@ -328,14 +340,7 @@ const ScanArea = styled.div<{ $status: 'idle' | 'success' | 'error' }>`
   }
 `;
 
-const ScannedImage = styled.img`
-  width: 100%;
-  height: 100%;
-  border-radius: 24px;
-  object-fit: cover;
-  animation: ${fadeIn} 0.5s ease-out;
-  border: 4px solid #22c55e;
-`;
+
 
 const ScanLineBar = styled.div<{ $active: boolean }>`
   position: absolute;
@@ -1002,6 +1007,134 @@ const ToggleCard = styled.div`
   }
 `;
 
+const FullScreenPopup = styled.div<{ $status: 'present' | 'late' | 'checked_out' | 'error' }>`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: ${({ $status }) =>
+        $status === 'present' ? 'linear-gradient(135deg, rgba(34,197,94,0.97) 0%, rgba(22,163,74,1) 100%)' :
+        $status === 'late' ? 'linear-gradient(135deg, rgba(245,158,11,0.97) 0%, rgba(217,119,6,1) 100%)' :
+        $status === 'checked_out' ? 'linear-gradient(135deg, rgba(59,130,246,0.97) 0%, rgba(37,99,235,1) 100%)' :
+        'linear-gradient(135deg, rgba(239,68,68,0.97) 0%, rgba(220,38,38,1) 100%)'};
+  animation: ${popupSlide} 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 2rem;
+  box-sizing: border-box;
+  user-select: none;
+`;
+
+const PopupProgressBar = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: rgba(255,255,255,0.3);
+  overflow: hidden;
+`;
+
+const PopupProgressFill = styled.div<{ $progress: number }>`
+  height: 100%;
+  background: rgba(255,255,255,0.95);
+  transition: width 0.05s linear;
+  width: ${({ $progress }) => $progress}%;
+  box-shadow: 0 0 10px rgba(255,255,255,0.5);
+`;
+
+const PopupContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  max-width: 900px;
+  width: 100%;
+`;
+
+const PopupIconWrapper = styled.div<{ $status: 'present' | 'late' | 'checked_out' | 'error' }>`
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2.5rem;
+  animation: ${popupPulse} 0.6s ease-out;
+  box-shadow: 0 25px 80px rgba(0,0,0,0.4);
+  border: 4px solid rgba(255,255,255,0.3);
+  
+  svg {
+    font-size: 90px;
+    color: #fff;
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));
+  }
+`;
+
+const PopupName = styled.div<{ $color?: string }>`
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  font-weight: 950;
+  color: ${({ $color }) => $color || '#FFFFFF'};
+  line-height: 1.1;
+  margin-bottom: 1.2rem;
+  text-shadow: 0 6px 30px rgba(0,0,0,0.4);
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  letter-spacing: -0.02em;
+`;
+
+const PopupSubInfo = styled.div<{ $color?: string }>`
+  font-size: clamp(1.5rem, 5vw, 2.5rem);
+  font-weight: 800;
+  color: ${({ $color }) => $color || 'rgba(255,255,255,0.95)'};
+  margin-bottom: 2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  text-shadow: 0 3px 15px rgba(0,0,0,0.3);
+`;
+
+const PopupStatus = styled.div<{ $status: 'present' | 'late' | 'checked_out' | 'error'; $bgColor?: string }>`
+  font-size: clamp(2rem, 7vw, 3.5rem);
+  font-weight: 950;
+  color: ${({ $status }) =>
+        $status === 'present' ? '#166534' :
+        $status === 'late' ? '#92400e' :
+        $status === 'checked_out' ? '#1e40af' :
+        '#991b1b'};
+  padding: 1.2rem 4rem;
+  background: ${({ $bgColor }) => $bgColor || 'rgba(255,255,255,0.95)'};
+  border-radius: 24px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  box-shadow: 0 15px 50px rgba(0,0,0,0.3);
+  border: 4px solid rgba(0,0,0,0.1);
+  font-family: 'Arial Black', 'Helvetica Neue', sans-serif;
+`;
+
+const PopupTime = styled.div`
+  margin-top: 2rem;
+  font-size: clamp(1.2rem, 4vw, 2rem);
+  font-weight: 700;
+  color: rgba(255,255,255,0.9);
+  text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+`;
+
+const PopupDismiss = styled.div`
+  position: absolute;
+  bottom: 2.5rem;
+  font-size: 1rem;
+  color: rgba(255,255,255,0.6);
+  font-weight: 500;
+`;
+
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -1037,6 +1170,58 @@ const RFIDAttendancePage: React.FC = () => {
     const [presentCount, setPresentCount] = useState(0);
     const [unknownCount, setUnknownCount] = useState(0);
     const [dupCount, setDupCount] = useState(0);
+    const [showPopup, setShowPopup] = useState(false);
+    const [popupData, setPopupData] = useState<{
+        name: string;
+        subInfo: string;
+        status: 'present' | 'late' | 'checked_out' | 'error';
+        time: string;
+        nameColor: string;
+        subColor: string;
+        statusBgColor: string;
+    } | null>(null);
+    const [popupProgress, setPopupProgress] = useState(100);
+    const popupTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    const generateRandomColors = () => {
+        const colors = [
+            '#FFFFFF', '#FFE4E1', '#FFF0F5', '#FFF8DC', '#FFEFD5',
+            '#E6E6FA', '#F0FFF0', '#F5FFFA', '#F0FFFF', '#FFFFF0',
+            '#FAF0E6', '#FFF5EE', '#FFFAF0', '#FDF5E6', '#FFFAFA',
+            '#FFFACD', '#FFFAF5', '#F5F5DC', '#F5F5F5', '#F5FFFA'
+        ];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        return randomColor;
+    };
+
+    const triggerPopup = (data: Omit<NonNullable<typeof popupData>, 'nameColor' | 'subColor' | 'statusBgColor'>) => {
+        if (popupTimerRef.current) {
+            clearInterval(popupTimerRef.current);
+        }
+        
+        setPopupProgress(100);
+        setPopupData({
+            ...data,
+            nameColor: generateRandomColors(),
+            subColor: generateRandomColors(),
+            statusBgColor: generateRandomColors(),
+        });
+        setShowPopup(true);
+
+        const startTime = Date.now();
+        const duration = 3500;
+        popupTimerRef.current = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(0, 100 - (elapsed / duration) * 100);
+            setPopupProgress(remaining);
+            if (remaining <= 0 && popupTimerRef.current) {
+                clearInterval(popupTimerRef.current);
+                popupTimerRef.current = null;
+                setShowPopup(false);
+                setPopupData(null);
+            }
+        }, 16);
+    };
 
     const [showSettings, setShowSettings] = useState(false);
     const [showSettingsPasswordModal, setShowSettingsPasswordModal] = useState(false);
@@ -1073,7 +1258,7 @@ const RFIDAttendancePage: React.FC = () => {
     const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0 });
     const [showSuccess, setShowSuccess] = useState(false);
     const [syncStats, setSyncStats] = useState({ success: 0, failed: 0 });
-    const [scannedPerson, setScannedPerson] = useState<{ name: string; picture_url?: string } | null>(null);
+    const [scannedPerson, setScannedPerson] = useState<{ name: string } | null>(null);
     const navigationContext = useContext(UNSAFE_NavigationContext);
     const pendingNavigationRef = useRef<{ path: string; replace?: boolean; retry?: () => void } | null>(null);
 
@@ -1460,7 +1645,7 @@ const RFIDAttendancePage: React.FC = () => {
                     const statusLabel = (result.person.status || 'inactive').replace('_', ' ');
                     setScanStatus('error');
                     setStatusMsg(`Not Active: ${result.person.name}`);
-                    setScannedPerson({ name: result.person.name, picture_url: result.person.picture_url });
+                    setScannedPerson({ name: result.person.name });
                     addFeedItem({
                         type: 'error',
                         name: result.person.name,
@@ -1475,7 +1660,7 @@ const RFIDAttendancePage: React.FC = () => {
                 if (result.type === 'error_manual_only' && result.person) {
                     setScanStatus('error');
                     setStatusMsg(`Manual Only: ${result.person.name}`);
-                    setScannedPerson({ name: result.person.name, picture_url: result.person.picture_url });
+                    setScannedPerson({ name: result.person.name });
                     addFeedItem({
                         type: 'warn',
                         name: result.person.name,
@@ -1497,6 +1682,12 @@ const RFIDAttendancePage: React.FC = () => {
                     time,
                     personType: 'student',
                 });
+                triggerPopup({
+                    name: `Unknown Card`,
+                    subInfo: `UID: ${cleanUID}`,
+                    status: 'error',
+                    time,
+                });
                 return;
             }
 
@@ -1504,7 +1695,7 @@ const RFIDAttendancePage: React.FC = () => {
             const personType = p.type === 'student' ? 'student' : 'employee';
 
             // UI Feedback
-            setScannedPerson({ name: p.name, picture_url: p.picture_url });
+            setScannedPerson({ name: p.name });
 
             if (result.type === 'already' || result.type === 'already_out') {
                 const isAlreadyOut = result.type === 'already_out';
@@ -1518,6 +1709,12 @@ const RFIDAttendancePage: React.FC = () => {
                     time,
                     personType
                 });
+                triggerPopup({
+                    name: p.name,
+                    subInfo: isAlreadyOut ? `Already checked out` : `Already marked Present`,
+                    status: 'error',
+                    time,
+                });
                 showToast(isAlreadyOut ? `${p.name}: Already Left` : `${p.name}: Already Marked`, 'error');
             } else if (result.type === 'out') {
                 setScanStatus('success');
@@ -1529,6 +1726,12 @@ const RFIDAttendancePage: React.FC = () => {
                     time,
                     personType: 'employee',
                     attendanceStatus: 'checked_out'
+                });
+                triggerPopup({
+                    name: p.name,
+                    subInfo: p.role || 'Staff',
+                    status: 'checked_out',
+                    time,
                 });
                 showToast('Employee Checked Out!', 'success');
             } else {
@@ -1555,6 +1758,13 @@ const RFIDAttendancePage: React.FC = () => {
                         subAccent,
                         time,
                         personType,
+                    });
+
+                    triggerPopup({
+                        name: p.name,
+                        subInfo: subLabel,
+                        status: 'present',
+                        time,
                     });
 
                     const q = await rfidOfflineService.getQueue();
@@ -1590,7 +1800,13 @@ const RFIDAttendancePage: React.FC = () => {
                     attendanceLateCount: lateCount,
                 });
 
-                // Show big message
+                triggerPopup({
+                    name: p.name,
+                    subInfo: subLabel,
+                    status: isLate ? 'late' : 'present',
+                    time,
+                });
+
                 showToast(isLate ? 'Marked as Late Arrival!' : 'Marked as Present!', 'success');
             }
 
@@ -1615,7 +1831,7 @@ const RFIDAttendancePage: React.FC = () => {
                 resetTimerRef.current = null;
             }, 4000);
         }
-    }, [user?.school_id, addFeedItem, selectedDate, fetchPersonMonthlyLateCount]);
+    }, [user?.school_id, addFeedItem, selectedDate, fetchPersonMonthlyLateCount, triggerPopup]);
 
     const handleStartNfc = async () => {
         // --- 1. Pure Native Android APK (PhoneGap-NFC) ---
@@ -1715,7 +1931,7 @@ const RFIDAttendancePage: React.FC = () => {
             const personType = p.type === 'student' ? 'student' : 'employee';
 
             // UI Feedback update
-            setScannedPerson({ name: p.name, picture_url: p.picture_url });
+            setScannedPerson({ name: p.name });
 
             if (result.type === 'error_checkout_early') {
                 setScanStatus('error');
@@ -1772,6 +1988,12 @@ const RFIDAttendancePage: React.FC = () => {
                     time,
                     personType
                 });
+                triggerPopup({
+                    name: p.name,
+                    subInfo: isAlreadyOut ? `Already checked out` : `Already marked Present`,
+                    status: 'error',
+                    time,
+                });
                 showToast(isAlreadyOut ? 'Already Checked Out!' : 'Already Marked Present!', 'error');
             } else if (result.type === 'out') {
                 setScanStatus('success');
@@ -1783,6 +2005,12 @@ const RFIDAttendancePage: React.FC = () => {
                     time,
                     personType: 'employee',
                     attendanceStatus: 'checked_out'
+                });
+                triggerPopup({
+                    name: p.name,
+                    subInfo: p.role || 'Staff',
+                    status: 'checked_out',
+                    time,
                 });
                 showToast('Employee Checked Out!', 'success');
             } else {
@@ -1812,6 +2040,12 @@ const RFIDAttendancePage: React.FC = () => {
                     });
 
                     rfidOfflineService.getQueue().then(q => setQueueCount(q.length));
+                    triggerPopup({
+                        name: p.name,
+                        subInfo: subLabel,
+                        status: 'present',
+                        time,
+                    });
                     showToast('Scan successful', 'success');
                     return;
                 }
@@ -1843,6 +2077,13 @@ const RFIDAttendancePage: React.FC = () => {
                     attendanceLateCount: lateCount,
                 });
 
+                triggerPopup({
+                    name: p.name,
+                    subInfo: subLabel,
+                    status: isLate ? 'late' : 'present',
+                    time,
+                });
+
                 showToast(isLate ? 'Marked as Late Arrival!' : 'Marked as Present!', 'success');
             }
 
@@ -1858,7 +2099,7 @@ const RFIDAttendancePage: React.FC = () => {
 
         window.addEventListener('rfid-scan-processed', handleGlobalScan);
         return () => window.removeEventListener('rfid-scan-processed', handleGlobalScan);
-    }, [addFeedItem, fetchPersonMonthlyLateCount, showToast]);
+    }, [addFeedItem, fetchPersonMonthlyLateCount, showToast, triggerPopup]);
 
     const clearFeedData = () => {
         setFeed([]);
@@ -2525,15 +2766,46 @@ const RFIDAttendancePage: React.FC = () => {
                 </ModalOverlay>
             , document.body)}
 
+            {showPopup && popupData && (
+                <FullScreenPopup
+                    $status={popupData.status}
+                    onClick={() => {
+                        setShowPopup(false);
+                        setPopupData(null);
+                        if (popupTimerRef.current) {
+                            clearInterval(popupTimerRef.current);
+                            popupTimerRef.current = null;
+                        }
+                    }}
+                >
+                    <PopupProgressBar>
+                        <PopupProgressFill $progress={popupProgress} />
+                    </PopupProgressBar>
+                    <PopupContent>
+                        <PopupIconWrapper $status={popupData.status}>
+                            {popupData.status === 'present' && <CheckCircle />}
+                            {popupData.status === 'late' && <AlertCircle />}
+                            {popupData.status === 'checked_out' && <LogoutIcon />}
+                            {popupData.status === 'error' && <XCircle />}
+                        </PopupIconWrapper>
+                        <PopupName $color={popupData.nameColor}>{popupData.name}</PopupName>
+                        <PopupSubInfo $color={popupData.subColor}>{popupData.subInfo}</PopupSubInfo>
+                        <PopupStatus $status={popupData.status} $bgColor={popupData.statusBgColor}>
+                            {popupData.status === 'present' && 'Present'}
+                            {popupData.status === 'late' && 'Late Arrival'}
+                            {popupData.status === 'checked_out' && 'Checked Out'}
+                            {popupData.status === 'error' && 'Error'}
+                        </PopupStatus>
+                        <PopupTime>{popupData.time}</PopupTime>
+                    </PopupContent>
+                </FullScreenPopup>
+            )}
+
             <MainGrid>
                 {/* \u2500\u2500 Left: Scanner \u2500\u2500 */}
                 <ScannerCard theme={themeObj}>
                     <ScanArea $status={scanStatus}>
-                        {scanStatus === 'success' && scannedPerson?.picture_url ? (
-                            <ScannedImage src={scannedPerson.picture_url} alt={scannedPerson.name} />
-                        ) : (
-                            scanIcon
-                        )}
+                        {scanIcon}
                         <ScanLineBar $active={scanStatus === 'idle'} />
                     </ScanArea>
 
