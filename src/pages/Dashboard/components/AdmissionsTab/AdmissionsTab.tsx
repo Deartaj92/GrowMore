@@ -261,6 +261,19 @@ const AdmissionsTab: React.FC<AdmissionsTabProps> = ({
 
             <StatCard theme={theme}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
+                <StatLabel theme={theme}>Current Active Students</StatLabel>
+                <People style={{ fontSize: '1.25rem', color: '#06b6d4' }} />
+              </div>
+              <StatValue theme={theme}>
+                {admissionsLoading ? <DottedLoader /> : (admissionsData?.currentActiveStudents || 0)}
+              </StatValue>
+              <StatChange $positive={true} theme={theme}>
+                Current Session
+              </StatChange>
+            </StatCard>
+
+            <StatCard theme={theme}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
                 <StatLabel theme={theme}>Families</StatLabel>
                 <Group style={{ fontSize: '1.25rem', color: '#f59e0b' }} />
               </div>

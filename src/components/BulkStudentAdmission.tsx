@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import styled, { ThemeProvider, keyframes, createGlobalStyle, css } from 'styled-components';
-import { Add as AddIcon, Refresh as RefreshIcon, Close as CloseIcon, Save as SaveIcon, Delete as DeleteIcon, PersonAdd as PersonAddIcon } from '@mui/icons-material';
+import { Add as AddIcon, Refresh as RefreshIcon, Close as CloseIcon, Save as SaveIcon, Delete as DeleteIcon, PersonAdd as PersonAddIcon, CloudUpload as CloudUploadIcon, Description as DescriptionIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon } from '@mui/icons-material';
 import { ThemeContext, darkTheme, lightTheme, useProgress } from './Layout';
 import { sortClasses } from '../utils/classUtils';
 import { supabase } from '../supabaseClient';
@@ -10,10 +10,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLoading } from '../contexts/LoadingContext';
 import { usePageFooter } from './Layout/contexts/PageFooterContext';
 import { Box, Grid } from '@mui/material';
+import * as XLSX from 'xlsx';
 import Loader from './Loader';
 import NoSessionsFound from './NoSessionsFound';
 import NoClassesFound from './NoClassesFound';
-import NoSectionsFound from './NoSectionsFound';
 import {
   clayPanelStyle,
   clayCardStyle,
@@ -154,10 +154,9 @@ const StudentsListContainer = styled.div`
 
 const StudentRow = styled.div<{ $focused?: boolean }>`
   ${clayCardStyle}
-  display: grid;
-  grid-template-columns: 60px 1fr 1fr 1fr auto auto;
-  gap: 12px;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   padding: 12px;
   border: 1.5px solid ${({ theme, $focused }) => $focused ? `${theme.ACCENT}88` : 'transparent'};
   border-radius: ${CARD_RADIUS_LG};
@@ -170,10 +169,43 @@ const StudentRow = styled.div<{ $focused?: boolean }>`
   }
 
   @media (max-width: 700px) {
-    grid-template-columns: 1fr;
     gap: 8px;
     padding: 10px;
   }
+`;
+
+const StudentRowHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+`;
+
+const StudentRowMain = styled.div`
+  display: grid;
+  grid-template-columns: 52px minmax(160px, 1.2fr) minmax(160px, 1.2fr) minmax(140px, 1fr) minmax(140px, 1fr) minmax(140px, 1fr) minmax(120px, 0.8fr) minmax(150px, 1fr) auto;
+  gap: 10px 12px;
+  align-items: start;
+
+  @media (max-width: 1400px) {
+    grid-template-columns: 52px repeat(4, minmax(140px, 1fr)) auto;
+  }
+
+  @media (max-width: 900px) {
+    grid-template-columns: 52px 1fr 1fr auto;
+  }
+
+  @media (max-width: 700px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const StudentRowMeta = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 `;
 
 const SerialNumber = styled.div`
@@ -247,13 +279,32 @@ const AddStudentButton = styled.button`
   font-size: 0.9rem;
   font-weight: 600;
   transition: all 0.2s ease;
-  margin-top: 16px;
+  margin-top: 0;
 
   &:hover {
     background: ${({ theme }) => theme.ACCENT}ee;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px ${({ theme }) => `${theme.ACCENT}33`};
   }
+`;
+
+const UploadCsvButton = styled.button`
+  ${clayButtonStyle}
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: ${CARD_RADIUS_MD};
+  padding: 0.65rem 0.95rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
+  cursor: pointer;
+`;
+
+const HiddenFileInput = styled.input`
+  display: none;
 `;
 
 const LoadingOverlay = styled.div`
@@ -343,6 +394,124 @@ const ListTitle = styled.h4`
   font-size: 0.95rem;
   font-weight: 700;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
+`;
+
+const ImportSummary = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 0.84rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  flex-wrap: wrap;
+`;
+
+const InstructionsCard = styled.div`
+  ${clayCardStyle}
+  padding: 16px 18px;
+  margin-top: 10px;
+  border: 1px solid ${({ theme }) => `${theme.ACCENT}22`};
+`;
+
+const InstructionsTitle = styled.h3`
+  margin: 0 0 10px 0;
+  font-size: 1rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+`;
+
+const InstructionsText = styled.p`
+  margin: 0 0 8px 0;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-size: 0.9rem;
+  line-height: 1.5;
+`;
+
+const InstructionList = styled.ul`
+  margin: 0;
+  padding-left: 18px;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-size: 0.88rem;
+  line-height: 1.55;
+`;
+
+const RowSections = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+`;
+
+const ExpandButton = styled.button`
+  ${clayButtonStyle}
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: ${CARD_RADIUS_MD};
+  padding: 0.5rem 0.75rem;
+  min-height: 42px;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 700;
+`;
+
+const CollapsedDrawer = styled.div`
+  border-top: 1px solid ${({ theme }) => `${theme.ACCENT}22`};
+  padding-top: 12px;
+`;
+
+const RowSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+`;
+
+const RowSectionTitle = styled.div`
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: ${({ theme }) => theme.ACCENT};
+  text-transform: uppercase;
+`;
+
+const RowFieldsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 12px;
+
+  @media (max-width: 1200px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @media (max-width: 900px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 700px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const RowField = styled.div<{ $spanAll?: boolean }>`
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  ${({ $spanAll }) => $spanAll ? 'grid-column: 1 / -1;' : ''}
+`;
+
+const FieldCaption = styled.label`
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+`;
+
+const FieldHint = styled.div<{ $error?: boolean }>`
+  min-height: 16px;
+  font-size: 0.75rem;
+  color: ${({ theme, $error }) => $error ? '#dc2626' : theme.TEXT_SECONDARY};
 `;
 
 const GlobalStyle = createGlobalStyle<{
@@ -694,7 +863,193 @@ interface StudentData {
   name: string;
   fatherName: string;
   gender: string;
+  classId?: string;
+  className?: string;
+  sectionId?: string;
+  sectionName?: string;
+  admissionDate?: string;
+  phone?: string;
+  notificationChannel?: string;
+  dob?: string;
+  studentId?: string;
+  cast?: string;
+  orphan?: string;
+  osc?: string;
+  idMark?: string;
+  bloodGroup?: string;
+  previousSchool?: string;
+  previousId?: string;
+  religion?: string;
+  nationality?: string;
+  disease?: string;
+  additionalNote?: string;
+  totalSiblings?: string;
+  address?: string;
+  fatherNationalId?: string;
+  fatherEducation?: string;
+  fatherMobile?: string;
+  fatherOccupation?: string;
+  fatherIncome?: string;
+  motherName?: string;
+  motherNationalId?: string;
+  motherEducation?: string;
+  motherMobile?: string;
+  motherOccupation?: string;
+  motherIncome?: string;
+  familyId?: string;
+  familyName?: string;
 }
+
+interface SchoolSection {
+  id: string;
+  name: string;
+  class_id: number | string;
+}
+
+const padDatePart = (value: number) => String(value).padStart(2, '0');
+
+const formatDateDisplay = (date: Date) =>
+  `${padDatePart(date.getDate())}-${padDatePart(date.getMonth() + 1)}-${date.getFullYear()}`;
+
+const formatDateIso = (date: Date) =>
+  `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+
+const getTodayDisplay = () => formatDateDisplay(new Date());
+
+const isValidDate = (date: Date) => !Number.isNaN(date.getTime());
+
+const parseFlexibleDate = (value: unknown): Date | null => {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  if (value instanceof Date && isValidDate(value)) {
+    return value;
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    const parsed = new Date(excelEpoch.getTime() + value * 24 * 60 * 60 * 1000);
+    return isValidDate(parsed) ? parsed : null;
+  }
+
+  const raw = String(value).trim();
+  if (!raw) {
+    return null;
+  }
+
+  if (/^\d+(\.\d+)?$/.test(raw)) {
+    const numericValue = Number(raw);
+    if (Number.isFinite(numericValue)) {
+      const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+      const parsed = new Date(excelEpoch.getTime() + numericValue * 24 * 60 * 60 * 1000);
+      return isValidDate(parsed) ? parsed : null;
+    }
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const [year, month, day] = raw.split('-').map(Number);
+    const parsed = new Date(year, month - 1, day);
+    return isValidDate(parsed) ? parsed : null;
+  }
+
+  const normalized = raw.replace(/[/.]/g, '-');
+  const parts = normalized.split('-').map(part => part.trim()).filter(Boolean);
+
+  if (parts.length === 3) {
+    if (parts[0].length === 4) {
+      const [year, month, day] = parts.map(Number);
+      const parsed = new Date(year, month - 1, day);
+      return isValidDate(parsed) ? parsed : null;
+    }
+
+    const [first, second, third] = parts.map(Number);
+    if (third > 999) {
+      const parsed = new Date(third, second - 1, first);
+      return isValidDate(parsed) ? parsed : null;
+    }
+  }
+
+  const nativeParsed = new Date(raw);
+  return isValidDate(nativeParsed) ? nativeParsed : null;
+};
+
+const normalizeDateForDisplay = (value: unknown, fallback: string = getTodayDisplay()) => {
+  const parsed = parseFlexibleDate(value);
+  return parsed ? formatDateDisplay(parsed) : fallback;
+};
+
+const normalizeDateForBackend = (value: unknown, fallback?: string) => {
+  const parsed = parseFlexibleDate(value);
+  if (parsed) {
+    return formatDateIso(parsed);
+  }
+  return fallback || formatDateIso(new Date());
+};
+
+const normalizeHeader = (value: unknown) =>
+  String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+
+const normalizeCompare = (value: unknown) => normalizeHeader(value);
+
+const stringValue = (value: unknown) => String(value ?? '').trim();
+
+const nullableValue = (value: unknown) => {
+  const normalized = stringValue(value);
+  return normalized ? normalized : null;
+};
+
+const createStudent = (overrides: Partial<StudentData> = {}): StudentData => ({
+  id: overrides.id || `temp-${Date.now()}-${Math.random()}`,
+  name: '',
+  fatherName: '',
+  gender: 'Male',
+  admissionDate: getTodayDisplay(),
+  notificationChannel: 'whatsapp',
+  dob: '01-01-2000',
+  religion: 'Muslim',
+  nationality: 'Pakistani',
+  ...overrides,
+});
+
+const createDefaultStudents = (count: number): StudentData[] =>
+  Array.from({ length: count }, (_, index) =>
+    createStudent({
+      id: `default-${Date.now()}-${index + 1}`,
+    })
+  );
+
+const getRowValue = (row: Record<string, unknown>, aliases: string[]): string => {
+  for (const alias of aliases) {
+    const match = Object.keys(row).find(key => normalizeHeader(key) === alias);
+    if (match) {
+      const value = stringValue(row[match]);
+      if (value) {
+        return value;
+      }
+    }
+  }
+  return '';
+};
+
+const normalizeGender = (value: string) => {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'f' || normalized === 'female') return 'Female';
+  if (normalized === 'o' || normalized === 'other') return 'Other';
+  return 'Male';
+};
+
+const normalizeNotificationChannel = (value: string) => {
+  const normalized = value.trim().toLowerCase();
+  return normalized === 'sms' ? 'sms' : 'whatsapp';
+};
+
+const BLOOD_GROUPS = ['', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+const RELIGIONS = ['Muslim', 'Christian', 'Hindu', 'Sikh', 'Other'];
+const NATIONALITIES = ['Pakistani', 'Afghan', 'Indian', 'Bangladeshi', 'Other'];
 
 const BulkStudentAdmission: React.FC = () => {
   const { theme } = useContext(ThemeContext);
@@ -715,24 +1070,21 @@ const BulkStudentAdmission: React.FC = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
   
-  const [formData, setFormData] = useState({
-    class: '',
-    section: ''
-  });
   const [students, setStudents] = useState<StudentData[]>([]);
   const [classes, setClasses] = useState<{id: string, name: string, has_sections?: boolean}[]>([]);
-  const [sections, setSections] = useState<{id: string, name: string}[]>([]);
-  const [selectedClassHasSections, setSelectedClassHasSections] = useState<boolean>(true);
+  const [allSections, setAllSections] = useState<SchoolSection[]>([]);
+  const [families, setFamilies] = useState<Array<{ id: string; name: string }>>([]);
   const [loadingClasses, setLoadingClasses] = useState(false);
-  const [loadingSections, setLoadingSections] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [toasts, setToasts] = useState<Array<{msg: string, type: 'error' | 'success' | 'warning', id: number}>>([]);
   const [activeSession, setActiveSession] = useState<any>(null);
   const [hasClasses, setHasClasses] = useState(true);
-  const [hasSections, setHasSections] = useState(true);
   const [focusedStudentId, setFocusedStudentId] = useState<string | null>(null);
+  const [importFileName, setImportFileName] = useState('');
+  const [expandedStudentIds, setExpandedStudentIds] = useState<Set<string>>(new Set());
   const lastRowRef = useRef<HTMLDivElement>(null);
   const studentsRef = useRef<StudentData[]>([]);
+  const csvInputRef = useRef<HTMLInputElement>(null);
   
   const toastId = useRef(0);
   
@@ -750,13 +1102,7 @@ const BulkStudentAdmission: React.FC = () => {
   // Initialize with 10 default student rows
   useEffect(() => {
     if (students.length === 0) {
-      const defaultStudents: StudentData[] = Array.from({ length: 10 }, (_, index) => ({
-        id: `default-${index + 1}`,
-        name: '',
-        fatherName: '',
-        gender: 'Male'
-      }));
-      setStudents(defaultStudents);
+      setStudents(createDefaultStudents(10));
     }
   }, []);
 
@@ -798,16 +1144,6 @@ const BulkStudentAdmission: React.FC = () => {
 
         setHasClasses(!classesError && classes && classes.length > 0);
 
-        // Check for sections for this school
-        setProgress(60);
-        const { data: sections, error: sectionsError } = await supabase
-          .from('sections')
-          .select('id')
-          .eq('school_id', user.school_id)
-          .limit(1);
-
-        setHasSections(!sectionsError && sections && sections.length > 0);
-
         setProgress(100);
       } catch (error) {
       } finally {
@@ -838,61 +1174,45 @@ const BulkStudentAdmission: React.FC = () => {
       });
   }, [user?.school_id]);
 
-  // Fetch sections when class changes
   useEffect(() => {
-    if (!formData.class || !user?.school_id) { 
-      setSections([]);
-      setSelectedClassHasSections(true);
-      return; 
-    }
-    
-    // Check if selected class has sections
-    const selectedClass = classes.find(c => String(c.id) === String(formData.class));
-    const hasSections = selectedClass?.has_sections ?? true;
-    setSelectedClassHasSections(hasSections);
-    
-    // Only fetch sections if class has sections
-    if (!hasSections) {
-      setSections([]);
-      setFormData(prev => ({ ...prev, section: '' }));
-      return;
-    }
-    
-    setLoadingSections(true);
+    if (!user?.school_id) return;
+
     supabase
       .from('sections')
       .select('id, name, class_id')
-      .eq('class_id', Number(formData.class))
       .eq('school_id', user.school_id)
       .then(({ data, error }) => {
-        setLoadingSections(false);
-        if (error) {
+        if (!error) {
+          setAllSections(data || []);
         }
-        setSections(data || []);
       });
-  }, [formData.class, user?.school_id, classes]);
+  }, [user?.school_id]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  useEffect(() => {
+    if (!user?.school_id) return;
+
+    supabase
+      .from('families')
+      .select('id, name')
+      .eq('school_id', user.school_id)
+      .order('name')
+      .then(({ data, error }) => {
+        if (!error) {
+          setFamilies((data || []).map((family: any) => ({
+            id: String(family.id),
+            name: family.name,
+          })));
+        }
+      });
+  }, [user?.school_id]);
 
   const addStudent = () => {
-    const newStudent: StudentData = {
-      id: Date.now().toString(),
-      name: '',
-      fatherName: '',
-      gender: 'Male'
-    };
+    const newStudent = createStudent({ id: Date.now().toString() });
     setStudents([...students, newStudent]);
   };
 
   const insertStudent = (afterIndex: number) => {
-    const newStudent: StudentData = {
-      id: Date.now().toString(),
-      name: '',
-      fatherName: '',
-      gender: 'Male'
-    };
+    const newStudent = createStudent({ id: Date.now().toString() });
     
     const newStudents = [...students];
     newStudents.splice(afterIndex + 1, 0, newStudent);
@@ -910,13 +1230,247 @@ const BulkStudentAdmission: React.FC = () => {
 
   const removeStudent = (id: string) => {
     setStudents(students.filter(student => student.id !== id));
+    setExpandedStudentIds(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
   };
 
   const updateStudent = (id: string, field: keyof StudentData, value: string) => {
     setStudents(students.map(student => 
-      student.id === id ? { ...student, [field]: value } : student
+      student.id === id
+        ? {
+            ...student,
+            [field]: value,
+            ...(field === 'classId' ? { sectionId: '', sectionName: '' } : {})
+          }
+        : student
     ));
   };
+
+  const toggleStudentExpanded = useCallback((id: string) => {
+    setExpandedStudentIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const getSectionsForClass = useCallback((classId?: string) => {
+    if (!classId) return [];
+    return allSections.filter(section => String(section.class_id) === String(classId));
+  }, [allSections]);
+
+  const classHasSections = useCallback((classId?: string) => {
+    if (!classId) return true;
+    const selectedClass = classes.find(cls => String(cls.id) === String(classId));
+    return selectedClass?.has_sections ?? true;
+  }, [classes]);
+
+  const findFamilyMatch = useCallback((value?: string) => {
+    if (!value) return null;
+    const trimmedValue = value.trim();
+    if (!trimmedValue) return null;
+
+    return families.find(family =>
+      String(family.id) === trimmedValue || normalizeCompare(family.name) === normalizeCompare(trimmedValue)
+    ) || null;
+  }, [families]);
+
+  const generateNextStudentId = useCallback(async (): Promise<number> => {
+    if (!user?.school_id) {
+      throw new Error('School ID not found');
+    }
+
+    const { data: existingStudents, error } = await supabase
+      .from('students')
+      .select('id')
+      .eq('school_id', user.school_id)
+      .order('id', { ascending: false })
+      .limit(1);
+
+    if (error) {
+      throw new Error('Failed to generate student ID: ' + error.message);
+    }
+
+    return existingStudents && existingStudents.length > 0 ? existingStudents[0].id + 1 : 1;
+  }, [user?.school_id]);
+
+  const insertStudentWithRetry = useCallback(async (studentData: any, maxRetries: number = 5): Promise<any> => {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const freshStudentId = await generateNextStudentId();
+      studentData.id = freshStudentId;
+
+      const { data: newStudent, error: insertError } = await supabase
+        .from('students')
+        .insert([studentData])
+        .select()
+        .single();
+
+      if (insertError) {
+        if (insertError.code === '23505' && attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 100));
+          continue;
+        }
+        throw insertError;
+      }
+
+      return newStudent;
+    }
+    throw new Error('Failed to insert student after retries.');
+  }, [generateNextStudentId]);
+
+  const findClassMatch = useCallback((value?: string) => {
+    if (!value) return null;
+    const trimmedValue = value.trim();
+    if (!trimmedValue) return null;
+
+    return classes.find(cls =>
+      String(cls.id) === trimmedValue || normalizeCompare(cls.name) === normalizeCompare(trimmedValue)
+    ) || null;
+  }, [classes]);
+
+  const findSectionMatch = useCallback((classId: number, value?: string) => {
+    if (!value) return null;
+    const trimmedValue = value.trim();
+    if (!trimmedValue) return null;
+
+    return allSections.find(section =>
+      String(section.class_id) === String(classId) &&
+      (String(section.id) === trimmedValue || normalizeCompare(section.name) === normalizeCompare(trimmedValue))
+    ) || null;
+  }, [allSections]);
+
+  const resolvePlacement = useCallback((student: StudentData) => {
+    const classSource = student.classId || student.className;
+    const classMatch = findClassMatch(classSource);
+
+    if (!classMatch) {
+      return {
+        error: `Class could not be resolved for ${student.name || 'a student'}. Use class_id or class name.`,
+      };
+    }
+
+    const classId = Number(classMatch.id);
+    const classHasSections = classMatch.has_sections ?? true;
+
+    if (!classHasSections) {
+      return {
+        classId,
+        sectionId: null as number | null,
+        className: classMatch.name,
+      };
+    }
+
+    const sectionSource = student.sectionId || student.sectionName;
+    const sectionMatch = findSectionMatch(classId, sectionSource);
+
+    if (!sectionMatch) {
+      return {
+        error: `Section could not be resolved for ${student.name || 'a student'} in ${classMatch.name}.`,
+      };
+    }
+
+    return {
+      classId,
+      sectionId: Number(sectionMatch.id),
+      className: classMatch.name,
+      sectionName: sectionMatch.name,
+    };
+  }, [findClassMatch, findSectionMatch]);
+
+  const handleCsvFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+
+      if (!firstSheetName) {
+        showToast('The selected CSV file is empty.', 'error');
+        return;
+      }
+
+      const sheet = workbook.Sheets[firstSheetName];
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '', raw: true });
+
+      if (!rows.length) {
+        showToast('No student rows were found in the selected CSV.', 'error');
+        return;
+      }
+
+      const timestamp = Date.now();
+      const importedStudents = rows.map((row, index) => {
+        const rawClass = getRowValue(row, ['classid', 'class', 'classcode', 'classname', 'classlabel']);
+        const classMatch = findClassMatch(rawClass);
+        const rawSection = getRowValue(row, ['sectionid', 'section', 'sectioncode', 'sectionname', 'sectionlabel']);
+        const sectionMatch = classMatch ? findSectionMatch(Number(classMatch.id), rawSection) : null;
+        const rawFamily = getRowValue(row, ['familyid', 'family', 'familyname']);
+        const familyMatch = findFamilyMatch(rawFamily);
+
+        return createStudent({
+          id: `csv-${timestamp}-${index}`,
+          name: getRowValue(row, ['name', 'studentname', 'student']),
+          fatherName: getRowValue(row, ['fathername', 'father', 'parentname']),
+          gender: normalizeGender(getRowValue(row, ['gender', 'sex']) || 'Male'),
+          classId: classMatch ? String(classMatch.id) : '',
+          className: rawClass,
+          sectionId: sectionMatch ? String(sectionMatch.id) : '',
+          sectionName: rawSection,
+          admissionDate: normalizeDateForDisplay(getRowValue(row, ['admissiondate', 'dateofadmission']), getTodayDisplay()),
+          phone: getRowValue(row, ['phone', 'studentphone']),
+          notificationChannel: normalizeNotificationChannel(getRowValue(row, ['notificationchannel', 'channel']) || 'whatsapp'),
+          dob: normalizeDateForDisplay(getRowValue(row, ['dob', 'dateofbirth']), '01-01-2000'),
+          studentId: getRowValue(row, ['studentid', 'formb', 'bform', 'registrationno']),
+          cast: getRowValue(row, ['cast', 'caste']),
+          orphan: getRowValue(row, ['orphan']),
+          osc: getRowValue(row, ['osc']),
+          idMark: getRowValue(row, ['idmark', 'identificationmark']),
+          bloodGroup: getRowValue(row, ['bloodgroup']),
+          previousSchool: getRowValue(row, ['previousschool']),
+          previousId: getRowValue(row, ['previousid']),
+          religion: getRowValue(row, ['religion']) || 'Muslim',
+          nationality: getRowValue(row, ['nationality']) || 'Pakistani',
+          disease: getRowValue(row, ['disease']),
+          additionalNote: getRowValue(row, ['additionalnote', 'note', 'notes']),
+          totalSiblings: getRowValue(row, ['totalsiblings', 'siblings']),
+          address: getRowValue(row, ['address']),
+          fatherNationalId: getRowValue(row, ['fathernationalid', 'fathercnic']),
+          fatherEducation: getRowValue(row, ['fathereducation']),
+          fatherMobile: getRowValue(row, ['fathermobile', 'fatherphone']),
+          fatherOccupation: getRowValue(row, ['fatheroccupation']),
+          fatherIncome: getRowValue(row, ['fatherincome']),
+          motherName: getRowValue(row, ['mothername']),
+          motherNationalId: getRowValue(row, ['mothernationalid', 'mothercnic']),
+          motherEducation: getRowValue(row, ['mothereducation']),
+          motherMobile: getRowValue(row, ['mothermobile', 'motherphone']),
+          motherOccupation: getRowValue(row, ['motheroccupation']),
+          motherIncome: getRowValue(row, ['motherincome']),
+          familyId: familyMatch ? String(familyMatch.id) : '',
+          familyName: rawFamily,
+        });
+      });
+
+      setStudents(importedStudents);
+      setImportFileName(file.name);
+      setFocusedStudentId(importedStudents[0]?.id || null);
+      setExpandedStudentIds(new Set());
+      showToast(`${importedStudents.length} student rows loaded from ${file.name}.`, 'success');
+    } catch (error: any) {
+      showToast(`Failed to read CSV: ${error?.message || 'Unknown error'}`, 'error');
+    } finally {
+      event.target.value = '';
+    }
+  }, [showToast, findClassMatch, findSectionMatch, findFamilyMatch]);
 
   // Helper function to get default password - memoized to prevent handleSubmit recreation
   const generateRandomPassword = useCallback((): string => {
@@ -930,16 +1484,6 @@ const BulkStudentAdmission: React.FC = () => {
   const handleSubmit = useCallback(async () => {
     if (!user?.school_id) {
       showToast('User school information not found', 'error');
-      return;
-    }
-
-    if (!formData.class) {
-      showToast('Please select a class!', 'error');
-      return;
-    }
-    
-    if (selectedClassHasSections && !formData.section) {
-      showToast('Please select a section!', 'error');
       return;
     }
 
@@ -988,113 +1532,147 @@ const BulkStudentAdmission: React.FC = () => {
         return;
       }
 
-      // Get the current max student ID for this school and generate sequential IDs
-      setProgress(40);
-      const { data: maxIdData, error: maxIdError } = await supabase
-        .from('students')
-        .select('id')
-        .eq('school_id', user.school_id)
-        .order('id', { ascending: false })
-        .limit(1);
-      
-      if (maxIdError) {
-        throw maxIdError;
+      setProgress(35);
+      const failedIds = new Set<string>();
+      const failureMessages: string[] = [];
+      let successCount = 0;
+
+      for (let index = 0; index < validStudents.length; index++) {
+        const student = validStudents[index];
+        const progressBase = 35 + Math.round(((index + 1) / validStudents.length) * 60);
+        setProgress(progressBase);
+
+        try {
+          const placement = resolvePlacement(student);
+
+          if ('error' in placement) {
+            throw new Error(placement.error);
+          }
+
+          const admissionDate = normalizeDateForBackend(student.admissionDate);
+          const dob = normalizeDateForBackend(student.dob, '2000-01-01');
+          const studentData = {
+            name: student.name,
+            class_id: placement.classId,
+            section_id: placement.sectionId,
+            admission_date: admissionDate,
+            phone: nullableValue(student.phone),
+            dob,
+            form_b: nullableValue(student.studentId),
+            gender: student.gender || 'Male',
+            cast: nullableValue(student.cast),
+            orphan: nullableValue(student.orphan),
+            osc: nullableValue(student.osc),
+            id_mark: nullableValue(student.idMark),
+            blood_group: nullableValue(student.bloodGroup),
+            previous_school: nullableValue(student.previousSchool),
+            previous_id: nullableValue(student.previousId),
+            religion: student.religion || 'Muslim',
+            nationality: student.nationality || 'Pakistani',
+            disease: nullableValue(student.disease),
+            additional_note: nullableValue(student.additionalNote),
+            total_siblings: nullableValue(student.totalSiblings),
+            address: nullableValue(student.address),
+            father_name: student.fatherName,
+            father_national_id: nullableValue(student.fatherNationalId),
+            father_education: nullableValue(student.fatherEducation),
+            father_mobile: nullableValue(student.fatherMobile),
+            father_occupation: nullableValue(student.fatherOccupation),
+            father_income: nullableValue(student.fatherIncome),
+            mother_name: nullableValue(student.motherName),
+            mother_national_id: nullableValue(student.motherNationalId),
+            mother_education: nullableValue(student.motherEducation),
+            mother_mobile: nullableValue(student.motherMobile),
+            mother_occupation: nullableValue(student.motherOccupation),
+            mother_income: nullableValue(student.motherIncome),
+            notification_channel: student.notificationChannel || 'whatsapp',
+            session_id: session.id,
+            school_id: user.school_id,
+            status: 'active',
+            password: generateRandomPassword()
+          };
+
+          const newStudent = await insertStudentWithRetry(studentData);
+
+          const familyMatch = findFamilyMatch(student.familyId || student.familyName);
+          if (familyMatch) {
+            const { error: familyLinkError } = await supabase
+              .from('family_members')
+              .insert([
+                {
+                  family_id: Number(familyMatch.id),
+                  student_id: newStudent.id,
+                  is_primary_contact: false,
+                  school_id: user.school_id
+                }
+              ]);
+
+            if (familyLinkError) {
+              throw new Error(`Family link failed for ${student.name}: ${familyLinkError.message}`);
+            }
+          }
+
+          const { error: historyError } = await supabase
+            .from('student_class_history')
+            .insert([
+              {
+                student_id: newStudent.id,
+                adm_class_id: placement.classId,
+                adm_section_id: placement.sectionId,
+                new_class_id: placement.classId,
+                new_section_id: placement.sectionId,
+                session_id: session.id,
+                school_id: user.school_id,
+                admission_date: admissionDate,
+                status: 'active'
+              }
+            ]);
+
+          if (historyError) {
+            throw new Error(`History update failed for ${student.name}: ${historyError.message}`);
+          }
+
+          successCount += 1;
+        } catch (error: any) {
+          failedIds.add(student.id);
+          if (failureMessages.length < 5) {
+            failureMessages.push(error?.message || `Failed to save ${student.name}`);
+          }
+        }
       }
-      
-      const currentMaxId = maxIdData && maxIdData.length > 0 ? maxIdData[0].id : 0;
-      const studentIds: number[] = [];
-      
-      for (let i = 0; i < validStudents.length; i++) {
-        studentIds.push(currentMaxId + i + 1);
-      }
 
-      // Prepare student data with defaults (only valid students)
-      // Maintain the order as they appear in the students array
-      // roll_number will be auto-generated by database trigger
-      const studentData = validStudents.map((student, index) => ({
-        id: studentIds[index],
-        name: student.name,
-        class_id: Number(formData.class),
-        section_id: selectedClassHasSections ? Number(formData.section) : null,
-        admission_date: new Date().toISOString().split('T')[0],
-        father_name: student.fatherName,
-        mother_name: null,
-        gender: student.gender,
-        dob: '2000-01-01',
-        blood_group: null,
-        address: null,
-        phone: null,
-        father_mobile: null,
-        mother_mobile: null,
-        father_occupation: null,
-        mother_occupation: null,
-        father_income: null,
-        mother_income: null,
-        session_id: session.id,
-        school_id: user.school_id,
-        status: 'active',
-        password: generateRandomPassword()
-      }));
-
-      // Insert students
-      setProgress(70);
-      const { data: insertedStudents, error: insertError } = await supabase
-        .from('students')
-        .insert(studentData)
-        .select();
-
-      if (insertError) {
-        throw insertError;
-      }
-
-      // Insert into student_class_history
-      // For new admissions: adm_class_id and new_class_id are the same (admission = current)
-      setProgress(90);
-      const admissionClassId = Number(formData.class);
-      const admissionSectionId = selectedClassHasSections ? Number(formData.section) : null;
-      const historyData = insertedStudents.map(student => ({
-        student_id: student.id,
-        adm_class_id: admissionClassId,
-        adm_section_id: admissionSectionId,
-        new_class_id: admissionClassId, // For new students, current class = admission class
-        new_section_id: admissionSectionId, // For new students, current section = admission section
-        session_id: session.id,
-        school_id: user.school_id,
-        admission_date: new Date().toISOString().split('T')[0],
-        status: 'active'
-      }));
-
-      const { error: historyError } = await supabase
-        .from('student_class_history')
-        .insert(historyData);
-
-      if (historyError) {
-        showToast('Students added but history update failed: ' + historyError.message, 'error');
-      }
+      const remainingStudents = currentStudents.filter(student => {
+        const missingRequiredFields = !student.name.trim() || !student.fatherName.trim();
+        return missingRequiredFields || failedIds.has(student.id);
+      });
 
       setProgress(100);
-      showToast(`${validStudents.length} students added successfully!`, 'success');
-      
-      // Reset form and add default rows
-      setStudents([]);
-      setFormData({ class: '', section: '' });
-      
-      // Add 10 default empty rows for new entries
-      const defaultStudents: StudentData[] = Array.from({ length: 10 }, (_, index) => ({
-        id: `temp-${Date.now()}-${index}`,
-        name: '',
-        fatherName: '',
-        gender: 'Male'
-      }));
-      setStudents(defaultStudents);
-      
+
+      if (successCount > 0 && remainingStudents.length === 0) {
+        setStudents(createDefaultStudents(10));
+        setImportFileName('');
+      } else if (successCount > 0) {
+        setStudents(remainingStudents);
+        if (failedIds.size === 0) {
+          setImportFileName('');
+        }
+      }
+
+      if (successCount > 0 && failedIds.size === 0) {
+        showToast(`${successCount} students added successfully!`, 'success');
+      } else if (successCount > 0) {
+        const failureHint = failureMessages[0] ? ` ${failureMessages[0]}` : '';
+        showToast(`${successCount} students added, ${failedIds.size} rows need attention.${failureHint}`, 'warning');
+      } else {
+        showToast(failureMessages[0] || 'No students could be added.', 'error');
+      }
     } catch (err: any) {
       showToast('Error: ' + (err.message || 'Unknown error'), 'error');
     } finally {
       setSubmitting(false);
       completeProgress();
     }
-  }, [user?.school_id, formData.class, formData.section, selectedClassHasSections, students.length, showToast, startProgress, setProgress, completeProgress, generateRandomPassword]);
+  }, [user?.school_id, showToast, startProgress, setProgress, completeProgress, generateRandomPassword, resolvePlacement, insertStudentWithRetry, findFamilyMatch]);
 
   const handleCancel = useCallback(() => {
     navigate(-1);
@@ -1102,15 +1680,9 @@ const BulkStudentAdmission: React.FC = () => {
 
   const handleReset = useCallback(() => {
     setStudents([]);
-    setFormData({ class: '', section: '' });
-    // Re-initialize with 10 default rows
-    const defaultStudents: StudentData[] = Array.from({ length: 10 }, (_, index) => ({
-      id: `default-${index + 1}`,
-      name: '',
-      fatherName: '',
-      gender: 'Male'
-    }));
-    setStudents(defaultStudents);
+    setImportFileName('');
+    setExpandedStudentIds(new Set());
+    setStudents(createDefaultStudents(10));
   }, []);
 
   // Handle tab key to add new row when tabbing from gender field in last row
@@ -1119,12 +1691,9 @@ const BulkStudentAdmission: React.FC = () => {
       e.preventDefault();
       
       // Add new student
-      const newStudent: StudentData = {
-        id: `temp-${Date.now()}-${Math.random()}`,
-        name: '',
-        fatherName: '',
-        gender: 'Male'
-      };
+      const newStudent = createStudent({
+        id: `temp-${Date.now()}-${Math.random()}`
+      });
       
       setStudents(prev => [...prev, newStudent]);
       setFocusedStudentId(newStudent.id);
@@ -1270,10 +1839,6 @@ const BulkStudentAdmission: React.FC = () => {
     return <NoClassesFound />;
   }
 
-  if (!hasSections) {
-    return <NoSectionsFound />;
-  }
-
   return (
     <ThemeProvider theme={theme === 'dark' ? darkTheme : lightTheme}>
       <GlobalStyle
@@ -1295,7 +1860,7 @@ const BulkStudentAdmission: React.FC = () => {
       {submitting && ReactDOM.createPortal(
         <LoadingOverlay>
           <LoadingSpinner />
-          <div style={{marginTop: 12, fontWeight: 700, fontSize: '1.25rem', letterSpacing: '1.5px'}}>Adding Students…</div>
+          <div style={{marginTop: 12, fontWeight: 700, fontSize: '1.25rem', letterSpacing: '1.5px'}}>Adding Students...</div>
           <div style={{marginTop: 8, fontSize: '1.05rem', color: '#b0b8d1'}}>Please wait while we save the records.</div>
         </LoadingOverlay>,
         document.body
@@ -1305,56 +1870,59 @@ const BulkStudentAdmission: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <HeaderTitle>Bulk Student Admission</HeaderTitle>
           </div>
-          <SegmentedGroup theme={theme === 'dark' ? darkTheme : lightTheme}>
-            <SegmentedSelect
-              theme={theme === 'dark' ? darkTheme : lightTheme}
-              value={formData.class}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                setFormData({ ...formData, class: e.target.value });
-              }}
-              first
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <UploadCsvButton
+              type="button"
+              onClick={() => csvInputRef.current?.click()}
+              title="Upload CSV file"
             >
-              <option value="">Select Class</option>
-              {loadingClasses ? (
-                <option disabled>Loading...</option>
-              ) : (
-                classes.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))
-              )}
-            </SegmentedSelect>
-            <SegmentedSelect
-              theme={theme === 'dark' ? darkTheme : lightTheme}
-              value={formData.section}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                setFormData({ ...formData, section: e.target.value });
-              }}
-              disabled={!formData.class || !selectedClassHasSections}
-              last
-            >
-              <option value="">
-                {!formData.class ? 'Select Section' : !selectedClassHasSections ? 'No Sections' : 'Select Section'}
-              </option>
-              {loadingSections ? (
-                <option disabled>Loading...</option>
-              ) : (
-                sections.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))
-              )}
-            </SegmentedSelect>
-          </SegmentedGroup>
+              <CloudUploadIcon style={{ fontSize: 18 }} />
+              Upload CSV
+            </UploadCsvButton>
+            <HiddenFileInput
+              ref={csvInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              onChange={handleCsvFileChange}
+            />
+          </div>
         </Header>
         <MainContent>
+          <InstructionsCard>
+            <InstructionsTitle>CSV Upload Instructions</InstructionsTitle>
+            <InstructionsText>
+              Upload a CSV with one student per row. The importer fills the same editable fields you see below, so you can review and adjust anything before saving.
+            </InstructionsText>
+            <InstructionList>
+              <li>Recommended columns: `name`, `father_name`, `class_id` or `class`, `section_id` or `section`, `admission_date`, `gender`, `dob`, `phone`, `student_id`.</li>
+              <li>You can also include admission-form fields like `cast`, `blood_group`, `religion`, `nationality`, `address`, `previous_school`, `father_mobile`, `mother_name`, and the rest of the visible row fields.</li>
+              <li>Class and section are now row-based. For CSV import, each row should carry its own class and section information.</li>
+              <li>Only fields actually required by the database need to be completed. Anything else can stay blank.</li>
+              <li>If a class or section from the CSV does not resolve automatically, the row stays editable so you can correct it on screen.</li>
+            </InstructionList>
+          </InstructionsCard>
           <StudentsListContainer>
             <ListHeader>
               <div>
                 <ListTitle>Students ({students.length})</ListTitle>
+                <ImportSummary>
+                  <DescriptionIcon style={{ fontSize: 16 }} />
+                  <span>{importFileName ? `Loaded: ${importFileName}` : 'CSV supports name, father_name, gender, class_id/class, section_id/section, admission_date and admission-form style fields.'}</span>
+                </ImportSummary>
               </div>
+              <AddStudentButton type="button" onClick={addStudent}>
+                <PersonAddIcon style={{ fontSize: 18 }} />
+                Add Row
+              </AddStudentButton>
             </ListHeader>
             
             {students.map((student, index) => {
               const isLastRow = index === students.length - 1;
+              const rowSections = getSectionsForClass(student.classId);
+              const rowHasSections = classHasSections(student.classId);
+              const unresolvedClass = !!student.className && !student.classId;
+              const unresolvedSection = rowHasSections && !!student.sectionName && !student.sectionId;
+              const isExpanded = expandedStudentIds.has(student.id);
               return (
                 <StudentRow 
                   key={student.id} 
@@ -1362,76 +1930,330 @@ const BulkStudentAdmission: React.FC = () => {
                   onClick={() => setFocusedStudentId(student.id)}
                   ref={isLastRow ? lastRowRef : null}
                 >
-                  <SerialNumber>
-                    {index + 1}
-                  </SerialNumber>
-                  <Input
-                    placeholder="Student Name*"
-                    value={student.name}
-                    onChange={(e) => updateStudent(student.id, 'name', e.target.value)}
-                    onFocus={() => handleFieldFocus(student.id)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setFocusedStudentId(student.id);
-                    }}
-                    data-student-id={student.id}
-                    data-field="name"
-                  />
-                  <Input
-                    placeholder="Father Name*"
-                    value={student.fatherName}
-                    onChange={(e) => updateStudent(student.id, 'fatherName', e.target.value)}
-                    onFocus={() => handleFieldFocus(student.id)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setFocusedStudentId(student.id);
-                    }}
-                    data-student-id={student.id}
-                    data-field="fatherName"
-                  />
-                  <Select
-                    value={student.gender}
-                    onChange={(e) => updateStudent(student.id, 'gender', e.target.value)}
-                    onFocus={() => handleFieldFocus(student.id)}
-                    onKeyDown={(e) => handleTabKey(e, student.id, isLastRow, 'gender')}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setFocusedStudentId(student.id);
-                    }}
-                    data-student-id={student.id}
-                    data-field="gender"
-                  >
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </Select>
-                  <ButtonContainer>
-                    <InsertButton 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        insertStudent(index);
-                      }}
-                      data-student-id={student.id}
-                      data-field="insert"
-                      tabIndex={-1}
-                      title="Insert new row after this one"
-                    >
-                      <AddIcon fontSize="small" />
-                    Row
-                    </InsertButton>
-                    <RemoveButton 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeStudent(student.id);
-                      }}
-                      data-student-id={student.id}
-                      data-field="remove"
-                      tabIndex={-1}
-                    >
-                      <DeleteIcon fontSize="small" />
-                      Remove
-                    </RemoveButton>
-                  </ButtonContainer>
+                  <StudentRowHeader>
+                    <StudentRowMeta>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, color: (theme === 'dark' ? darkTheme : lightTheme).TEXT_PRIMARY }}>
+                          {student.name || `Student Row ${index + 1}`}
+                        </div>
+                        <FieldHint $error={unresolvedClass || unresolvedSection}>
+                          {unresolvedClass
+                            ? `CSV class "${student.className}" could not be matched.`
+                            : unresolvedSection
+                              ? `CSV section "${student.sectionName}" could not be matched.`
+                              : 'Edit any row fields before saving.'}
+                        </FieldHint>
+                      </div>
+                    </StudentRowMeta>
+                    <ButtonContainer>
+                      <ExpandButton
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleStudentExpanded(student.id);
+                        }}
+                      >
+                        {isExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                        {isExpanded ? 'Hide Details' : 'More Details'}
+                      </ExpandButton>
+                      <InsertButton 
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          insertStudent(index);
+                        }}
+                        data-student-id={student.id}
+                        data-field="insert"
+                        tabIndex={-1}
+                        title="Insert new row after this one"
+                      >
+                        <AddIcon fontSize="small" />
+                        Row
+                      </InsertButton>
+                      <RemoveButton 
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeStudent(student.id);
+                        }}
+                        data-student-id={student.id}
+                        data-field="remove"
+                        tabIndex={-1}
+                      >
+                        <DeleteIcon fontSize="small" />
+                        Remove
+                      </RemoveButton>
+                    </ButtonContainer>
+                  </StudentRowHeader>
+
+                  <StudentRowMain>
+                    <SerialNumber style={{ width: 44, height: 44 }}>{index + 1}</SerialNumber>
+                    <RowField>
+                      <FieldCaption>Name</FieldCaption>
+                      <Input
+                        placeholder="Student Name"
+                        value={student.name || ''}
+                        onChange={(e) => updateStudent(student.id, 'name', e.target.value)}
+                        onFocus={() => handleFieldFocus(student.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        data-student-id={student.id}
+                        data-field="name"
+                      />
+                    </RowField>
+                    <RowField>
+                      <FieldCaption>Father Name</FieldCaption>
+                      <Input
+                        placeholder="Father Name"
+                        value={student.fatherName || ''}
+                        onChange={(e) => updateStudent(student.id, 'fatherName', e.target.value)}
+                        onFocus={() => handleFieldFocus(student.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        data-student-id={student.id}
+                        data-field="fatherName"
+                      />
+                    </RowField>
+                    <RowField>
+                      <FieldCaption>Class</FieldCaption>
+                      <Select
+                        value={student.classId || ''}
+                        onChange={(e) => updateStudent(student.id, 'classId', e.target.value)}
+                        onFocus={() => handleFieldFocus(student.id)}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <option value="">Select Class</option>
+                        {loadingClasses ? (
+                          <option disabled>Loading...</option>
+                        ) : (
+                          classes.map(c => (
+                            <option key={c.id} value={String(c.id)}>{c.name}</option>
+                          ))
+                        )}
+                      </Select>
+                      <FieldHint $error={unresolvedClass}>{unresolvedClass ? `Imported: ${student.className}` : ' '}</FieldHint>
+                    </RowField>
+                    <RowField>
+                      <FieldCaption>Section</FieldCaption>
+                      <Select
+                        value={student.sectionId || ''}
+                        onChange={(e) => updateStudent(student.id, 'sectionId', e.target.value)}
+                        onFocus={() => handleFieldFocus(student.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        disabled={!student.classId || !rowHasSections}
+                      >
+                        <option value="">
+                          {!student.classId ? 'Select Section' : !rowHasSections ? 'No Sections' : 'Select Section'}
+                        </option>
+                        {rowSections.map(section => (
+                          <option key={section.id} value={String(section.id)}>{section.name}</option>
+                        ))}
+                      </Select>
+                      <FieldHint $error={unresolvedSection}>{unresolvedSection ? `Imported: ${student.sectionName}` : ' '}</FieldHint>
+                    </RowField>
+                    <RowField>
+                      <FieldCaption>Admission Date</FieldCaption>
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="dd-mm-yyyy"
+                        value={student.admissionDate || getTodayDisplay()}
+                        onChange={(e) => updateStudent(student.id, 'admissionDate', e.target.value)}
+                        onBlur={(e) => updateStudent(student.id, 'admissionDate', normalizeDateForDisplay(e.target.value, getTodayDisplay()))}
+                        onFocus={() => handleFieldFocus(student.id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </RowField>
+                    <RowField>
+                      <FieldCaption>Gender</FieldCaption>
+                      <Select
+                        value={student.gender || 'Male'}
+                        onChange={(e) => updateStudent(student.id, 'gender', e.target.value)}
+                        onFocus={() => handleFieldFocus(student.id)}
+                        onKeyDown={(e) => handleTabKey(e, student.id, isLastRow, 'gender')}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </Select>
+                    </RowField>
+                    <RowField>
+                      <FieldCaption>Phone</FieldCaption>
+                      <Input
+                        value={student.phone || ''}
+                        onChange={(e) => updateStudent(student.id, 'phone', e.target.value.replace(/[^0-9]/g, ''))}
+                        onFocus={() => handleFieldFocus(student.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        maxLength={11}
+                      />
+                    </RowField>
+                  </StudentRowMain>
+
+                  {isExpanded && <CollapsedDrawer><RowSections>
+                    <RowSection>
+                      <RowSectionTitle>Additional Student Details</RowSectionTitle>
+                      <RowFieldsGrid>
+                        <RowField>
+                          <FieldCaption>Notification Channel</FieldCaption>
+                          <Select
+                            value={student.notificationChannel || 'whatsapp'}
+                            onChange={(e) => updateStudent(student.id, 'notificationChannel', e.target.value)}
+                            onFocus={() => handleFieldFocus(student.id)}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <option value="whatsapp">WhatsApp</option>
+                            <option value="sms">SMS</option>
+                          </Select>
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Family</FieldCaption>
+                          <Select
+                            value={student.familyId || ''}
+                            onChange={(e) => updateStudent(student.id, 'familyId', e.target.value)}
+                            onFocus={() => handleFieldFocus(student.id)}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <option value="">Optional Family</option>
+                            {families.map(family => (
+                              <option key={family.id} value={family.id}>{`F${family.id} - ${family.name}`}</option>
+                            ))}
+                          </Select>
+                          <FieldHint>{student.familyName && !student.familyId ? `Imported value: ${student.familyName}` : ' '}</FieldHint>
+                        </RowField>
+                      </RowFieldsGrid>
+                    </RowSection>
+
+                    <RowSection>
+                      <RowSectionTitle>Other Information</RowSectionTitle>
+                      <RowFieldsGrid>
+                        <RowField>
+                          <FieldCaption>Date of Birth</FieldCaption>
+                          <Input type="text" inputMode="numeric" placeholder="dd-mm-yyyy" value={student.dob || '01-01-2000'} onChange={(e) => updateStudent(student.id, 'dob', e.target.value)} onBlur={(e) => updateStudent(student.id, 'dob', normalizeDateForDisplay(e.target.value, '01-01-2000'))} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Student Birth Form ID / NIC</FieldCaption>
+                          <Input value={student.studentId || ''} onChange={(e) => updateStudent(student.id, 'studentId', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Cast</FieldCaption>
+                          <Input value={student.cast || ''} onChange={(e) => updateStudent(student.id, 'cast', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Orphan Student</FieldCaption>
+                          <Input value={student.orphan || ''} onChange={(e) => updateStudent(student.id, 'orphan', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>OSC Number</FieldCaption>
+                          <Input value={student.osc || ''} onChange={(e) => updateStudent(student.id, 'osc', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Identification Mark</FieldCaption>
+                          <Input value={student.idMark || ''} onChange={(e) => updateStudent(student.id, 'idMark', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Blood Group</FieldCaption>
+                          <Select value={student.bloodGroup || ''} onChange={(e) => updateStudent(student.id, 'bloodGroup', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()}>
+                            {BLOOD_GROUPS.map(bg => <option key={bg || 'blank'} value={bg}>{bg || 'Select'}</option>)}
+                          </Select>
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Previous School</FieldCaption>
+                          <Input value={student.previousSchool || ''} onChange={(e) => updateStudent(student.id, 'previousSchool', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Previous ID / Board Roll No</FieldCaption>
+                          <Input value={student.previousId || ''} onChange={(e) => updateStudent(student.id, 'previousId', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Religion</FieldCaption>
+                          <Select value={student.religion || 'Muslim'} onChange={(e) => updateStudent(student.id, 'religion', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()}>
+                            {RELIGIONS.map(item => <option key={item} value={item}>{item}</option>)}
+                          </Select>
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Nationality</FieldCaption>
+                          <Select value={student.nationality || 'Pakistani'} onChange={(e) => updateStudent(student.id, 'nationality', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()}>
+                            {NATIONALITIES.map(item => <option key={item} value={item}>{item}</option>)}
+                          </Select>
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Total Siblings</FieldCaption>
+                          <Input type="number" min="0" value={student.totalSiblings || ''} onChange={(e) => updateStudent(student.id, 'totalSiblings', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Disease If Any?</FieldCaption>
+                          <Input value={student.disease || ''} onChange={(e) => updateStudent(student.id, 'disease', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Additional Note</FieldCaption>
+                          <Input value={student.additionalNote || ''} onChange={(e) => updateStudent(student.id, 'additionalNote', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField $spanAll>
+                          <FieldCaption>Address</FieldCaption>
+                          <Input as="textarea" rows={2} value={student.address || ''} onChange={(e) => updateStudent(student.id, 'address', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                      </RowFieldsGrid>
+                    </RowSection>
+
+                    <RowSection>
+                      <RowSectionTitle>Father / Guardian Information</RowSectionTitle>
+                      <RowFieldsGrid>
+                        <RowField>
+                          <FieldCaption>Father Name</FieldCaption>
+                          <Input value={student.fatherName || ''} onChange={(e) => updateStudent(student.id, 'fatherName', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Father National ID</FieldCaption>
+                          <Input value={student.fatherNationalId || ''} onChange={(e) => updateStudent(student.id, 'fatherNationalId', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Father Education</FieldCaption>
+                          <Input value={student.fatherEducation || ''} onChange={(e) => updateStudent(student.id, 'fatherEducation', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Father Mobile</FieldCaption>
+                          <Input value={student.fatherMobile || ''} onChange={(e) => updateStudent(student.id, 'fatherMobile', e.target.value.replace(/[^0-9]/g, ''))} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Father Occupation</FieldCaption>
+                          <Input value={student.fatherOccupation || ''} onChange={(e) => updateStudent(student.id, 'fatherOccupation', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Father Income</FieldCaption>
+                          <Input value={student.fatherIncome || ''} onChange={(e) => updateStudent(student.id, 'fatherIncome', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                      </RowFieldsGrid>
+                    </RowSection>
+
+                    <RowSection>
+                      <RowSectionTitle>Mother Information</RowSectionTitle>
+                      <RowFieldsGrid>
+                        <RowField>
+                          <FieldCaption>Mother Name</FieldCaption>
+                          <Input value={student.motherName || ''} onChange={(e) => updateStudent(student.id, 'motherName', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Mother National ID</FieldCaption>
+                          <Input value={student.motherNationalId || ''} onChange={(e) => updateStudent(student.id, 'motherNationalId', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Mother Education</FieldCaption>
+                          <Input value={student.motherEducation || ''} onChange={(e) => updateStudent(student.id, 'motherEducation', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Mother Mobile</FieldCaption>
+                          <Input value={student.motherMobile || ''} onChange={(e) => updateStudent(student.id, 'motherMobile', e.target.value.replace(/[^0-9]/g, ''))} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Mother Occupation</FieldCaption>
+                          <Input value={student.motherOccupation || ''} onChange={(e) => updateStudent(student.id, 'motherOccupation', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                        <RowField>
+                          <FieldCaption>Mother Income</FieldCaption>
+                          <Input value={student.motherIncome || ''} onChange={(e) => updateStudent(student.id, 'motherIncome', e.target.value)} onFocus={() => handleFieldFocus(student.id)} onClick={(e) => e.stopPropagation()} />
+                        </RowField>
+                      </RowFieldsGrid>
+                    </RowSection>
+                  </RowSections></CollapsedDrawer>}
                 </StudentRow>
               );
             })}

@@ -11,7 +11,7 @@ export const fetchAdmissionsData = async (
   toDate: string,
   setAdmissionsData: (data: any) => void,
   setAdmissionsLoading: (loading: boolean) => void,
-  _getCachedSession: () => Promise<any>
+  getCachedSession: () => Promise<any>
 ): Promise<void> => {
   if (!schoolId) {
     setAdmissionsLoading(false);
@@ -29,38 +29,8 @@ export const fetchAdmissionsData = async (
 
     const dataStartDate = new Date(fromDate).toISOString();
     const dataEndDate = new Date(toDate).toISOString();
-    const chunkArray = <T,>(items: T[], size: number) => {
-      const chunks: T[][] = [];
-      for (let i = 0; i < items.length; i += size) {
-        chunks.push(items.slice(i, i + size));
-      }
-      return chunks;
-    };
-    const getUniqueIds = (rows: Array<{ student_id: number | null | undefined }> = []) =>
-      Array.from(new Set(rows.map(row => row.student_id).filter((id): id is number => id !== null && id !== undefined)));
-    const fetchActiveStudentsByIds = async (studentIds: number[]) => {
-      if (studentIds.length === 0) return [];
-
-      const studentChunks = chunkArray(studentIds, 500);
-      const results = await Promise.all(
-        studentChunks.map(chunk =>
-          supabase
-            .from('students')
-            .select('id, created_at, gender, class_id, name, picture_url, dob, status')
-            .eq('school_id', schoolId)
-            .eq('status', 'active')
-            .in('id', chunk)
-        )
-      );
-
-      results.forEach(result => {
-        if (result.error) {
-          console.error('Error fetching active students for admissions dashboard:', result.error);
-        }
-      });
-
-      return results.flatMap(result => result.data || []);
-    };
+    const admissionStartDate = fromDate;
+    const admissionEndDate = toDate;
 
     // Batch requests to avoid hitting WiFi router connection limits
     // WiFi routers typically limit to 50-100 concurrent connections
@@ -94,30 +64,65 @@ export const fetchAdmissionsData = async (
 
     let studentsThisRange = 0;
     let totalStudents = 0;
-    let activeRangeStudents: any[] = [];
-    let studentHistoryRangeRows: any[] = [];
+    let currentActiveStudents = 0;
+    let rangeStudents: any[] = [];
 
-    const studentHistoryRangeResult = await supabase
-      .from('student_class_history')
-      .select('student_id, created_at')
+    const sessionData = await getCachedSession();
+
+    const rangeStudentsResult = await supabase
+      .from('students')
+      .select('id, created_at, admission_date, gender, class_id, name, picture_url, dob, status')
       .eq('school_id', schoolId)
-      .gte('created_at', dataStartDate)
-      .lte('created_at', dataEndDate);
+      .not('admission_date', 'is', null)
+      .gte('admission_date', admissionStartDate)
+      .lte('admission_date', admissionEndDate);
 
-    if (studentHistoryRangeResult.error) {
-      console.error('Error fetching student range history:', studentHistoryRangeResult.error);
+    if (rangeStudentsResult.error) {
+      console.error('Error fetching student admissions by admission date:', rangeStudentsResult.error);
     } else {
-      studentHistoryRangeRows = studentHistoryRangeResult.data || [];
-      const rangeStudentIds = getUniqueIds(studentHistoryRangeRows);
-      activeRangeStudents = await fetchActiveStudentsByIds(rangeStudentIds);
-      studentsThisRange = activeRangeStudents.length;
-      totalStudents = activeRangeStudents.length;
+      rangeStudents = rangeStudentsResult.data || [];
+      studentsThisRange = rangeStudents.length;
     }
 
     const inquiriesThisRange = enquiriesThisMonthResult.count || 0;
     const familiesThisRange = familiesThisMonthResult.count || 0;
     const totalInquiries = totalEnquiriesResult.count || 0;
     const totalFamilies = totalFamiliesResult.count || 0;
+    totalStudents = studentsThisRange;
+
+    if (sessionData?.id) {
+      const [currentSessionStudentsResult, currentSessionHistoryResult] = await Promise.all([
+        supabase
+          .from('students')
+          .select('id, status')
+          .eq('school_id', schoolId),
+        supabase
+          .from('student_class_history')
+          .select('id, student_id, session_id')
+          .eq('school_id', schoolId)
+          .eq('session_id', sessionData.id)
+          .order('id', { ascending: true })
+      ]);
+
+      if (currentSessionStudentsResult.error) {
+        console.error('Error fetching students for current active count:', currentSessionStudentsResult.error);
+      }
+      if (currentSessionHistoryResult.error) {
+        console.error('Error fetching current session history for active count:', currentSessionHistoryResult.error);
+      }
+
+      if (!currentSessionStudentsResult.error && !currentSessionHistoryResult.error) {
+        const studentIdsInCurrentSession = new Set(
+          (currentSessionHistoryResult.data || [])
+            .map((row: any) => row.student_id)
+            .filter((studentId: number | null | undefined): studentId is number => studentId !== null && studentId !== undefined)
+        );
+
+        currentActiveStudents = (currentSessionStudentsResult.data || []).filter((student: any) =>
+          studentIdsInCurrentSession.has(student.id) && String(student.status || 'active') === 'active'
+        ).length;
+      }
+    }
 
     // Fetch detailed data for charts - OPTIMIZED: Limit to last 100 records for faster loading
     const [recentEnquiriesResult, recentFamiliesResult, feePlansResult] = await Promise.all([
@@ -146,13 +151,11 @@ export const fetchAdmissionsData = async (
     // Generate monthly admissions chart data
     const admissionsChartMap = new Map<string, { boys: number; girls: number }>();
     const withdrawalsChartMap = new Map<string, { boys: number; girls: number }>();
-    const activeRangeStudentMap = new Map(activeRangeStudents.map((student: any) => [student.id, student]));
 
-    // Process active session student history for admissions chart (group by month)
-    studentHistoryRangeRows.forEach((historyRow: any) => {
-      const student = activeRangeStudentMap.get(historyRow.student_id);
-      if (student && historyRow.created_at) {
-        const date = new Date(historyRow.created_at);
+    // Process admissions by student admission date (group by month)
+    rangeStudents.forEach((student: any) => {
+      if (student.admission_date) {
+        const date = new Date(student.admission_date);
         const monthKey = `${date.toLocaleDateString('en-US', { month: 'short' })}-${date.getFullYear()}`;
 
         if (!admissionsChartMap.has(monthKey)) {
@@ -285,10 +288,10 @@ export const fetchAdmissionsData = async (
       });
     }
 
-    const totalBoys = activeRangeStudents.filter((student: any) =>
+    const totalBoys = rangeStudents.filter((student: any) =>
       student.gender === 'Male' || student.gender === 'male'
     ).length;
-    const totalGirls = activeRangeStudents.filter((student: any) =>
+    const totalGirls = rangeStudents.filter((student: any) =>
       student.gender === 'Female' || student.gender === 'female'
     ).length;
 
@@ -298,21 +301,12 @@ export const fetchAdmissionsData = async (
       { name: 'Girls', value: totalGirls, color: '#ec4899' }
     ];
 
-    const latestHistoryByStudent = new Map<number, string>();
-    studentHistoryRangeRows
-      .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .forEach((historyRow: any) => {
-        if (!latestHistoryByStudent.has(historyRow.student_id)) {
-          latestHistoryByStudent.set(historyRow.student_id, historyRow.created_at);
-        }
-      });
-
-    // Process latest admissions (last 10 active students in current session/date range)
-    const latestAdmissions = activeRangeStudents
+    // Process latest admissions (last 10 students in selected admission-date range)
+    const latestAdmissions = rangeStudents
       .map((student: any) => ({
         name: student.name || 'Unknown',
         pictureUrl: student.picture_url || null,
-        admissionDate: latestHistoryByStudent.get(student.id) || student.created_at || null,
+        admissionDate: student.admission_date || student.created_at || null,
         className: 'N/A'
       }))
       .sort((a: any, b: any) => new Date(b.admissionDate || 0).getTime() - new Date(a.admissionDate || 0).getTime())
@@ -320,7 +314,7 @@ export const fetchAdmissionsData = async (
 
     // Process today's birthdays
     const todayStr = today.toISOString().split('T')[0];
-    const todaysBirthdays = activeRangeStudents
+    const todaysBirthdays = rangeStudents
       .filter((student: any) => {
         if (!student.dob) return false;
         const dob = new Date(student.dob);
@@ -340,11 +334,12 @@ export const fetchAdmissionsData = async (
       familiesThisMonth: familiesThisRange,
       totalInquiries,
       totalStudents,
+      currentActiveStudents,
       totalFamilies,
       totalFeePlans: feePlansResult.data?.length || 0,
       feePlansThisMonth: feePlansResult.data?.length || 0,
       recentEnquiries: recentEnquiriesResult.data || [],
-      recentStudents: activeRangeStudents,
+      recentStudents: rangeStudents,
       recentFamilies: recentFamiliesResult.data || [],
       feePlans: feePlansResult.data || [],
       admissionsChart,

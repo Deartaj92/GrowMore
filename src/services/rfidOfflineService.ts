@@ -1181,16 +1181,17 @@ class RFIDOfflineService {
                 return { success: false, person: null, type: 'error' };
             }
 
-            const effectiveAttendanceMode = this.normalizeAttendanceMode(person.attendance_mode, true);
+            const resolvedPerson = person;
+            const effectiveAttendanceMode = this.normalizeAttendanceMode(resolvedPerson.attendance_mode, true);
 
-            if (navigator.onLine && person.attendance_mode !== effectiveAttendanceMode) {
-                const peopleTable = person.type === 'student' ? 'students' : 'staff';
+            if (navigator.onLine && resolvedPerson.attendance_mode !== effectiveAttendanceMode) {
+                const peopleTable = resolvedPerson.type === 'student' ? 'students' : 'staff';
                 const modeToSet = effectiveAttendanceMode;
-                const personId = person.person_id;
+                const personId = resolvedPerson.person_id;
                 supabase.from(peopleTable).update({ attendance_mode: modeToSet })
                     .eq('id', personId).eq('school_id', schoolId).then(({ error }) => {
                         if (!error) {
-                            person.attendance_mode = modeToSet;
+                            resolvedPerson.attendance_mode = modeToSet;
                         }
                     });
             }
@@ -1200,8 +1201,8 @@ class RFIDOfflineService {
                     const timestamp = (await this.getServerTimestamp()) || new Date().toISOString();
                     this.logScanHistory({
                         schoolId,
-                        userId: person.person_id,
-                        role: person.type,
+                        userId: resolvedPerson.person_id,
+                        role: resolvedPerson.type,
                         timestamp,
                         platform,
                         mode: 'online',
@@ -1209,25 +1210,25 @@ class RFIDOfflineService {
                         metadata: { reason: 'manual_only_policy' },
                     }).catch(() => {});
                 }
-                return { success: false, person, type: 'error_manual_only' };
+                return { success: false, person: resolvedPerson, type: 'error_manual_only' };
             }
 
             // 1b. Check if person is active
-            if (person.status && person.status !== 'active') {
+            if (resolvedPerson.status && resolvedPerson.status !== 'active') {
                 if (navigator.onLine) {
                     const timestamp = (await this.getServerTimestamp()) || new Date().toISOString();
                     this.logScanHistory({
                         schoolId,
-                        userId: person.person_id,
-                        role: person.type,
+                        userId: resolvedPerson.person_id,
+                        role: resolvedPerson.type,
                         timestamp,
                         platform,
                         mode: 'online',
                         actionTaken: 'ignored',
-                        metadata: { reason: 'inactive_person', status: person.status },
+                        metadata: { reason: 'inactive_person', status: resolvedPerson.status },
                     }).catch(() => {});
                 }
-                return { success: false, person, type: 'error_inactive' };
+                return { success: false, person: resolvedPerson, type: 'error_inactive' };
             }
 
             const settings = await this.getAttendanceSettings(schoolId);
@@ -1245,7 +1246,7 @@ class RFIDOfflineService {
             if (navigator.onLine) {
                 const sessionId = await this.getActiveSessionId(schoolId);
                 const result = await this.applyScanToServer({
-                    person,
+                    person: resolvedPerson,
                     schoolId,
                     date: today,
                     timestamp: onlineTimestamp,
