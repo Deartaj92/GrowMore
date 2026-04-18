@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
+import ReactDOM from 'react-dom';
 import styled from 'styled-components';
 import { ThemeContext, darkTheme, lightTheme } from '../../../../contexts/ThemeContext';
 import { useAuth } from '../../../../contexts/AuthContext';
@@ -8,6 +9,7 @@ import { PayrollGeneration, PayrollPayment } from '../../../../types/payroll';
 import {
   Box,
   Button,
+  CircularProgress,
   MenuItem,
   Select,
   FormControl as MuiFormControl,
@@ -21,6 +23,9 @@ import {
   PictureAsPdf as PictureAsPdfIcon,
   Delete as DeleteIcon,
   History as HistoryIcon,
+  Edit as EditIcon,
+  Save as SaveIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import Loader from '../../../../components/Loader';
 import PayrollDateField from '../PayrollDateField';
@@ -65,9 +70,17 @@ interface PaymentHistoryGroup {
   amount: number;
   paymentMode: PayrollPayment['paymentMode'];
   referenceNo?: string;
+  remarks?: string;
   status: PayrollPayment['status'];
   periods: string[];
   employeeName: string;
+}
+
+interface PayrollEditPaymentFormState {
+  paymentDate: string;
+  paymentMode: PayrollPayment['paymentMode'];
+  referenceNo: string;
+  remarks: string;
 }
 
 const SummaryCard = styled(ContentCard)`
@@ -224,6 +237,238 @@ const InlineSection = styled.div`
   border-top: 1px solid ${({ theme }) => theme.BORDER};
 `;
 
+const EditModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: ${({ theme }) => theme.BG === '#252525'
+    ? 'rgba(0, 0, 0, 0.5)'
+    : 'rgba(255, 255, 255, 0.5)'};
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+  overflow: auto;
+  animation: fade-in 0.2s ease-out;
+
+  @keyframes fade-in {
+    from { opacity: 0; backdrop-filter: blur(0); }
+    to { opacity: 1; backdrop-filter: blur(8px); }
+  }
+`;
+
+const EditModalCard = styled.div`
+  background: ${({ theme }) => theme.CARD || (theme.BG === '#252525' ? '#2a2a2a' : '#fff')};
+  border-radius: 14px;
+  padding: 0;
+  width: 90vw;
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: ${({ theme }) => theme.BG === '#252525'
+    ? '0 24px 80px rgba(0, 0, 0, 0.55)'
+    : '0 24px 80px rgba(15, 23, 42, 0.14)'};
+  border: ${({ theme }) => theme.BG === '#252525'
+    ? '1px solid rgba(255, 255, 255, 0.06)'
+    : '1px solid rgba(15, 23, 42, 0.08)'};
+  margin: 32px 16px;
+  position: relative;
+  z-index: 1301;
+  overflow: hidden;
+  animation: slide-up 0.3s cubic-bezier(0.2, 0.9, 0.4, 1);
+
+  @keyframes slide-up {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  @media (max-width: 768px) {
+    width: calc(100% - 32px);
+    margin: 16px;
+    max-height: 85vh;
+    border-radius: 12px;
+  }
+`;
+
+const EditModalHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: ${({ theme }) => theme.BG === '#252525'
+    ? '1px solid rgba(255, 255, 255, 0.06)'
+    : '1px solid rgba(15, 23, 42, 0.06)'};
+  flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    padding: 0.9rem 1rem;
+  }
+`;
+
+const EditModalTitle = styled.h2`
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.ACCENT};
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+`;
+
+const EditModalBody = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem 1rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+`;
+
+const EditFormGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const EditFormGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+`;
+
+const EditFullWidthField = styled(EditFormGroup)`
+  grid-column: 1 / -1;
+`;
+
+const EditLabel = styled.label`
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-weight: 500;
+  font-size: 0.82rem;
+`;
+
+const EditInput = styled.input`
+  width: 100%;
+  padding: 0.72rem 0.85rem;
+  border-radius: 8px;
+  border: ${({ theme }) => theme.BG === '#252525'
+    ? '1px solid rgba(255, 255, 255, 0.08)'
+    : '1px solid rgba(15, 23, 42, 0.09)'};
+  background: ${({ theme }) => theme.BG === '#252525'
+    ? 'rgba(255, 255, 255, 0.035)'
+    : 'rgba(248, 250, 252, 0.95)'};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.9rem;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+
+  &:focus {
+    border-color: ${({ theme }) => theme.ACCENT || '#6366f1'};
+    box-shadow: 0 0 0 3px ${({ theme }) => theme.BG === '#252525'
+      ? 'rgba(99, 102, 241, 0.16)'
+      : 'rgba(99, 102, 241, 0.12)'};
+  }
+`;
+
+const EditTextarea = styled.textarea`
+  width: 100%;
+  padding: 0.72rem 0.85rem;
+  border-radius: 8px;
+  border: ${({ theme }) => theme.BG === '#252525'
+    ? '1px solid rgba(255, 255, 255, 0.08)'
+    : '1px solid rgba(15, 23, 42, 0.09)'};
+  background: ${({ theme }) => theme.BG === '#252525'
+    ? 'rgba(255, 255, 255, 0.035)'
+    : 'rgba(248, 250, 252, 0.95)'};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.9rem;
+  resize: vertical;
+  font-family: inherit;
+  box-sizing: border-box;
+  min-height: 74px;
+  outline: none;
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+
+  &:focus {
+    border-color: ${({ theme }) => theme.ACCENT || '#6366f1'};
+    box-shadow: 0 0 0 3px ${({ theme }) => theme.BG === '#252525'
+      ? 'rgba(99, 102, 241, 0.16)'
+      : 'rgba(99, 102, 241, 0.12)'};
+  }
+`;
+
+const EditModalFooter = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  padding: 0.9rem 1.25rem;
+  border-top: ${({ theme }) => theme.BG === '#252525'
+    ? '1px solid rgba(255, 255, 255, 0.06)'
+    : '1px solid rgba(15, 23, 42, 0.06)'};
+  background: ${({ theme }) => theme.BG === '#252525'
+    ? 'rgba(255, 255, 255, 0.025)'
+    : 'rgba(248, 250, 252, 0.72)'};
+  flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    padding: 0.85rem 1rem;
+  }
+`;
+
+const EditButton = styled.button<{ $variant?: 'primary' | 'secondary' }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.72rem 1rem;
+  border-radius: 8px;
+  border: ${({ $variant, theme }) => $variant === 'secondary'
+    ? (theme.BG === '#252525'
+      ? '1px solid rgba(255, 255, 255, 0.1)'
+      : '1px solid rgba(15, 23, 42, 0.1)')
+    : 'none'};
+  font-size: 0.88rem;
+  font-weight: ${({ $variant }) => $variant === 'secondary' ? 500 : 600};
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: ${({ $variant, theme }) =>
+    $variant === 'secondary'
+      ? (theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(248, 250, 252, 0.96)')
+      : (theme.ACCENT || '#6366f1')};
+  color: ${({ $variant }) => $variant === 'secondary' ? 'inherit' : 'white'};
+
+  &:hover {
+    background: ${({ $variant, theme }) =>
+      $variant === 'secondary'
+        ? (theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)')
+        : theme.ACCENT || '#6366f1'};
+    transform: ${({ $variant }) => $variant === 'secondary' ? 'none' : 'translateY(-1px)'};
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
 const formatPeriod = (generation: PayrollGeneration) =>
   new Date(generation.payrollYear, generation.payrollMonth - 1, 1).toLocaleString('default', {
     month: 'long',
@@ -249,6 +494,7 @@ const PayrollPaymentsList: React.FC = () => {
   const [loadingData, setLoadingData] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [deletingPaymentId, setDeletingPaymentId] = useState<number | null>(null);
+  const [savingEditPaymentId, setSavingEditPaymentId] = useState<number | null>(null);
   const [staffList, setStaffList] = useState<Array<{ id: number; name: string; role: string }>>([]);
   const [selectedStaffId, setSelectedStaffId] = useState<number | ''>('');
   const [generationsWithBalance, setGenerationsWithBalance] = useState<GenerationWithBalance[]>([]);
@@ -258,6 +504,13 @@ const PayrollPaymentsList: React.FC = () => {
     paymentDate: new Date().toISOString().split('T')[0],
     amount: 0,
     paymentMode: 'bank_transfer' as 'cash' | 'bank_transfer' | 'cheque' | 'easypaisa_jazzcash' | 'other',
+    referenceNo: '',
+    remarks: '',
+  });
+  const [editingPayment, setEditingPayment] = useState<PaymentHistoryGroup | null>(null);
+  const [editFormData, setEditFormData] = useState<PayrollEditPaymentFormState>({
+    paymentDate: new Date().toISOString().split('T')[0],
+    paymentMode: 'bank_transfer',
     referenceNo: '',
     remarks: '',
   });
@@ -345,6 +598,62 @@ const PayrollPaymentsList: React.FC = () => {
     }
   };
 
+  const handleOpenEditPayment = (payment: PaymentHistoryGroup) => {
+    setEditingPayment(payment);
+    setEditFormData({
+      paymentDate: payment.paymentDate,
+      paymentMode: payment.paymentMode,
+      referenceNo: payment.referenceNo || '',
+      remarks: payment.remarks || '',
+    });
+  };
+
+  const handleCloseEditPayment = () => {
+    setEditingPayment(null);
+    setEditFormData({
+      paymentDate: new Date().toISOString().split('T')[0],
+      paymentMode: defaultPaymentMode,
+      referenceNo: '',
+      remarks: '',
+    });
+  };
+
+  const handleSaveEditedPayment = async () => {
+    if (!user?.school_id || !editingPayment) return;
+
+    try {
+      setSavingEditPaymentId(editingPayment.paymentIds[0] || null);
+      const targetPaymentIds = editingPayment.paymentIds;
+
+      await Promise.all(
+        targetPaymentIds.map(paymentId =>
+          payrollService.updatePayment(
+            user.school_id,
+            paymentId,
+            {
+              paymentDate: editFormData.paymentDate,
+              paymentMode: editFormData.paymentMode,
+              referenceNo: editFormData.referenceNo || undefined,
+              remarks: editFormData.remarks || undefined,
+            },
+            user.id
+          )
+        )
+      );
+
+      showToast('Payroll payment updated successfully', 'success');
+      handleCloseEditPayment();
+      if (selectedStaffId) {
+        await loadEmployeeGenerations(selectedStaffId as number);
+      }
+    } catch (error: any) {
+      console.error('Error updating payroll payment:', error);
+      showToast(error.message || 'Failed to update payroll payment', 'error');
+    } finally {
+      setSavingEditPaymentId(null);
+    }
+  };
+
   const handleDownloadReceipt = async (paymentIds: number[]) => {
     if (!user?.school_id) return;
 
@@ -427,6 +736,7 @@ const PayrollPaymentsList: React.FC = () => {
           amount: payment.amount,
           paymentMode: payment.paymentMode,
           referenceNo: payment.referenceNo,
+          remarks: payment.remarks,
           status: payment.status,
           periods: periods.length > 0 ? periods : ['-'],
           employeeName: payment.generation?.staff?.name || selectedStaff?.name || 'Employee',
@@ -720,6 +1030,13 @@ const PayrollPaymentsList: React.FC = () => {
                                 </td>
                                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                                   <IconButton
+                                    onClick={() => handleOpenEditPayment(payment)}
+                                    title="Edit Payment"
+                                    style={{ color: theme.ACCENT }}
+                                  >
+                                    <EditIcon style={{ fontSize: '0.9rem' }} />
+                                  </IconButton>
+                                  <IconButton
                                     onClick={() => handleDownloadReceipt(payment.paymentIds)}
                                     title="Download Receipt"
                                     style={{ color: theme.ACCENT }}
@@ -876,6 +1193,109 @@ const PayrollPaymentsList: React.FC = () => {
             </>
           )}
         </>
+      )}
+
+      {editingPayment && ReactDOM.createPortal(
+        <EditModalOverlay theme={theme} onClick={handleCloseEditPayment}>
+          <EditModalCard theme={theme} onClick={(e) => e.stopPropagation()}>
+            <EditModalHeader theme={theme}>
+              <EditModalTitle theme={theme}>
+                <EditIcon style={{ fontSize: 20, color: theme.ACCENT }} />
+                Edit Salary Payment
+              </EditModalTitle>
+              <IconButton onClick={handleCloseEditPayment} title="Close">
+                <CloseIcon style={{ fontSize: '0.95rem' }} />
+              </IconButton>
+            </EditModalHeader>
+
+            <EditModalBody theme={theme}>
+              <div style={{
+                color: theme.TEXT_SECONDARY,
+                fontSize: '0.82rem',
+                padding: '0.1rem 0 0.35rem',
+                borderBottom: theme.BG === '#252525'
+                  ? '1px solid rgba(255,255,255,0.05)'
+                  : '1px solid rgba(15,23,42,0.06)',
+              }}>
+                {editingPayment.employeeName} for {editingPayment.periods.length > 1 ? `${editingPayment.periods.length} salary months` : editingPayment.periods[0]}
+              </div>
+
+              <EditFormGrid>
+                <EditFormGroup>
+                  <EditLabel theme={theme}>Amount</EditLabel>
+                  <EditInput theme={theme} value={formatCurrency(editingPayment.amount)} readOnly />
+                </EditFormGroup>
+
+                <EditFormGroup>
+                  <EditLabel theme={theme}>Payment Date</EditLabel>
+                  <EditInput
+                    theme={theme}
+                    type="date"
+                    value={editFormData.paymentDate}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, paymentDate: e.target.value }))}
+                  />
+                </EditFormGroup>
+
+                <EditFormGroup>
+                  <EditLabel theme={theme}>Payment Mode</EditLabel>
+                  <EditInput
+                    as="select"
+                    theme={theme}
+                    value={editFormData.paymentMode}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, paymentMode: e.target.value as PayrollPayment['paymentMode'] }))}
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="cheque">Cheque</option>
+                    <option value="easypaisa_jazzcash">EasyPaisa/JazzCash</option>
+                    <option value="other">Other</option>
+                  </EditInput>
+                </EditFormGroup>
+
+                <EditFormGroup>
+                  <EditLabel theme={theme}>Reference Number</EditLabel>
+                  <EditInput
+                    theme={theme}
+                    value={editFormData.referenceNo}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, referenceNo: e.target.value }))}
+                    placeholder="Transaction ID, cheque no, etc."
+                  />
+                </EditFormGroup>
+
+                <EditFullWidthField>
+                  <EditLabel theme={theme}>Remarks</EditLabel>
+                  <EditTextarea
+                    theme={theme}
+                    rows={3}
+                    value={editFormData.remarks}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, remarks: e.target.value }))}
+                    placeholder="Enter payment remarks"
+                  />
+                </EditFullWidthField>
+              </EditFormGrid>
+            </EditModalBody>
+
+            <EditModalFooter theme={theme}>
+              <EditButton type="button" $variant="secondary" onClick={handleCloseEditPayment}>
+                <CloseIcon style={{ fontSize: 16 }} />
+                Cancel
+              </EditButton>
+              <EditButton
+                type="button"
+                onClick={handleSaveEditedPayment}
+                disabled={savingEditPaymentId === editingPayment.paymentIds[0]}
+              >
+                {savingEditPaymentId === editingPayment.paymentIds[0] ? (
+                  <CircularProgress size={16} />
+                ) : (
+                  <SaveIcon style={{ fontSize: 16 }} />
+                )}
+                Save Changes
+              </EditButton>
+            </EditModalFooter>
+          </EditModalCard>
+        </EditModalOverlay>,
+        document.body
       )}
     </>
   );

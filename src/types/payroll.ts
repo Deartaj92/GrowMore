@@ -369,7 +369,9 @@ export interface PayrollAnalytics {
   roleWiseDistribution: { role: string; total: number; count: number }[];
   paymentStatusSummary: { status: string; total: number; count: number }[];
   advanceOutstanding: number;
+  recentGeneratedPayrollEmployeeCount: number;
   topEarners: { staffId: number; staffName: string; amount: number }[];
+  topPendingAmounts: { staffId: number; staffName: string; amount: number }[];
   deductionAnalysis: { itemName: string; total: number }[];
 }
 

@@ -12,25 +12,18 @@ import { formatAppDate } from '../utils/dateUtils';
 import {
   History,
   Search as SearchIcon,
-  FilterList as FilterIcon,
   Refresh as RefreshIcon,
   Receipt,
   Print as PrintIcon,
   Delete as DeleteIcon,
   Close as CloseIcon,
-  AttachMoney,
-  CalendarToday,
-  Person,
-  School,
-  Payment,
-  TrendingUp,
-  TrendingDown
+  Edit as EditIcon,
+  Save as SaveIcon
 } from '@mui/icons-material';
 import Loader from '../components/Loader';
 import AppDateField from '../components/shared/AppDateField';
 import { useLoading } from '../contexts/LoadingContext';
-import { format } from 'date-fns';
-import { CircularProgress, Button, Box, Grid } from '@mui/material';
+import { CircularProgress } from '@mui/material';
 import ReactDOM from 'react-dom';
 
 // Helper function to check if theme is dark
@@ -534,33 +527,56 @@ const ModalOverlay = styled.div`
   right: 0;
   bottom: 0;
   background: ${({ theme }) => isDark(theme)
-    ? 'rgba(0, 0, 0, 0.7)'
-    : 'rgba(0, 0, 0, 0.5)'};
-  backdrop-filter: blur(4px);
+    ? 'rgba(0, 0, 0, 0.5)'
+    : 'rgba(255, 255, 255, 0.5)'};
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
-  padding: 1rem;
+  z-index: 4000;
+  padding: 16px;
   box-sizing: border-box;
+  overflow: auto;
+  animation: fade-in 0.2s ease-out;
+
+  @keyframes fade-in {
+    from { opacity: 0; backdrop-filter: blur(0); }
+    to { opacity: 1; backdrop-filter: blur(8px); }
+  }
 `;
 
 const ModalContent = styled.div`
   background: ${({ theme }) => theme.CARD};
-  border-radius: 16px;
+  border-radius: 14px;
   padding: 0;
+  width: 90vw;
   max-width: 500px;
   width: 100%;
+  max-height: 90vh;
   border: ${({ theme }) => isDark(theme)
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
+    ? '1px solid rgba(255, 255, 255, 0.06)'
+    : '1px solid rgba(15, 23, 42, 0.08)'};
   box-shadow: ${({ theme }) => isDark(theme)
-    ? '0 0 40px rgba(0, 0, 0, 0.5), 0 8px 32px rgba(0, 0, 0, 0.4)'
-    : '0 0 40px rgba(0, 0, 0, 0.1), 0 8px 32px rgba(0, 0, 0, 0.1)'};
+    ? '0 24px 80px rgba(0, 0, 0, 0.55)'
+    : '0 24px 80px rgba(15, 23, 42, 0.14)'};
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  margin: 32px 16px;
+  position: relative;
+  animation: slide-up 0.3s cubic-bezier(0.2, 0.9, 0.4, 1);
+
+  @keyframes slide-up {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
   
   @media (max-width: 768px) {
-    max-width: 95%;
+    width: calc(100% - 32px);
+    max-height: 85vh;
+    border-radius: 12px;
+    margin: 16px;
   }
 `;
 
@@ -568,56 +584,122 @@ const ModalHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.5rem 2rem;
+  padding: 1rem 1.25rem;
   border-bottom: ${({ theme }) => isDark(theme)
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
+    ? '1px solid rgba(255, 255, 255, 0.06)'
+    : '1px solid rgba(15, 23, 42, 0.06)'};
   flex-shrink: 0;
   
   @media (max-width: 768px) {
-    padding: 1rem 1.5rem;
+    padding: 0.9rem 1rem;
   }
 `;
 
 const ModalTitle = styled.h2`
-  font-size: 1.5rem;
+  font-size: 1.05rem;
   font-weight: 600;
   color: ${({ theme }) => theme.ACCENT};
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.55rem;
 `;
 
 const ModalBody = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  padding: 2rem;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem 1rem;
   overflow-y: auto;
   flex: 1;
   min-height: 0;
   
   @media (max-width: 768px) {
-    padding: 1.5rem;
+    padding: 1rem;
   }
+`;
+
+const FormGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const FormField = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+`;
+
+const FormInput = styled.input`
+  padding: 0.72rem 0.85rem;
+  border-radius: 8px;
+  border: ${({ theme }) => isDark(theme)
+    ? '1px solid rgba(255, 255, 255, 0.08)'
+    : '1px solid rgba(15, 23, 42, 0.09)'};
+  background: ${({ theme }) => isDark(theme)
+    ? 'rgba(255, 255, 255, 0.035)'
+    : 'rgba(248, 250, 252, 0.95)'};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+
+  &:focus {
+    border-color: ${({ theme }) => theme.ACCENT};
+    box-shadow: 0 0 0 3px ${({ theme }) => isDark(theme)
+      ? 'rgba(99, 102, 241, 0.16)'
+      : 'rgba(99, 102, 241, 0.12)'};
+  }
+`;
+
+const FormTextarea = styled.textarea`
+  padding: 0.72rem 0.85rem;
+  border-radius: 8px;
+  border: ${({ theme }) => isDark(theme)
+    ? '1px solid rgba(255, 255, 255, 0.08)'
+    : '1px solid rgba(15, 23, 42, 0.09)'};
+  background: ${({ theme }) => isDark(theme)
+    ? 'rgba(255, 255, 255, 0.035)'
+    : 'rgba(248, 250, 252, 0.95)'};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.9rem;
+  outline: none;
+  resize: vertical;
+  min-height: 74px;
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+
+  &:focus {
+    border-color: ${({ theme }) => theme.ACCENT};
+    box-shadow: 0 0 0 3px ${({ theme }) => isDark(theme)
+      ? 'rgba(99, 102, 241, 0.16)'
+      : 'rgba(99, 102, 241, 0.12)'};
+  }
+`;
+
+const FullWidthField = styled(FormField)`
+  grid-column: 1 / -1;
 `;
 
 const ModalFooter = styled.div`
   display: flex;
   justify-content: flex-end;
-  gap: 0.75rem;
-  padding: 1.5rem 2rem;
+  gap: 0.65rem;
+  padding: 0.9rem 1.25rem;
   border-top: ${({ theme }) => isDark(theme)
-    ? '1px solid rgba(255, 255, 255, 0.05)'
-    : '1px solid rgba(0, 0, 0, 0.05)'};
+    ? '1px solid rgba(255, 255, 255, 0.06)'
+    : '1px solid rgba(15, 23, 42, 0.06)'};
   background: ${({ theme }) => isDark(theme)
-    ? 'rgba(255, 255, 255, 0.02)'
-    : 'rgba(0, 0, 0, 0.02)'};
+    ? 'rgba(255, 255, 255, 0.025)'
+    : 'rgba(248, 250, 252, 0.72)'};
   flex-shrink: 0;
   
   @media (max-width: 768px) {
-    padding: 1rem 1.5rem;
+    padding: 0.85rem 1rem;
     flex-direction: column-reverse;
     
     button {
@@ -631,16 +713,16 @@ const SecondaryButton = styled.button`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
+  padding: 0.72rem 1rem;
   border-radius: 8px;
   border: ${({ theme }) => isDark(theme)
     ? '1px solid rgba(255, 255, 255, 0.1)'
-    : '1px solid rgba(0, 0, 0, 0.1)'};
+    : '1px solid rgba(15, 23, 42, 0.1)'};
   background: ${({ theme }) => isDark(theme)
-    ? 'rgba(255, 255, 255, 0.05)'
-    : 'rgba(0, 0, 0, 0.03)'};
+    ? 'rgba(255, 255, 255, 0.04)'
+    : 'rgba(248, 250, 252, 0.96)'};
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -656,12 +738,12 @@ const DangerButton = styled.button`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
+  padding: 0.72rem 1rem;
   border-radius: 8px;
   border: none;
   background: #ef4444;
   color: #fff;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -840,6 +922,31 @@ interface Payment {
   }[];
 }
 
+interface Account {
+  id: number;
+  name: string;
+  type: string;
+  bank_name?: string | null;
+  account_number?: string | null;
+  wallet_number?: string | null;
+}
+
+interface EditPaymentFormState {
+  paymentDate: string;
+  amount: string;
+  discountAmount: string;
+  paymentMethod: string;
+  selectedAccountId: number | null;
+  receivedBy: string;
+  remarks: string;
+  transactionId: string;
+  chequeNumber: string;
+}
+
+type PaymentMethodOption =
+  | { value: string; label: string; isAccount: false }
+  | { value: string; label: string; isAccount: true; accountId: number };
+
 // ===== MAIN COMPONENT =====
 
 const PaymentHistoryPage: React.FC = () => {
@@ -866,6 +973,8 @@ const PaymentHistoryPage: React.FC = () => {
   const [classes, setClasses] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountTypes, setAccountTypes] = useState<any[]>([]);
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -876,9 +985,22 @@ const PaymentHistoryPage: React.FC = () => {
   const [dateTo, setDateTo] = useState('');
 
   // Modal states
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [deletingPayment, setDeletingPayment] = useState<number | null>(null);
+  const [savingPayment, setSavingPayment] = useState<number | null>(null);
+  const [editPaymentForm, setEditPaymentForm] = useState<EditPaymentFormState>({
+    paymentDate: '',
+    amount: '',
+    discountAmount: '',
+    paymentMethod: 'Cash',
+    selectedAccountId: null,
+    receivedBy: '',
+    remarks: '',
+    transactionId: '',
+    chequeNumber: '',
+  });
 
   const [isLoadingData, setIsLoadingData] = useState(true);
 
@@ -922,6 +1044,24 @@ const PaymentHistoryPage: React.FC = () => {
     const sectionName = invoice?.student?.current_class?.section?.name;
     return sectionName ? `${className} - ${sectionName}` : className;
   };
+
+  const getAccountTypeLabel = (account: Account) => {
+    const accountType = accountTypes.find((type: any) => type.name === account.type);
+    return accountType?.display_name || account.type;
+  };
+
+  const paymentMethodOptions = useMemo<PaymentMethodOption[]>(() => {
+    return [
+      { value: 'Cash', label: 'Cash', isAccount: false },
+      { value: 'Cheque', label: 'Cheque', isAccount: false },
+      ...accounts.map(account => ({
+        value: `account_${account.id}`,
+        label: `${getAccountTypeLabel(account)} - ${account.name}`,
+        isAccount: true,
+        accountId: account.id,
+      })),
+    ];
+  }, [accounts, accountTypes]);
 
   // Filter payments
   const filteredPayments = useMemo(() => {
@@ -1166,6 +1306,34 @@ const PaymentHistoryPage: React.FC = () => {
     }
   }, [user?.school_id]);
 
+  const fetchAccountsData = useCallback(async () => {
+    if (!user?.school_id) return;
+
+    try {
+      const [accountsResult, accountTypesResult] = await Promise.all([
+        supabase
+          .from('accounts')
+          .select('id, name, type, bank_name, account_number, wallet_number')
+          .eq('school_id', user.school_id)
+          .eq('is_active', true)
+          .order('name'),
+        supabase
+          .from('account_types')
+          .select('*')
+          .order('display_name', { ascending: true }),
+      ]);
+
+      if (accountsResult.error) throw accountsResult.error;
+      if (accountTypesResult.error) throw accountTypesResult.error;
+
+      setAccounts((accountsResult.data || []) as Account[]);
+      setAccountTypes(accountTypesResult.data || []);
+    } catch (error: any) {
+      console.error('Error fetching accounts:', error);
+      showToast('Failed to load accounts', 'error');
+    }
+  }, [user?.school_id, showToast]);
+
   // Fetch payments
   const fetchPayments = useCallback(async () => {
     if (!user?.school_id) {
@@ -1294,9 +1462,10 @@ const PaymentHistoryPage: React.FC = () => {
       fetchClasses();
       fetchSections();
       fetchUsers();
+      fetchAccountsData();
       fetchPayments();
     }
-  }, [user?.school_id, fetchClasses, fetchSections, fetchUsers, fetchPayments]);
+  }, [user?.school_id, fetchClasses, fetchSections, fetchUsers, fetchAccountsData, fetchPayments]);
 
   // Refresh handler
   const handleRefresh = useCallback(() => {
@@ -1305,9 +1474,126 @@ const PaymentHistoryPage: React.FC = () => {
       fetchClasses();
       fetchSections();
       fetchUsers();
+      fetchAccountsData();
       showToast('Data refreshed', 'success');
     }
-  }, [user?.school_id, fetchPayments, fetchClasses, fetchSections, fetchUsers, showToast]);
+  }, [user?.school_id, fetchPayments, fetchClasses, fetchSections, fetchUsers, fetchAccountsData, showToast]);
+
+  const handleOpenEditModal = (payment: Payment) => {
+    setSelectedPayment(payment);
+    setEditPaymentForm({
+      paymentDate: payment.payment_date || new Date().toISOString().slice(0, 10),
+      amount: String(Number(payment.amount || 0)),
+      discountAmount: String(Number(payment.discount_amount || 0)),
+      paymentMethod: payment.account_id ? `account_${payment.account_id}` : (payment.payment_mode || 'Cash'),
+      selectedAccountId: payment.account_id || null,
+      receivedBy: payment.received_by ? String(payment.received_by) : '',
+      remarks: payment.remarks || '',
+      transactionId: payment.transaction_id || '',
+      chequeNumber: payment.cheque_number || '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setSelectedPayment(null);
+    setEditPaymentForm({
+      paymentDate: '',
+      amount: '',
+      discountAmount: '',
+      paymentMethod: 'Cash',
+      selectedAccountId: null,
+      receivedBy: '',
+      remarks: '',
+      transactionId: '',
+      chequeNumber: '',
+    });
+  };
+
+  const handleEditPaymentMethodChange = (value: string) => {
+    const selectedOption = paymentMethodOptions.find(option => option.value === value);
+    setEditPaymentForm(prev => ({
+      ...prev,
+      paymentMethod: value,
+      selectedAccountId: selectedOption && selectedOption.isAccount ? selectedOption.accountId : null,
+      transactionId: selectedOption?.isAccount ? prev.transactionId : '',
+      chequeNumber: value === 'Cheque' ? prev.chequeNumber : '',
+    }));
+  };
+
+  const handleSaveEditedPayment = async () => {
+    if (!selectedPayment || !user?.school_id) return;
+
+    const amount = Number(editPaymentForm.amount || 0);
+    const discountAmount = Number(editPaymentForm.discountAmount || 0);
+    const netAmount = amount + discountAmount;
+
+    if (!editPaymentForm.paymentDate) {
+      showToast('Payment date is required', 'error');
+      return;
+    }
+
+    if (Number.isNaN(amount) || amount < 0) {
+      showToast('Amount must be a valid non-negative number', 'error');
+      return;
+    }
+
+    if (Number.isNaN(discountAmount) || discountAmount < 0) {
+      showToast('Discount must be a valid non-negative number', 'error');
+      return;
+    }
+
+    if (editPaymentForm.paymentMethod === 'Cheque' && !editPaymentForm.chequeNumber.trim()) {
+      showToast('Cheque number is required for cheque payments', 'error');
+      return;
+    }
+
+    if (editPaymentForm.selectedAccountId && !editPaymentForm.transactionId.trim()) {
+      showToast('Transaction ID is required for account payments', 'error');
+      return;
+    }
+
+    try {
+      setSavingPayment(selectedPayment.id);
+      setLoading(true);
+
+      const updateData: any = {
+        payment_date: editPaymentForm.paymentDate,
+        amount,
+        discount_amount: discountAmount,
+        net_amount: netAmount,
+        payment_mode: editPaymentForm.paymentMethod,
+        received_by: editPaymentForm.receivedBy ? Number(editPaymentForm.receivedBy) : null,
+        remarks: editPaymentForm.remarks.trim() || null,
+        account_id: editPaymentForm.selectedAccountId || null,
+        transaction_id: editPaymentForm.selectedAccountId
+          ? (editPaymentForm.transactionId.trim() || null)
+          : null,
+        cheque_number: editPaymentForm.paymentMethod === 'Cheque'
+          ? (editPaymentForm.chequeNumber.trim() || null)
+          : null,
+      };
+
+      const { error } = await supabase
+        .from('fee_payments')
+        .update(updateData)
+        .eq('id', selectedPayment.id)
+        .eq('school_id', user.school_id);
+
+      if (error) throw error;
+
+      showToast('Payment updated successfully', 'success');
+      handleCloseEditModal();
+      await fetchPayments();
+    } catch (error: any) {
+      console.error('Error updating payment:', error);
+      showToast(error.message || 'Failed to update payment', 'error');
+    } finally {
+      setSavingPayment(null);
+      setLoading(false);
+    }
+  };
 
   // Delete payment handlers
   const handleOpenDeleteModal = (payment: Payment) => {
@@ -1599,6 +1885,13 @@ const PaymentHistoryPage: React.FC = () => {
                       <ActionButtons>
                         <IconButton
                           theme={theme}
+                          onClick={() => handleOpenEditModal(payment)}
+                          title="Edit Payment"
+                        >
+                          <EditIcon style={{ fontSize: 16 }} />
+                        </IconButton>
+                        <IconButton
+                          theme={theme}
                           onClick={() => generateInvoiceForPayment(payment)}
                           title="Generate Invoice"
                         >
@@ -1631,6 +1924,169 @@ const PaymentHistoryPage: React.FC = () => {
           </Table>
         </TableWrapper>
       </TableContainer>
+
+      {isEditModalOpen && selectedPayment && ReactDOM.createPortal(
+        <ModalOverlay theme={theme} onClick={handleCloseEditModal}>
+          <ModalContent theme={theme} onClick={(e) => e.stopPropagation()}>
+            <ModalHeader theme={theme}>
+              <ModalTitle theme={theme}>
+                <EditIcon style={{ fontSize: 20, color: theme.ACCENT }} />
+                Edit Payment
+              </ModalTitle>
+              <IconButton theme={theme} onClick={handleCloseEditModal}>
+                <CloseIcon style={{ fontSize: 18 }} />
+              </IconButton>
+            </ModalHeader>
+            <ModalBody theme={theme}>
+              <div style={{
+                color: theme.TEXT_SECONDARY,
+                fontSize: '0.82rem',
+                padding: '0.1rem 0 0.35rem',
+                borderBottom: isDark(theme)
+                  ? '1px solid rgba(255,255,255,0.05)'
+                  : '1px solid rgba(15,23,42,0.06)',
+              }}>
+                {getPaymentDisplayId(selectedPayment.id)} for {getStudentName(selectedPayment)}
+              </div>
+
+              <FormGrid>
+                <FormField>
+                  <FilterLabel theme={theme}>Payment Date</FilterLabel>
+                  <FormInput
+                    theme={theme}
+                    type="date"
+                    value={editPaymentForm.paymentDate}
+                    onChange={(e) => setEditPaymentForm(prev => ({ ...prev, paymentDate: e.target.value }))}
+                  />
+                </FormField>
+
+                <FormField>
+                  <FilterLabel theme={theme}>Received By</FilterLabel>
+                  <StyledSelect
+                    theme={theme}
+                    value={editPaymentForm.receivedBy}
+                    onChange={(e) => setEditPaymentForm(prev => ({ ...prev, receivedBy: e.target.value }))}
+                  >
+                    <option value="">Select user</option>
+                    {users.map((currentUser: any) => (
+                      <option key={currentUser.id} value={currentUser.id}>
+                        {currentUser.id} - {currentUser.name}
+                      </option>
+                    ))}
+                  </StyledSelect>
+                </FormField>
+
+                <FormField>
+                  <FilterLabel theme={theme}>Amount</FilterLabel>
+                  <FormInput
+                    theme={theme}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editPaymentForm.amount}
+                    onChange={(e) => setEditPaymentForm(prev => ({ ...prev, amount: e.target.value }))}
+                  />
+                </FormField>
+
+                <FormField>
+                  <FilterLabel theme={theme}>Discount</FilterLabel>
+                  <FormInput
+                    theme={theme}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editPaymentForm.discountAmount}
+                    onChange={(e) => setEditPaymentForm(prev => ({ ...prev, discountAmount: e.target.value }))}
+                  />
+                </FormField>
+
+                <FormField>
+                  <FilterLabel theme={theme}>Net Amount</FilterLabel>
+                  <FormInput
+                    theme={theme}
+                    type="text"
+                    readOnly
+                    value={formatCurrency(
+                      Number(editPaymentForm.amount || 0) + Number(editPaymentForm.discountAmount || 0)
+                    )}
+                  />
+                </FormField>
+
+                <FormField>
+                  <FilterLabel theme={theme}>Payment Method</FilterLabel>
+                  <StyledSelect
+                    theme={theme}
+                    value={editPaymentForm.paymentMethod}
+                    onChange={(e) => handleEditPaymentMethodChange(e.target.value)}
+                  >
+                    {paymentMethodOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </StyledSelect>
+                </FormField>
+
+                {editPaymentForm.selectedAccountId && (
+                  <FullWidthField>
+                    <FilterLabel theme={theme}>Transaction ID</FilterLabel>
+                    <FormInput
+                      theme={theme}
+                      type="text"
+                      value={editPaymentForm.transactionId}
+                      onChange={(e) => setEditPaymentForm(prev => ({ ...prev, transactionId: e.target.value }))}
+                      placeholder="Enter transaction ID"
+                    />
+                  </FullWidthField>
+                )}
+
+                {editPaymentForm.paymentMethod === 'Cheque' && (
+                  <FullWidthField>
+                    <FilterLabel theme={theme}>Cheque Number</FilterLabel>
+                    <FormInput
+                      theme={theme}
+                      type="text"
+                      value={editPaymentForm.chequeNumber}
+                      onChange={(e) => setEditPaymentForm(prev => ({ ...prev, chequeNumber: e.target.value }))}
+                      placeholder="Enter cheque number"
+                    />
+                  </FullWidthField>
+                )}
+
+                <FullWidthField>
+                  <FilterLabel theme={theme}>Remarks</FilterLabel>
+                  <FormTextarea
+                    theme={theme}
+                    value={editPaymentForm.remarks}
+                    onChange={(e) => setEditPaymentForm(prev => ({ ...prev, remarks: e.target.value }))}
+                    placeholder="Enter payment remarks"
+                  />
+                </FullWidthField>
+              </FormGrid>
+            </ModalBody>
+            <ModalFooter theme={theme}>
+              <SecondaryButton theme={theme} onClick={handleCloseEditModal}>
+                <CloseIcon style={{ fontSize: 18 }} />
+                Cancel
+              </SecondaryButton>
+              <ActionButton
+                theme={theme}
+                onClick={handleSaveEditedPayment}
+                disabled={loading || savingPayment === selectedPayment.id}
+                style={{ padding: '0.72rem 1rem', fontSize: '0.88rem', justifyContent: 'center' }}
+              >
+                {savingPayment === selectedPayment.id ? (
+                  <CircularProgress size={16} />
+                ) : (
+                  <SaveIcon style={{ fontSize: 18 }} />
+                )}
+                Save Changes
+              </ActionButton>
+            </ModalFooter>
+          </ModalContent>
+        </ModalOverlay>,
+        document.body
+      )}
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && selectedPayment && (

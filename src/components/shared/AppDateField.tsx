@@ -53,7 +53,11 @@ const AppDateField: React.FC<AppDateFieldProps> = ({
   textFieldSlot,
   textFieldProps,
 }) => {
-  const handleChange = (newValue: Dayjs | null) => {
+  const handleChange = (newValue: Dayjs | null, context?: { validationError?: unknown }) => {
+    if (context?.validationError) {
+      return;
+    }
+
     const nextValue = newValue && newValue.isValid() ? newValue.format('YYYY-MM-DD') : '';
     onChangeValue?.(nextValue);
     onChange?.({ target: { value: nextValue, name } });

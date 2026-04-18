@@ -131,6 +131,11 @@ const PayrollAnalyticsDashboard: React.FC = () => {
   }
 
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
+  const totalPayroll = summary?.totalPayroll || 0;
+  const totalPaid = summary?.totalPaid || 0;
+  const totalPending = Math.max(0, totalPayroll - totalPaid);
+  const pendingEmployeeCount = summary?.pendingCount || 0;
+  const recentGeneratedPayrollEmployeeCount = analytics?.recentGeneratedPayrollEmployeeCount || 0;
 
   return (
     <>
@@ -214,7 +219,7 @@ const PayrollAnalyticsDashboard: React.FC = () => {
               <PaymentIcon />
             </StatCardIcon>
           </StatCardHeader>
-          <StatCardValue>{formatCurrency(summary?.totalPaid || 0)}</StatCardValue>
+          <StatCardValue>{formatCurrency(totalPaid)}</StatCardValue>
           <StatCardSubtext>{summary?.paidCount || 0} payments completed</StatCardSubtext>
         </StatCard>
 
@@ -225,8 +230,8 @@ const PayrollAnalyticsDashboard: React.FC = () => {
               <PendingIcon />
             </StatCardIcon>
           </StatCardHeader>
-          <StatCardValue>{formatCurrency(summary?.totalPending || 0)}</StatCardValue>
-          <StatCardSubtext>{summary?.pendingCount || 0} payments pending</StatCardSubtext>
+          <StatCardValue>{formatCurrency(totalPending)}</StatCardValue>
+          <StatCardSubtext>{pendingEmployeeCount} employees with pending payroll</StatCardSubtext>
         </StatCard>
 
         <StatCard accentColor="#8b5cf6">
@@ -236,8 +241,8 @@ const PayrollAnalyticsDashboard: React.FC = () => {
               <PeopleIcon />
             </StatCardIcon>
           </StatCardHeader>
-          <StatCardValue>{summary?.employeeCount || 0}</StatCardValue>
-          <StatCardSubtext>Total employees in payroll</StatCardSubtext>
+          <StatCardValue>{recentGeneratedPayrollEmployeeCount}</StatCardValue>
+          <StatCardSubtext>Employees with recent generated payroll</StatCardSubtext>
         </StatCard>
       </StatsGrid>
 
@@ -380,7 +385,7 @@ const PayrollAnalyticsDashboard: React.FC = () => {
           <ChartCard>
             <ChartTitle>
               <TrendingUpIcon />
-              Top 10 Earners (Last 12 Months)
+              All Earners
             </ChartTitle>
             <div style={{ maxHeight: 300, overflowY: 'auto' }}>
               <StyledTable>
@@ -405,26 +410,28 @@ const PayrollAnalyticsDashboard: React.FC = () => {
           </ChartCard>
         )}
 
-        {/* Deduction Analysis */}
-        {analytics && analytics.deductionAnalysis.length > 0 && (
+        {/* Top Pending Amounts */}
+        {analytics && analytics.topPendingAmounts.length > 0 && (
           <ChartCard>
             <ChartTitle>
-              <BarChartIcon />
-              Top Deductions
+              <PendingIcon />
+              All Remaining Amounts
             </ChartTitle>
             <div style={{ maxHeight: 300, overflowY: 'auto' }}>
               <StyledTable>
                 <thead>
                   <tr>
-                    <th>Deduction Type</th>
-                    <th style={{ textAlign: 'right' }}>Total Amount</th>
+                    <th>Rank</th>
+                    <th>Employee</th>
+                    <th style={{ textAlign: 'right' }}>Amount</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {analytics.deductionAnalysis.map((deduction) => (
-                    <tr key={deduction.itemName}>
-                      <td>{deduction.itemName}</td>
-                      <td style={{ textAlign: 'right' }}>{formatCurrency(deduction.total)}</td>
+                  {analytics.topPendingAmounts.map((employee, index) => (
+                    <tr key={employee.staffId}>
+                      <td>{index + 1}</td>
+                      <td>{employee.staffName}</td>
+                      <td style={{ textAlign: 'right' }}>{formatCurrency(employee.amount)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -433,6 +440,33 @@ const PayrollAnalyticsDashboard: React.FC = () => {
           </ChartCard>
         )}
       </TwoColumnGrid>
+
+      {analytics && analytics.deductionAnalysis.length > 0 && (
+        <ChartCard>
+          <ChartTitle>
+            <BarChartIcon />
+            Top Deductions
+          </ChartTitle>
+          <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+            <StyledTable>
+              <thead>
+                <tr>
+                  <th>Deduction Type</th>
+                  <th style={{ textAlign: 'right' }}>Total Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analytics.deductionAnalysis.map((deduction) => (
+                  <tr key={deduction.itemName}>
+                    <td>{deduction.itemName}</td>
+                    <td style={{ textAlign: 'right' }}>{formatCurrency(deduction.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </StyledTable>
+          </div>
+        </ChartCard>
+      )}
     </>
   );
 };

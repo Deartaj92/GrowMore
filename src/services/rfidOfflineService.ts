@@ -14,6 +14,7 @@ const NATIVE_RFID_CACHE_PREFIX = 'native_rfid_mappings_';
 const NATIVE_ATTN_SETTINGS_PREFIX = 'native_attn_settings_';
 const NATIVE_ACTIVE_SESSION_PREFIX = 'native_active_session_';
 const NATIVE_DAILY_HISTORY_PREFIX = 'native_daily_history_';
+const WEB_RFID_CACHE_PREFIX = 'web_rfid_mappings_';
 
 export interface RFIDMapping {
     rfid_uid: string;
@@ -120,6 +121,85 @@ class RFIDOfflineService {
         } catch (error) {
             console.warn('Failed to persist native RFID background cache:', error);
         }
+    }
+
+    private persistWebFallbackMappings(schoolId: string, mappings: RFIDMapping[]): void {
+        try {
+            localStorage.setItem(`${WEB_RFID_CACHE_PREFIX}${schoolId}`, JSON.stringify(mappings));
+        } catch (error) {
+            console.warn('Failed to persist web RFID fallback cache:', error);
+        }
+    }
+
+    private readWebFallbackMappings(schoolId: string): RFIDMapping[] {
+        try {
+            const raw = localStorage.getItem(`${WEB_RFID_CACHE_PREFIX}${schoolId}`);
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+            console.warn('Failed to read web RFID fallback cache:', error);
+            return [];
+        }
+    }
+
+    private async readNativeFallbackMappings(schoolId: string): Promise<RFIDMapping[]> {
+        try {
+            if (!Capacitor.isNativePlatform()) return [];
+
+            const { Preferences } = await import('@capacitor/preferences');
+            const { value } = await Preferences.get({ key: `${NATIVE_RFID_CACHE_PREFIX}${schoolId}` });
+            if (!value) return [];
+
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+            console.warn('Failed to read native RFID fallback cache:', error);
+            return [];
+        }
+    }
+
+    private async replaceIndexedDbMappings(mappings: RFIDMapping[]): Promise<void> {
+        const db = await this.getDB();
+        await new Promise<void>((resolve, reject) => {
+            const tx = db.transaction(STORE_MAPPINGS, 'readwrite');
+            const store = tx.objectStore(STORE_MAPPINGS);
+            store.clear();
+
+            mappings.forEach(mapping => {
+                if (mapping?.rfid_uid) {
+                    store.put({
+                        ...mapping,
+                        rfid_uid: sanitizeRfidUid(mapping.rfid_uid),
+                        attendance_mode: this.normalizeAttendanceMode(mapping.attendance_mode, true),
+                    });
+                }
+            });
+
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error);
+        });
+    }
+
+    private async rehydrateMappingsFromFallbackCache(schoolId: string): Promise<boolean> {
+        const webMappings = this.readWebFallbackMappings(schoolId);
+        const nativeMappings = await this.readNativeFallbackMappings(schoolId);
+        const mergedMappings = [...webMappings, ...nativeMappings].filter(mapping => !!mapping?.rfid_uid);
+
+        if (mergedMappings.length === 0) {
+            return false;
+        }
+
+        const uniqueMappings = Array.from(
+            new Map(mergedMappings.map(mapping => [sanitizeRfidUid(mapping.rfid_uid), {
+                ...mapping,
+                rfid_uid: sanitizeRfidUid(mapping.rfid_uid),
+            }])).values()
+        );
+
+        await this.replaceIndexedDbMappings(uniqueMappings);
+        return true;
     }
 
     private async persistNativeDailyHistory(
@@ -444,7 +524,10 @@ class RFIDOfflineService {
      * Cache student and employee RFID mappings for offline lookup
      */
     async cacheMappings(schoolId: string): Promise<void> {
-        if (!navigator.onLine) return;
+        if (!navigator.onLine) {
+            await this.rehydrateMappingsFromFallbackCache(schoolId);
+            return;
+        }
 
         try {
             // Fetch students
@@ -534,6 +617,7 @@ class RFIDOfflineService {
                 console.warn('Failed to cache active session or settings:', e);
             }
 
+            this.persistWebFallbackMappings(schoolId, serializedMappings);
             await this.persistNativeBackgroundCache(schoolId, serializedMappings, settingsPayload, sessionId);
         } catch (error) {
             console.error('Failed to cache RFID mappings:', error);
@@ -1121,6 +1205,13 @@ class RFIDOfflineService {
             // 1. Lookup the person
             const mapping = await this.lookupRFID(cleanUID);
             let person: RFIDMapping | null = mapping;
+
+            if (!person && !navigator.onLine) {
+                const restored = await this.rehydrateMappingsFromFallbackCache(String(schoolId));
+                if (restored) {
+                    person = await this.lookupRFID(cleanUID);
+                }
+            }
 
             if (!person && navigator.onLine) {
                 // Try online lookup as fallback

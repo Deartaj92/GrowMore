@@ -1404,7 +1404,25 @@ const RFIDAttendancePage: React.FC = () => {
             rfidOfflineService.getQueue().then(q => setQueueCount(q.length));
         }
 
-        const handleOnline = () => setIsOnline(true);
+        const handleOnline = async () => {
+            if (!user?.school_id) {
+                setIsOnline(true);
+                return;
+            }
+
+            setIsOnline(true);
+            clearPersistedDailyHistory();
+
+            try {
+                await rfidOfflineService.cacheMappings(String(user.school_id));
+                await rfidOfflineService.cacheDailyAttendanceHistory(user.school_id, selectedDate);
+                await loadHistoryFeed(selectedDate);
+                const q = await rfidOfflineService.getQueue();
+                setQueueCount(q.length);
+            } catch (error) {
+                console.warn('Failed to refresh RFID state after reconnect:', error);
+            }
+        };
         const handleOffline = () => setIsOnline(false);
         const handleSyncCompleted = (e: any) => {
             const { success, failed } = e.detail;

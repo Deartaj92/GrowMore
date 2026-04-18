@@ -1386,8 +1386,11 @@ const Header: React.FC<HeaderProps> = ({
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [cachedDashboardPath, setCachedDashboardPath] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadPermissions = async () => {
+  const loadPermissions = useCallback(async () => {
+      if (!navigator.onLine) {
+        return;
+      }
+
       // Check if user is Super Admin (from super_admins table)
       if (user?.id && !user?.school_id) {
         try {
@@ -1431,10 +1434,22 @@ const Header: React.FC<HeaderProps> = ({
         setCachedDashboardPath('/user');
         setPermissionsLoaded(true);
       }
+    }, [user?.id, user?.school_id, user?.username]);
+
+  useEffect(() => {
+    loadPermissions();
+  }, [loadPermissions]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      if (!user?.id) return;
+      setPermissionsLoaded(false);
+      loadPermissions();
     };
 
-    loadPermissions();
-  }, [user?.id, user?.school_id, user?.username]);
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [loadPermissions, user?.id]);
 
   // Load published examinations
   useEffect(() => {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { WifiOff as WifiOffIcon, Nfc as NfcIcon } from '@mui/icons-material';
 import styled from 'styled-components';
@@ -36,11 +36,26 @@ const RFIDButton = styled.button`
   svg { font-size: 20px; }
 `;
 
+const RFIDButtonWrap = styled.div`
+  width: 100%;
+  display: flex;
+  justify-content: center;
+`;
+
 const OfflineHint = styled.p`
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   font-size: 0.85rem;
   margin: 0 0 0.5rem 0;
   opacity: 0.8;
+  text-align: center;
+`;
+
+const CountdownText = styled.p`
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-size: 0.8rem;
+  margin: 0 0 0.8rem 0;
+  opacity: 0.9;
+  text-align: center;
 `;
 
 const Divider = styled.div`
@@ -81,15 +96,43 @@ const NetworkModal: React.FC<NetworkModalProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [secondsRemaining, setSecondsRemaining] = useState(10);
 
-  if (!isOpen) return null;
-
-  // If already on an RFID page, don't show the modal at all — let the page work offline
   const isOnRFIDPage =
     location.pathname.includes('/attendance/rfid-scanner') ||
     location.pathname.includes('/attendance/rfid-cards');
 
-  if (isOnRFIDPage) return null;
+  const shouldShowModal = isOpen && !isOnRFIDPage;
+
+  const countdownLabel = useMemo(
+    () => (secondsRemaining === 1 ? '1 second' : `${secondsRemaining} seconds`),
+    [secondsRemaining]
+  );
+
+  useEffect(() => {
+    if (!shouldShowModal) {
+      setSecondsRemaining(10);
+      return;
+    }
+
+    setSecondsRemaining(10);
+
+    const intervalId = window.setInterval(() => {
+      setSecondsRemaining(prev => {
+        if (prev <= 1) {
+          window.clearInterval(intervalId);
+          navigate('/attendance/rfid-scanner');
+          return 0;
+        }
+
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(intervalId);
+  }, [navigate, shouldShowModal]);
+
+  if (!isOpen || isOnRFIDPage) return null;
 
   const handleGoToRFID = () => {
     navigate('/attendance/rfid-scanner');
@@ -121,10 +164,13 @@ const NetworkModal: React.FC<NetworkModalProps> = ({
           <span>or</span>
         </Divider>
         <OfflineHint>RFID attendance works without internet</OfflineHint>
-        <RFIDButton onClick={handleGoToRFID}>
-          <NfcIcon />
-          Open RFID Scanner
-        </RFIDButton>
+        <CountdownText>Opening RFID Scanner automatically in {countdownLabel}</CountdownText>
+        <RFIDButtonWrap>
+          <RFIDButton onClick={handleGoToRFID}>
+            <NfcIcon />
+            Open RFID Scanner
+          </RFIDButton>
+        </RFIDButtonWrap>
       </NetworkModalContent>
     </NetworkModalStyled>
   );

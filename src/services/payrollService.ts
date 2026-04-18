@@ -175,6 +175,76 @@ const getPayrollPaymentAppliedAmount = (payment: PayrollPayment, generationId: n
   return payment.generationId === generationId ? payment.amount : 0;
 };
 
+const getCompletedPaymentsForGenerationIds = (
+  payments: PayrollPayment[],
+  generationIds: number[]
+): PayrollPayment[] => {
+  if (generationIds.length === 0) {
+    return [];
+  }
+
+  const generationIdSet = new Set(generationIds);
+
+  return payments.filter(payment => {
+    if (payment.status !== 'completed') {
+      return false;
+    }
+
+    if (payment.items && payment.items.length > 0) {
+      return payment.items.some(item => generationIdSet.has(item.generationId));
+    }
+
+    return generationIdSet.has(payment.generationId);
+  });
+};
+
+const buildPaidByGenerationMap = (
+  payments: PayrollPayment[],
+  generationIds: number[]
+): Map<number, number> => {
+  const generationIdSet = new Set(generationIds);
+  const paidByGeneration = new Map<number, number>();
+
+  payments.forEach(payment => {
+    if (payment.items && payment.items.length > 0) {
+      payment.items.forEach(item => {
+        if (!generationIdSet.has(item.generationId)) {
+          return;
+        }
+
+        paidByGeneration.set(
+          item.generationId,
+          (paidByGeneration.get(item.generationId) || 0) + item.paidAmount
+        );
+      });
+      return;
+    }
+
+    if (!generationIdSet.has(payment.generationId)) {
+      return;
+    }
+
+    paidByGeneration.set(
+      payment.generationId,
+      (paidByGeneration.get(payment.generationId) || 0) + payment.amount
+    );
+  });
+
+  return paidByGeneration;
+};
+
+const isSameOrBeforePayrollMonth = (
+  year: number,
+  monthIndex: number,
+  targetYear: number,
+  targetMonthIndex: number
+): boolean => {
+  return year < targetYear || (year === targetYear && monthIndex <= targetMonthIndex);
+};
+
+const getMonthKey = (monthNames: string[], year: number, monthIndex: number): string =>
+  `${monthNames[monthIndex]} ${year}`;
+
 const getAttendanceSnapshot = (generation: PayrollGeneration) => {
   const attendanceRecords = generation.attendanceData?.records || [];
   if (attendanceRecords.length > 0) {
@@ -2198,6 +2268,59 @@ export const payrollService = {
     }
   },
 
+  async updatePayment(
+    schoolId: number,
+    paymentId: number,
+    updates: {
+      paymentDate: string;
+      paymentMode: 'cash' | 'bank_transfer' | 'cheque' | 'easypaisa_jazzcash' | 'other';
+      referenceNo?: string;
+      remarks?: string;
+    },
+    userId?: number
+  ): Promise<PayrollPayment> {
+    if (userId) await setAuditUser(userId);
+
+    const payments = await this.getPayrollPayments(schoolId, {});
+    const existingPayment = payments.find(payment => payment.id === paymentId);
+    if (!existingPayment) {
+      throw new Error('Payment not found');
+    }
+
+    const updatePayload = {
+      payment_date: updates.paymentDate,
+      payment_mode: updates.paymentMode,
+      reference_no: updates.referenceNo || null,
+      remarks: updates.remarks || null,
+    };
+
+    const { error } = await supabase
+      .from('payroll_payments')
+      .update(updatePayload)
+      .eq('school_id', schoolId)
+      .eq('id', paymentId);
+
+    if (error) throw error;
+
+    await logAudit(
+      schoolId,
+      'payroll_payment',
+      paymentId,
+      'update',
+      existingPayment,
+      updates,
+      userId
+    );
+
+    const refreshedPayments = await this.getPayrollPayments(schoolId, {});
+    const updatedPayment = refreshedPayments.find(payment => payment.id === paymentId);
+    if (!updatedPayment) {
+      throw new Error('Updated payment could not be reloaded');
+    }
+
+    return updatedPayment;
+  },
+
   // Payroll Advances
   async getAdvance(
     schoolId: number,
@@ -2530,28 +2653,26 @@ export const payrollService = {
     const totalPayroll = generations.reduce((sum, g) => sum + parseFloat(g.net_salary), 0);
     const generationIds = generations.map(g => g.id);
     const payments = generationIds.length > 0 ? await this.getPayrollPayments(schoolId, {}) : [];
-    const completedPayments = payments.filter(
-      payment => payment.status === 'completed' && generationIds.includes(payment.generationId)
-    );
-    const paidByGeneration = new Map<number, number>();
+    const completedPayments = getCompletedPaymentsForGenerationIds(payments, generationIds);
+    const paidByGeneration = buildPaidByGenerationMap(completedPayments, generationIds);
+    const remainingByGeneration = generations.map(generation => {
+      const netSalary = parseFloat(generation.net_salary);
+      const generationPaid = paidByGeneration.get(generation.id) || 0;
+      const remainingBalance = Math.max(0, netSalary - generationPaid);
 
-    completedPayments.forEach((payment) => {
-      paidByGeneration.set(
-        payment.generationId,
-        (paidByGeneration.get(payment.generationId) || 0) + payment.amount
-      );
+      return {
+        generation,
+        remainingBalance,
+      };
     });
 
-    const totalPaid = completedPayments.reduce((sum, payment) => sum + payment.amount, 0);
-    const totalPending = generations.reduce((sum, generation) => {
-      const generationPaid = paidByGeneration.get(generation.id) || 0;
-      return sum + Math.max(0, parseFloat(generation.net_salary) - generationPaid);
-    }, 0);
-    const paidGenerations = generations.filter(
-      generation => (paidByGeneration.get(generation.id) || 0) >= parseFloat(generation.net_salary)
-    );
-    const pendingGenerations = generations.filter(
-      generation => (paidByGeneration.get(generation.id) || 0) < parseFloat(generation.net_salary)
+    const totalPaid = Math.max(0, totalPayroll - remainingByGeneration.reduce((sum, item) => sum + item.remainingBalance, 0));
+    const totalPending = Math.max(0, totalPayroll - totalPaid);
+    const paidGenerations = remainingByGeneration.filter(item => item.remainingBalance <= 0);
+    const pendingStaffIds = new Set(
+      remainingByGeneration
+        .filter(item => item.remainingBalance > 0)
+        .map(item => item.generation.staff_id)
     );
     
     // Get total advances
@@ -2588,7 +2709,7 @@ export const payrollService = {
       totalAdjustments,
       employeeCount: uniqueStaffIds.size,
       paidCount: paidGenerations.length,
-      pendingCount: pendingGenerations.length,
+      pendingCount: pendingStaffIds.size,
     };
   },
 
@@ -2905,6 +3026,13 @@ export const payrollService = {
     
     const { data: generationsData, error: generationsError } = await query;
     if (generationsError) throw generationsError;
+
+    const { data: activeStaffData, error: activeStaffError } = await supabase
+      .from('staff')
+      .select('id')
+      .eq('school_id', schoolId)
+      .eq('status', 'active');
+    if (activeStaffError) throw activeStaffError;
     
     const generations = (generationsData || []).map((g: any) => ({
       ...g,
@@ -2913,48 +3041,139 @@ export const payrollService = {
       payrollYear: g.payroll_year,
       status: g.status,
     }));
+    const activeStaffIds = new Set((activeStaffData || []).map((staff: any) => staff.id));
     const generationIds = generations.map((g: any) => g.id);
     const payments = generationIds.length > 0 ? await this.getPayrollPayments(schoolId, {}) : [];
-    const completedPayments = payments.filter(
-      payment => payment.status === 'completed' && generationIds.includes(payment.generationId)
-    );
-    const paidByGeneration = new Map<number, number>();
+    const completedPayments = getCompletedPaymentsForGenerationIds(payments, generationIds);
+    const paidByGeneration = buildPaidByGenerationMap(completedPayments, generationIds);
 
-    completedPayments.forEach((payment) => {
-      paidByGeneration.set(
-        payment.generationId,
-        (paidByGeneration.get(payment.generationId) || 0) + payment.amount
+    // Monthly totals (last 12 months ending at the latest generated payroll month)
+    const monthlyMap = new Map<string, { total: number; paid: number; pending: number }>();
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    let latestGeneratedYear: number | null = null;
+    let latestGeneratedMonthIndex: number | null = null;
+
+    generations.forEach((generation: any) => {
+      const generationYear = generation.payrollYear;
+      const generationMonthIndex = generation.payrollMonth - 1;
+
+      if (
+        latestGeneratedYear === null ||
+        latestGeneratedMonthIndex === null ||
+        generationYear > latestGeneratedYear ||
+        (generationYear === latestGeneratedYear && generationMonthIndex > latestGeneratedMonthIndex)
+      ) {
+        latestGeneratedYear = generationYear;
+        latestGeneratedMonthIndex = generationMonthIndex;
+      }
+    });
+
+    if (latestGeneratedYear !== null && latestGeneratedMonthIndex !== null) {
+      for (let i = 11; i >= 0; i--) {
+        const date = new Date(latestGeneratedYear, latestGeneratedMonthIndex - i, 1);
+        const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+        monthlyMap.set(monthKey, { total: 0, paid: 0, pending: 0 });
+      }
+    }
+
+    const generationMetaById = new Map<number, { payrollYear: number; payrollMonthIndex: number }>();
+    generations.forEach((generation: any) => {
+      generationMetaById.set(generation.id, {
+        payrollYear: generation.payrollYear,
+        payrollMonthIndex: generation.payrollMonth - 1,
+      });
+    });
+
+    const monthlyGenerationMap = new Map<string, number>();
+    generations.forEach((generation: any) => {
+      const monthKey = getMonthKey(monthNames, generation.payrollYear, generation.payrollMonth - 1);
+      monthlyGenerationMap.set(
+        monthKey,
+        (monthlyGenerationMap.get(monthKey) || 0) + generation.netSalary
       );
     });
 
-    // Monthly totals (last 12 months)
-    const monthlyMap = new Map<string, { total: number; paid: number; pending: number }>();
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const currentDate = new Date();
-    
-    for (let i = 11; i >= 0; i--) {
-      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-      const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
-      monthlyMap.set(monthKey, { total: 0, paid: 0, pending: 0 });
-    }
-    
-    generations.forEach((g: any) => {
-      const monthKey = `${monthNames[g.payrollMonth - 1]} ${g.payrollYear}`;
-      if (monthlyMap.has(monthKey)) {
-        const monthData = monthlyMap.get(monthKey)!;
-        const generationPaid = paidByGeneration.get(g.id) || 0;
-        monthData.total += g.netSalary;
-        monthData.paid += generationPaid;
-        monthData.pending += Math.max(0, g.netSalary - generationPaid);
-      }
+    const monthlyKeys = Array.from(monthlyMap.keys());
+    let openingPending = 0;
+
+    const monthlyTotal = monthlyKeys.map((month) => {
+      const [monthLabel, yearLabel] = month.split(' ');
+      const currentMonthIndex = monthNames.indexOf(monthLabel);
+      const currentYear = Number(yearLabel);
+      const generatedAmount = monthlyGenerationMap.get(month) || 0;
+      const total = openingPending + generatedAmount;
+
+      const settlementDate = new Date(currentYear, currentMonthIndex + 1, 1);
+      const settlementMonthIndex = settlementDate.getMonth();
+      const settlementYear = settlementDate.getFullYear();
+
+      const paidRaw = completedPayments.reduce((sum, payment) => {
+        const paymentDate = payment.paymentDate ? new Date(payment.paymentDate) : null;
+        if (!paymentDate || Number.isNaN(paymentDate.getTime())) {
+          return sum;
+        }
+
+        if (
+          paymentDate.getMonth() !== settlementMonthIndex ||
+          paymentDate.getFullYear() !== settlementYear
+        ) {
+          return sum;
+        }
+
+        if (payment.items && payment.items.length > 0) {
+          const appliedAmount = payment.items.reduce((itemSum, item) => {
+            const generationMeta = generationMetaById.get(item.generationId);
+            if (!generationMeta) {
+              return itemSum;
+            }
+
+            if (
+              !isSameOrBeforePayrollMonth(
+                generationMeta.payrollYear,
+                generationMeta.payrollMonthIndex,
+                currentYear,
+                currentMonthIndex
+              )
+            ) {
+              return itemSum;
+            }
+
+            return itemSum + item.paidAmount;
+          }, 0);
+
+          return sum + appliedAmount;
+        }
+
+        const generationMeta = generationMetaById.get(payment.generationId);
+        if (!generationMeta) {
+          return sum;
+        }
+
+        if (
+          !isSameOrBeforePayrollMonth(
+            generationMeta.payrollYear,
+            generationMeta.payrollMonthIndex,
+            currentYear,
+            currentMonthIndex
+          )
+        ) {
+          return sum;
+        }
+
+        return sum + payment.amount;
+      }, 0);
+
+      const paid = Math.min(total, paidRaw);
+      const pending = Math.max(0, total - paid);
+      openingPending = pending;
+
+      return {
+        month,
+        total,
+        paid,
+        pending,
+      };
     });
-    
-    const monthlyTotal = Array.from(monthlyMap.entries()).map(([month, data]) => ({
-      month,
-      total: data.total,
-      paid: data.paid,
-      pending: data.pending,
-    }));
 
     // Role-wise distribution
     const roleMap = new Map<string, { total: number; count: number }>();
@@ -3008,15 +3227,20 @@ export const payrollService = {
     
     const advanceOutstanding = (advancesData || []).reduce((sum, a) => sum + parseFloat(a.remaining_balance), 0);
 
-    // Top earners (last 12 months)
+    // Earnings and remaining balances
     const staffMap = new Map<number, { staffId: number; staffName: string; amount: number }>();
-    const last12Months = new Date();
-    last12Months.setMonth(last12Months.getMonth() - 12);
+    const pendingStaffMap = new Map<number, { staffId: number; staffName: string; amount: number }>();
+    const latestGeneratedMonthKey =
+      latestGeneratedYear !== null && latestGeneratedMonthIndex !== null
+      ? `${latestGeneratedYear}-${latestGeneratedMonthIndex}`
+      : null;
     
     generations.forEach((g: any) => {
-      const genDate = new Date(g.payrollYear, g.payrollMonth - 1, 1);
-      if (genDate >= last12Months) {
-        const staffId = g.staff_id;
+      const staffId = g.staff_id;
+      const pendingAmount = Math.max(0, g.netSalary - (paidByGeneration.get(g.id) || 0));
+      const generationMonthKey = `${g.payrollYear}-${g.payrollMonth - 1}`;
+
+      if (activeStaffIds.has(staffId)) {
         if (!staffMap.has(staffId)) {
           staffMap.set(staffId, {
             staffId,
@@ -3027,11 +3251,30 @@ export const payrollService = {
         const staffData = staffMap.get(staffId)!;
         staffData.amount += g.netSalary;
       }
+
+      if (!pendingStaffMap.has(staffId)) {
+        pendingStaffMap.set(staffId, {
+          staffId,
+          staffName: g.staff?.name || 'Unknown',
+          amount: 0,
+        });
+      }
+      const pendingStaffData = pendingStaffMap.get(staffId)!;
+      pendingStaffData.amount += pendingAmount;
     });
     
     const topEarners = Array.from(staffMap.values())
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 10);
+      .sort((a, b) => b.amount - a.amount);
+    const topPendingAmounts = Array.from(pendingStaffMap.values())
+      .filter(staff => staff.amount > 0)
+      .sort((a, b) => b.amount - a.amount);
+    const recentGeneratedPayrollEmployeeCount = latestGeneratedMonthKey
+      ? new Set(
+          generations
+            .filter((generation: any) => `${generation.payrollYear}-${generation.payrollMonth - 1}` === latestGeneratedMonthKey)
+            .map((generation: any) => generation.staff_id)
+        ).size
+      : 0;
 
     // Deduction analysis
     const deductionMap = new Map<string, number>();
@@ -3062,7 +3305,9 @@ export const payrollService = {
       roleWiseDistribution,
       paymentStatusSummary,
       advanceOutstanding,
+      recentGeneratedPayrollEmployeeCount,
       topEarners,
+      topPendingAmounts,
       deductionAnalysis,
     };
   },
