@@ -58,38 +58,49 @@ self.addEventListener('fetch', (event) => {
     if (request.method !== 'GET') return;
     if (url.hostname.includes('supabase.co')) return; // Let Supabase handle its own offline logic or return errors
 
-    // 2. Navigation Request (index.html) - Network First
+// 2. Navigation Request (index.html) - Network First
     if (request.mode === 'navigate') {
         event.respondWith(
             fetch(request)
                 .then((response) => {
                     if (canCacheResponse(response)) {
                         const copy = response.clone();
-                        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+                        caches.open(CACHE_NAME).then(async (cache) => {
+                            await cache.put(request, copy.clone());
+                            await cache.put('/index.html', copy.clone());
+                            await cache.put('/', copy);
+                        });
                     }
                     return response;
                 })
-                .catch(() => caches.match('/index.html') || caches.match('/'))
+                .catch(async () => {
+                    const cachedRoute = await caches.match(request);
+                    if (cachedRoute) return cachedRoute;
+
+                    const cachedIndex = await caches.match('/index.html');
+                    if (cachedIndex) return cachedIndex;
+
+                    return caches.match('/');
+                })
         );
         return;
     }
 
-    // 3. Static Assets - Cache First, then Network
+    // 3. Static Assets - Stale While Revalidate
     if (isStaticAsset(request.url)) {
         event.respondWith(
             caches.match(request).then((cachedResponse) => {
-                if (cachedResponse) return cachedResponse;
+                const networkFetch = fetch(request)
+                    .then((networkResponse) => {
+                        if (canCacheResponse(networkResponse)) {
+                            const copy = networkResponse.clone();
+                            caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+                        }
+                        return networkResponse;
+                    })
+                    .catch(() => cachedResponse || null);
 
-                return fetch(request).then((networkResponse) => {
-                    if (!canCacheResponse(networkResponse)) return networkResponse;
-
-                    const copy = networkResponse.clone();
-                    caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-                    return networkResponse;
-                }).catch(() => {
-                    // Fail silently or return empty/fallback for failed assets
-                    return null;
-                });
+                return cachedResponse || networkFetch;
             })
         );
         return;
