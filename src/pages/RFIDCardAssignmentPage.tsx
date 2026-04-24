@@ -385,6 +385,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
     const [mode, setMode] = useState<Mode>('students');
     const [search, setSearch] = useState('');
     const [filterClass, setFilterClass] = useState('all');
+    const [filterSection, setFilterSection] = useState('all');
     const [filterStatus, setFilterStatus] = useState<'all' | 'assigned' | 'unassigned'>('all');
     const [loading, setLoading] = useState(false);
     const [people, setPeople] = useState<PersonRow[]>([]);
@@ -458,8 +459,17 @@ const RFIDCardAssignmentPage: React.FC = () => {
         setPage(0);
         setSearch('');
         setFilterClass('all');
+        setFilterSection('all');
         setFilterStatus('all');
     }, [fetchData]);
+
+    const filteredSections = useMemo(() => {
+        if (filterClass === 'all') {
+            return sections;
+        }
+
+        return sections.filter(section => String(section.class_id) === filterClass);
+    }, [sections, filterClass]);
 
     // Filter
     const filtered = useMemo(() => {
@@ -478,18 +488,77 @@ const RFIDCardAssignmentPage: React.FC = () => {
             }
             // Class filter
             if (filterClass !== 'all' && String(p.class_id) !== filterClass) return false;
+            // Section filter
+            if (filterSection !== 'all' && String(p.section_id) !== filterSection) return false;
             // Assigned/unassigned filter
             if (filterStatus === 'assigned' && !p.rfid_uid) return false;
             if (filterStatus === 'unassigned' && p.rfid_uid) return false;
             return true;
         });
-    }, [people, search, filterClass, filterStatus, mode]);
+    }, [people, search, filterClass, filterSection, filterStatus, mode]);
 
     const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
     const pageData = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
     const assignedCount = people.filter(p => p.rfid_uid).length;
     const totalCount = people.length;
+
+    const saveAndConfirmPerson = useCallback(async (
+        table: 'students' | 'staff',
+        personId: number,
+        payload: { rfid_uid: string | null; attendance_mode: 'rfid_required' | 'manual_only' | 'hybrid' }
+    ) => {
+        const runUpdate = async (updatePayload: typeof payload) => {
+            const { error } = await supabase
+                .from(table)
+                .update(updatePayload)
+                .eq('id', personId)
+                .eq('school_id', user!.school_id);
+
+            if (error) {
+                throw error;
+            }
+        };
+
+        const fetchCurrentRow = async () => {
+            const { data, error } = await supabase
+                .from(table)
+                .select('id, rfid_uid, attendance_mode')
+                .eq('id', personId)
+                .eq('school_id', user!.school_id)
+                .single();
+
+            if (error) {
+                throw error;
+            }
+
+            return data;
+        };
+
+        await runUpdate(payload);
+        let currentRow = await fetchCurrentRow();
+
+        const uidMatches = (currentRow.rfid_uid || null) === payload.rfid_uid;
+        const modeMatches = (currentRow.attendance_mode || 'manual_only') === payload.attendance_mode;
+
+        if (!uidMatches || !modeMatches) {
+            await runUpdate({ attendance_mode: payload.attendance_mode, rfid_uid: payload.rfid_uid });
+            currentRow = await fetchCurrentRow();
+        }
+
+        const confirmedUid = currentRow.rfid_uid || null;
+        const confirmedMode = (currentRow.attendance_mode || 'manual_only') as 'rfid_required' | 'manual_only' | 'hybrid';
+
+        if (confirmedUid !== payload.rfid_uid || confirmedMode !== payload.attendance_mode) {
+            throw new Error(`Saved row did not confirm requested attendance mode. Current value is "${confirmedMode}".`);
+        }
+
+        return {
+            id: currentRow.id,
+            rfid_uid: confirmedUid,
+            attendance_mode: confirmedMode,
+        };
+    }, [user?.school_id]);
 
     // Handle RFID assignment
     const handleSave = async (personId: number, uidOverride?: string) => {
@@ -564,22 +633,16 @@ const RFIDCardAssignmentPage: React.FC = () => {
 
             const nextAttendanceMode = cleanUID ? editAttendanceMode : 'manual_only';
 
-            const { error } = await supabase
-                .from(table)
-                .update({
-                    rfid_uid: cleanUID || null,
-                    attendance_mode: nextAttendanceMode
-                })
-                .eq('id', personId)
-                .eq('school_id', user.school_id);
-
-            if (error) throw error;
+            const updatedRow = await saveAndConfirmPerson(table, personId, {
+                rfid_uid: cleanUID || null,
+                attendance_mode: nextAttendanceMode
+            });
 
             // Update local state
             setPeople(prev => prev.map(p => p.id === personId ? {
                 ...p,
-                rfid_uid: cleanUID || null,
-                attendance_mode: nextAttendanceMode
+                rfid_uid: updatedRow.rfid_uid || null,
+                attendance_mode: updatedRow.attendance_mode as 'rfid_required' | 'manual_only' | 'hybrid' | null
             } : p));
             setEditingId(null);
             setEditValue('');
@@ -600,14 +663,15 @@ const RFIDCardAssignmentPage: React.FC = () => {
         if (!user?.school_id) return;
         const table = mode === 'students' ? 'students' : 'staff';
         try {
-            const { error } = await supabase
-                .from(table)
-                .update({ rfid_uid: null, attendance_mode: 'manual_only' })
-                .eq('id', personId)
-                .eq('school_id', user.school_id);
-
-            if (error) throw error;
-            setPeople(prev => prev.map(p => p.id === personId ? { ...p, rfid_uid: null, attendance_mode: 'manual_only' } : p));
+            const updatedRow = await saveAndConfirmPerson(table, personId, {
+                rfid_uid: null,
+                attendance_mode: 'manual_only'
+            });
+            setPeople(prev => prev.map(p => p.id === personId ? {
+                ...p,
+                rfid_uid: updatedRow.rfid_uid || null,
+                attendance_mode: updatedRow.attendance_mode as 'rfid_required' | 'manual_only' | 'hybrid' | null
+            } : p));
             rfidOfflineService.cacheMappings(String(user.school_id)).catch(error => {
                 console.warn('Failed to refresh native RFID mapping cache after removal:', error);
             });
@@ -817,9 +881,20 @@ const RFIDCardAssignmentPage: React.FC = () => {
                 </SearchWrap>
 
                 {mode === 'students' && (
-                    <Select theme={themeObj} value={filterClass} onChange={e => { setFilterClass(e.target.value); setPage(0); }}>
+                    <Select theme={themeObj} value={filterClass} onChange={e => { setFilterClass(e.target.value); setFilterSection('all'); setPage(0); }}>
                         <option value="all">All Classes</option>
                         {sortedClasses.map((c: any) => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
+                    </Select>
+                )}
+
+                {mode === 'students' && (
+                    <Select theme={themeObj} value={filterSection} onChange={e => { setFilterSection(e.target.value); setPage(0); }}>
+                        <option value="all">All Sections</option>
+                        {filteredSections.map((section) => (
+                            <option key={section.id} value={String(section.id)}>
+                                {section.name}
+                            </option>
+                        ))}
                     </Select>
                 )}
 
@@ -852,7 +927,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
                                         <TH theme={themeObj}>#</TH>
                                         <TH theme={themeObj}>Name</TH>
                                         {mode === 'students' && <TH theme={themeObj}>Roll No</TH>}
-                                        {mode === 'students' && <TH theme={themeObj}>Class</TH>}
+                                        {mode === 'students' && <TH theme={themeObj}>Class / Section</TH>}
                                         {mode === 'employees' && <TH theme={themeObj}>Role</TH>}
                                         <TH theme={themeObj}>Attendance Mode</TH>
                                         <TH theme={themeObj}>RFID Card</TH>
@@ -866,7 +941,9 @@ const RFIDCardAssignmentPage: React.FC = () => {
                                         const isEditing = editingId === person.id;
                                         const className = person.class_id ? classesMap.get(person.class_id) || '' : '';
                                         const sectionName = person.section_id ? sectionsMap.get(person.section_id) || '' : '';
-                                        const classLabel = [className, sectionName].filter(Boolean).join(' - ');
+                                        const classLabel = className && sectionName
+                                            ? `${className} - ${sectionName}`
+                                            : className || sectionName || '—';
 
                                         return (
                                             <Row key={person.id} theme={themeObj}>

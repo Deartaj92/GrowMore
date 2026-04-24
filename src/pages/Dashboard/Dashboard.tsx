@@ -227,6 +227,7 @@ const Dashboard: React.FC = () => {
   const [halfLeavesForDate, setHalfLeavesForDate] = useState<any[]>([]);
   const [attendanceStatsLoading, setAttendanceStatsLoading] = useState(false);
   const [attendanceTrendData, setAttendanceTrendData] = useState<Array<{ day: string; rate: number; present: number; absent: number; leave: number; late: number; presentWithLate: number; dayOfWeek?: string; dateStr?: string; change?: number; isIncrease?: boolean | null }>>([]);
+  const [attendanceLiveVersion, setAttendanceLiveVersion] = useState(0);
   const [classAttendanceData, setClassAttendanceData] = useState<Array<{
     class: string;
     present: number;
@@ -259,6 +260,7 @@ const Dashboard: React.FC = () => {
   const [employeeAttendanceDataForDate, setEmployeeAttendanceDataForDate] = useState<any[]>([]);
   const [employeeAttendanceStatsLoading, setEmployeeAttendanceStatsLoading] = useState(false);
   const [employeeAttendanceTrendData, setEmployeeAttendanceTrendData] = useState<Array<{ day: string; rate: number; dayOfWeek: string; dateStr: string; present: number; absent: number; leave: number; late: number; presentWithLate: number }>>([]);
+  const [employeeAttendanceLiveVersion, setEmployeeAttendanceLiveVersion] = useState(0);
   const [employeeAttendanceChartsLoading, setEmployeeAttendanceChartsLoading] = useState(false);
   const [employeeTodayAttendanceRate, setEmployeeTodayAttendanceRate] = useState(0);
   const [employeeWeekAvgAttendanceRate, setEmployeeWeekAvgAttendanceRate] = useState(0);
@@ -453,6 +455,51 @@ const Dashboard: React.FC = () => {
   const getSectionName = useCallback((sectionId: any) => {
     return sections.find((s: any) => String(s.id) === String(sectionId))?.name || '';
   }, [sections]);
+
+  useEffect(() => {
+    const getTodayKey = () => new Date().toISOString().slice(0, 10);
+
+    const handleLiveAttendanceRefresh = (event: Event) => {
+      const todayKey = getTodayKey();
+
+      if (event.type === 'rfid-scan-processed') {
+        const detail = (event as CustomEvent<any>).detail;
+        const result = detail?.result;
+        const personType = result?.person?.type;
+
+        if (!result?.success || !personType) return;
+
+        if (
+          personType === 'student' &&
+          (dashboardDate === todayKey || absentDate === todayKey)
+        ) {
+          setAttendanceLiveVersion(version => version + 1);
+        }
+
+        if (
+          personType === 'employee' &&
+          (dashboardDate === todayKey || employeeAbsentDate === todayKey)
+        ) {
+          setEmployeeAttendanceLiveVersion(version => version + 1);
+        }
+
+        return;
+      }
+
+      if (event.type === 'attendance-automation-triggered') {
+        setAttendanceLiveVersion(version => version + 1);
+        setEmployeeAttendanceLiveVersion(version => version + 1);
+      }
+    };
+
+    window.addEventListener('rfid-scan-processed', handleLiveAttendanceRefresh as EventListener);
+    window.addEventListener('attendance-automation-triggered', handleLiveAttendanceRefresh as EventListener);
+
+    return () => {
+      window.removeEventListener('rfid-scan-processed', handleLiveAttendanceRefresh as EventListener);
+      window.removeEventListener('attendance-automation-triggered', handleLiveAttendanceRefresh as EventListener);
+    };
+  }, [absentDate, dashboardDate, employeeAbsentDate]);
 
   // ==========================================
   // DATA FETCHING FUNCTIONS
@@ -662,7 +709,7 @@ const Dashboard: React.FC = () => {
       setStudentDetails,
       getCachedSession
     );
-  }, [absentDate, user?.school_id, students, sessionData?.id, getCachedSession]);
+  }, [absentDate, user?.school_id, students, sessionData?.id, getCachedSession, attendanceLiveVersion]);
 
   // Fetch attendance for date
   useEffect(() => {
@@ -712,7 +759,7 @@ const Dashboard: React.FC = () => {
       setAttendanceStatsLoading(false);
     };
     fetchAttendanceForDate();
-  }, [activeTab, dashboardDate, user?.school_id, students, sessionData?.id, getCachedSession]);
+  }, [activeTab, dashboardDate, user?.school_id, students, sessionData?.id, getCachedSession, attendanceLiveVersion]);
 
   // Calculate attendance stats
   // Present count includes both 'present' and 'late' statuses
@@ -968,7 +1015,7 @@ const Dashboard: React.FC = () => {
       }
     };
     fetchAttendanceTrend();
-  }, [activeTab, dashboardDate, user?.school_id, sessionData?.id, attendanceDataForDate]);
+  }, [activeTab, dashboardDate, user?.school_id, sessionData?.id, attendanceDataForDate, attendanceLiveVersion]);
 
   // Fetch class attendance
   useEffect(() => {
@@ -1112,7 +1159,7 @@ const Dashboard: React.FC = () => {
       }
     };
     fetchClassAttendance();
-  }, [dashboardDate, user?.school_id, sessionData?.id]);
+  }, [dashboardDate, user?.school_id, sessionData?.id, attendanceLiveVersion]);
 
   // Fetch consecutive absent
   useEffect(() => {
@@ -1275,7 +1322,7 @@ const Dashboard: React.FC = () => {
       }
     };
     fetchConsecutiveAbsent();
-  }, [activeTab, user?.school_id, sessionData?.id, dashboardDate]);
+  }, [activeTab, user?.school_id, sessionData?.id, dashboardDate, attendanceLiveVersion]);
 
   // Fetch fee summary
   useEffect(() => {
@@ -1392,7 +1439,7 @@ const Dashboard: React.FC = () => {
       setStaffDetails,
       getCachedSession
     );
-  }, [activeTab, employeeAbsentDate, user?.school_id, sessionData?.id, getCachedSession]);
+  }, [activeTab, employeeAbsentDate, user?.school_id, sessionData?.id, getCachedSession, employeeAttendanceLiveVersion]);
 
   // Fetch employee attendance for date
   useEffect(() => {
@@ -1442,7 +1489,7 @@ const Dashboard: React.FC = () => {
       }
     };
     fetchEmployeeAttendanceForDate();
-  }, [activeTab, dashboardDate, user?.school_id, sessionData?.id, getCachedSession]);
+  }, [activeTab, dashboardDate, user?.school_id, sessionData?.id, getCachedSession, employeeAttendanceLiveVersion]);
 
   // Calculate employee attendance stats
   // Present count includes both 'present' and 'late' statuses
@@ -1707,7 +1754,7 @@ const Dashboard: React.FC = () => {
       }
     };
     fetchEmployeeAttendanceTrend();
-  }, [dashboardDate, user?.school_id, sessionData?.id, activeTab]);
+  }, [dashboardDate, user?.school_id, sessionData?.id, activeTab, employeeAttendanceLiveVersion]);
 
   // Fetch accounts data
   useEffect(() => {
