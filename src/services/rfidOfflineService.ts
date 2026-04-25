@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { supabase } from '../supabaseClient';
-import { buildRfidUidCandidates, sanitizeRfidUid } from '../utils/rfidUtils';
+import { buildRfidUidCandidates, buildRfidUidPrefixCandidates, sanitizeRfidUid } from '../utils/rfidUtils';
 
 const DB_NAME = 'rfid_attendance_db';
 const DB_VERSION = 5;
@@ -168,10 +168,15 @@ class RFIDOfflineService {
 
             mappings.forEach(mapping => {
                 if (mapping?.rfid_uid) {
-                    store.put({
-                        ...mapping,
-                        rfid_uid: sanitizeRfidUid(mapping.rfid_uid),
-                        attendance_mode: this.normalizeAttendanceMode(mapping.attendance_mode, true),
+                    const normalizedMode = this.normalizeAttendanceMode(mapping.attendance_mode, true);
+                    const uidCandidates = buildRfidUidCandidates(mapping.rfid_uid);
+
+                    uidCandidates.forEach((uidCandidate) => {
+                        store.put({
+                            ...mapping,
+                            rfid_uid: uidCandidate,
+                            attendance_mode: normalizedMode,
+                        });
                     });
                 }
             });
@@ -192,10 +197,13 @@ class RFIDOfflineService {
         }
 
         const uniqueMappings = Array.from(
-            new Map(mergedMappings.map(mapping => [sanitizeRfidUid(mapping.rfid_uid), {
-                ...mapping,
-                rfid_uid: sanitizeRfidUid(mapping.rfid_uid),
-            }])).values()
+            new Map(mergedMappings.flatMap(mapping => {
+                const uidCandidates = buildRfidUidCandidates(mapping.rfid_uid);
+                return uidCandidates.map(uidCandidate => [uidCandidate, {
+                    ...mapping,
+                    rfid_uid: uidCandidate,
+                }] as const);
+            })).values()
         );
 
         await this.replaceIndexedDbMappings(uniqueMappings);
@@ -1251,6 +1259,59 @@ class RFIDOfflineService {
                             role: staff.role,
                             status: (staff as any).status || 'active',
                         };
+                    }
+                }
+
+                if (!person) {
+                    const prefixCandidates = buildRfidUidPrefixCandidates(cleanUID);
+
+                    for (const prefixCandidate of prefixCandidates) {
+                        const { data: prefixedStudents } = await supabase.from('students')
+                            .select('id, name, father_name, roll_number, picture_url, status, attendance_mode, class_id, section_id, rfid_uid, classes:class_id(name), sections:section_id(name)')
+                            .eq('school_id', schoolId)
+                            .like('rfid_uid', `${prefixCandidate}%`)
+                            .limit(2);
+
+                        if ((prefixedStudents || []).length === 1) {
+                            const student = prefixedStudents![0] as any;
+                            person = {
+                                rfid_uid: sanitizeRfidUid(student.rfid_uid || cleanUID),
+                                person_id: student.id,
+                                name: student.name,
+                                type: 'student',
+                                attendance_mode: this.normalizeAttendanceMode(student.attendance_mode, true),
+                                picture_url: student.picture_url,
+                                father_name: student.father_name,
+                                roll_number: student.roll_number,
+                                class_name: student.classes?.name,
+                                section_name: student.sections?.name,
+                                class_id: student.class_id,
+                                section_id: student.section_id,
+                                status: student.status || 'active',
+                            };
+                            break;
+                        }
+
+                        const { data: prefixedStaff } = await supabase.from('staff')
+                            .select('id, name, picture_url, role, status, attendance_mode, rfid_uid')
+                            .eq('school_id', schoolId)
+                            .like('rfid_uid', `${prefixCandidate}%`)
+                            .limit(2);
+
+                        if ((prefixedStaff || []).length === 1) {
+                            const staff = prefixedStaff![0] as any;
+                            person = {
+                                rfid_uid: sanitizeRfidUid(staff.rfid_uid || cleanUID),
+                                person_id: staff.id,
+                                name: staff.name,
+                                type: 'employee',
+                                attendance_mode: this.normalizeAttendanceMode(staff.attendance_mode, true),
+                                picture_url: staff.picture_url,
+                                role: staff.role,
+                                status: staff.status || 'active',
+                            };
+                            break;
+                        }
                     }
                 }
             }

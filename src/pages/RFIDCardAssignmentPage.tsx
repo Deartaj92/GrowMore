@@ -402,9 +402,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
     const [isNfcSupported, setIsNfcSupported] = useState(false);
     const [isNfcScanning, setIsNfcScanning] = useState(false);
     const nfcAbortControllerRef = useRef<AbortController | null>(null);
-    const editScanBufferRef = useRef('');
-    const editScanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const lastEditKeyTsRef = useRef(0);
+    const editNormalizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         setIsNfcSupported(('NDEFReader' in window) || (!!(window as any).nfc));
@@ -693,14 +691,34 @@ const RFIDCardAssignmentPage: React.FC = () => {
             nfcAbortControllerRef.current = null;
             setIsNfcScanning(false);
         }
-        if (editScanTimerRef.current) {
-            clearTimeout(editScanTimerRef.current);
-            editScanTimerRef.current = null;
+        if (editNormalizeTimerRef.current) {
+            clearTimeout(editNormalizeTimerRef.current);
+            editNormalizeTimerRef.current = null;
         }
-        editScanBufferRef.current = '';
         setEditingId(null);
         setEditValue('');
         setEditAttendanceMode('hybrid');
+    };
+
+    const handleEditInputChange = (value: string) => {
+        const sanitized = sanitizeRfidUid(value);
+        setEditValue(sanitized);
+
+        if (editNormalizeTimerRef.current) {
+            clearTimeout(editNormalizeTimerRef.current);
+        }
+
+        editNormalizeTimerRef.current = setTimeout(() => {
+            setEditValue(current => {
+                const normalizedCurrent = sanitizeRfidUid(current);
+                if (normalizedCurrent.length < 4) {
+                    return normalizedCurrent;
+                }
+
+                return normalizeDesktopScannerUid(normalizedCurrent);
+            });
+            editNormalizeTimerRef.current = null;
+        }, 120);
     };
 
     const handleStartNfc = async () => {
@@ -785,63 +803,25 @@ const RFIDCardAssignmentPage: React.FC = () => {
 
     // Handle keyboard input from USB reader in edit field
     const handleEditKeyDown = (e: React.KeyboardEvent, personId: number) => {
-        const key = e.key.toUpperCase();
-        const isHexKey = /^[0-9A-F]$/.test(key);
-        const now = Date.now();
-        const isLikelyScannerInput = isHexKey && (editScanBufferRef.current.length > 0 || now - lastEditKeyTsRef.current < 35);
-
-        if (isLikelyScannerInput) {
-            e.preventDefault();
-            editScanBufferRef.current += key;
-            lastEditKeyTsRef.current = now;
-
-            if (editScanTimerRef.current) {
-                clearTimeout(editScanTimerRef.current);
-            }
-
-            editScanTimerRef.current = setTimeout(() => {
-                if (editScanBufferRef.current.length >= 4) {
-                    setEditValue(normalizeDesktopScannerUid(editScanBufferRef.current));
-                }
-                editScanBufferRef.current = '';
-                editScanTimerRef.current = null;
-            }, 120);
-            return;
-        }
-
         if (e.key === 'Enter') {
             e.preventDefault();
-            if (editScanBufferRef.current.length >= 4) {
-                const normalizedUid = normalizeDesktopScannerUid(editScanBufferRef.current);
-                if (editScanTimerRef.current) {
-                    clearTimeout(editScanTimerRef.current);
-                    editScanTimerRef.current = null;
-                }
-                editScanBufferRef.current = '';
-                setEditValue(normalizedUid);
-                handleSave(personId, normalizedUid);
-                return;
+            if (editNormalizeTimerRef.current) {
+                clearTimeout(editNormalizeTimerRef.current);
+                editNormalizeTimerRef.current = null;
             }
 
+            const normalizedUid = normalizeDesktopScannerUid(editValue);
+            if (normalizedUid !== editValue) {
+                setEditValue(normalizedUid);
+            }
             handleSave(personId);
         }
         if (e.key === 'Escape') {
-            if (editScanTimerRef.current) {
-                clearTimeout(editScanTimerRef.current);
-                editScanTimerRef.current = null;
+            if (editNormalizeTimerRef.current) {
+                clearTimeout(editNormalizeTimerRef.current);
+                editNormalizeTimerRef.current = null;
             }
-            editScanBufferRef.current = '';
             cancelEdit();
-        }
-
-        if (isHexKey) {
-            lastEditKeyTsRef.current = now;
-        } else {
-            editScanBufferRef.current = '';
-            if (editScanTimerRef.current) {
-                clearTimeout(editScanTimerRef.current);
-                editScanTimerRef.current = null;
-            }
         }
     };
 
@@ -985,7 +965,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
                                                                 autoFocus
                                                                 placeholder="Tap card or type UID..."
                                                                 value={editValue}
-                                                                onChange={e => setEditValue(sanitizeRfidUid(e.target.value))}
+                                                                onChange={e => handleEditInputChange(e.target.value)}
                                                                 onKeyDown={e => handleEditKeyDown(e, person.id)}
                                                             />
                                                             {isNfcSupported ? (
