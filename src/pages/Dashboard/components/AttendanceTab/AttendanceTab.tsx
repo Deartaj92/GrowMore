@@ -72,6 +72,12 @@ const StatCard = styled.div<{ $accent?: string }>`
   @media (max-width: 600px) { padding: 0.85rem; border-radius: ${CARD_RADIUS_LG}; }
 `;
 
+const HalfLeaveStatCard = styled(StatCard)`
+  @media (max-width: 600px) {
+    grid-column: 1 / -1;
+  }
+`;
+
 /* Row: icon badge + percent chip */
 const StatTopRow = styled.div`
   display: flex;
@@ -432,6 +438,109 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
   // Calculate total number of students
   const totalStudents = attendanceDataForDate.length;
 
+  const applyAbsenteeStatusChange = async (absentee: any, nextStatus: string) => {
+    if (!user?.school_id) {
+      toast.showToast('User school information not found', 'error');
+      return;
+    }
+
+    try {
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('is_active', true)
+        .eq('school_id', user.school_id)
+        .single();
+
+      if (sessionError) throw sessionError;
+      if (!sessionData?.id) {
+        toast.showToast('No active session found for this school', 'error');
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from('attendance_records')
+        .update({ status: nextStatus })
+        .match({
+          id: absentee.id,
+          student_id: absentee.student_id,
+          date: absentDate,
+          session_id: sessionData.id,
+          school_id: user.school_id
+        });
+
+      if (updateError) throw updateError;
+
+      setAttendanceDataForDate(prev =>
+        prev.map(record =>
+          record.id === absentee.id || record.student_id === absentee.student_id
+            ? { ...record, status: nextStatus }
+            : record
+        )
+      );
+
+      if (nextStatus === 'absent' || nextStatus === 'leave') {
+        setAbsentees(prev => prev.map(a =>
+          a.id === absentee.id
+            ? { ...a, status: nextStatus }
+            : a
+        ));
+      } else {
+        setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
+      }
+
+      toast.showToast('Status updated successfully', 'success');
+    } catch (err) {
+      toast.showToast('Failed to update status', 'error');
+    } finally {
+      setDropdownIdx(null);
+    }
+  };
+
+  const deleteAbsenteeRecord = async (absentee: any) => {
+    if (!user?.school_id) {
+      toast.showToast('User school information not found', 'error');
+      return;
+    }
+
+    try {
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('is_active', true)
+        .eq('school_id', user.school_id)
+        .single();
+
+      if (sessionError) throw sessionError;
+      if (!sessionData?.id) {
+        toast.showToast('No active session found for this school', 'error');
+        return;
+      }
+
+      const { error: deleteError } = await supabase
+        .from('attendance_records')
+        .delete()
+        .match({
+          id: absentee.id,
+          student_id: absentee.student_id,
+          date: absentDate,
+          session_id: sessionData.id,
+          school_id: user.school_id
+        });
+
+      if (deleteError) throw deleteError;
+
+      setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
+      setAttendanceDataForDate(prev => prev.filter(r => r.student_id !== absentee.student_id));
+
+      toast.showToast('Attendance record deleted', 'success');
+    } catch (err) {
+      toast.showToast('Failed to delete record', 'error');
+    } finally {
+      setDropdownIdx(null);
+    }
+  };
+
   return (
     <Container>
       {/* Attendance Stats Cards */}
@@ -485,7 +594,7 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
         </StatCard>
 
         {/* Half Leave */}
-        <StatCard $accent={statusPalette.violet}>
+        <HalfLeaveStatCard $accent={statusPalette.violet}>
           <StatTopRow>
             <StatIconBadge $accent={statusPalette.violet}><HourglassEmpty /></StatIconBadge>
             {attendanceStatsLoading ? <DottedLoader size={0.55} /> : <StatChip $accent={statusPalette.violet}>{halfLeavePercent}%</StatChip>}
@@ -494,7 +603,7 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
           <StatValue>
             {attendanceStatsLoading ? <DottedLoader /> : <>{halfLeaveCount}<StatOf>/ {totalStudents}</StatOf></>}
           </StatValue>
-        </StatCard>
+        </HalfLeaveStatCard>
       </StatsGrid>
 
       {/* Attendance Charts */}
@@ -1246,85 +1355,7 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                                       e.preventDefault();
                                       e.stopPropagation();
 
-                                      const handleStatusUpdate = async () => {
-                                        const absentee = absentees[globalIdx];
-                                        if (!user?.school_id) {
-                                          toast.showToast('User school information not found', 'error');
-                                          return;
-                                        }
-
-                                        try {
-                                          const { data: sessionData, error: sessionError } = await supabase
-                                            .from('sessions')
-                                            .select('id')
-                                            .eq('is_active', true)
-                                            .eq('school_id', user.school_id)
-                                            .single();
-
-                                          if (sessionError) throw sessionError;
-                                          if (!sessionData?.id) {
-                                            toast.showToast('No active session found for this school', 'error');
-                                            return;
-                                          }
-
-                                          if (opt.value === 'present' || opt.value === 'late') {
-                                            const { error: deleteError } = await supabase
-                                              .from('attendance_records')
-                                              .delete()
-                                              .match({
-                                                id: absentee.id,
-                                                student_id: absentee.student_id,
-                                                date: absentDate,
-                                                session_id: sessionData.id,
-                                                school_id: user.school_id
-                                              });
-
-                                            if (deleteError) throw deleteError;
-
-                                            setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
-                                          } else {
-                                            const { error: updateError } = await supabase
-                                              .from('attendance_records')
-                                              .update({
-                                                status: opt.value
-                                              })
-                                              .match({
-                                                id: absentee.id,
-                                                student_id: absentee.student_id,
-                                                date: absentDate,
-                                                session_id: sessionData.id,
-                                                school_id: user.school_id
-                                              });
-
-                                            if (updateError) throw updateError;
-
-                                            setAbsentees(prev => prev.map(a =>
-                                              a.id === absentee.id
-                                                ? { ...a, status: opt.value }
-                                                : a
-                                            ));
-                                          }
-
-                                          setAttendanceDataForDate(prev => {
-                                            if (opt.value === 'present' || opt.value === 'late') {
-                                              return prev.filter(r => r.student_id !== absentee.student_id);
-                                            } else {
-                                              return prev.map(r =>
-                                                r.student_id === absentee.student_id
-                                                  ? { ...r, status: opt.value }
-                                                  : r
-                                              );
-                                            }
-                                          });
-
-                                          toast.showToast('Status updated successfully', 'success');
-                                        } catch (err) {
-                                          toast.showToast('Failed to update status', 'error');
-                                        }
-                                        setDropdownIdx(null);
-                                      };
-
-                                      handleStatusUpdate();
+                                      applyAbsenteeStatusChange(absentees[globalIdx], opt.value);
                                       return false;
                                     }}
                                   >
@@ -1339,50 +1370,7 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                                     e.preventDefault();
                                     e.stopPropagation();
 
-                                    const absentee = absentees[globalIdx];
-                                    if (!user?.school_id) {
-                                      toast.showToast('User school information not found', 'error');
-                                      return;
-                                    }
-
-                                    try {
-                                      const { data: sessionData, error: sessionError } = await supabase
-                                        .from('sessions')
-                                        .select('id')
-                                        .eq('is_active', true)
-                                        .eq('school_id', user.school_id)
-                                        .single();
-
-                                      if (sessionError) throw sessionError;
-                                      if (!sessionData?.id) {
-                                        toast.showToast('No active session found for this school', 'error');
-                                        return;
-                                      }
-
-                                      const { error: deleteError } = await supabase
-                                        .from('attendance_records')
-                                        .delete()
-                                        .match({
-                                          id: absentee.id,
-                                          student_id: absentee.student_id,
-                                          date: absentDate,
-                                          session_id: sessionData.id,
-                                          school_id: user.school_id
-                                        });
-
-                                      if (deleteError) throw deleteError;
-
-                                      setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
-
-                                      setAttendanceDataForDate(prev =>
-                                        prev.filter(r => r.student_id !== absentee.student_id)
-                                      );
-
-                                      toast.showToast('Attendance record deleted', 'success');
-                                    } catch (err) {
-                                      toast.showToast('Failed to delete record', 'error');
-                                    }
-                                    setDropdownIdx(null);
+                                    deleteAbsenteeRecord(absentees[globalIdx]);
                                     return false;
                                   }}
                                 >
@@ -1512,85 +1500,7 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                                             e.preventDefault();
                                             e.stopPropagation();
 
-                                            const handleStatusUpdate = async () => {
-                                              const absentee = absentees[globalIdx];
-                                              if (!user?.school_id) {
-                                                toast.showToast('User school information not found', 'error');
-                                                return;
-                                              }
-
-                                              try {
-                                                const { data: sessionData, error: sessionError } = await supabase
-                                                  .from('sessions')
-                                                  .select('id')
-                                                  .eq('is_active', true)
-                                                  .eq('school_id', user.school_id)
-                                                  .single();
-
-                                                if (sessionError) throw sessionError;
-                                                if (!sessionData?.id) {
-                                                  toast.showToast('No active session found for this school', 'error');
-                                                  return;
-                                                }
-
-                                                if (opt.value === 'present' || opt.value === 'late') {
-                                                  const { error: deleteError } = await supabase
-                                                    .from('attendance_records')
-                                                    .delete()
-                                                    .match({
-                                                      id: absentee.id,
-                                                      student_id: absentee.student_id,
-                                                      date: absentDate,
-                                                      session_id: sessionData.id,
-                                                      school_id: user.school_id
-                                                    });
-
-                                                  if (deleteError) throw deleteError;
-
-                                                  setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
-                                                } else {
-                                                  const { error: updateError } = await supabase
-                                                    .from('attendance_records')
-                                                    .update({
-                                                      status: opt.value
-                                                    })
-                                                    .match({
-                                                      id: absentee.id,
-                                                      student_id: absentee.student_id,
-                                                      date: absentDate,
-                                                      session_id: sessionData.id,
-                                                      school_id: user.school_id
-                                                    });
-
-                                                  if (updateError) throw updateError;
-
-                                                  setAbsentees(prev => prev.map(a =>
-                                                    a.id === absentee.id
-                                                      ? { ...a, status: opt.value }
-                                                      : a
-                                                  ));
-                                                }
-
-                                                setAttendanceDataForDate(prev => {
-                                                  if (opt.value === 'present' || opt.value === 'late') {
-                                                    return prev.filter(r => r.student_id !== absentee.student_id);
-                                                  } else {
-                                                    return prev.map(r =>
-                                                      r.student_id === absentee.student_id
-                                                        ? { ...r, status: opt.value }
-                                                        : r
-                                                    );
-                                                  }
-                                                });
-
-                                                toast.showToast('Status updated successfully', 'success');
-                                              } catch (err) {
-                                                toast.showToast('Failed to update status', 'error');
-                                              }
-                                              setDropdownIdx(null);
-                                            };
-
-                                            handleStatusUpdate();
+                                            applyAbsenteeStatusChange(absentees[globalIdx], opt.value);
                                             return false;
                                           }}
                                         >
@@ -1605,50 +1515,7 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                                           e.preventDefault();
                                           e.stopPropagation();
 
-                                          const absentee = absentees[globalIdx];
-                                          if (!user?.school_id) {
-                                            toast.showToast('User school information not found', 'error');
-                                            return;
-                                          }
-
-                                          try {
-                                            const { data: sessionData, error: sessionError } = await supabase
-                                              .from('sessions')
-                                              .select('id')
-                                              .eq('is_active', true)
-                                              .eq('school_id', user.school_id)
-                                              .single();
-
-                                            if (sessionError) throw sessionError;
-                                            if (!sessionData?.id) {
-                                              toast.showToast('No active session found for this school', 'error');
-                                              return;
-                                            }
-
-                                            const { error: deleteError } = await supabase
-                                              .from('attendance_records')
-                                              .delete()
-                                              .match({
-                                                id: absentee.id,
-                                                student_id: absentee.student_id,
-                                                date: absentDate,
-                                                session_id: sessionData.id,
-                                                school_id: user.school_id
-                                              });
-
-                                            if (deleteError) throw deleteError;
-
-                                            setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
-
-                                            setAttendanceDataForDate(prev =>
-                                              prev.filter(r => r.student_id !== absentee.student_id)
-                                            );
-
-                                            toast.showToast('Attendance record deleted', 'success');
-                                          } catch (err) {
-                                            toast.showToast('Failed to delete record', 'error');
-                                          }
-                                          setDropdownIdx(null);
+                                          deleteAbsenteeRecord(absentees[globalIdx]);
                                           return false;
                                         }}
                                       >

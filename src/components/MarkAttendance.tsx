@@ -28,6 +28,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import NoSessionsFound from './NoSessionsFound';
 import NoStudentsFound from './NoStudentsFound';
+import AppDateField from './shared/AppDateField';
 import { useTheme } from 'styled-components';
 import { useActivityTracking } from '../hooks/useActivityTracking';
 import { whatsappSemiAutoService, AttendanceNotificationData } from '../services/whatsappSemiAuto';
@@ -1418,7 +1419,7 @@ const MarkAttendance: React.FC = () => {
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'manual_only' | 'rfid_ready' | 'on_leave'>('all');
+  const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'manual_only' | 'rfid_ready' | 'on_leave'>('manual_only');
   const [hoveredAvatar, setHoveredAvatar] = useState<{ id: number; x: number; y: number; url: string } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -2367,15 +2368,18 @@ const MarkAttendance: React.FC = () => {
         session_id: sessionId,
         school_id: user.school_id,
       }));
+      const studentIdsToSave = studentsToSave.map(student => student.id);
       
       setProgress(50);
-      // Delete existing records first to avoid conflicts
+      // Delete only the records for students being explicitly saved.
+      // This preserves attendance for untouched students on the same day.
       let deleteQuery = supabase
         .from('attendance_records')
         .delete()
         .eq('class_id', selectedClass)
         .eq('date', date)
-        .eq('school_id', user.school_id);
+        .eq('school_id', user.school_id)
+        .in('student_id', studentIdsToSave);
       
       // Only filter by section if the class has sections
       if (hasSections) {
@@ -2660,6 +2664,40 @@ const MarkAttendance: React.FC = () => {
   // Determine if teacher has only one section
   const teacherHasSingleSection = user?.role === 'Teacher' && teacherSections.length === 1;
   const teacherHasMultipleSections = user?.role === 'Teacher' && teacherSections.length > 1;
+  const compactDateFieldProps = {
+    InputLabelProps: { shrink: true },
+    sx: {
+      minWidth: 142,
+      '& .MuiOutlinedInput-notchedOutline': {
+        border: 'none',
+      },
+      '& .MuiInputBase-root': {
+        minHeight: 26,
+        height: 26,
+        fontSize: '0.77em',
+        borderRadius: 0,
+        background: 'transparent',
+        color: (theme === 'dark' ? darkTheme : lightTheme).TEXT_PRIMARY,
+        boxShadow: 'none',
+        borderRight: `1px solid ${getLayoutPalette(theme === 'dark' ? darkTheme : lightTheme).shellDivider}`,
+      },
+      '& .MuiInputBase-input': {
+        padding: '0 11px',
+        height: '26px',
+        boxSizing: 'border-box',
+      },
+      '& .MuiInputBase-root.Mui-focused': {
+        background: 'transparent',
+      },
+      '& .MuiIconButton-root': {
+        padding: '4px',
+        color: (theme === 'dark' ? darkTheme : lightTheme).TEXT_SECONDARY,
+      },
+      '& .MuiSvgIcon-root': {
+        fontSize: '1rem',
+      },
+    },
+  };
 
   // Student area logic
   let studentAreaContent = null;
@@ -2737,7 +2775,7 @@ const MarkAttendance: React.FC = () => {
           )}
         </div>
         {isMobile ? (
-          <>
+          <MobileHeaderControls>
             <SegmentedGroup theme={theme === 'dark' ? darkTheme : lightTheme}>
               <SegmentedSelect
                 theme={theme === 'dark' ? darkTheme : lightTheme}
@@ -2746,7 +2784,6 @@ const MarkAttendance: React.FC = () => {
                   setSelectedClass(e.target.value);
                 }}
                 disabled={user?.role === 'Teacher' ? teacherHasSingleSection : false}
-                style={{ minWidth: 120 }}
                 first
               >
                 <option value="">Select Class</option>
@@ -2769,7 +2806,7 @@ const MarkAttendance: React.FC = () => {
                       setSelectedSection(e.target.value);
                     }}
                     disabled={user?.role === 'Teacher' ? teacherHasSingleSection : (!selectedClass && user?.role !== 'Teacher') || loadingSections || !user?.school_id}
-                    style={{ minWidth: 120 }}
+                    last
                   >
                     <option value="">Select Section</option>
                     {user?.role === 'Teacher'
@@ -2780,30 +2817,47 @@ const MarkAttendance: React.FC = () => {
                             <option key={s.id} value={s.id}>{s.name}</option>
                           ))}
                   </SegmentedSelect>
-                ) : null;
+                ) : (
+                  <SegmentedSelect
+                    theme={theme === 'dark' ? darkTheme : lightTheme}
+                    value=""
+                    disabled
+                    last
+                  >
+                    <option value="">No Section</option>
+                  </SegmentedSelect>
+                );
               })()}
-              <SegmentedInput
-                theme={theme === 'dark' ? darkTheme : lightTheme}
-                type="date"
-                value={date}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  setDate(e.target.value);
-                }}
-                style={{ minWidth: 120 }}
-              />
-              <SegmentedSelect
-                theme={theme === 'dark' ? darkTheme : lightTheme}
-                value={attendanceFilter}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAttendanceFilter(e.target.value as any)}
-                style={{ minWidth: 120 }}
-              >
-                <option value="all">All</option>
-                <option value="manual_only">No Card</option>
-                <option value="rfid_ready">Has Card</option>
-                <option value="on_leave">On Leave</option>
-              </SegmentedSelect>
             </SegmentedGroup>
-          </>
+
+            <MobileHeaderRow>
+              <MobileDateFieldShell theme={theme === 'dark' ? darkTheme : lightTheme}>
+                <AppDateField
+                  value={date}
+                  onChange={(e) => {
+                    setDate(e.target.value);
+                  }}
+                  fullWidth
+                  textFieldProps={{ InputLabelProps: { shrink: true }, sx: { width: '100%', minWidth: 0 } }}
+                />
+              </MobileDateFieldShell>
+
+              <SegmentedGroup theme={theme === 'dark' ? darkTheme : lightTheme}>
+                <SegmentedSelect
+                  theme={theme === 'dark' ? darkTheme : lightTheme}
+                  value={attendanceFilter}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAttendanceFilter(e.target.value as any)}
+                  first
+                  last
+                >
+                  <option value="all">All</option>
+                  <option value="manual_only">No Card</option>
+                  <option value="rfid_ready">Has Card</option>
+                  <option value="on_leave">On Leave</option>
+                </SegmentedSelect>
+              </SegmentedGroup>
+            </MobileHeaderRow>
+          </MobileHeaderControls>
         ) : (
           <SegmentedGroup theme={theme === 'dark' ? darkTheme : lightTheme}>
             <SegmentedSelect
@@ -2813,7 +2867,7 @@ const MarkAttendance: React.FC = () => {
                   setSelectedClass(e.target.value);
                 }}
                 disabled={user?.role === 'Teacher' ? teacherHasSingleSection : false}
-              style={{ minWidth: 120 }}
+              style={{ minWidth: 110 }}
               first
             >
               <option value="">Select Class</option>
@@ -2836,7 +2890,7 @@ const MarkAttendance: React.FC = () => {
                       setSelectedSection(e.target.value);
                     }}
                   disabled={user?.role === 'Teacher' ? teacherHasSingleSection : (!selectedClass && user?.role !== 'Teacher') || loadingSections || !user?.school_id}
-                  style={{ minWidth: 120 }}
+                  style={{ minWidth: 110 }}
                 >
                   <option value="">Select Section</option>
                   {user?.role === 'Teacher'
@@ -2849,15 +2903,16 @@ const MarkAttendance: React.FC = () => {
                 </SegmentedSelect>
               ) : null;
             })()}
-            <SegmentedInput
-              theme={theme === 'dark' ? darkTheme : lightTheme}
-              type="date"
-              value={date}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            <DateSegmentShell>
+              <AppDateField
+                value={date}
+                onChange={(e) => {
                   setDate(e.target.value);
                 }}
-              style={{ minWidth: 120 }}
-            />
+                fullWidth={false}
+                textFieldProps={compactDateFieldProps}
+              />
+            </DateSegmentShell>
             <SegmentedInput
               theme={theme === 'dark' ? darkTheme : lightTheme}
                 type="text"
@@ -2866,13 +2921,13 @@ const MarkAttendance: React.FC = () => {
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   setSearchTerm(e.target.value);
                 }}
-              style={{ minWidth: 180 }}
+              style={{ minWidth: 156 }}
             />
             <SegmentedSelect
               theme={theme === 'dark' ? darkTheme : lightTheme}
               value={attendanceFilter}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAttendanceFilter(e.target.value as any)}
-              style={{ minWidth: 130 }}
+              style={{ minWidth: 118 }}
             >
               <option value="all">All</option>
               <option value="manual_only">No Card</option>
@@ -3340,7 +3395,7 @@ const MarkAttendance: React.FC = () => {
 // Native MUI Skeleton Component
 
 // --- Segmented Group Styles (copied from StudentList) ---
-const SEGMENTED_HEIGHT = '29px';
+const SEGMENTED_HEIGHT = '26px';
 const SegmentedGroup = styled.div`
   display: flex;
   align-items: center;
@@ -3359,9 +3414,59 @@ const SegmentedGroup = styled.div`
     -webkit-overflow-scrolling: touch;
   }
 `;
+
+const DateSegmentShell = styled.div`
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+
+  .MuiFormControl-root,
+  .MuiStack-root {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .MuiInputBase-root {
+    border-radius: 0 !important;
+  }
+`;
+
+const MobileHeaderControls = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  width: 100%;
+`;
+
+const MobileHeaderRow = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.45rem;
+  width: 100%;
+  align-items: stretch;
+`;
+
+const MobileDateFieldShell = styled.div`
+  min-width: 0;
+  width: 100%;
+
+  .MuiFormControl-root,
+  .MuiStack-root {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .MuiInputBase-root {
+    min-height: 29px;
+    border-radius: 11px;
+    background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+    box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
+  }
+`;
+
 const SegmentedBase = css`
   font-family: inherit;
-  font-size: 0.77em;
+  font-size: 0.71em;
   font-weight: 500;
   height: ${SEGMENTED_HEIGHT};
   line-height: ${SEGMENTED_HEIGHT};
@@ -3380,8 +3485,8 @@ const SegmentedBase = css`
 `;
 const SegmentedInput = styled.input<{ pill?: boolean }>`
   ${SegmentedBase}
-  padding: 0 0.84em;
-  min-width: 98px;
+  padding: 0 0.68em;
+  min-width: 86px;
   border-radius: 0;
   border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
   ${({ pill }) => pill && `
@@ -3431,7 +3536,7 @@ const SegmentedInput = styled.input<{ pill?: boolean }>`
 const SegmentedSelect = styled.select<{ first?: boolean; last?: boolean }>`
   ${SegmentedBase}
   ${minimalSelectMenuStyle}
-  padding: 0 2.2em 0 0.84em;
+  padding: 0 1.95em 0 0.68em;
   border-radius: 0;
   border-right: 1px solid ${({ theme }) => getLayoutPalette(theme).shellDivider};
   &:last-child { border-right: none; }

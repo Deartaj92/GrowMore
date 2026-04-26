@@ -127,6 +127,12 @@ const TopBar = styled.div`
   flex-wrap: wrap;
   gap: 0.75rem;
   padding: 0.8rem 1rem;
+
+  @media (max-width: 768px) {
+    padding: 0.85rem;
+    gap: 0.85rem;
+    align-items: stretch;
+  }
 `;
 
 const Title = styled.h1`
@@ -139,6 +145,57 @@ const Title = styled.h1`
   gap: 0.6rem;
 
   svg { color: ${({ theme }) => theme.ACCENT}; }
+
+  @media (max-width: 768px) {
+    font-size: 1.02rem;
+    gap: 0.45rem;
+  }
+`;
+
+const TopBarActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    gap: 0.6rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+const StatusBadgeRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: flex-start;
+  }
+`;
+
+const DateAndSettingsRow = styled.div`
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 0.75rem;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    flex-direction: column;
+    gap: 0.6rem;
+
+    > button {
+      width: 100%;
+      justify-content: center;
+    }
+  }
 `;
 
 const ModeToggle = styled.div`
@@ -286,7 +343,9 @@ const ProminentDate = styled.div`
   @media (max-width: 600px) {
     align-items: flex-start;
     text-align: left;
-    margin-top: 0.5rem;
+    margin-top: 0;
+    width: 100%;
+    box-sizing: border-box;
   }
 `;
 
@@ -315,6 +374,11 @@ const ScannerCard = styled.div`
   justify-content: space-between;
   gap: 1.2rem;
   min-height: 0;
+
+  @media (max-width: 768px) {
+    padding: 1rem;
+    gap: 0.9rem;
+  }
 `;
 
 const ScanArea = styled.div<{ $status: 'idle' | 'success' | 'error' }>`
@@ -335,12 +399,18 @@ const ScanArea = styled.div<{ $status: 'idle' | 'success' | 'error' }>`
         $status === 'success' ? css`${rippleGreen} 0.6s ease-out` :
             $status === 'error' ? css`${rippleRed} 0.6s ease-out` :
                 css`${pulse} 2.5s ease-in-out infinite`};
+  transition: color 0.3s;
 
-    transition: color 0.3s;
+  @media (max-width: 768px) {
+    width: 146px;
+    height: 146px;
+    border-radius: 22px;
+
+    svg {
+      font-size: 46px !important;
+    }
   }
 `;
-
-
 
 const ScanLineBar = styled.div<{ $active: boolean }>`
   position: absolute;
@@ -372,12 +442,21 @@ const StatusText = styled.div<{ $status: 'idle' | 'success' | 'error' }>`
                 '#3b82f6'};
   text-align: center;
   min-height: 1.4rem;
+
+  @media (max-width: 768px) {
+    font-size: 0.95rem;
+    min-height: 1.25rem;
+  }
 `;
 
 const SubText = styled.div`
   font-size: 0.82rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   text-align: center;
+
+  @media (max-width: 768px) {
+    font-size: 0.76rem;
+  }
 `;
 
 const DateSelect = styled.input`
@@ -392,6 +471,11 @@ const StatsRow = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 0.6rem;
   width: 100%;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
 `;
 
 const StatBox = styled.div<{ $color: string }>`
@@ -401,6 +485,10 @@ const StatBox = styled.div<{ $color: string }>`
   border-radius: ${CARD_RADIUS_MD};
   padding: 0.75rem;
   text-align: center;
+
+  @media (max-width: 768px) {
+    padding: 0.65rem 0.5rem;
+  }
 `;
 
 const StatNum = styled.div<{ $color: string }>`
@@ -408,12 +496,20 @@ const StatNum = styled.div<{ $color: string }>`
   font-weight: 800;
   color: ${({ $color }) => $color};
   line-height: 1;
+
+  @media (max-width: 768px) {
+    font-size: 1.35rem;
+  }
 `;
 
 const StatLabel = styled.div`
   font-size: 0.72rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   margin-top: 0.2rem;
+
+  @media (max-width: 768px) {
+    font-size: 0.68rem;
+  }
 `;
 
 // ── Feed Panel ────────────────────────────────────────────────────────────────
@@ -424,6 +520,10 @@ const FeedCard = styled.div`
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
+
+  @media (max-width: 768px) {
+    min-height: auto;
+  }
 `;
 
 const FeedHeader = styled.div`
@@ -432,6 +532,13 @@ const FeedHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid ${({ theme }) => getDashboardPalette(theme).divider};
+
+  @media (max-width: 720px) {
+    padding: 0.85rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.7rem;
+  }
 `;
 
 const FeedTitle = styled.div`
@@ -454,6 +561,11 @@ const ClearBtn = styled.button`
   gap: 0.3rem;
   padding: 0.35rem 0.7rem;
   min-height: 32px;
+
+  @media (max-width: 720px) {
+    min-width: 92px;
+    justify-content: center;
+  }
 `;
 
 const FeedHeaderActions = styled.div`
@@ -463,7 +575,8 @@ const FeedHeaderActions = styled.div`
 
   @media (max-width: 720px) {
     width: 100%;
-    justify-content: space-between;
+    justify-content: stretch;
+    gap: 0.5rem;
   }
 `;
 
@@ -477,6 +590,17 @@ const FeedSearch = styled.input`
   @media (max-width: 720px) {
     min-width: 0;
     flex: 1;
+  }
+`;
+
+const FeedSplitGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: 1;
+  min-height: 0;
+
+  @media (max-width: 1100px) {
+    grid-template-columns: 1fr;
   }
 `;
 
@@ -502,6 +626,10 @@ const FeedSection = styled.div`
     border-right: none;
     border-bottom: 1px solid ${({ theme }) => getDashboardPalette(theme).divider};
     &:last-child { border-bottom: none; }
+  }
+
+  @media (max-width: 768px) {
+    min-height: 320px;
   }
 `;
 
@@ -547,6 +675,13 @@ const FeedItem = styled.div<{ $type: 'success' | 'error' | 'warn'; $personType?:
             $type === 'error' ? 'rgba(239,68,68,0.06)' :
                 'rgba(234,179,8,0.06)'};
   animation: ${({ $new }) => $new ? css`${slideIn} 0.3s ease` : 'none'};
+
+  @media (max-width: 768px) {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    padding: 0.7rem 0.8rem;
+  }
 `;
 
 const FeedIcon = styled.div<{ $type: 'success' | 'error' | 'warn'; $personType?: string }>`
@@ -582,6 +717,13 @@ const FeedName = styled.div`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+
+  @media (max-width: 768px) {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    line-height: 1.25;
+  }
 `;
 
 const FeedFatherName = styled.span`
@@ -592,6 +734,11 @@ const FeedFatherName = styled.span`
 const FeedSub = styled.div`
   font-size: 0.76rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
+
+  @media (max-width: 768px) {
+    margin-top: 0.15rem;
+    line-height: 1.3;
+  }
 `;
 
 const FeedRollNumber = styled.span`
@@ -606,6 +753,17 @@ const FeedTime = styled.div`
   gap: 0.35rem;
   text-align: right;
   min-width: 112px;
+
+  @media (max-width: 768px) {
+    width: calc(100% - 44px);
+    min-width: 0;
+    margin-left: calc(36px + 0.6rem);
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    text-align: left;
+  }
 `;
 
 const FeedAttendanceStatus = styled.div<{ $status: 'present' | 'late' | 'checked_out' }>`
@@ -615,6 +773,10 @@ const FeedAttendanceStatus = styled.div<{ $status: 'present' | 'late' | 'checked
   color: ${({ $status }) => $status === 'late' ? '#f59e0b' : $status === 'checked_out' ? '#3b82f6' : '#22c55e'};
   text-transform: uppercase;
   letter-spacing: 0.05em;
+
+  @media (max-width: 768px) {
+    font-size: 0.92rem;
+  }
 `;
 
 const FeedTimeLabel = styled.div`
@@ -622,6 +784,10 @@ const FeedTimeLabel = styled.div`
   font-weight: 600;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   white-space: nowrap;
+
+  @media (max-width: 768px) {
+    font-size: 0.78rem;
+  }
 `;
 
 const TypeBadge = styled.span<{ $color: string }>`
@@ -645,6 +811,11 @@ const EmptyFeed = styled.div`
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   gap: 0.75rem;
   font-size: 0.9rem;
+
+  @media (max-width: 768px) {
+    padding: 2rem 1rem;
+    font-size: 0.82rem;
+  }
 `;
 
 const renderFeedSub = (item: ScanResult, themeObj: any) => {
@@ -690,6 +861,12 @@ const MobileNfcBtn = styled.button<{ $active?: boolean }>`
 
   @media (min-width: 1200px) {
     display: none; /* Hide on large desktop screens */
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: center;
+    padding: 0.7rem 1rem;
   }
 `;
 
@@ -2369,37 +2546,41 @@ const RFIDAttendancePage: React.FC = () => {
                     <BadgeCheck style={{ fontSize: 22 }} />
                     RFID Attendance Scanner
                 </Title>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    {!isOnline && (
-                        <OfflineBadge>
-                            <CloudOffIcon style={{ fontSize: 16 }} />
-                            OFFLINE MODE
-                        </OfflineBadge>
-                    )}
-                    {queueCount > 0 && (
-                        <SyncBadge $syncing={isSyncing} onClick={handleSync}>
-                            <CloudSyncIcon style={{ fontSize: 16 }} />
-                            {queueCount} Pending Syncs
-                        </SyncBadge>
-                    )}
+                <TopBarActions>
+                    <StatusBadgeRow>
+                        {!isOnline && (
+                            <OfflineBadge>
+                                <CloudOffIcon style={{ fontSize: 16 }} />
+                                OFFLINE MODE
+                            </OfflineBadge>
+                        )}
+                        {queueCount > 0 && (
+                            <SyncBadge $syncing={isSyncing} onClick={handleSync}>
+                                <CloudSyncIcon style={{ fontSize: 16 }} />
+                                {queueCount} Pending Syncs
+                            </SyncBadge>
+                        )}
+                    </StatusBadgeRow>
 
-                    <ProminentDate theme={themeObj}>
-                        <div className="date-day">Attendance Date</div>
-                        <div className="date-full">
-                            {new Date().toLocaleDateString('en-PK', {
-                                weekday: 'long',
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric'
-                            })}
-                        </div>
-                    </ProminentDate>
+                    <DateAndSettingsRow>
+                        <ProminentDate theme={themeObj}>
+                            <div className="date-day">Attendance Date</div>
+                            <div className="date-full">
+                                {new Date().toLocaleDateString('en-PK', {
+                                    weekday: 'long',
+                                    day: 'numeric',
+                                    month: 'short',
+                                    year: 'numeric'
+                                })}
+                            </div>
+                        </ProminentDate>
 
-                    <SecondaryBtn theme={themeObj} onClick={openSettingsPasswordModal}>
-                        <SettingsIcon style={{ fontSize: 18 }} />
-                        Settings
-                    </SecondaryBtn>
-                </div>
+                        <SecondaryBtn theme={themeObj} onClick={openSettingsPasswordModal}>
+                            <SettingsIcon style={{ fontSize: 18 }} />
+                            Settings
+                        </SecondaryBtn>
+                    </DateAndSettingsRow>
+                </TopBarActions>
             </TopBar>
 
             {showSettingsPasswordModal && ReactDOM.createPortal(
@@ -2920,13 +3101,7 @@ const RFIDAttendancePage: React.FC = () => {
                         </FeedHeaderActions>
                     </FeedHeader>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', flex: 1, minHeight: 0 }} className="feed-split-grid">
-                        <style>{`
-                            @media (max-width: 1100px) {
-                                .feed-split-grid { grid-template-columns: 1fr !important; }
-                            }
-                        `}</style>
-
+                    <FeedSplitGrid>
                         {/* Employees Column */}
                         <FeedSection theme={themeObj}>
                             <SectionHeader theme={themeObj} $mode="employee">
@@ -3030,7 +3205,7 @@ const RFIDAttendancePage: React.FC = () => {
                                 </FeedList>
                             </SectionBody>
                         </FeedSection>
-                    </div>
+                    </FeedSplitGrid>
                 </FeedCard>
             </MainGrid>
 

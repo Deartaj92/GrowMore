@@ -90,6 +90,12 @@ const StatCard = styled.div`
   }
 `;
 
+const HalfLeaveStatCard = styled(StatCard)`
+  @media (max-width: 768px) {
+    grid-column: 1 / -1;
+  }
+`;
+
 const StatLabel = styled.div`
   font-size: 0.75rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
@@ -404,7 +410,7 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
           </StatChange>
         </StatCard>
 
-        <StatCard theme={theme}>
+        <HalfLeaveStatCard theme={theme}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
             <StatLabel theme={theme}>Half Day</StatLabel>
             <HourglassEmpty style={{ fontSize: '1.25rem', color: statusPalette.violet }} />
@@ -419,7 +425,7 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
           <StatChange $positive={true} theme={theme}>
             {attendanceStatsLoading ? <DottedLoader size={0.6} /> : `${halfDayPercent}%`}
           </StatChange>
-        </StatCard>
+        </HalfLeaveStatCard>
       </StatsGrid>
 
       {/* Attendance Trend Chart */}

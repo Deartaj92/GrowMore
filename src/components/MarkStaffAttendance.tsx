@@ -453,6 +453,22 @@ const SegmentedGroup = styled.div`
   }
 `;
 
+const DateSegmentShell = styled.div`
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+
+  .MuiFormControl-root,
+  .MuiStack-root {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .MuiInputBase-root {
+    border-radius: 11px 0 0 11px !important;
+  }
+`;
+
 const SegmentedBase = css`
   font-family: inherit;
   font-size: 0.77em;
@@ -607,11 +623,45 @@ const MarkStaffAttendance: React.FC = () => {
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'manual_only' | 'rfid_ready' | 'on_leave'>('all');
+  const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'manual_only' | 'rfid_ready' | 'on_leave'>('manual_only');
   const [hoveredAvatar, setHoveredAvatar] = useState<{ id: number; x: number; y: number; url: string } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [saveButtonBounce, setSaveButtonBounce] = useState(false);
+  const compactDateFieldProps = {
+    InputLabelProps: { shrink: true },
+    sx: {
+      minWidth: 142,
+      '& .MuiOutlinedInput-notchedOutline': {
+        border: 'none',
+      },
+      '& .MuiInputBase-root': {
+        minHeight: SEGMENTED_HEIGHT,
+        height: SEGMENTED_HEIGHT,
+        fontSize: '0.77em',
+        borderRadius: '11px 0 0 11px',
+        background: theme === 'dark' ? '#444' : '#f3f4f6',
+        color: theme === 'dark' ? '#C0C0C0' : '#444',
+        boxShadow: 'none',
+        borderRight: `1px solid ${theme === 'dark' ? '#555' : '#e5e7eb'}`,
+      },
+      '& .MuiInputBase-input': {
+        padding: '0 11px',
+        height: SEGMENTED_HEIGHT,
+        boxSizing: 'border-box',
+      },
+      '& .MuiInputBase-root.Mui-focused': {
+        background: theme === 'dark' ? '#4a4a4a' : '#e9edf3',
+      },
+      '& .MuiIconButton-root': {
+        padding: '4px',
+        color: theme === 'dark' ? '#C0C0C0' : '#444',
+      },
+      '& .MuiSvgIcon-root': {
+        fontSize: '1rem',
+      },
+    },
+  };
   const [hasAttendanceRecords, setHasAttendanceRecords] = useState(false);
   const [statusBounce, setStatusBounce] = useState<{ id: number; status: string } | null>(null);
   const [checkoutModalStaff, setCheckoutModalStaff] = useState<StaffMember | null>(null);
@@ -1187,15 +1237,18 @@ const MarkStaffAttendance: React.FC = () => {
         session_id: sessionId,
         school_id: user.school_id,
       }));
+      const staffIdsToSave = staffToSave.map(staff => staff.id);
       
       setProgress(50);
-      // Delete existing records first to avoid conflicts
+      // Delete only the records for staff being explicitly saved.
+      // This preserves attendance for untouched staff on the same day.
       const { error: deleteError } = await supabase
         .from('staff_attendance_records')
         .delete()
         .eq('date', date)
         .eq('school_id', user.school_id)
-        .eq('session_id', sessionId);
+        .eq('session_id', sessionId)
+        .in('staff_id', staffIdsToSave);
       if (deleteError) throw deleteError;
       
       setProgress(70);
@@ -1461,14 +1514,16 @@ const MarkStaffAttendance: React.FC = () => {
           )}
         </div>
         <SegmentedGroup theme={theme === 'dark' ? darkTheme : lightTheme}>
-          <AppDateField
-            value={date}
-            onChange={(e) => {
-              setDate(e.target.value);
-            }}
-            fullWidth={false}
-            textFieldProps={{ InputLabelProps: { shrink: true }, sx: { minWidth: 170 } }}
-          />
+          <DateSegmentShell>
+            <AppDateField
+              value={date}
+              onChange={(e) => {
+                setDate(e.target.value);
+              }}
+              fullWidth={false}
+              textFieldProps={compactDateFieldProps}
+            />
+          </DateSegmentShell>
           <SegmentedInput
             theme={theme === 'dark' ? darkTheme : lightTheme}
             type="text"
