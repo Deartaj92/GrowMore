@@ -514,25 +514,25 @@ const RemainingFine: React.FC = () => {
           return await supabase.from('students')
             .select('id, name, father_name, class_id, section_id, picture_url, roll_number')
             .eq('status', 'active')
-            .eq('school_id', user.school_id)
+            .eq('school_id', user?.school_id)
             .range(from, to);
         }),
         fetchAllRows(async (from, to) => {
           return await supabase.from('classes')
             .select('id, name, has_sections')
-            .eq('school_id', user.school_id)
+            .eq('school_id', user?.school_id)
             .range(from, to);
         }),
         fetchAllRows(async (from, to) => {
           return await supabase.from('sections')
             .select('id, name, class_id')
-            .eq('school_id', user.school_id)
+            .eq('school_id', user?.school_id)
             .range(from, to);
         }),
         fetchAllRows(async (from, to) => {
           return await supabase.from('fines')
             .select('class_id, absent_fine, late_fine, effective_from')
-            .eq('school_id', user.school_id)
+            .eq('school_id', user?.school_id)
             .order('effective_from', { ascending: true })
             .range(from, to);
         }),
@@ -540,7 +540,7 @@ const RemainingFine: React.FC = () => {
           return await supabase
             .from('attendance_records')
             .select('student_id, class_id, date, status')
-            .eq('school_id', user.school_id)
+            .eq('school_id', user?.school_id)
             .in('status', ['absent', 'late'])
             .range(from, to);
         }),
@@ -548,7 +548,7 @@ const RemainingFine: React.FC = () => {
           return await supabase
             .from('fine_payments')
             .select('*')
-            .eq('school_id', user.school_id)
+            .eq('school_id', user?.school_id)
             .range(from, to);
         }),
       ]);
@@ -576,7 +576,7 @@ const RemainingFine: React.FC = () => {
     setHistoryLoading(true);
     try {
       const { data, error } = await supabase.rpc('get_bulk_remission_history', { 
-        p_school_id: user.school_id 
+        p_school_id: Number(user?.school_id)
       });
       
       if (error) throw error;
@@ -599,6 +599,7 @@ const RemainingFine: React.FC = () => {
   }, [user?.school_id, activeTab]);
 
   const handleBulkRemit = async () => {
+    if (!user?.school_id) return;
     if (summary.totalRemaining <= 0) {
       showToast("No remaining fines to remit.", "info");
       return;
@@ -613,7 +614,7 @@ const RemainingFine: React.FC = () => {
       const today = new Date().toISOString().slice(0, 10);
       
       const { data: count, error } = await supabase.rpc('bulk_remit_all_fines', {
-        p_school_id: user.school_id,
+        p_school_id: Number(user?.school_id),
         p_batch_id: batchId,
         p_payment_date: today
       });
@@ -633,13 +634,14 @@ const RemainingFine: React.FC = () => {
   };
 
   const handleUndoRemission = async (batchId: string) => {
+    if (!user?.school_id) return;
     setUndoingBatch(batchId);
     startProgress(false);
     setProgress(50);
     
     try {
       const { data: count, error } = await supabase.rpc('undo_bulk_remission', {
-        p_school_id: user.school_id,
+        p_school_id: Number(user?.school_id),
         p_batch_id: batchId
       });
 
@@ -954,7 +956,7 @@ const RemainingFine: React.FC = () => {
                           <CenterTd>Rs. {totalFine}</CenterTd>
                           <CenterTd>Rs. {paid}</CenterTd>
                           <CenterTd>Rs. {remission}</CenterTd>
-                          <CenterTd style={{ color: remaining < 0 ? '#ef4444' : theme.ACCENT, fontWeight: 700 }}>Rs. {remaining}</CenterTd>
+                          <CenterTd style={{ color: remaining < 0 ? '#ef4444' : (theme as any).ACCENT, fontWeight: 700 }}>Rs. {remaining}</CenterTd>
                           <CenterTd>
                             <ModernActionButton onClick={() => navigate('/fines/collect', { state: { studentId: stu.id } })}>Collect</ModernActionButton>
                           </CenterTd>
