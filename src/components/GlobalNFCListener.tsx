@@ -108,7 +108,7 @@ const GlobalNFCListener: React.FC = () => {
             let title = '';
             let sub = '';
 
-            if (result.type === 'error_checkout_early' && p) {
+            if ((result.type === 'error_checkout_early' || result.type === 'offline_checkout_early') && p) {
                 type = 'warning';
                 title = p.name;
                 sub = 'Too Early to Check Out';
@@ -122,6 +122,26 @@ const GlobalNFCListener: React.FC = () => {
                 if (result.type === 'offline') {
                     statusStr = 'Scan successful';
                     type = 'success';
+                }
+                else if (result.type === 'offline_present') {
+                    statusStr = 'Present (Offline)';
+                    type = 'success';
+                }
+                else if (result.type === 'offline_late') {
+                    statusStr = 'Late (Offline)';
+                    type = 'warning';
+                }
+                else if (result.type === 'offline_checkout') {
+                    statusStr = 'Checked Out (Offline)';
+                    type = 'info';
+                }
+                else if (result.type === 'offline_already') {
+                    statusStr = 'Already Marked (Offline)';
+                    type = 'warning';
+                }
+                else if (result.type === 'offline_already_out') {
+                    statusStr = 'Already Left (Offline)';
+                    type = 'warning';
                 }
                 else if (result.type === 'out') {
                     statusStr = 'Checked Out';

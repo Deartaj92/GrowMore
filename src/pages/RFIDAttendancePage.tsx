@@ -33,6 +33,7 @@ import {
     Save as SaveIcon,
     Sensors as NfcIcon,
     Logout as LogoutIcon,
+    Bolt as BoltIcon,
 } from '@mui/icons-material';
 import { CachedAttendanceHistoryItem, rfidOfflineService } from '../services/rfidOfflineService';
 import {
@@ -390,7 +391,8 @@ const ScanArea = styled.div<{ $status: 'idle' | 'success' | 'error' }>`
   align-items: center;
   justify-content: center;
   position: relative;
-  transition: background 0.4s;
+  transition: all 0.4s;
+  overflow: hidden;
   background: ${({ $status }) =>
         $status === 'success' ? 'rgba(34,197,94,0.12)' :
             $status === 'error' ? 'rgba(239,68,68,0.12)' :
@@ -898,6 +900,7 @@ interface ScanResult {
     attendanceStatus?: 'present' | 'late' | 'checked_out';
     attendanceLateCount?: number;
     isNew?: boolean;
+    picture_url?: string;
 }
 
 interface PersistedDailyScanHistory {
@@ -1227,12 +1230,55 @@ const PopupProgressFill = styled.div<{ $progress: number }>`
 
 const PopupContent = styled.div`
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  max-width: 900px;
-  width: 100%;
+  gap: 4.5rem;
+  max-width: 1200px;
+  width: 92%;
+  text-align: left;
+
+  @media (max-width: 1024px) {
+    flex-direction: column;
+    gap: 2rem;
+    text-align: center;
+  }
+`;
+
+const PopupInfoWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 0;
+
+  @media (max-width: 1024px) {
+    align-items: center;
+  }
+`;
+
+const PopupImage = styled.img`
+  width: 440px;
+  height: 440px;
+  border-radius: 64px;
+  object-fit: cover;
+  box-shadow: 0 40px 120px rgba(0,0,0,0.55);
+  border: 10px solid rgba(255,255,255,0.45);
+  animation: ${popupPulse} 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+
+  @media (max-width: 1024px) {
+    width: 280px;
+    height: 280px;
+    border-radius: 42px;
+    margin-bottom: 0;
+  }
+
+  @media (max-width: 768px) {
+    width: 200px;
+    height: 200px;
+    border-radius: 32px;
+  }
 `;
 
 const PopupIconWrapper = styled.div<{ $status: 'present' | 'late' | 'checked_out' | 'error' | 'offline' }>`
@@ -1256,31 +1302,36 @@ const PopupIconWrapper = styled.div<{ $status: 'present' | 'late' | 'checked_out
 `;
 
 const PopupName = styled.div<{ $color?: string }>`
-  font-size: clamp(2.5rem, 8vw, 5rem);
+  font-size: clamp(2.2rem, 5vw, 4.2rem);
   font-weight: 950;
   color: ${({ $color }) => $color || '#FFFFFF'};
-  line-height: 1.1;
-  margin-bottom: 1.2rem;
-  text-shadow: 0 6px 30px rgba(0,0,0,0.4);
+  line-height: 1.05;
+  margin-bottom: 0.6rem;
+  text-shadow: 0 8px 40px rgba(0,0,0,0.4);
   white-space: nowrap;
-  overflow: visible;
+  overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
-  letter-spacing: -0.02em;
+  width: 100%;
+  letter-spacing: -0.04em;
 `;
 
 const PopupSubInfo = styled.div<{ $color?: string }>`
-  font-size: clamp(1.5rem, 5vw, 2.5rem);
+  font-size: clamp(1.2rem, 3vw, 1.8rem);
   font-weight: 800;
   color: ${({ $color }) => $color || 'rgba(255,255,255,0.95)'};
-  margin-bottom: 2rem;
+  margin-bottom: 1.6rem;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  text-shadow: 0 3px 15px rgba(0,0,0,0.3);
+  letter-spacing: 0.1em;
+  text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  opacity: 0.95;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
 `;
 
 const PopupStatus = styled.div<{ $status: 'present' | 'late' | 'checked_out' | 'error' | 'offline'; $bgColor?: string }>`
-  font-size: clamp(2rem, 7vw, 3.5rem);
+  font-size: clamp(1.8rem, 5vw, 3.8rem);
   font-weight: 950;
   color: ${({ $status }) =>
         $status === 'present' ? '#166534' :
@@ -1288,12 +1339,12 @@ const PopupStatus = styled.div<{ $status: 'present' | 'late' | 'checked_out' | '
         $status === 'checked_out' ? '#1e40af' :
         $status === 'offline' ? '#6b21a8' :
         '#991b1b'};
-  padding: 1.2rem 4rem;
+  padding: 1.2rem 4.5rem;
   background: ${({ $bgColor }) => $bgColor || 'rgba(255,255,255,0.95)'};
-  border-radius: 24px;
+  border-radius: 28px;
   text-transform: uppercase;
-  letter-spacing: 0.2em;
-  box-shadow: 0 15px 50px rgba(0,0,0,0.3);
+  letter-spacing: 0.22em;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.35);
   border: 4px solid rgba(0,0,0,0.1);
   font-family: 'Arial Black', 'Helvetica Neue', sans-serif;
   white-space: nowrap;
@@ -1350,6 +1401,7 @@ const RFIDAttendancePage: React.FC = () => {
     const [presentCount, setPresentCount] = useState(0);
     const [unknownCount, setUnknownCount] = useState(0);
     const [dupCount, setDupCount] = useState(0);
+    const [lastScannedImage, setLastScannedImage] = useState<string | null>(null);
     const [showPopup, setShowPopup] = useState(false);
     const [popupData, setPopupData] = useState<{
         name: string;
@@ -1359,6 +1411,7 @@ const RFIDAttendancePage: React.FC = () => {
         nameColor: string;
         subColor: string;
         statusBgColor: string;
+        picture_url?: string;
     } | null>(null);
     const [popupProgress, setPopupProgress] = useState(100);
     const popupTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -1409,6 +1462,7 @@ const RFIDAttendancePage: React.FC = () => {
             subColor: generateRandomColors(),
             statusBgColor: generateRandomColors(),
         });
+        setLastScannedImage(data.picture_url || null);
         setShowPopup(true);
 
         const startTime = Date.now();
@@ -1454,7 +1508,9 @@ const RFIDAttendancePage: React.FC = () => {
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const hiddenInputRef = useRef<HTMLInputElement>(null);
-    const isProcessingRef = useRef(false);
+    const scanQueueRef = useRef<string[]>([]);
+    const isProcessingQueueRef = useRef(false);
+    const isProcessingRef = useRef(false); // Legacy ref for backward compat if needed, but we'll use isProcessingQueueRef mostly
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [queueCount, setQueueCount] = useState(0);
     const [isSyncing, setIsSyncing] = useState(false);
@@ -1697,11 +1753,21 @@ const RFIDAttendancePage: React.FC = () => {
         }
     }, [showSettings, loadAutomationOverview]);
 
+    const prevOnlineRef = useRef<boolean | null>(null);
     useEffect(() => {
-        if (isOnline && queueCount > 0 && !isSyncing) {
+        // Trigger visible handleSync ONLY if:
+        // 1. We just transitioned from offline to online
+        // 2. We just loaded the page and are online with a pre-existing queue
+        // (Any subsequent scan while online will NOT trigger this because prevOnlineRef.current will be true)
+        const justCameOnline = isOnline && prevOnlineRef.current === false;
+        const initialLoadWithQueue = isOnline && prevOnlineRef.current === null && queueCount > 0;
+        
+        if (isOnline && queueCount > 0 && !isSyncing && (justCameOnline || initialLoadWithQueue)) {
             handleSync();
         }
-    }, [isOnline, queueCount]);
+        
+        prevOnlineRef.current = isOnline;
+    }, [isOnline, queueCount, isSyncing]);
 
     // Auto-start NFC scanning logic - unified with GlobalNFCListener
     useEffect(() => {
@@ -1820,10 +1886,33 @@ const RFIDAttendancePage: React.FC = () => {
         }
     };
 
-    const processUID = useCallback(async (uid: string) => {
-        if (!uid || !user?.school_id || isProcessingRef.current) return;
-        isProcessingRef.current = true;
+    const processUID = useCallback((uid: string) => {
+        if (!uid || !user?.school_id) return;
+        scanQueueRef.current.push(uid);
+        if (!isProcessingQueueRef.current) {
+            runScanQueue();
+        }
+    }, [user?.school_id]);
 
+    const runScanQueue = async () => {
+        if (isProcessingQueueRef.current || scanQueueRef.current.length === 0) return;
+        isProcessingQueueRef.current = true;
+
+        try {
+            while (scanQueueRef.current.length > 0) {
+                const uid = scanQueueRef.current.shift();
+                if (uid) {
+                    await executeUIDProcess(uid);
+                }
+            }
+        } finally {
+            isProcessingQueueRef.current = false;
+        }
+    };
+
+    const executeUIDProcess = useCallback(async (uid: string) => {
+        if (!uid || !user?.school_id) return;
+        
         // Clear any existing reset timer immediately when a new scan starts
         if (resetTimerRef.current) {
             clearTimeout(resetTimerRef.current);
@@ -1907,6 +1996,7 @@ const RFIDAttendancePage: React.FC = () => {
                     subInfo: `UID: ${cleanUID}`,
                     status: 'error',
                     time,
+                    picture_url: undefined
                 });
                 return;
             }
@@ -1917,23 +2007,26 @@ const RFIDAttendancePage: React.FC = () => {
             // UI Feedback
             setScannedPerson({ name: p.name });
 
-            if (result.type === 'already' || result.type === 'already_out') {
-                const isAlreadyOut = result.type === 'already_out';
-                setScanStatus('error');
-                setStatusMsg(isAlreadyOut ? `Already Left: ${p.name}` : `Already marked: ${p.name}`);
+            if (result.type === 'already' || result.type === 'already_out' || result.type === 'offline_already' || result.type === 'offline_already_out') {
+                const isAlreadyOut = result.type === 'already_out' || result.type === 'offline_already_out';
+                const status = isAlreadyOut ? 'checked_out' : (result.attendance_status === 'late' ? 'late' : 'present');
+                
+                setScanStatus('success');
+                setStatusMsg(isAlreadyOut ? `✓ Already Left: ${p.name}` : `✓ Already Marked: ${p.name}`);
                 setDupCount(c => c + 1);
                 addFeedItem({
                     type: 'warn',
                     name: p.name,
-                    sub: isAlreadyOut ? `Already checked out for today` : `Already marked Present`,
+                    sub: isAlreadyOut ? `Already checked out for today` : `Already marked ${status.toUpperCase()}`,
                     time,
                     personType
                 });
                 triggerPopup({
                     name: p.name,
-                    subInfo: isAlreadyOut ? `Already checked out` : `Already marked Present`,
-                    status: 'error',
+                    subInfo: isAlreadyOut ? `Already checked out` : `Already marked ${status.toUpperCase()}`,
+                    status: status,
                     time,
+                    picture_url: p.picture_url
                 });
             } else if (result.type === 'out') {
                 setScanStatus('success');
@@ -1951,50 +2044,15 @@ const RFIDAttendancePage: React.FC = () => {
                     subInfo: p.role || 'Staff',
                     status: 'checked_out',
                     time,
+                    picture_url: p.picture_url
                 });
             } else {
-                const isOffline = result.type === 'offline';
+                const isOffline = result.type === 'offline_present' || result.type === 'offline_late';
+                const isOnlineResult = result.type === 'online_present' || result.type === 'online_late';
                 const isLate = result.attendance_status === 'late';
-                if (isOffline) {
-                    setScanStatus('success');
-                    setStatusMsg(`Scan successful: ${p.name}`);
-                    setPresentCount(c => c + 1);
-
-                    const studentDisplayId = getStudentDisplayId({ id: p.person_id, roll_number: p.roll_number });
-                    const subLabel = p.type === 'student'
-                        ? `${p.class_name || ''}${p.section_name ? ` (${p.section_name})` : ''}`.trim()
-                        : p.role || 'Staff';
-                    const subAccent = p.type === 'student'
-                        ? (studentDisplayId ? String(studentDisplayId) : undefined)
-                        : (p.person_id ? String(p.person_id) : undefined);
-
-                    addFeedItem({
-                        type: 'success',
-                        name: `${p.name} (Pending Sync)`,
-                        fatherName: personType === 'student' ? p.father_name : undefined,
-                        sub: `${subLabel} • Scan successful`,
-                        subAccent,
-                        time,
-                        personType,
-                    });
-
-                    triggerPopup({
-                        name: p.name,
-                        subInfo: subLabel,
-                        status: 'offline',
-                        time,
-                    });
-
-                    const q = await rfidOfflineService.getQueue();
-                    setQueueCount(q.length);
-                    return;
-                }
-
-                const lateCount = isLate
-                    ? await fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: false })
-                    : undefined;
+                
                 setScanStatus('success');
-                setStatusMsg(`✓ ${p.name}`);
+                setStatusMsg(isLate ? `LATE Arrival: ${p.name}` : `PRESENT: ${p.name}`);
                 setPresentCount(c => c + 1);
 
                 const studentDisplayId = getStudentDisplayId({ id: p.person_id, roll_number: p.roll_number });
@@ -2005,25 +2063,52 @@ const RFIDAttendancePage: React.FC = () => {
                     ? (studentDisplayId ? String(studentDisplayId) : undefined)
                     : (p.person_id ? String(p.person_id) : undefined);
 
-                addFeedItem({
-                    type: 'success',
-                    name: p.name,
-                    fatherName: personType === 'student' ? p.father_name : undefined,
-                    sub: subLabel,
-                    subAccent,
-                    time,
-                    personType,
-                    attendanceStatus: isLate ? 'late' : 'present',
-                    attendanceLateCount: lateCount,
-                });
+                if (isOffline) {
+                    addFeedItem({
+                        type: 'success',
+                        name: `${p.name} (Offline)`,
+                        fatherName: personType === 'student' ? p.father_name : undefined,
+                        sub: `${subLabel} • ${isLate ? 'LATE' : 'PRESENT'}`,
+                        subAccent,
+                        time,
+                        personType,
+                    });
 
-                triggerPopup({
-                    name: p.name,
-                    subInfo: subLabel,
-                    status: isLate ? 'late' : 'present',
-                    time,
-                });
+                    triggerPopup({
+                        name: p.name,
+                        subInfo: subLabel,
+                        status: isLate ? 'late' : 'present',
+                        time,
+                        picture_url: p.picture_url
+                    });
 
+                    const q = await rfidOfflineService.getQueue();
+                    setQueueCount(q.length);
+                } else {
+                    const lateCount = isLate
+                        ? await fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: false })
+                        : undefined;
+
+                    addFeedItem({
+                        type: 'success',
+                        name: p.name,
+                        fatherName: personType === 'student' ? p.father_name : undefined,
+                        sub: subLabel,
+                        subAccent,
+                        time,
+                        personType,
+                        attendanceStatus: isLate ? 'late' : 'present',
+                        attendanceLateCount: lateCount,
+                    });
+
+                    triggerPopup({
+                        name: p.name,
+                        subInfo: subLabel,
+                        status: isLate ? 'late' : 'present',
+                        time,
+                        picture_url: p.picture_url
+                    });
+                }
             }
 
         } catch (err: any) {
@@ -2228,11 +2313,13 @@ const RFIDAttendancePage: React.FC = () => {
                     time,
                 });
             } else {
-                const isOffline = result.type === 'offline';
+                const isOffline = result.type === 'offline_present' || result.type === 'offline_late';
+                const isOnlineResult = result.type === 'online_present' || result.type === 'online_late';
                 const isLate = result.attendance_status === 'late';
+
                 if (isOffline) {
                     setScanStatus('success');
-                    setStatusMsg(`Scan successful: ${p.name}`);
+                    setStatusMsg(isLate ? `LATE Arrival: ${p.name}` : `PRESENT: ${p.name}`);
                     setPresentCount(c => c + 1);
 
                     const studentDisplayId = getStudentDisplayId({ id: p.person_id, roll_number: p.roll_number });
@@ -2245,9 +2332,9 @@ const RFIDAttendancePage: React.FC = () => {
 
                     addFeedItem({
                         type: 'success',
-                        name: `${p.name} (Pending Sync)`,
+                        name: `${p.name} (Offline)`,
                         fatherName: personType === 'student' ? p.father_name : undefined,
-                        sub: `${subLabel} • Scan successful`,
+                        sub: `${subLabel} • ${isLate ? 'LATE' : 'PRESENT'}`,
                         subAccent,
                         time,
                         personType,
@@ -2257,8 +2344,9 @@ const RFIDAttendancePage: React.FC = () => {
                     triggerPopup({
                         name: p.name,
                         subInfo: subLabel,
-                        status: 'offline',
+                        status: isLate ? 'late' : 'present',
                         time,
+                        picture_url: p.picture_url
                     });
                     return;
                 }
@@ -2267,7 +2355,7 @@ const RFIDAttendancePage: React.FC = () => {
                     ? await fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: false })
                     : undefined;
                 setScanStatus('success');
-                setStatusMsg(`✓ ${p.name}`);
+                setStatusMsg(isLate ? `LATE Arrival: ${p.name}` : `PRESENT: ${p.name}`);
                 setPresentCount(c => c + 1);
 
                 const studentDisplayId = getStudentDisplayId({ id: p.person_id, roll_number: p.roll_number });
@@ -2295,6 +2383,7 @@ const RFIDAttendancePage: React.FC = () => {
                     subInfo: subLabel,
                     status: isLate ? 'late' : 'present',
                     time,
+                    picture_url: p.picture_url
                 });
             }
 
@@ -2539,6 +2628,26 @@ const RFIDAttendancePage: React.FC = () => {
         });
     };
 
+    const handleTestScan = async () => {
+        if (!user?.school_id) return;
+        try {
+            const allMappings = await rfidOfflineService.getAllMappings();
+            const students = allMappings.filter(m => m.type === 'student');
+            
+            if (students.length === 0) {
+                showToast('No student records found in local cache. Please sync mappings first.', 'warning');
+                return;
+            }
+            
+            const randomStudent = students[Math.floor(Math.random() * students.length)];
+            // Pass the student UID to the existing processUID handler
+            processUID(randomStudent.rfid_uid);
+        } catch (error) {
+            console.error('Test scan failed:', error);
+            showToast('Failed to perform test scan.', 'error');
+        }
+    };
+
     return (
         <Page theme={themeObj}>
             <TopBar>
@@ -2574,6 +2683,15 @@ const RFIDAttendancePage: React.FC = () => {
                                 })}
                             </div>
                         </ProminentDate>
+
+                        <SecondaryBtn 
+                            theme={themeObj} 
+                            onClick={handleTestScan}
+                            style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#ca8a04', borderColor: 'rgba(234, 179, 8, 0.3)' }}
+                        >
+                            <BoltIcon style={{ fontSize: 18 }} />
+                            Test Scan
+                        </SecondaryBtn>
 
                         <SecondaryBtn theme={themeObj} onClick={openSettingsPasswordModal}>
                             <SettingsIcon style={{ fontSize: 18 }} />
@@ -2997,23 +3115,30 @@ const RFIDAttendancePage: React.FC = () => {
                         <PopupProgressFill $progress={popupProgress} />
                     </PopupProgressBar>
                     <PopupContent>
-                        <PopupIconWrapper $status={popupData.status}>
-                            {popupData.status === 'present' && <CheckCircle />}
-                            {popupData.status === 'late' && <AlertCircle />}
-                            {popupData.status === 'checked_out' && <LogoutIcon />}
-                            {popupData.status === 'offline' && <CloudSyncIcon />}
-                            {popupData.status === 'error' && <XCircle />}
-                        </PopupIconWrapper>
-                        <PopupName $color={popupData.nameColor}>{popupData.name}</PopupName>
-                        <PopupSubInfo $color={popupData.subColor}>{popupData.subInfo}</PopupSubInfo>
-                        <PopupStatus $status={popupData.status} $bgColor={popupData.statusBgColor}>
-                            {popupData.status === 'present' && 'Present'}
-                            {popupData.status === 'late' && 'Late Arrival'}
-                            {popupData.status === 'checked_out' && 'Checked Out'}
-                            {popupData.status === 'offline' && 'Scan Successful'}
-                            {popupData.status === 'error' && 'Error'}
-                        </PopupStatus>
-                        <PopupTime>{popupData.time}</PopupTime>
+                        {popupData.picture_url ? (
+                            <PopupImage src={popupData.picture_url} alt={popupData.name} />
+                        ) : (
+                            <PopupIconWrapper $status={popupData.status}>
+                                {popupData.status === 'present' && <CheckCircle />}
+                                {popupData.status === 'late' && <AlertCircle />}
+                                {popupData.status === 'checked_out' && <LogoutIcon />}
+                                {popupData.status === 'offline' && <CloudSyncIcon />}
+                                {popupData.status === 'error' && <XCircle />}
+                            </PopupIconWrapper>
+                        )}
+                        
+                        <PopupInfoWrapper>
+                            <PopupName $color={popupData.nameColor}>{popupData.name}</PopupName>
+                            <PopupSubInfo $color={popupData.subColor}>{popupData.subInfo}</PopupSubInfo>
+                            <PopupStatus $status={popupData.status} $bgColor={popupData.statusBgColor}>
+                                {popupData.status === 'present' && 'Present'}
+                                {popupData.status === 'late' && 'Late Arrival'}
+                                {popupData.status === 'checked_out' && 'Checked Out'}
+                                {popupData.status === 'offline' && 'Scan Successful'}
+                                {popupData.status === 'error' && 'Error'}
+                            </PopupStatus>
+                            <PopupTime>{popupData.time}</PopupTime>
+                        </PopupInfoWrapper>
                     </PopupContent>
                 </FullScreenPopup>
             )}

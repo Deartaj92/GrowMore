@@ -80,6 +80,24 @@ export interface CachedAttendanceHistoryItem {
 }
 
 class RFIDOfflineService {
+    private async fetchAndCacheImage(url: string): Promise<string | null> {
+        if (!url || url.startsWith('data:')) return url;
+        try {
+            const response = await fetch(url, { mode: 'cors', cache: 'force-cache' });
+            if (!response.ok) return null;
+            const blob = await response.blob();
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = () => resolve(null);
+                reader.readAsDataURL(blob);
+            });
+        } catch (error) {
+            console.warn('Failed to fetch and cache image:', url, error);
+            return null;
+        }
+    }
+
     private db: IDBDatabase | null = null;
     private inMemoryTodayScans: Map<string, { status: string; check_in_time: string; check_out_time: string | null }> = new Map();
     private lastHistoryRefresh: number = 0;
@@ -385,38 +403,49 @@ class RFIDOfflineService {
 
     private async getActiveSessionId(schoolId: number): Promise<number | null> {
         const cachedSession = await this.getConfig(KEY_ACTIVE_SESSION);
+        
         if (navigator.onLine) {
-            const { data: session } = await supabase
-                .from('sessions')
-                .select('id')
-                .eq('school_id', schoolId)
-                .eq('is_active', true)
-                .maybeSingle();
+            // Background refresh
+            (async () => {
+                try {
+                    const { data: session } = await supabase
+                        .from('sessions')
+                        .select('id')
+                        .eq('school_id', schoolId)
+                        .eq('is_active', true)
+                        .maybeSingle();
 
-            if (session?.id) {
-                await this.cacheConfig(KEY_ACTIVE_SESSION, session.id);
-                return Number(session.id);
-            }
+                    if (session?.id) {
+                        await this.cacheConfig(KEY_ACTIVE_SESSION, session.id);
+                    }
+                } catch (e) {}
+            })();
         }
 
         return cachedSession ? Number(cachedSession) : null;
     }
 
     private async getAttendanceSettings(schoolId: number): Promise<any> {
-        let settings = await this.getConfig(KEY_ATTN_SETTINGS);
+        const cachedSettings = await this.getConfig(KEY_ATTN_SETTINGS);
+        
         if (navigator.onLine) {
-            const { data: onlineSettings } = await supabase
-                .from('attendance_settings')
-                .select('*')
-                .eq('school_id', schoolId)
-                .maybeSingle();
+            // Background refresh
+            (async () => {
+                try {
+                    const { data: onlineSettings } = await supabase
+                        .from('attendance_settings')
+                        .select('*')
+                        .eq('school_id', schoolId)
+                        .maybeSingle();
 
-            if (onlineSettings) {
-                settings = onlineSettings;
-                await this.cacheConfig(KEY_ATTN_SETTINGS, onlineSettings);
-            }
+                    if (onlineSettings) {
+                        await this.cacheConfig(KEY_ATTN_SETTINGS, onlineSettings);
+                    }
+                } catch (e) {}
+            })();
         }
-        return settings;
+
+        return cachedSettings;
     }
 
     private buildHistoryItem(
@@ -596,6 +625,33 @@ class RFIDOfflineService {
                 store.add(mapping);
                 serializedMappings.push(mapping);
             });
+
+            // Use a chunked approach to fetch and cache images concurrently but without overloading
+            const cacheImages = async (mappings: RFIDMapping[]) => {
+                const chunks = [];
+                const chunkSize = 5;
+                for (let i = 0; i < mappings.length; i += chunkSize) {
+                    chunks.push(mappings.slice(i, i + chunkSize));
+                }
+
+                for (const chunk of chunks) {
+                    await Promise.all(chunk.map(async (m) => {
+                        if (m.picture_url && !m.picture_url.startsWith('data:')) {
+                            const cached = await this.fetchAndCacheImage(m.picture_url);
+                            if (cached) {
+                                m.picture_url = cached;
+                                // Re-save to store with cached image
+                                const txImg = db.transaction(STORE_MAPPINGS, 'readwrite');
+                                const storeImg = txImg.objectStore(STORE_MAPPINGS);
+                                storeImg.put(m);
+                            }
+                        }
+                    }));
+                }
+            };
+
+            // Start image caching in background after initial sync
+            cacheImages(serializedMappings).catch(err => console.warn('Background image caching failed:', err));
 
             let sessionId: number | null = null;
             let settingsPayload: any = null;
@@ -1122,7 +1178,7 @@ class RFIDOfflineService {
     /**
      * Sync queued scans with Supabase
      */
-    async syncQueue(onProgress?: (current: number, total: number) => void): Promise<{ success: number; failed: number }> {
+    async syncQueue(onProgress?: (current: number, total: number) => void, silent: boolean = false): Promise<{ success: number; failed: number }> {
         if (!navigator.onLine) return { success: 0, failed: 0 };
 
         const queue = await this.getQueue();
@@ -1192,7 +1248,7 @@ class RFIDOfflineService {
         }
 
         window.dispatchEvent(new CustomEvent('offline-sync-completed', {
-            detail: { success: successCount, failed: failedCount }
+            detail: { success: successCount, failed: failedCount, silent }
         }));
 
         return { success: successCount, failed: failedCount };
@@ -1384,80 +1440,115 @@ class RFIDOfflineService {
             }
 
             const settings = await this.getAttendanceSettings(schoolId);
-            const onlineTimestamp = navigator.onLine ? (await this.getServerTimestamp()) || new Date().toISOString() : new Date().toISOString();
-            const today = targetDate || this.getLocalTimestampParts(onlineTimestamp, settings?.timezone || 'Asia/Karachi').date;
+            const now = new Date().toISOString();
+            const offlineSettings = settings || await this.getConfig(KEY_ATTN_SETTINGS);
+            const offlineTimezone = offlineSettings?.timezone || 'Asia/Karachi';
+            const localParts = this.getLocalTimestampParts(now, offlineTimezone);
+            const offlineDate = targetDate || localParts.date;
+            const sessionId = await this.getActiveSessionId(schoolId);
+            const currentPerson = person as RFIDMapping;
 
+            // --- Local-First logic for instant feedback ---
+            const existingHistory = await this.getCachedDailyAttendanceHistory(schoolId, offlineDate);
+            const historyKey = this.buildDailyHistoryKey(schoolId, offlineDate, currentPerson.type, currentPerson.person_id);
+            const existingRecord = existingHistory.find(h => h.key === historyKey);
+
+            let result: { 
+                success: boolean; 
+                person: RFIDMapping | null; 
+                type: MarkResultType; 
+                attendance_status?: string; 
+                recorded_time?: string; 
+            };
+
+            if (existingRecord) {
+                // Duplicate handling (Checkout or Already Marked)
+                if (currentPerson.type === 'employee' && this.isEmployeeActiveAttendance(existingRecord)) {
+                    // Try to checkout
+                    if (!this.isCheckoutAllowed(now, offlineDate, offlineSettings)) {
+                        result = { success: false, person: currentPerson, type: 'offline_checkout_early', attendance_status: existingRecord.status || 'present', recorded_time: existingRecord.check_in_time || now };
+                    } else {
+                        await this.upsertCachedAttendanceHistoryItem({ ...existingRecord, check_out_time: now, updated_at: now });
+                        await this.queueScan({
+                            rfid_uid: cleanUID, person_id: currentPerson.person_id, person_type: currentPerson.type,
+                            school_id: schoolId, session_id: sessionId, date: offlineDate, timestamp: now,
+                            scan_type: 'out', platform, sync_status: 'pending', sequence_order: Date.now(), source: 'rfid-offline',
+                            class_id: currentPerson.class_id, section_id: currentPerson.section_id
+                        });
+                        result = { success: true, person: currentPerson, type: 'out', attendance_status: existingRecord.status || 'present', recorded_time: now };
+                    }
+                } else if (currentPerson.type === 'employee' && existingRecord.check_out_time) {
+                    result = { success: true, person: currentPerson, type: 'already_out', attendance_status: existingRecord.status || 'present', recorded_time: existingRecord.check_out_time };
+                } else {
+                    result = { success: true, person: currentPerson, type: 'already', attendance_status: existingRecord.status || 'present', recorded_time: existingRecord.check_in_time || now };
+                }
+            } else {
+                // New scan of the day
+                const computedStatus = this.computeAttendanceStatus(currentPerson.type, now, offlineDate, offlineSettings);
+                await this.upsertCachedAttendanceHistoryItem(this.buildHistoryItem(schoolId, offlineDate, currentPerson, {
+                    status: computedStatus, check_in_time: now, check_out_time: null, source: 'rfid-offline', updated_at: now
+                }));
+                await this.queueScan({
+                    rfid_uid: cleanUID, person_id: currentPerson.person_id, person_type: currentPerson.type,
+                    school_id: schoolId, session_id: sessionId, date: offlineDate, timestamp: now,
+                    scan_type: 'in', platform, sync_status: 'pending', sequence_order: Date.now(), source: 'rfid-offline',
+                    class_id: currentPerson.class_id, section_id: currentPerson.section_id
+                });
+                const isOnline = navigator.onLine;
+                result = { 
+                    success: true, 
+                    person: currentPerson, 
+                    type: isOnline 
+                        ? (computedStatus === 'late' ? 'online_late' : 'online_present')
+                        : (computedStatus === 'late' ? 'offline_late' : 'offline_present'), 
+                    attendance_status: computedStatus, 
+                    recorded_time: now 
+                };
+            }
+
+            // --- Background Sync (Instant return after this) ---
             if (navigator.onLine) {
+                // Trigger sync but don't await (Silent background sync for single online scan)
+                this.syncQueue(undefined, true).catch(err => console.warn('Background scan sync failed:', err));
+                
+                // Background cache priming
                 const shouldRefresh = Date.now() - this.lastHistoryRefresh > this.historyRefreshInterval;
                 if (shouldRefresh) {
-                    this.cacheDailyAttendanceHistory(schoolId, today).catch(() => {});
+                    this.cacheDailyAttendanceHistory(schoolId, offlineDate).catch(() => {});
                     this.lastHistoryRefresh = Date.now();
                 }
             }
 
-            if (navigator.onLine) {
-                const sessionId = await this.getActiveSessionId(schoolId);
-                const result = await this.applyScanToServer({
-                    person: resolvedPerson,
-                    schoolId,
-                    date: today,
-                    timestamp: onlineTimestamp,
-                    sessionId,
-                    settings,
-                    mode: 'online',
-                    platform,
-                });
-
-                if (result.success && result.type === 'new') {
-                    const cacheKey = `${schoolId}:${today}:${person.type}:${person.person_id}`;
-                    this.inMemoryTodayScans.set(cacheKey, {
-                        status: result.attendance_status || 'present',
-                        check_in_time: result.recorded_time || onlineTimestamp,
-                        check_out_time: null,
-                    });
-                } else if (result.type === 'out') {
-                    const cacheKey = `${schoolId}:${today}:${person.type}:${person.person_id}`;
-                    const existing = this.inMemoryTodayScans.get(cacheKey);
-                    if (existing) {
-                        existing.check_out_time = result.recorded_time || onlineTimestamp;
-                    }
-                }
-
-                return {
-                    success: result.success,
-                    person,
-                    type: result.type,
-                    attendance_status: result.attendance_status,
-                    recorded_time: result.recorded_time,
-                };
-            } else {
-                const currentPerson = person as RFIDMapping;
-                const now = new Date().toISOString();
-                const sessionId = await this.getActiveSessionId(schoolId);
-                await this.queueScan({
-                    rfid_uid: cleanUID,
-                    person_id: currentPerson.person_id,
-                    person_type: currentPerson.type,
-                    school_id: schoolId,
-                    session_id: sessionId,
-                    date: today,
-                    timestamp: now,
-                    class_id: currentPerson.class_id,
-                    section_id: currentPerson.section_id,
-                    platform,
-                    sync_status: 'pending',
-                    sequence_order: Date.now(),
-                    source: 'rfid-offline',
-                });
-                return { success: true, person: currentPerson, type: 'offline', recorded_time: now };
-            }
-
+            return result;
         } catch (error) {
-            console.error('Failed to mark attendance:', error);
+            console.error('RFID markAttendance failed:', error);
             return { success: false, person: null, type: 'error' };
         }
+    }
+
+    /**
+     * Retrieve all locally cached mappings.
+     * Useful for testing and debugging.
+     */
+    async getAllMappings(): Promise<RFIDMapping[]> {
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(STORE_MAPPINGS, 'readonly');
+            const store = transaction.objectStore(STORE_MAPPINGS);
+            const request = store.getAll();
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    /**
+     * Explicitly cache attendance settings to local IndexedDB.
+     * Called from the UI when settings are saved so offline scans use up-to-date rules.
+     */
+    async cacheAttendanceSettings(settings: any): Promise<void> {
+        await this.cacheConfig(KEY_ATTN_SETTINGS, settings);
     }
 }
 
 export const rfidOfflineService = new RFIDOfflineService();
-export type MarkResultType = 'new' | 'already' | 'error' | 'offline' | 'out' | 'error_checkout_early' | 'already_out' | 'error_inactive' | 'error_manual_only';
+export type MarkResultType = 'new' | 'already' | 'error' | 'offline' | 'out' | 'error_checkout_early' | 'already_out' | 'error_inactive' | 'error_manual_only' | 'offline_present' | 'offline_late' | 'offline_checkout' | 'offline_already' | 'offline_already_out' | 'offline_checkout_early' | 'online_present' | 'online_late';

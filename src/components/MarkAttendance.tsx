@@ -1459,30 +1459,12 @@ const MarkAttendance: React.FC = () => {
 
   const didSetDefaultStatus = useRef(false);
   const didAutoSelect = useRef(false);
-  useEffect(() => {
-    if (!didSetDefaultStatus.current && students.length > 0) {
-      // Only set default status if there are no existing attendance records
-      if (!hasAttendanceRecords) {
-        setStudents(prev => prev.map(s => ({ ...s, status: s.status || 'present' })));
-      }
-      didSetDefaultStatus.current = true;
-    }
-    if (students.length > 0 && !didAutoSelect.current) {
-      // Only auto-select if there are no existing attendance records
-      if (!hasAttendanceRecords) {
-        setSelectedRows(students.map(s => s.id));
-      } else {
-        // If there are existing records, only select students who have status
-        setSelectedRows(students.filter(s => s.status).map(s => s.id));
-      }
-      didAutoSelect.current = true;
-    }
-    // eslint-disable-next-line
-  }, [students, hasAttendanceRecords]);
-
+  // Default status and selection are now handled directly in fetchStudents to avoid race conditions
   useEffect(() => {
     didSetDefaultStatus.current = false;
+    didAutoSelect.current = false;
   }, [selectedClass, selectedSection, date]);
+
 
   // Check WhatsApp notification permission
   useEffect(() => {
@@ -2197,8 +2179,21 @@ const MarkAttendance: React.FC = () => {
           isOnLeave,
         };
       }).sort((a, b) => a.id - b.id);
+      
       setStudents(formattedStudents);
-      setHasAttendanceRecords((attendanceData || []).length > 0);
+      const recordsCount = (attendanceData || []).length;
+      setHasAttendanceRecords(recordsCount > 0);
+      
+      // Auto-select logic: 
+      // If no records for the day, select everyone (they default to 'present')
+      // If some records exist, only select those with records
+      if (recordsCount === 0) {
+        setSelectedRows(formattedStudents.map(s => s.id));
+      } else {
+        setSelectedRows(formattedStudents.filter(s => s.status).map(s => s.id));
+      }
+      didAutoSelect.current = true;
+      didSetDefaultStatus.current = true;
       
       // Log attendance view activity (no notification for view)
       try {
@@ -2345,10 +2340,17 @@ const MarkAttendance: React.FC = () => {
     try {
       // Only allow valid statuses
       const validStatuses = ['present', 'absent', 'leave', 'late'];
-      const filtered = filteredStudents(students);
-      const studentsToSave = filtered.filter(student => typeof student.status === 'string' && validStatuses.includes(student.status));
+      // Filter only selected students that have a valid status
+      const studentsToSave = students.filter(student => 
+        selectedRows.includes(student.id) && 
+        typeof student.status === 'string' && 
+        validStatuses.includes(student.status)
+      );
+      
       if (studentsToSave.length === 0) {
-        toast.showToast('No valid attendance records to save', 'error');
+        toast.showToast('Please select at least one student with a status to save', 'error');
+        setSaving(false);
+        completeProgress();
         return;
       }
       
@@ -2619,7 +2621,8 @@ const MarkAttendance: React.FC = () => {
         .delete()
         .eq('class_id', selectedClass)
         .eq('date', date)
-        .eq('school_id', user.school_id);
+        .eq('school_id', user.school_id)
+        .in('student_id', selectedRows); // Only delete records for selected students
       
       // Only filter by section if the class has sections
       if (hasSections) {
@@ -2633,9 +2636,12 @@ const MarkAttendance: React.FC = () => {
       if (error) throw error;
 
       setProgress(80);
-      // Set all students to present after deletion
-      setStudents(prev => prev.map(s => ({ ...s, status: 'present' })));
-      setHasAttendanceRecords(false);
+      
+      // Clear selection after deletion
+      setSelectedRows([]);
+      
+      // Refresh the students list to show updated state (this handles resetting to default if needed)
+      await fetchStudents();
       
       setProgress(100);
       completeProgress();
@@ -3229,9 +3235,9 @@ const MarkAttendance: React.FC = () => {
           <>
             <Overlay onClick={() => setShowDeleteConfirm(false)} />
             <ConfirmationDialog>
-              <DialogTitle>Delete Attendance Records</DialogTitle>
+              <DialogTitle>Delete Selected Records</DialogTitle>
               <DialogContent>
-                Are you sure you want to delete all attendance records for the selected class, section, and date? This action cannot be undone.
+                Are you sure you want to delete attendance records for the {selectedRows.length} selected student(s)? This action cannot be undone.
               </DialogContent>
               <DialogButtons>
                 <DialogButton onClick={() => setShowDeleteConfirm(false)}>
