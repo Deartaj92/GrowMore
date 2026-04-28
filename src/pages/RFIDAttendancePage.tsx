@@ -2628,25 +2628,6 @@ const RFIDAttendancePage: React.FC = () => {
         });
     };
 
-    const handleTestScan = async () => {
-        if (!user?.school_id) return;
-        try {
-            const allMappings = await rfidOfflineService.getAllMappings();
-            const students = allMappings.filter(m => m.type === 'student');
-            
-            if (students.length === 0) {
-                showToast('No student records found in local cache. Please sync mappings first.', 'warning');
-                return;
-            }
-            
-            const randomStudent = students[Math.floor(Math.random() * students.length)];
-            // Pass the student UID to the existing processUID handler
-            processUID(randomStudent.rfid_uid);
-        } catch (error) {
-            console.error('Test scan failed:', error);
-            showToast('Failed to perform test scan.', 'error');
-        }
-    };
 
     return (
         <Page theme={themeObj}>
@@ -2684,14 +2665,6 @@ const RFIDAttendancePage: React.FC = () => {
                             </div>
                         </ProminentDate>
 
-                        <SecondaryBtn 
-                            theme={themeObj} 
-                            onClick={handleTestScan}
-                            style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#ca8a04', borderColor: 'rgba(234, 179, 8, 0.3)' }}
-                        >
-                            <BoltIcon style={{ fontSize: 18 }} />
-                            Test Scan
-                        </SecondaryBtn>
 
                         <SecondaryBtn theme={themeObj} onClick={openSettingsPasswordModal}>
                             <SettingsIcon style={{ fontSize: 18 }} />

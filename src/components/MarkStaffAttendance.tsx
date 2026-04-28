@@ -700,19 +700,10 @@ const MarkStaffAttendance: React.FC = () => {
   const isCheckingHoliday = useRef(false);
   const isFetchingStaff = useRef(false);
 
-  useEffect(() => {
-    if (!didSetDefaultStatus.current && staffMembers.length > 0) {
-      setStaffMembers(prev => prev.map(s => ({ ...s, status: s.status || 'present' })));
-      didSetDefaultStatus.current = true;
-    }
-    if (staffMembers.length > 0 && !didAutoSelect.current) {
-      setSelectedRows(staffMembers.map(s => s.id));
-      didAutoSelect.current = true;
-    }
-  }, [staffMembers]);
-
+  // Default status and selection are now handled directly in fetchStaff
   useEffect(() => {
     didSetDefaultStatus.current = false;
+    didAutoSelect.current = false;
   }, [date]);
 
   // Main data loading effect with progress bar
@@ -997,7 +988,7 @@ const MarkStaffAttendance: React.FC = () => {
           id: staff.id,
           name: staff.name,
           role: staff.role,
-          status: att ? att.status : (isOnLeave ? 'leave' : undefined),
+          status: att ? att.status : (isOnLeave ? 'leave' : (attendanceData && attendanceData.length === 0 ? 'present' : undefined)),
           paidLeave: att ? !!att.paid_leave : false,
           picture_url: staff.picture_url,
           remarks: att ? att.remarks || '' : '',
@@ -1019,7 +1010,17 @@ const MarkStaffAttendance: React.FC = () => {
       });
       
       setStaffMembers(formattedStaff);
-      setHasAttendanceRecords((attendanceData || []).length > 0);
+      const recordsCount = (attendanceData || []).length;
+      setHasAttendanceRecords(recordsCount > 0);
+      
+      // Auto-select logic
+      if (recordsCount === 0) {
+        setSelectedRows(formattedStaff.filter(s => !s.isOnHoliday).map(s => s.id));
+      } else {
+        setSelectedRows(formattedStaff.filter(s => s.status && !s.isOnHoliday).map(s => s.id));
+      }
+      didAutoSelect.current = true;
+      didSetDefaultStatus.current = true;
     } catch (error) {
       toast.showToast('Failed to fetch staff', 'error');
     } finally {
@@ -1208,13 +1209,12 @@ const MarkStaffAttendance: React.FC = () => {
     
     try {
       const validStatuses = ['present', 'absent', 'leave', 'late'];
-      // Filter staffMembers directly instead of using filteredStaff
-      const staffToSave = staffMembers.filter(staff => {
-        const matchesSearch = !searchTerm || 
-          staff.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          staff.role.toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesSearch && typeof staff.status === 'string' && validStatuses.includes(staff.status);
-      });
+      // Only save selected staff who have a valid status
+      const staffToSave = staffMembers.filter(staff => 
+        selectedRows.includes(staff.id) &&
+        typeof staff.status === 'string' && 
+        validStatuses.includes(staff.status)
+      );
       
       if (staffToSave.length === 0) {
         toast.showToast('No valid attendance records to save', 'error');
@@ -1290,14 +1290,14 @@ const MarkStaffAttendance: React.FC = () => {
         .delete()
         .eq('date', date)
         .eq('school_id', user.school_id)
-        .eq('session_id', sessionId || 0);
+        .eq('session_id', sessionId || 0)
+        .in('staff_id', selectedRows); // Only delete for selected staff
 
       if (error) throw error;
 
       setProgress(80);
-      // Set all staff to present after deletion
-      setStaffMembers(prev => prev.map(s => ({ ...s, status: 'present', paidLeave: false })));
-      setHasAttendanceRecords(false);
+      setSelectedRows([]);
+      await fetchStaff();
       
       setProgress(100);
       completeProgress();
@@ -1898,10 +1898,10 @@ const MarkStaffAttendance: React.FC = () => {
             border: `1px solid ${theme === 'dark' ? darkTheme.BORDER : lightTheme.BORDER}`
           }}>
             <h3 style={{ margin: '0 0 1rem 0', color: theme === 'dark' ? darkTheme.TEXT_PRIMARY : lightTheme.TEXT_PRIMARY, fontSize: '1.2rem' }}>
-              Delete Staff Attendance Records
+              Delete Selected Staff Records
             </h3>
             <p style={{ margin: '0 0 1.5rem 0', color: theme === 'dark' ? darkTheme.TEXT_SECONDARY : lightTheme.TEXT_SECONDARY, fontSize: '1rem', lineHeight: 1.5 }}>
-              Are you sure you want to delete all staff attendance records for the selected date? This action cannot be undone.
+              Are you sure you want to delete attendance records for the {selectedRows.length} selected staff member(s)? This action cannot be undone.
             </p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
               <button
