@@ -41,7 +41,8 @@ import {
   compareClassNames,
   formatCurrency,
   getStatus,
-  getCurrentMonthRange
+  getCurrentMonthRange,
+  isDobAnniversaryToday
 } from './utils/dashboardUtils';
 import {
   generateDummyStudents,
@@ -70,6 +71,7 @@ import { fetchAccountsData, AccountsData } from './services/accountsService';
 import TabNavigation from './components/shared/TabNavigation';
 import DeleteModal from './components/shared/DeleteModal';
 import AttendanceTab from './components/AttendanceTab/AttendanceTab';
+import BirthdaysTab from './components/BirthdaysTab/BirthdaysTab';
 import FeeTab from './components/FeeTab/FeeTab';
 import AdmissionsTab from './components/AdmissionsTab/AdmissionsTab';
 import HomeworkTab from './components/HomeworkTab/HomeworkTab';
@@ -159,6 +161,7 @@ const Dashboard: React.FC = () => {
           'dashboard-tab-employee-attendance': 'employeeAttendance',
           'dashboard-tab-accounts': 'accounts',
           'dashboard-tab-predictions': 'predictions',
+          'dashboard-tab-birthdays': 'birthdays',
         };
 
         const allowed = new Set<DashboardTab>();
@@ -636,7 +639,7 @@ const Dashboard: React.FC = () => {
     const [studentsData, classesData, sectionsData, attendanceData, staffData] = await Promise.all([
       fetchAllRows(async (from, to) => {
         return await supabase.from('students')
-          .select('id, name, father_name, gender, status, class_id, section_id')
+          .select('id, name, father_name, gender, status, class_id, section_id, dob, picture_url, roll_number')
           .eq('school_id', user.school_id)
           .eq('status', 'active')
           .range(from, to);
@@ -3450,6 +3453,31 @@ const Dashboard: React.FC = () => {
     })).sort((a, b) => compareClassNames(a.name, b.name));
   }, [admissionsData.recentStudents, classes, getClassName]);
 
+  const birthdaysToday = useMemo(() => {
+    if (!studentClassHistory?.length || !students?.length) return [];
+    const sessionIds = new Set(studentClassHistory.map((r: any) => r.student_id));
+    return students
+      .filter(
+        (s: any) =>
+          sessionIds.has(s.id) &&
+          s.status === 'active' &&
+          isDobAnniversaryToday(s.dob)
+      )
+      .sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+  }, [students, studentClassHistory]);
+
+  const birthdaysTabVisible = useMemo(() => {
+    if (birthdaysToday.length === 0) return false;
+    if (allowedTabs.size === 0) return true;
+    return allowedTabs.has('birthdays');
+  }, [birthdaysToday, allowedTabs]);
+
+  useEffect(() => {
+    if (activeTab === 'birthdays' && !birthdaysTabVisible) {
+      setActiveTab('attendance');
+    }
+  }, [activeTab, birthdaysTabVisible]);
+
   // ==========================================
   // RENDER
   // ==========================================
@@ -3532,6 +3560,7 @@ const Dashboard: React.FC = () => {
         setAbsentDate={setAbsentDate}
         setFineDate={setFineDate}
         allowedTabs={allowedTabs}
+        birthdaysTabVisible={birthdaysTabVisible}
       />
 
       {/* Show loader if tab is loading */}
@@ -3701,6 +3730,14 @@ const Dashboard: React.FC = () => {
 
           {activeTab === 'predictions' && (
             <PredictionsTab user={user} />
+          )}
+
+          {activeTab === 'birthdays' && birthdaysTabVisible && (
+            <BirthdaysTab
+              birthdays={birthdaysToday}
+              getClassName={getClassName}
+              getSectionName={getSectionName}
+            />
           )}
         </>
       )}

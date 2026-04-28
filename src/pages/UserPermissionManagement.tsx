@@ -22,6 +22,7 @@ import {
   Assignment,
   Groups,
   Lightbulb,
+  Cake,
 } from '@mui/icons-material';
 import { useToast } from '../components/useToast';
 import { menuStructure, MenuItem as MenuItemType, MenuSection } from '../components/Layout/menuStructure';
@@ -1043,7 +1044,8 @@ const UserPermissionManagement: React.FC = () => {
       '/dashboard/tab/homework',
       '/dashboard/tab/employeeAttendance',
       '/dashboard/tab/accounts',
-      '/dashboard/tab/predictions'
+      '/dashboard/tab/predictions',
+      '/dashboard/tab/birthdays'
     ];
     const dashboardTabPermissionIds = dashboardTabPaths
       .map(path => getPermissionIdForPath(path))
@@ -1908,6 +1910,7 @@ const UserPermissionManagement: React.FC = () => {
                         { path: '/dashboard/tab/employeeAttendance', label: 'Employee Attendance', icon: <Groups />, color: '#06b6d4' },
                         { path: '/dashboard/tab/accounts', label: 'Accounts', icon: <AccountBalanceIcon />, color: '#ec4899' },
                         { path: '/dashboard/tab/predictions', label: 'Predictions (ML)', icon: <Lightbulb />, color: '#eab308' },
+                        { path: '/dashboard/tab/birthdays', label: 'Birthdays', icon: <Cake />, color: '#ec4899' },
                       ] : [];
                       return (
                         <React.Fragment key={itemIdx}>

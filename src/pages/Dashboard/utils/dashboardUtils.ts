@@ -11,6 +11,37 @@ export function isNoSessionError(error: any): boolean {
   );
 }
 
+/** True when `dob` (YYYY-MM-DD or ISO) falls on today's calendar month/day (local). */
+export function isDobAnniversaryToday(dob: string | null | undefined): boolean {
+  if (!dob || typeof dob !== 'string') return false;
+  const datePart = dob.split('T')[0];
+  const parts = datePart.split('-');
+  if (parts.length < 3) return false;
+  const month = parseInt(parts[1], 10);
+  const day = parseInt(parts[2], 10);
+  if (!month || !day || Number.isNaN(month) || Number.isNaN(day)) return false;
+  const now = new Date();
+  return now.getMonth() + 1 === month && now.getDate() === day;
+}
+
+/** Completed years on the given reference date (local calendar). */
+export function ageCompletedYearsOnDate(dobIso: string, ref: Date = new Date()): number {
+  const datePart = dobIso.split('T')[0];
+  const parts = datePart.split('-');
+  if (parts.length < 3) return 0;
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  const d = parseInt(parts[2], 10);
+  if (!y || !m || !d) return 0;
+  const birth = new Date(y, m - 1, d);
+  let age = ref.getFullYear() - birth.getFullYear();
+  const beforeBirthday =
+    ref.getMonth() < birth.getMonth() ||
+    (ref.getMonth() === birth.getMonth() && ref.getDate() < birth.getDate());
+  if (beforeBirthday) age--;
+  return Math.max(0, age);
+}
+
 export const compareClassNames = (a: string, b: string): number => {
   // Extract numbers from class names (e.g., "Class 1", "1st", "10th", etc.)
   const getClassNumber = (className: string): number => {

@@ -8,7 +8,8 @@ import {
   Assignment,
   Groups,
   AccountBalance,
-  Lightbulb
+  Lightbulb,
+  Cake
 } from '@mui/icons-material';
 import { TabContainer, TabsWrapper, TabButton, OverflowButton, TabsContainer, DropdownMenu, DropdownMenuItem } from '../../styles';
 import { DashboardTab } from '../../types';
@@ -22,6 +23,8 @@ interface TabNavigationProps {
   setAbsentDate: (date: string) => void;
   setFineDate: (date: string) => void;
   allowedTabs?: Set<DashboardTab>;
+  /** When false, the Birthdays tab is hidden (e.g. no birthdays today). Default true. */
+  birthdaysTabVisible?: boolean;
 }
 
 interface TabInfo {
@@ -37,7 +40,8 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
   setDashboardDate,
   setAbsentDate,
   setFineDate,
-  allowedTabs
+  allowedTabs,
+  birthdaysTabVisible = true
 }) => {
   const tabsWrapperRef = useRef<HTMLDivElement>(null);
   const tabsContainerRef = useRef<HTMLDivElement>(null);
@@ -54,14 +58,19 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
     { id: 'homework', label: 'Homework Diary', icon: <Assignment /> },
     { id: 'employeeAttendance', label: 'Employee Attendance', icon: <Groups /> },
     { id: 'accounts', label: 'Accounts', icon: <AccountBalance /> },
-    { id: 'predictions', label: 'Predictions (ML)', icon: <Lightbulb /> }
+    { id: 'predictions', label: 'Predictions (ML)', icon: <Lightbulb /> },
+    { id: 'birthdays', label: 'Birthdays', icon: <Cake /> }
   ];
 
-  // Filter tabs based on allowedTabs (if provided and non-empty, only show allowed tabs)
+  // Filter: optional Birthdays tab, then allowedTabs
   const tabs = useMemo(() => {
-    if (!allowedTabs || allowedTabs.size === 0) return allTabs;
-    return allTabs.filter(tab => allowedTabs.has(tab.id));
-  }, [allowedTabs]);
+    let list = allTabs;
+    if (!birthdaysTabVisible) {
+      list = list.filter(t => t.id !== 'birthdays');
+    }
+    if (!allowedTabs || allowedTabs.size === 0) return list;
+    return list.filter(tab => allowedTabs.has(tab.id));
+  }, [allowedTabs, birthdaysTabVisible]);
 
   // Get all hidden tabs (not visible in container)
   const getHiddenTabs = useCallback(() => {

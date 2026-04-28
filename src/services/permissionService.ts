@@ -13,7 +13,8 @@ export interface Permission {
 // Sync permissions on module load (runs once when the service is imported)
 let syncPromise: Promise<void> | null = null;
 export function ensurePermissionsSynced(): Promise<void> {
-  if (!syncPromise) {
+  // In development, always sync to catch new permissions during hot reloads
+  if (!syncPromise || process.env.NODE_ENV !== 'production') {
     syncPromise = syncPermissionsFromMenuStructure();
   }
   return syncPromise;

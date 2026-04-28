@@ -534,8 +534,8 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
         </ContentCard>
       </ContentGrid>
 
-      {/* Absentees Section */}
-      {showAbsentees && (
+      {/* Absentees Section — only when there are absent records */}
+      {showAbsentees && absentees.length > 0 && (
         <ContentCard theme={theme}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', cursor: 'pointer' }} onClick={() => setIsAbsenteesExpanded(!isAbsenteesExpanded)}>
             <CardTitle theme={theme} style={{ margin: 0 }}>
@@ -595,11 +595,6 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
               </div>
             </div>
             <div style={{ display: isAbsenteesExpanded ? 'block' : 'none' }}>
-              {absentees.length === 0 ? (
-                <EmptyState theme={theme}>
-                  No absent employees found for this date
-                </EmptyState>
-              ) : (
                     <>
                       {/* Mobile Card View */}
                       {isMobile && (
@@ -811,7 +806,6 @@ const EmployeeAttendanceTab: React.FC<EmployeeAttendanceTabProps> = ({
                         <span className="stat avg">P%: <b>{attendanceDataForDate.length ? Math.round(((attendanceDataForDate.filter(a => a.status === 'present').length + attendanceDataForDate.filter(a => a.status === 'late').length + attendanceDataForDate.filter(a => a.status === 'half_day').length) / attendanceDataForDate.length) * 100) : 0}%</b></span>
                       </AbsenteesStatsRow>
                     </>
-                  )}
             </div>
         </ContentCard>
         )}

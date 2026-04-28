@@ -3,7 +3,13 @@ export const generateDummyStudents = (count: number = 500) => {
   const dummySections = ['A', 'B', 'C'];
   const genders = ['Male', 'Female'];
   const statuses = ['active'];
-  
+
+  const now = new Date();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const yyyy = now.getFullYear();
+  const todayIsoDob = `${yyyy - 12}-${mm}-${dd}`;
+
   return Array.from({ length: count }, (_, i) => ({
     id: i + 1,
     name: `Student ${i + 1}`,
@@ -14,6 +20,7 @@ export const generateDummyStudents = (count: number = 500) => {
     section_id: (i % dummySections.length) + 1,
     picture_url: null,
     roll_number: String(i + 1),
+    dob: i < 4 ? todayIsoDob : `${2012 + (i % 8)}-${String((i % 11) + 1).padStart(2, '0')}-${String((i % 27) + 1).padStart(2, '0')}`,
   }));
 };
 

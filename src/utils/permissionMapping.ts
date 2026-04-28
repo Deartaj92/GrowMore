@@ -14,6 +14,7 @@ export const pathToPermissionKey: Record<string, string> = {
   '/dashboard/tab/employeeAttendance': 'dashboard-tab-employee-attendance',
   '/dashboard/tab/accounts': 'dashboard-tab-accounts',
   '/dashboard/tab/predictions': 'dashboard-tab-predictions',
+  '/dashboard/tab/birthdays': 'dashboard-tab-birthdays',
 
   // Students
   '/students/list': 'students-list',

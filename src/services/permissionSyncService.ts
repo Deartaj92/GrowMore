@@ -56,6 +56,7 @@ function getAllMenuItems(): MenuItemType[] {
     { title: 'Dashboard - Employee Attendance Tab', description: 'Access the Employee Attendance tab on the Dashboard', path: '/dashboard/tab/employeeAttendance', color: '#06b6d4', icon: React.createElement(DashboardIcon) },
     { title: 'Dashboard - Accounts Tab', description: 'Access the Accounts tab on the Dashboard', path: '/dashboard/tab/accounts', color: '#ec4899', icon: React.createElement(DashboardIcon) },
     { title: 'Dashboard - Predictions Tab', description: 'Access the Predictions (ML) tab on the Dashboard', path: '/dashboard/tab/predictions', color: '#eab308', icon: React.createElement(DashboardIcon) },
+    { title: 'Dashboard - Birthdays Tab', description: "Access the Birthdays tab on the Dashboard (shown when it's someone's birthday)", path: '/dashboard/tab/birthdays', color: '#ec4899', icon: React.createElement(DashboardIcon) },
   ];
 
   items.push(...dashboardTabItems);

@@ -4,7 +4,7 @@ import App from './App';
 import './index.css';
 import { ToastProvider } from './components/useToast';
 import ErrorBoundary from './components/ErrorBoundary';
-import Loader from './components/Loader';
+import { finishBootSplash, getBootProgress, setBootProgress } from './utils/bootSplash';
 
 // Register Service Worker for offline support
 if ('serviceWorker' in navigator) {
@@ -90,46 +90,87 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 });
 
-const SPLASH_DURATION_MS = 2600;
+const BOOT_HANDOFF_MIN_MS = 380;
+const BOOT_ABORT_MS = 12000;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
 function Root() {
-  const [showSplash, setShowSplash] = useState(true);
   const [offlineNotice, setOfflineNotice] = useState(false);
 
   useEffect(() => {
-    const splashTimer = setTimeout(() => setShowSplash(false), SPLASH_DURATION_MS);
-
-    // If it takes >10s and we're offline, show a hint
-    const offlineTimer = setTimeout(() => {
+    const offlineTimer = window.setTimeout(() => {
       if (!navigator.onLine) setOfflineNotice(true);
     }, 10000);
 
+    let cancelled = false;
+
+    const runBoot = async () => {
+      const start = performance.now();
+      setBootProgress(Math.max(getBootProgress(), 82));
+
+      try {
+        await document.fonts.ready;
+      } catch {
+        /* ignore */
+      }
+      if (cancelled) return;
+
+      setBootProgress(Math.max(getBootProgress(), 90));
+
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => resolve());
+        });
+      });
+      if (cancelled) return;
+
+      setBootProgress(Math.max(getBootProgress(), 96));
+
+      const elapsed = performance.now() - start;
+      const waitMore = Math.max(0, BOOT_HANDOFF_MIN_MS - elapsed);
+      await delay(waitMore);
+      if (cancelled) return;
+
+      finishBootSplash();
+    };
+
+    const bootPromise = runBoot();
+    const timeoutPromise = delay(BOOT_ABORT_MS).then(() => {
+      if (!cancelled) finishBootSplash();
+    });
+
+    void Promise.race([bootPromise, timeoutPromise]);
+
     return () => {
-      clearTimeout(splashTimer);
-      clearTimeout(offlineTimer);
+      cancelled = true;
+      window.clearTimeout(offlineTimer);
     };
   }, []);
 
   return (
     <>
-      {showSplash && (
-        <div style={{ position: 'relative' }}>
-          <Loader fullScreenDark size="medium" centered />
-          {offlineNotice && (
-            <div style={{
-              position: 'fixed', bottom: '20%', left: '50%', transform: 'translateX(-50%)',
-              color: '#94a3b8', fontSize: '0.9rem', textAlign: 'center', zIndex: 10001
-            }}>
-              Starting in Offline Mode...
-            </div>
-          )}
+      {offlineNotice && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '20%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            color: '#94a3b8',
+            fontSize: '0.9rem',
+            textAlign: 'center',
+            zIndex: 2147483646,
+          }}
+        >
+          Starting in Offline Mode...
         </div>
       )}
-      {!showSplash && (
-        <ToastProvider theme="dark">
-          <App />
-        </ToastProvider>
-      )}
+      <ToastProvider theme="dark">
+        <App />
+      </ToastProvider>
     </>
   );
 }

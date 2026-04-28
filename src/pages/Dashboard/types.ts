@@ -1,4 +1,4 @@
-export type DashboardTab = 'attendance' | 'fee' | 'admissions' | 'homework' | 'employeeAttendance' | 'accounts' | 'predictions';
+export type DashboardTab = 'attendance' | 'fee' | 'admissions' | 'homework' | 'employeeAttendance' | 'accounts' | 'predictions' | 'birthdays';
 
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'leave';
 

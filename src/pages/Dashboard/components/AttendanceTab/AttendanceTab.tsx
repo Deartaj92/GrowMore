@@ -827,7 +827,8 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
         </ContentCard>
       </ContentGrid>
 
-      {/* Consecutive Absent Students Card */}
+      {/* Consecutive Absent Students Card — only when there are students */}
+      {consecutiveAbsentStudents.length > 0 && (
       <ContentGrid theme={theme}>
         <ContentCard theme={theme}>
           <CardTitle theme={theme}>
@@ -835,27 +836,16 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
               <Warning style={{ fontSize: '1.1rem' }} />
               Consecutive Absent Students
             </div>
-            {consecutiveAbsentStudents.length > 0 && (
-              <ExportButton
-                onClick={exportConsecutiveAbsentPDF}
-                disabled={exportAbsentLoading}
-                title="Export to PDF"
-              >
-                <GetApp style={{ fontSize: '1rem' }} />
-                {exportAbsentLoading ? 'Exporting...' : 'Export PDF'}
-              </ExportButton>
-            )}
+            <ExportButton
+              onClick={exportConsecutiveAbsentPDF}
+              disabled={exportAbsentLoading}
+              title="Export to PDF"
+            >
+              <GetApp style={{ fontSize: '1rem' }} />
+              {exportAbsentLoading ? 'Exporting...' : 'Export PDF'}
+            </ExportButton>
           </CardTitle>
-          {consecutiveAbsentLoading ? (
-            <EmptyState theme={theme}>
-              <RefreshIcon style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
-            </EmptyState>
-          ) : consecutiveAbsentStudents.length === 0 ? (
-            <EmptyState theme={theme}>
-              <div style={{ fontSize: '0.9rem' }}>No students with consecutive absences found</div>
-            </EmptyState>
-          ) : (
-            <>
+          <>
               {/* Mobile Card View */}
               <ConsecutiveAbsentGrid>
                 {consecutiveAbsentStudents.map((student, index) => (
@@ -948,14 +938,14 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                   </ConsecutiveAbsentTableBody>
                 </ConsecutiveAbsentTable>
               </ConsecutiveAbsentTableContainer>
-            </>
-          )}
+          </>
         </ContentCard>
       </ContentGrid>
+      )}
 
       {/* Main Content */}
       <ContentGrid theme={theme}>
-        {showAbsentees && (
+        {showAbsentees && absentees.length > 0 && (
           <ContentCard theme={theme}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', cursor: 'pointer' }} onClick={() => setIsAbsenteesExpanded(!isAbsenteesExpanded)}>
               <CardTitle theme={theme} style={{ margin: 0 }}>
