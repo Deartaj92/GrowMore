@@ -607,7 +607,8 @@ class RFIDOfflineService {
                     father_name: s.father_name,
                     status: (s as any).status || 'active',
                 };
-                store.add(mapping);
+                const uidCandidates = buildRfidUidCandidates(s.rfid_uid);
+                uidCandidates.forEach(uid => store.put({ ...mapping, rfid_uid: uid }));
                 serializedMappings.push(mapping);
             });
 
@@ -622,7 +623,8 @@ class RFIDOfflineService {
                     picture_url: s.picture_url,
                     status: (s as any).status || 'active',
                 };
-                store.add(mapping);
+                const uidCandidates = buildRfidUidCandidates(s.rfid_uid);
+                uidCandidates.forEach(uid => store.put({ ...mapping, rfid_uid: uid }));
                 serializedMappings.push(mapping);
             });
 
@@ -876,6 +878,8 @@ class RFIDOfflineService {
     async lookupRFID(rfid_uid: string): Promise<RFIDMapping | null> {
         const db = await this.getDB();
         const candidates = buildRfidUidCandidates(rfid_uid);
+        const prefixCandidates = buildRfidUidPrefixCandidates(rfid_uid);
+
         return new Promise((resolve) => {
             const tx = db.transaction(STORE_MAPPINGS, 'readonly');
             const store = tx.objectStore(STORE_MAPPINGS);
@@ -883,7 +887,21 @@ class RFIDOfflineService {
 
             const tryNextCandidate = () => {
                 if (candidateIndex >= candidates.length) {
-                    resolve(null);
+                    // Fallback to full store scan for prefix matches
+                    const allRequest = store.getAll();
+                    allRequest.onsuccess = () => {
+                        const mappings = (allRequest.result || []) as RFIDMapping[];
+                        for (const prefix of prefixCandidates) {
+                            const match = mappings.find(m => m.rfid_uid && m.rfid_uid.startsWith(prefix));
+                            if (match) {
+                                match.attendance_mode = this.normalizeAttendanceMode(match.attendance_mode, true);
+                                resolve(match);
+                                return;
+                            }
+                        }
+                        resolve(null);
+                    };
+                    allRequest.onerror = () => resolve(null);
                     return;
                 }
 
