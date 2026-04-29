@@ -15,6 +15,7 @@ export interface PayrollSettings {
   lateDeductionType?: 'fixed' | 'percentage';
   allowLeaveBonus?: boolean;
   leaveBonusDays?: number; // 1 or 2 days
+  leaveBonusStaffIds?: number[];
   roundUpAmounts?: boolean;
   createdAt?: string;
   updatedAt?: string;

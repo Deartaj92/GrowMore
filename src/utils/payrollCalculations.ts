@@ -411,8 +411,11 @@ export const calculateSalaryBreakdown = (
   // Calculate deductions from plan
   const deductions = calculateDeductions(plan, planItems, grossSalary);
 
-  // Calculate daily rate
+  // Calculate daily rate (using gross salary for deductions)
   const dailyRate = calculateDailyRate(grossSalary, attendance.workingDays);
+  
+  // Calculate basic daily rate (for bonus and potentially other basic-pay-only components)
+  const basicDailyRate = calculateDailyRate(plan.basicPay, attendance.workingDays);
   
   // Debug: Log calculation mode and gross salary
   console.log(`[Payroll Calculation] Mode: ${calculationMode}, Gross Salary: ${grossSalary}, Daily Rate: ${dailyRate}`);
@@ -436,9 +439,10 @@ export const calculateSalaryBreakdown = (
     // PARTIAL MODE: Only pay for days with records
     // Payable Days = Present + Late (+ half leaves converted if needed) + Bonus Leave Days
     // Note: attendance.presentDays already includes lateDays (late is counted as present)
-    const payableDays = attendance.presentDays + halfLeavesAsFullDays + (remainingHalfLeaves * 0.5) + bonusLeaveDays + (attendance.paidLeaveDays || 0);
-    grossPay = payableDays * dailyRate;
-    console.log(`[Partial Mode] Payable Days: ${payableDays} (including ${bonusLeaveDays} bonus), Gross Pay: ${grossPay}`);
+    const payableDaysWithoutBonus = attendance.presentDays + halfLeavesAsFullDays + (remainingHalfLeaves * 0.5) + (attendance.paidLeaveDays || 0);
+    const leaveBonusAmount = bonusLeaveDays * basicDailyRate;
+    grossPay = (payableDaysWithoutBonus * dailyRate) + leaveBonusAmount;
+    console.log(`[Partial Mode] Payable Days (excl bonus): ${payableDaysWithoutBonus}, Bonus Days: ${bonusLeaveDays}, Bonus Amount: ${leaveBonusAmount}, Gross Pay: ${grossPay}`);
     
     // In Partial mode: No absent/leave deductions, only late deductions (for ALL late days)
     absentDeductions = 0;
@@ -455,9 +459,10 @@ export const calculateSalaryBreakdown = (
   } else {
     // FULL MODE: Use full gross salary, apply deductions
     // In Full mode, employee gets full gross salary regardless of attendance
-    // Add bonus leave days amount to gross pay if applicable
-    grossPay = grossSalary + (bonusLeaveDays * dailyRate); // Full gross salary + bonus leave days
-    console.log(`[Full Mode] Gross Pay (full salary + bonus): ${grossPay}, Gross Salary: ${grossSalary}, Bonus Days: ${bonusLeaveDays}, Bonus Amount: ${bonusLeaveDays * dailyRate}`);
+    // Add bonus leave days amount to gross pay if applicable (based on basic pay only)
+    const leaveBonusAmount = bonusLeaveDays * basicDailyRate;
+    grossPay = grossSalary + leaveBonusAmount; 
+    console.log(`[Full Mode] Gross Pay (full salary + bonus): ${grossPay}, Gross Salary: ${grossSalary}, Bonus Days: ${bonusLeaveDays}, Bonus Amount: ${leaveBonusAmount}`);
     
     // Absent deductions: ALWAYS deducted (even the first one)
     // All absent days are deducted at per day rate
@@ -529,8 +534,8 @@ export const calculateSalaryBreakdown = (
 
   const netSalary = grossPay - totalDeductions - absentDeductions - leaveDeductions - lateDeductions - advanceDeductions + totalAdjustments;
 
-  // Calculate leave bonus amount
-  const leaveBonusAmount = bonusLeaveDays > 0 ? bonusLeaveDays * dailyRate : 0;
+  // Calculate leave bonus amount (based on basic pay daily rate)
+  const leaveBonusAmount = bonusLeaveDays > 0 ? bonusLeaveDays * basicDailyRate : 0;
 
   return {
     grossSalary: grossSalary, // Always return the full gross salary from plan (not grossPay)

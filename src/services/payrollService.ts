@@ -301,6 +301,7 @@ export const payrollService = {
       lateDeductionType: data.late_deduction_type || 'fixed',
       allowLeaveBonus: data.allow_leave_bonus || false,
       leaveBonusDays: data.leave_bonus_days || 1,
+      leaveBonusStaffIds: data.leave_bonus_staff_ids || [],
       roundUpAmounts: data.round_up_amounts || false,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
@@ -331,6 +332,7 @@ export const payrollService = {
       late_deduction_type: settings.lateDeductionType || 'fixed',
       allow_leave_bonus: settings.allowLeaveBonus ?? false,
       leave_bonus_days: settings.leaveBonusDays ?? 1,
+      leave_bonus_staff_ids: settings.leaveBonusStaffIds || [],
       round_up_amounts: settings.roundUpAmounts ?? false,
     };
     
@@ -393,6 +395,7 @@ export const payrollService = {
       lateDeductionType: data.late_deduction_type || 'fixed',
       allowLeaveBonus: data.allow_leave_bonus || false,
       leaveBonusDays: data.leave_bonus_days || 1,
+      leaveBonusStaffIds: data.leave_bonus_staff_ids || [],
       roundUpAmounts: data.round_up_amounts || false,
       createdAt: data.created_at,
       updatedAt: data.updated_at,

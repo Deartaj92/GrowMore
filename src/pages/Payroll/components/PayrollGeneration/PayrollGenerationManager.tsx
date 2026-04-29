@@ -524,7 +524,7 @@ const PayrollGenerationManager: React.FC = () => {
         settings.lateDeductionAmount || 0,
         settings.lateDeductionType || 'fixed',
         staffCalculationMode,
-        includeLeaveBonus && settings.allowLeaveBonus ? settings.leaveBonusDays : 0
+        includeLeaveBonus && settings.allowLeaveBonus && (settings.leaveBonusStaffIds?.includes(staffId)) ? settings.leaveBonusDays : 0
       );
 
       const breakdownData: PreviewData = {
@@ -657,7 +657,7 @@ const PayrollGenerationManager: React.FC = () => {
               selectedYear,
               user.id,
               staffCalculationMode,
-              includeLeaveBonus && payrollSettings?.allowLeaveBonus ? payrollSettings.leaveBonusDays : 0,
+              includeLeaveBonus && payrollSettings?.allowLeaveBonus && (payrollSettings.leaveBonusStaffIds?.includes(staffId)) ? payrollSettings.leaveBonusDays : 0,
               planId // Pass planId to use the specific plan
             );
             return { success: true, staffPlanKey };
@@ -902,82 +902,194 @@ const PayrollGenerationManager: React.FC = () => {
       doc.setFontSize(12.5);
       doc.text(formatPayrollCurrency(totalNet, roundUpAmounts), 242, 45.8, { align: 'center' });
 
+      // ── Adjustment and Leave Bonus Extractors ────────────────────────────
+      const getAdjAmounts = (gen: PayrollGeneration) => {
+        const applied: any[] = (gen.calculationDetails as any)?.appliedAdjustments || [];
+        const bonus    = applied.filter(a => a.adjustmentType === 'bonus').reduce((s, a) => s + (a.amount || 0), 0);
+        const otherDed = applied.filter(a => ['fine', 'extra_cut', 'other'].includes(a.adjustmentType)).reduce((s, a) => s + (a.amount || 0), 0);
+        return { bonus, otherDed };
+      };
+
+      // Since leaveBonusAmount wasn't directly saved in the DB, we can deduce it from the net salary formula
+      // netSalary = grossSalary + leaveBonusAmount - totalDeductions + totalAdjustments
+      const getSavedLeaveBonus = (gen: PayrollGeneration) => {
+        const grossSalary = gen.grossSalary || gen.totalEarnings;
+        const totalDed = gen.totalDeductions || 0;
+        const netSalary = gen.netSalary || 0;
+        const { bonus, otherDed } = getAdjAmounts(gen);
+        const totalAdj = bonus - otherDed;
+        const calculatedBonus = netSalary - grossSalary + totalDed - totalAdj;
+        return calculatedBonus > 0.5 ? Math.round(calculatedBonus) : 0;
+      };
+
+      const hasCLBonus  = selectedGenerations.some(g => getSavedLeaveBonus(g) > 0);
+      const hasBonus    = selectedGenerations.some(g => getAdjAmounts(g).bonus > 0);
+      const hasOtherDed = selectedGenerations.some(g => getAdjAmounts(g).otherDed > 0);
+      const zeroCurrency = formatPayrollCurrency(0, roundUpAmounts);
+
+      const citations: { id: number; employee: string; type: string; reason: string }[] = [];
+      let citationCounter = 1;
+
+      // ── Build table rows ─────────────────────────────────────────────────
       const tableRows = selectedGenerations.map((generation, index) => {
         const staff = eligibleStaff.find(s => s.staffId === generation.staffId && s.planId === generation.planId);
+        const employeeName = generation.staff?.name || staff?.staffName || '-';
+        const leaveBonusAmount = getSavedLeaveBonus(generation);
+        
+        const applied: any[] = (generation.calculationDetails as any)?.appliedAdjustments || [];
+        const bonuses = applied.filter(a => a.adjustmentType === 'bonus');
+        const otherDeds = applied.filter(a => ['fine', 'extra_cut', 'other'].includes(a.adjustmentType));
+
+        const bonusAmt = bonuses.reduce((s, a) => s + (a.amount || 0), 0);
+        const otherDedAmt = otherDeds.reduce((s, a) => s + (a.amount || 0), 0);
+
+        let bonusCell: any = formatPayrollCurrency(bonusAmt, roundUpAmounts);
+        let otherDedCell: any = formatPayrollCurrency(otherDedAmt, roundUpAmounts);
+
+        if (bonusAmt > 0) {
+          const reasons = bonuses.filter(b => b.reason && b.reason.trim());
+          if (reasons.length > 0) {
+            const indices = reasons.map(r => {
+              citations.push({ id: citationCounter, employee: employeeName, type: 'Bonus', reason: r.reason.trim() });
+              return citationCounter++;
+            });
+            bonusCell = { content: formatPayrollCurrency(bonusAmt, roundUpAmounts), citation: indices.join(',') };
+          }
+        }
+
+        if (otherDedAmt > 0) {
+          const reasons = otherDeds.filter(b => b.reason && b.reason.trim());
+          if (reasons.length > 0) {
+            const indices = reasons.map(r => {
+              const typeStr = r.adjustmentType === 'fine' ? 'Fine' : r.adjustmentType === 'extra_cut' ? 'Extra Cut' : 'Other Ded.';
+              citations.push({ id: citationCounter, employee: employeeName, type: typeStr, reason: r.reason.trim() });
+              return citationCounter++;
+            });
+            otherDedCell = { content: formatPayrollCurrency(otherDedAmt, roundUpAmounts), citation: indices.join(',') };
+          }
+        }
+
         const oldBalance = (balancesByStaff.get(generation.staffId) || [])
           .filter(({ generation: previousGeneration }) => {
             const previousPeriod = previousGeneration.payrollYear * 100 + previousGeneration.payrollMonth;
-            const currentPeriod = generation.payrollYear * 100 + generation.payrollMonth;
+            const currentPeriod  = generation.payrollYear * 100 + generation.payrollMonth;
             return previousGeneration.id !== generation.id && previousPeriod < currentPeriod;
           })
           .reduce((sum, item) => sum + item.remainingBalance, 0);
 
-        return [
+        const row: any[] = [
           index + 1,
-          `${generation.staff?.name || staff?.staffName || '-'}\n${generation.staff?.role || staff?.staffRole || '-'}`,
+          `${employeeName}\n${generation.staff?.role || staff?.staffRole || '-'}`,
           staff?.planName || generation.planSnapshot?.planName || '-',
           generation.calculationMode || 'full',
           formatPayrollCurrency(oldBalance, roundUpAmounts),
           getPresentCountFromAttendance(generation),
           generation.leaveDays || 0,
           generation.absentDays || 0,
-          generation.lateDays || 0,
+          generation.lateDays   || 0,
           formatPayrollCurrency(generation.grossSalary || generation.totalEarnings, roundUpAmounts),
-          formatPayrollCurrency(generation.absentDeductions || 0, roundUpAmounts),
-          formatPayrollCurrency(generation.leaveDeductions || 0, roundUpAmounts),
-          formatPayrollCurrency(generation.lateDeductions || 0, roundUpAmounts),
-          formatPayrollCurrency(generation.advanceDeductions || 0, roundUpAmounts),
-          formatPayrollCurrency(generation.totalDeductions, roundUpAmounts),
-          formatPayrollCurrency(generation.netSalary + oldBalance, roundUpAmounts),
         ];
+
+        if (hasCLBonus) row.push(formatPayrollCurrency(leaveBonusAmount, roundUpAmounts));
+        
+        row.push(
+          formatPayrollCurrency(generation.absentDeductions  || 0, roundUpAmounts),
+          formatPayrollCurrency(generation.leaveDeductions   || 0, roundUpAmounts),
+          formatPayrollCurrency(generation.lateDeductions    || 0, roundUpAmounts),
+          formatPayrollCurrency(generation.advanceDeductions || 0, roundUpAmounts)
+        );
+
+        if (hasBonus) row.push(bonusCell);
+        if (hasOtherDed) row.push(otherDedCell);
+
+        row.push(
+          formatPayrollCurrency(generation.totalDeductions, roundUpAmounts),
+          formatPayrollCurrency(generation.netSalary + oldBalance, roundUpAmounts)
+        );
+
+        return row;
       });
 
-      tableRows.push([
-        '',
-        'TOTAL',
-        '',
-        '',
+      // ── Totals row ───────────────────────────────────────────────────────
+      const totalLeaveBonus = selectedGenerations.reduce((s, g) => s + getSavedLeaveBonus(g), 0);
+      const totalBonus      = selectedGenerations.reduce((s, g) => s + getAdjAmounts(g).bonus,    0);
+      const totalOtherDed   = selectedGenerations.reduce((s, g) => s + getAdjAmounts(g).otherDed, 0);
+
+      const totalsRow: any[] = [
+        '', 'TOTAL', '', '',
         formatPayrollCurrency(totalOldBalance, roundUpAmounts),
-        '',
-        '',
-        '',
-        '',
+        '', '', '', '',
         formatPayrollCurrency(totalGrossPayroll, roundUpAmounts),
-        '',
-        '',
-        '',
-        '',
+      ];
+
+      if (hasCLBonus) totalsRow.push(formatPayrollCurrency(totalLeaveBonus, roundUpAmounts));
+
+      totalsRow.push('', '', '', ''); // Absent Ded, Leave Ded, Late Ded, Advance Ded
+
+      if (hasBonus) totalsRow.push(formatPayrollCurrency(totalBonus, roundUpAmounts));
+      if (hasOtherDed) totalsRow.push(formatPayrollCurrency(totalOtherDed, roundUpAmounts));
+
+      totalsRow.push(
         formatPayrollCurrency(totalDeductions, roundUpAmounts),
-        formatPayrollCurrency(totalNet, roundUpAmounts),
-      ]);
+        formatPayrollCurrency(totalNet, roundUpAmounts)
+      );
+
+      tableRows.push(totalsRow);
+
+      // ── Dynamic header ───────────────────────────────────────────────────
+      const tableHead: string[] = [
+        '#', 'Employee', 'Plan', 'Mode', 'Old Bal.',
+        'Present', 'Leave', 'Absent', 'Late', 'Gross',
+      ];
+      if (hasCLBonus) tableHead.push('CL Bonus');
+      tableHead.push('Absent Ded.', 'Leave Ded.', 'Late Ded.', 'Advance Ded.');
+      if (hasBonus) tableHead.push('Bonus');
+      if (hasOtherDed) tableHead.push('Other Ded.');
+      tableHead.push('Total Ded.', 'Net Salary');
+
+      // ── Dynamic column indices for styling ───────────────────────────────
+      const clBonusColIdx   = hasCLBonus ? 10 : -1;
+      let nextIdx = 10 + (hasCLBonus ? 1 : 0) + 4; // 4 = Absent, Leave, Late, Advance Ded
+      const bonusColIdx     = hasBonus ? nextIdx++ : -1;
+      const otherDedColIdx  = hasOtherDed ? nextIdx++ : -1;
+      const netSalaryColIdx = nextIdx + 1; // After Total Ded
+
+      // ── Column widths and alignment ──────────────────────────────────────
+      const colStyles: Record<number, any> = {
+        0:  { halign: 'center' }, // #
+        1:  { halign: 'left' },   // Employee
+        2:  { halign: 'left' },   // Plan
+        3:  { halign: 'center' }, // Mode
+        4:  { halign: 'right' },  // Old Bal.
+        5:  { halign: 'center' }, // Present
+        6:  { halign: 'center' }, // Leave
+        7:  { halign: 'center' }, // Absent
+        8:  { halign: 'center' }, // Late
+        9:  { halign: 'right' },  // Gross
+      };
+      
+      let nc = 10;
+      if (hasCLBonus)  { colStyles[nc++] = { halign: 'right' }; } // CL Bonus
+      colStyles[nc++] = { halign: 'right' }; // Absent Ded.
+      colStyles[nc++] = { halign: 'right' }; // Leave Ded.
+      colStyles[nc++] = { halign: 'right' }; // Late Ded.
+      colStyles[nc++] = { halign: 'right' }; // Advance Ded.
+      if (hasBonus)    { colStyles[nc++] = { halign: 'right' }; } // Bonus
+      if (hasOtherDed) { colStyles[nc++] = { halign: 'right' }; } // Other Ded.
+      colStyles[nc++] = { halign: 'right' }; // Total Ded.
+      colStyles[nc]   = { halign: 'right' }; // Net Salary
 
       autoTable(doc, {
         startY: 57,
         margin: { left: 10, right: 10 },
-        head: [[
-          '#',
-          'Employee',
-          'Plan',
-          'Mode',
-          'Old Bal.',
-          'Present',
-          'Leave',
-          'Absent',
-          'Late',
-          'Gross',
-          'Absent Ded.',
-          'Leave Ded.',
-          'Late Ded.',
-          'Advance Ded.',
-          'Total Ded.',
-          'Net Salary',
-        ]],
+        tableWidth: 'auto',
+        head: [tableHead],
         body: tableRows,
         theme: 'grid',
         styles: {
           font: 'helvetica',
-          fontSize: 7.2,
-          cellPadding: 2.1,
+          fontSize: 7.0,
+          cellPadding: 2.0,
           lineColor: [226, 232, 240],
           lineWidth: 0.15,
           textColor: [31, 41, 55],
@@ -989,64 +1101,101 @@ const PayrollGenerationManager: React.FC = () => {
           fontStyle: 'bold',
           halign: 'center',
         },
-        bodyStyles: {
-          halign: 'center',
-        },
-        alternateRowStyles: {
-          fillColor: [248, 250, 252],
-        },
-        columnStyles: {
-          0: { cellWidth: 8 },
-          1: { cellWidth: 40, halign: 'left' },
-          2: { cellWidth: 24, halign: 'left' },
-          3: { cellWidth: 12 },
-          4: { cellWidth: 16, halign: 'right' },
-          5: { cellWidth: 15 },
-          6: { cellWidth: 14 },
-          7: { cellWidth: 14 },
-          8: { cellWidth: 12 },
-          9: { cellWidth: 17, halign: 'right' },
-          10: { cellWidth: 17, halign: 'right' },
-          11: { cellWidth: 17, halign: 'right' },
-          12: { cellWidth: 17, halign: 'right' },
-          13: { cellWidth: 17, halign: 'right' },
-          14: { cellWidth: 15, halign: 'right' },
-          15: { cellWidth: 19, halign: 'right' },
-        },
+        bodyStyles:          { halign: 'center' },
+        alternateRowStyles:  { fillColor: [248, 250, 252] },
+        columnStyles: colStyles,
         didParseCell: (data) => {
-          if (data.section === 'body' && data.column.index === 15) {
-            data.cell.styles.fontStyle = 'bold';
+          const isDataRow  = data.section === 'body' && data.row.index !== tableRows.length - 1;
+          const isTotalRow = data.section === 'body' && data.row.index === tableRows.length - 1;
+          const col = data.column.index;
+          const raw = data.cell.raw as any;
+
+          if (raw && typeof raw === 'object' && raw.citation) {
+            data.cell.styles.cellPadding = {
+              top: 2, bottom: 2, left: 2,
+              right: 2 + raw.citation.length * 1.5
+            };
           }
 
-          if (data.section === 'body' && data.row.index === tableRows.length - 1) {
-            data.cell.styles.fontStyle = 'bold';
-            data.cell.styles.fillColor = [239, 246, 255];
-            data.cell.styles.lineWidth = 0.25;
-            data.cell.styles.lineColor = [147, 197, 253];
+          if (data.section === 'body' && col === netSalaryColIdx) { data.cell.styles.fontStyle = 'bold'; }
+
+          const val = (raw && typeof raw === 'object') ? raw.content : raw as string;
+
+          if (hasCLBonus && isDataRow && col === clBonusColIdx) {
+            if (val && val !== zeroCurrency) { data.cell.styles.textColor = [5, 150, 105]; data.cell.styles.fontStyle = 'bold'; }
+          }
+          if (hasBonus && isDataRow && col === bonusColIdx) {
+            if (val && val !== zeroCurrency) { data.cell.styles.textColor = [5, 150, 105]; data.cell.styles.fontStyle = 'bold'; }
+          }
+          if (hasOtherDed && isDataRow && col === otherDedColIdx) {
+            if (val && val !== zeroCurrency) { data.cell.styles.textColor = [220, 38, 38]; data.cell.styles.fontStyle = 'bold'; }
+          }
+          if (isTotalRow) {
+            data.cell.styles.fontStyle  = 'bold';
+            data.cell.styles.fillColor  = [239, 246, 255];
+            data.cell.styles.lineWidth  = 0.25;
+            data.cell.styles.lineColor  = [147, 197, 253];
           }
         },
-        didDrawPage: () => {
-          const pageCount = doc.getNumberOfPages();
-          const pageSize = doc.internal.pageSize;
-          const pageHeight = pageSize.getHeight();
-          doc.setFontSize(8);
-          doc.setTextColor(100, 116, 139);
-          doc.text(
-            `Payroll export for ${monthLabel} ${selectedYear}`,
-            14,
-            pageHeight - 7
-          );
-          doc.text(
-            `Page ${pageCount}`,
-            pageSize.getWidth() - 14,
-            pageHeight - 7,
-            { align: 'right' }
-          );
-        },
+        didDrawCell: (data) => {
+          const raw = data.cell.raw as any;
+          if (data.section === 'body' && raw && typeof raw === 'object' && raw.citation) {
+            const citation = raw.citation;
+            doc.setFontSize(4.5);
+            
+            const c = data.cell.styles.textColor;
+            if (Array.isArray(c)) {
+               doc.setTextColor(c[0], c[1], c[2]);
+            } else if (typeof c === 'number' || typeof c === 'string') {
+               doc.setTextColor(c as any);
+            }
+            
+            const x = data.cell.x + data.cell.width - 2.0;
+            const y = data.cell.y + 3.5; 
+            doc.text(citation, x, y, { align: 'right' });
+          }
+        }
       });
+
+
+      // ── Adjustment Citations ─────────────────────────────────────────────
+      if (citations.length > 0) {
+        const citationRows = citations.map(c => [`[${c.id}]`, `${c.employee} (${c.type})`, c.reason]);
+        
+        autoTable(doc, {
+          startY: (doc as any).lastAutoTable.finalY + 8,
+          margin: { left: 10, right: 10 },
+          body: citationRows,
+          theme: 'plain',
+          styles: {
+            font: 'helvetica',
+            fontSize: 7.5,
+            cellPadding: 1.0,
+            textColor: [71, 85, 105],
+          },
+          columnStyles: {
+            0: { cellWidth: 10, fontStyle: 'bold', halign: 'right' },
+            1: { cellWidth: 45, fontStyle: 'bold' },
+            2: { cellWidth: 'auto' },
+          }
+        });
+      }
+
+      // ── Page Footers ─────────────────────────────────────────────────────
+      const totalPages = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        const pageSize = doc.internal.pageSize;
+        const pageHeight = pageSize.getHeight();
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Payroll export for ${monthLabel} ${selectedYear}`, 14, pageHeight - 7);
+        doc.text(`Page ${i}`, pageSize.getWidth() - 14, pageHeight - 7, { align: 'right' });
+      }
 
       const fileMonth = String(selectedMonth).padStart(2, '0');
       doc.save(`Payroll_Register_${selectedYear}_${fileMonth}.pdf`);
+
       showToast(`PDF exported for ${selectedGenerations.length} payroll${selectedGenerations.length > 1 ? 's' : ''}`, 'success');
     } catch (error: any) {
       console.error('Error exporting payroll PDF:', error);
@@ -1584,7 +1733,7 @@ const PayrollGenerationManager: React.FC = () => {
                                             <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: theme.BG === '#252525' ? '#f59e0b' : '#d97706' }}>{breakdown.lateDays}</Typography>
                                           </Box>
                                         )}
-                                        {includeLeaveBonus && payrollSettings?.allowLeaveBonus && breakdown.absentDays === 0 && breakdown.leaveDays === 0 && payrollSettings.leaveBonusDays > 0 && (
+                                        {includeLeaveBonus && payrollSettings?.allowLeaveBonus && (payrollSettings.leaveBonusStaffIds?.includes(staff.staffId)) && breakdown.absentDays === 0 && breakdown.leaveDays === 0 && payrollSettings.leaveBonusDays > 0 && (
                                           <Box>
                                             <Typography variant="caption" sx={{ fontSize: '0.65rem', color: theme.TEXT_SECONDARY, fontWeight: 500 }}>Bonus Leave</Typography>
                                             <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: theme.BG === '#252525' ? '#10b981' : '#059669' }}>+{payrollSettings.leaveBonusDays}</Typography>

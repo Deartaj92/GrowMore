@@ -16,10 +16,12 @@ import {
   Switch,
   CircularProgress,
 } from '@mui/material';
-import { Settings as SettingsIcon, Save as SaveIcon } from '@mui/icons-material';
+import { Settings as SettingsIcon, Save as SaveIcon, CheckBoxOutlineBlank as CheckBoxOutlineBlankIcon, CheckBox as CheckBoxIcon } from '@mui/icons-material';
 import Loader from '../../../../components/Loader';
 import { blockNumberArrowKey, blockNumberWheelChange, payrollAmountInputSx } from '../../utils';
 import { usePayrollDisplaySettings } from '../../PayrollDisplaySettingsContext';
+import { reportService } from '../../../../utils/reportService';
+import { Autocomplete, Checkbox } from '@mui/material';
 import {
   PayrollContainer,
   ToolbarCard,
@@ -136,6 +138,7 @@ const PayrollSettingsForm: React.FC = () => {
   const { refreshSettings } = usePayrollDisplaySettings();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [staffList, setStaffList] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     monthlyWorkingDays: 26,
     allowedLeavesPerMonth: 2,
@@ -149,14 +152,25 @@ const PayrollSettingsForm: React.FC = () => {
     lateDeductionType: 'fixed' as 'fixed' | 'percentage',
     allowLeaveBonus: false,
     leaveBonusDays: 1 as 1 | 2,
+    leaveBonusStaffIds: [] as number[],
     roundUpAmounts: false,
   });
 
   useEffect(() => {
     if (user?.school_id) {
       loadSettings();
+      loadStaff();
     }
   }, [user?.school_id]);
+
+  const loadStaff = async () => {
+    try {
+      const data = await reportService.getStaff(user.school_id);
+      setStaffList(data || []);
+    } catch (error) {
+      console.error('Error loading staff:', error);
+    }
+  };
 
   const loadSettings = async () => {
     if (!user?.school_id) return;
@@ -179,6 +193,7 @@ const PayrollSettingsForm: React.FC = () => {
           lateDeductionType: data.lateDeductionType || 'fixed',
           allowLeaveBonus: data.allowLeaveBonus || false,
           leaveBonusDays: (data.leaveBonusDays === 2 ? 2 : 1) as 1 | 2,
+          leaveBonusStaffIds: data.leaveBonusStaffIds || [],
           roundUpAmounts: data.roundUpAmounts || false,
         });
       }
@@ -495,6 +510,47 @@ const PayrollSettingsForm: React.FC = () => {
               </RadioGroup>
             </FormControl>
             <HelperText>Number of bonus leave days to add when employee has zero absentees</HelperText>
+          </FormGroup>
+        )}
+
+        {formData.allowLeaveBonus && (
+          <FormGroup>
+            <Label>Eligible Employees</Label>
+            <Autocomplete
+              multiple
+              options={staffList}
+              getOptionLabel={(option) => option.name}
+              value={staffList.filter(s => formData.leaveBonusStaffIds?.includes(s.id))}
+              onChange={(_, newValue) => {
+                setFormData({
+                  ...formData,
+                  leaveBonusStaffIds: newValue.map(v => v.id)
+                });
+              }}
+              renderInput={(params) => (
+                <TextField 
+                  {...params} 
+                  variant="outlined" 
+                  size="small" 
+                  placeholder="Select employees..." 
+                  sx={payrollAmountInputSx}
+                />
+              )}
+              renderOption={(props, option, { selected }) => (
+                <li {...props}>
+                  <Checkbox
+                    icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
+                    checkedIcon={<CheckBoxIcon fontSize="small" />}
+                    style={{ marginRight: 8 }}
+                    checked={selected}
+                  />
+                  {option.name} ({option.role})
+                </li>
+              )}
+              disableCloseOnSelect
+              size="small"
+            />
+            <HelperText>Only selected employees will be eligible for the leave bonus. If none selected, the bonus will not be applied to anyone.</HelperText>
           </FormGroup>
         )}
       </SettingsCard>
