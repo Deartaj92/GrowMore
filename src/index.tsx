@@ -102,8 +102,15 @@ function Root() {
 
   useEffect(() => {
     const offlineTimer = window.setTimeout(() => {
-      if (!navigator.onLine) setOfflineNotice(true);
+      if (!navigator.onLine) {
+        setOfflineNotice(true);
+        // Automatically hide it after 4 seconds so it doesn't stay stuck
+        setTimeout(() => setOfflineNotice(false), 4000);
+      }
     }, 10000);
+
+    const handleOnline = () => setOfflineNotice(false);
+    window.addEventListener('online', handleOnline);
 
     let cancelled = false;
 
@@ -147,6 +154,7 @@ function Root() {
     return () => {
       cancelled = true;
       window.clearTimeout(offlineTimer);
+      window.removeEventListener('online', handleOnline);
     };
   }, []);
 

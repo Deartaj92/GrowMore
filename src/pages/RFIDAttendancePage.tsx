@@ -1511,6 +1511,7 @@ const RFIDAttendancePage: React.FC = () => {
     const scanQueueRef = useRef<string[]>([]);
     const isProcessingQueueRef = useRef(false);
     const isProcessingRef = useRef(false); // Legacy ref for backward compat if needed, but we'll use isProcessingQueueRef mostly
+    const isCacheReadyRef = useRef(false);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [queueCount, setQueueCount] = useState(0);
     const [isSyncing, setIsSyncing] = useState(false);
@@ -1629,12 +1630,19 @@ const RFIDAttendancePage: React.FC = () => {
 
     // Initial cache and queue check
     useEffect(() => {
-        if (user?.school_id) {
-            rfidOfflineService.cacheMappings(String(user.school_id));
-            rfidOfflineService.cacheDailyAttendanceHistory(user.school_id, selectedDate).catch(error => {
-                console.warn('Failed to prime cached RFID attendance history:', error);
-            });
-            rfidOfflineService.getQueue().then(q => setQueueCount(q.length));
+        const schoolId = user?.school_id;
+        if (schoolId) {
+            (async () => {
+                isCacheReadyRef.current = false;
+                await rfidOfflineService.cacheMappings(String(schoolId));
+                isCacheReadyRef.current = true;
+                
+                rfidOfflineService.cacheDailyAttendanceHistory(schoolId, selectedDate).catch(error => {
+                    console.warn('Failed to prime cached RFID attendance history:', error);
+                });
+                const q = await rfidOfflineService.getQueue();
+                setQueueCount(q.length);
+            })();
         }
 
         const handleOnline = async () => {
@@ -1923,6 +1931,13 @@ const RFIDAttendancePage: React.FC = () => {
         if (cleanUID.length < 4) {
             isProcessingRef.current = false;
             return;
+        }
+
+        // Wait up to 3 seconds for cache to be ready
+        let waitCount = 0;
+        while (!isCacheReadyRef.current && waitCount < 30) {
+            await new Promise(r => setTimeout(r, 100));
+            waitCount++;
         }
 
         setScanStatus('idle');
