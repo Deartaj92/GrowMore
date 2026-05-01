@@ -31,7 +31,7 @@ import {
     CloudSync as CloudSyncIcon,
     Settings as SettingsIcon,
     Save as SaveIcon,
-    Sensors as NfcIcon,
+  Nfc as NfcIcon,
     Logout as LogoutIcon,
     Bolt as BoltIcon,
 } from '@mui/icons-material';
@@ -315,6 +315,27 @@ const CloseBtn = styled.button`
   padding: 0.8rem;
   font-weight: 700;
   margin-top: 0.5rem;
+`;
+
+const FloatingFab = styled.button`
+  position: fixed;
+  bottom: 60px;
+  @media (max-width: 600px) {
+    bottom: 40px;
+  }
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: #3b82f6;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+  z-index: 9999;
+  cursor: pointer;
 `;
 
 const ProminentDate = styled.div`
@@ -1491,6 +1512,7 @@ const RFIDAttendancePage: React.FC = () => {
     const [leavePassword, setLeavePassword] = useState('');
     const [verifyingLeavePassword, setVerifyingLeavePassword] = useState(false);
     const [savingSettings, setSavingSettings] = useState(false);
+    const [manualMarkInProgress, setManualMarkInProgress] = useState(false);
     const [automationOverview, setAutomationOverview] = useState<any | null>(null);
     const [loadingAutomationOverview, setLoadingAutomationOverview] = useState(false);
     const [isNfcSupported, setIsNfcSupported] = useState(false);
@@ -2562,6 +2584,62 @@ const RFIDAttendancePage: React.FC = () => {
         }
     };
 
+    const triggerManualAbsentMark = async () => {
+        if (!user?.school_id) return;
+        // Respect Sundays on client; server will also guard
+        const dateObj = selectedDate ? new Date(selectedDate + 'T00:00:00') : new Date();
+        const dayOfWeek = dateObj.getUTCDay(); // 0 = Sunday
+        if (dayOfWeek === 0) {
+            showToast('Cannot mark absents on Sundays.', 'warning');
+            return;
+        }
+
+        setManualMarkInProgress(true);
+        try {
+            // Trigger backend automation to mark absences manually for the selected date
+            const { data, error } = await supabase.rpc('trigger_attendance_automation', {
+                p_school_id: user.school_id,
+                p_date: selectedDate,
+            });
+            if (error) throw error;
+            // data should indicate status; refresh only if ok or skipped
+            if (data?.status === 'ok') {
+                await loadAutomationOverview();
+                showToast(data?.message ?? 'Manual absence marking completed', 'success');
+            } else if (data?.status === 'skipped') {
+                showToast(data?.message ?? `Manual absence marking skipped`, 'warning');
+            } else {
+                // Unexpected status
+                await loadAutomationOverview();
+                showToast(data?.message ?? 'Manual absence marking completed', 'success');
+            }
+        } catch (err: any) {
+            // Improve messaging for common DB constraint errors
+            if (err?.code === '23502' && typeof err?.details === 'string') {
+                const det = (err.details || '').toLowerCase();
+                if (det.includes('session_id')) {
+                    showToast('Attendance insert failed: missing session_id. Ensure there is an active session for this school.', 'error');
+                    return;
+                }
+                if (det.includes('class_id')) {
+                    showToast('Attendance insert failed: missing class_id. Ensure students have a class_id.', 'error');
+                    return;
+                }
+            }
+            // If the RPC function isn't available in this environment (e.g., 404), fail gracefully
+            const status = (err && err.status) || (err?.response?.status);
+            if (status === 404 || (err?.message || '').includes('trigger_attendance_automation')) {
+                console.warn('Manual absence RPC not available on this environment.');
+                showToast('Automation service is not configured on this environment', 'error');
+                return;
+            }
+            console.error('Manual absence trigger failed:', err);
+            showToast('Failed to trigger manual absence marking', 'error');
+        } finally {
+            setManualMarkInProgress(false);
+        }
+    };
+
 
     useEffect(() => {
         const navigatorWithBlock = navigationContext?.navigator as any;
@@ -3082,6 +3160,14 @@ const RFIDAttendancePage: React.FC = () => {
                             >
                                 {savingSettings ? 'Saving...' : <><SaveIcon /> Save Changes</>}
                             </SecondaryBtn>
+                            <SecondaryBtn
+                                theme={themeObj}
+                                style={{ minWidth: 190, background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}
+                                onClick={triggerManualAbsentMark}
+                                disabled={manualMarkInProgress}
+                            >
+                                {manualMarkInProgress ? 'Marking Absents...' : (<><BoltIcon style={{ fontSize: 16 }} /> Mark Absents Now</>)}
+                            </SecondaryBtn>
                         </SettingsActions>
                     </ModalContent>
                 </ModalOverlay>
@@ -3321,6 +3407,11 @@ const RFIDAttendancePage: React.FC = () => {
                     </FeedSplitGrid>
                 </FeedCard>
             </MainGrid>
+
+            {/* Floating action button: Mark Absents Now (bottom-right) */}
+            <FloatingFab onClick={triggerManualAbsentMark} aria-label="Mark Absents Now" title="Mark Absents Now" disabled={manualMarkInProgress}>
+                <span style={{ fontWeight: 900, fontSize: 20, color: '#fff' }}>A</span>
+            </FloatingFab>
 
             {/* Sync Progress Overlay */}
             {isSyncing && syncProgress.total > 0 && (

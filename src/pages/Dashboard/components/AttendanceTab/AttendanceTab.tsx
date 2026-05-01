@@ -17,7 +17,6 @@ import {
   FileDownloadOutlined as ExportIcon,
   KeyboardArrowUpRounded as ChevronDownIcon,
   Refresh as RefreshIcon,
-  GetApp
 } from '@mui/icons-material';
 import {
   BarChart,
@@ -44,6 +43,27 @@ import { getStatus } from '../../utils/dashboardUtils';
 import { clayCardStyle, isDark, CARD_RADIUS_LG, getDashboardPalette } from '../../../../styles/DesignSystem';
 
 // ===== STYLED COMPONENTS (Matching FeeAnalytics structure) =====
+
+// Inline action button for manual mark absences
+const ManualMarkRow = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.25rem 0.25rem 0.75rem 0.25rem;
+`;
+
+const ManualMarkBtn = styled.button`
+  padding: 0.55rem 1rem;
+  border-radius: 6px;
+  border: 1px solid #3b82f6;
+  background: #3b82f6;
+  color: #fff;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+`;
 
 const StatsGrid = styled.div`
   display: grid;
@@ -256,6 +276,40 @@ const Container = styled.div`
   display: contents;
 `;
 
+// Floating action button for quick manual absents (bottom-right)
+const FloatingFab = styled.button`
+  position: fixed;
+  bottom: 60px;
+  @media (max-width: 600px) {
+    bottom: 40px;
+  }
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: coral;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+  cursor: pointer;
+  z-index: 9999;
+  transition: opacity 0.2s ease;
+  &:hover { opacity: 0.92; }
+`;
+
+// Portal-based floating FAB to ensure stickiness to viewport
+const FloatingFabPortal = ({ onClick, disabled, children, ariaLabel, title }: { onClick: () => void; disabled?: boolean; children?: React.ReactNode; ariaLabel?: string; title?: string }) => {
+  return ReactDOM.createPortal(
+    <FloatingFab onClick={onClick} disabled={disabled} aria-label={ariaLabel} title={title}>
+      {children ?? <span>A</span>}
+    </FloatingFab>,
+    document.body
+  );
+};
+
 // Keep existing styled components for absentees functionality
 import {
   TwoColumnGrid,
@@ -435,8 +489,52 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
   const statusPalette = dashboardPalette.status;
   const isDarkTheme = isDark(theme as any);
 
+  // Manual mark button state and handler for this tab
+  const [manualMarkInProgress, setManualMarkInProgress] = useState(false);
+  const triggerManualAbsentMarkTab = async () => {
+    if (!user?.school_id) return;
+    // Client-side Sunday guard
+    const dateObj = new Date(absentDate);
+    const isSunday = dateObj.getDay() === 0;
+    if (isSunday) {
+      toast.showToast('Cannot mark absents on Sundays.', 'warning');
+      return;
+    }
+    setManualMarkInProgress(true);
+    try {
+      const { data, error } = await supabase.rpc('trigger_attendance_automation', {
+        p_school_id: user.school_id,
+        p_date: absentDate,
+      });
+      if (error) throw error;
+      if (data?.status === 'ok') {
+        toast.showToast(data?.message ?? 'Manual absence marking completed', 'success');
+        // Trigger a refresh of attendance data in the parent Dashboard
+        window.dispatchEvent(new CustomEvent('attendance-automation-triggered'));
+      } else if (data?.status === 'skipped') {
+        toast.showToast(data?.message ?? 'Manual absence marking skipped', 'warning');
+      } else {
+        toast.showToast(data?.message ?? 'Manual absence marking completed', 'success');
+        window.dispatchEvent(new CustomEvent('attendance-automation-triggered'));
+      }
+    } catch (err: any) {
+      const status = (err && err.status) || (err?.response?.status);
+      if (status === 404 || (err?.message || '').includes('trigger_attendance_automation')) {
+        toast.showToast('Automation service is not configured on this environment', 'error');
+      } else {
+        console.error('Manual absence trigger failed:', err);
+        toast.showToast('Failed to trigger manual absence marking', 'error');
+      }
+    } finally {
+      setManualMarkInProgress(false);
+    }
+  };
+
   // Calculate total number of students
   const totalStudents = attendanceDataForDate.length;
+
+  // UI insertion point: render a manual mark button above charts/stats
+  // (we'll render this button in the top area within the main container by injecting JSX in render below)
 
   const applyAbsenteeStatusChange = async (absentee: any, nextStatus: string) => {
     if (!user?.school_id) {
@@ -543,6 +641,10 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
 
   return (
     <Container>
+      {/* Floating FAB is rendered via portal to ensure it stays fixed to viewport */}
+      <FloatingFabPortal onClick={triggerManualAbsentMarkTab} ariaLabel="Mark Absents Now" title="Mark Absents Now" disabled={manualMarkInProgress}>
+        <span style={{ fontWeight: 900, fontSize: 20, color: '#fff' }}>A</span>
+      </FloatingFabPortal>
       {/* Attendance Stats Cards */}
       <StatsGrid>
         {/* Present */}
@@ -836,13 +938,13 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
               <Warning style={{ fontSize: '1.1rem' }} />
               Consecutive Absent Students
             </div>
-            <ExportButton
+              <ExportButton
               onClick={exportConsecutiveAbsentPDF}
               disabled={exportAbsentLoading}
               title="Export to PDF"
-            >
-              <GetApp style={{ fontSize: '1rem' }} />
-              {exportAbsentLoading ? 'Exporting...' : 'Export PDF'}
+              >
+                <span style={{ fontWeight: 900, fontSize: '1rem', color: '#fff' }}>A</span>
+                {exportAbsentLoading ? 'Exporting...' : 'Export PDF'}
             </ExportButton>
           </CardTitle>
           <>

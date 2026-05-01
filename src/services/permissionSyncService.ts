@@ -133,10 +133,15 @@ export async function syncPermissionsFromMenuStructure(): Promise<void> {
 
     const existingKeys = new Set((existingPermissions || []).map(p => p.key));
 
+    // Deduplicate by key to avoid "ON CONFLICT DO UPDATE command cannot affect row a second time" error
+    const uniquePermissions = Array.from(
+      new Map(permissionsToSync.map(item => [item.key, item])).values()
+    );
+
     // Upsert permissions to ensure all paths and categories are up to date
     const { error: insertError } = await supabase
       .from('permissions')
-      .upsert(permissionsToSync, { onConflict: 'key' });
+      .upsert(uniquePermissions, { onConflict: 'key' });
 
     if (insertError) {
       console.error('Error syncing permissions:', insertError);

@@ -70,7 +70,7 @@ const Loader: React.FC<LoaderProps> = ({ size = 'medium', centered = true, fullS
                 draggable={false}
                 loading="eager"
                 decoding="async"
-                fetchPriority="high"
+                {...({ fetchpriority: "high" } as any)}
               />
               <div className="shine" style={{ WebkitMaskImage: `url(${logoSrc})`, maskImage: `url(${logoSrc})` }} />
             </>
