@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&family=Noto+Sans+Urdu:wght@100..900&display=swap');
 @import './styles/designSystem.css';
 
 /* GLOBAL SMOOTHNESS & PERFORMANCE OPTIMIZATIONS */
@@ -71,7 +72,8 @@ body,
   padding: 0;
   height: 100%;
   width: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   /* Prevent body scroll - let containers handle it */
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;

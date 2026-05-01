@@ -46,6 +46,7 @@ import CustomLandingPage from './pages/CustomLandingPage';
 import UserDashboard from './pages/UserDashboard';
 import Events from './pages/Events';
 import StaffAddForm from './pages/StaffAddForm';
+import PublicLandingPage from './pages/PublicLandingPage';
 import { useAuth } from './contexts/AuthContext';
 import HolidayManager from './components/HolidayManager';
 import EmployeeList from './pages/EmployeeList';
@@ -213,6 +214,7 @@ const App: React.FC = () => {
                       <Routes>
                         {/* Public Routes */}
                         <Route path="/login" element={<Login />} />
+                        <Route path="/landing" element={<PublicLandingPage />} />
                         <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
 
