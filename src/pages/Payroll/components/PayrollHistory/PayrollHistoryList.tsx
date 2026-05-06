@@ -59,6 +59,7 @@ interface GenerationWithBalance {
     grossSalary?: number;
     totalEarnings: number;
     totalDeductions: number;
+    netSalary: number;
   };
   totalPaid: number;
   remainingBalance: number;
@@ -575,8 +576,7 @@ const PayrollHistoryList: React.FC = () => {
             .reduce((sum, payment) => sum + payment.amount, 0);
 
           const netAmount = oldBalance
-            + (latestGeneration.grossSalary || latestGeneration.totalEarnings || 0)
-            - (latestGeneration.totalDeductions || 0)
+            + (latestGeneration.netSalary || 0)
             - priorPaymentsThisMonth;
 
           return {

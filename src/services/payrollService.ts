@@ -1023,6 +1023,7 @@ export const payrollService = {
       leaveDeductions: data.leave_deductions ? parseFloat(data.leave_deductions) : undefined,
       lateDeductions: data.late_deductions ? parseFloat(data.late_deductions) : undefined,
       advanceDeductions: data.advance_deductions ? parseFloat(data.advance_deductions) : undefined,
+      leaveBonusAmount: data.leave_bonus_amount ? parseFloat(data.leave_bonus_amount) : undefined,
       attendanceData: data.attendance_data,
       calculationDetails: data.calculation_details,
       planId: data.plan_id,
@@ -1255,6 +1256,7 @@ export const payrollService = {
       lateDeductions: breakdown.lateDeductions,
       advanceDeductions: breakdown.advanceDeductions,
       adjustments: breakdown.adjustments,
+      leaveBonusAmount: breakdown.leaveBonusAmount,
       netSalary: breakdown.netSalary,
       settings: {
         monthlyWorkingDays: settings.monthlyWorkingDays,
@@ -1264,6 +1266,7 @@ export const payrollService = {
         allowedLateDaysPerMonth: settings.allowedLateDaysPerMonth || 0,
         lateDeductionAmount: settings.lateDeductionAmount || 0,
         lateDeductionType: settings.lateDeductionType || 'fixed',
+        leaveBonusAmount: breakdown.leaveBonusAmount,
       },
       advances: advances.filter(a => a.status === 'active').map(a => ({
         id: a.id,
@@ -1299,13 +1302,15 @@ export const payrollService = {
       capturedAt: new Date().toISOString(),
     };
 
+    const leaveBonusAmount = breakdown.leaveBonusAmount || 0;
+
     const generationData: any = {
       school_id: schoolId,
       staff_id: staffId,
       payroll_month: payrollMonth,
       payroll_year: payrollYear,
-      total_earnings: breakdown.grossSalary + breakdown.allowances.reduce((sum, a) => sum + a.amount, 0),
-      total_deductions: breakdown.deductions.reduce((sum, d) => sum + d.amount, 0) + breakdown.leaveDeductions + breakdown.lateDeductions + breakdown.advanceDeductions + (breakdown.absentDeductions || 0),
+      total_earnings: breakdown.totalEarnings,
+      total_deductions: breakdown.totalDeductions,
       net_salary: breakdown.netSalary,
       working_days: Math.round(attendanceRecordSummary.workingDays || 0),
       present_days: Math.round(attendanceRecordSummary.presentDays || 0),
@@ -1319,6 +1324,7 @@ export const payrollService = {
       leave_deductions: breakdown.leaveDeductions,
       late_deductions: breakdown.lateDeductions,
       advance_deductions: breakdown.advanceDeductions,
+      leave_bonus_amount: leaveBonusAmount,
       attendance_data: attendanceDataForStorage,
       calculation_details: calculationDetails,
       plan_id: plan.id,

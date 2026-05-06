@@ -913,13 +913,7 @@ const PayrollGenerationManager: React.FC = () => {
       // Since leaveBonusAmount wasn't directly saved in the DB, we can deduce it from the net salary formula
       // netSalary = grossSalary + leaveBonusAmount - totalDeductions + totalAdjustments
       const getSavedLeaveBonus = (gen: PayrollGeneration) => {
-        const grossSalary = gen.grossSalary || gen.totalEarnings;
-        const totalDed = gen.totalDeductions || 0;
-        const netSalary = gen.netSalary || 0;
-        const { bonus, otherDed } = getAdjAmounts(gen);
-        const totalAdj = bonus - otherDed;
-        const calculatedBonus = netSalary - grossSalary + totalDed - totalAdj;
-        return calculatedBonus > 0.5 ? Math.round(calculatedBonus) : 0;
+        return gen.leaveBonusAmount ?? (gen.calculationDetails as any)?.leaveBonusAmount ?? 0;
       };
 
       const hasCLBonus  = selectedGenerations.some(g => getSavedLeaveBonus(g) > 0);

@@ -514,6 +514,7 @@ const PayrollPaymentsList: React.FC = () => {
     referenceNo: '',
     remarks: '',
   });
+  const [confirmDeletePayment, setConfirmDeletePayment] = useState<PaymentHistoryGroup | null>(null);
 
   useEffect(() => {
     if (user?.school_id) {
@@ -575,9 +576,14 @@ const PayrollPaymentsList: React.FC = () => {
     }
   };
 
-  const handleDeletePayment = async (paymentId: number, paymentGroupId?: string) => {
-    if (!user?.school_id) return;
-    if (!window.confirm(paymentGroupId ? 'Are you sure you want to delete this combined payroll payment?' : 'Are you sure you want to delete this payroll payment?')) return;
+  const handleDeletePaymentClick = (payment: PaymentHistoryGroup) => {
+    setConfirmDeletePayment(payment);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!user?.school_id || !confirmDeletePayment) return;
+    const paymentId = confirmDeletePayment.paymentIds[0];
+    const paymentGroupId = confirmDeletePayment.paymentGroupId;
 
     try {
       setDeletingPaymentId(paymentId);
@@ -587,6 +593,7 @@ const PayrollPaymentsList: React.FC = () => {
         await payrollService.deletePayment(user.school_id, paymentId, user.id);
       }
       showToast('Payment deleted successfully', 'success');
+      setConfirmDeletePayment(null);
       if (selectedStaffId) {
         await loadEmployeeGenerations(selectedStaffId as number);
       }
@@ -939,6 +946,8 @@ const PayrollPaymentsList: React.FC = () => {
                         <tr>
                           <th>Month</th>
                           <th style={{ textAlign: 'right' }}>Net Salary</th>
+                          <th style={{ textAlign: 'right' }}>Bonus</th>
+                          <th style={{ textAlign: 'right' }}>Other Ded.</th>
                           <th style={{ textAlign: 'right' }}>Paid</th>
                           <th style={{ textAlign: 'right' }}>Remaining</th>
                           <th style={{ textAlign: 'right' }}>Pay Now</th>
@@ -948,7 +957,7 @@ const PayrollPaymentsList: React.FC = () => {
                       <tbody>
                         {allocationPreview.length === 0 ? (
                           <tr>
-                            <td colSpan={6} style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+                            <td colSpan={8} style={{ textAlign: 'center', padding: '2rem 1rem' }}>
                               <div style={{ fontSize: '0.85rem', color: theme.TEXT_SECONDARY }}>
                                 No unpaid or partially paid payroll months found for this employee.
                               </div>
@@ -964,6 +973,22 @@ const PayrollPaymentsList: React.FC = () => {
                                 </div>
                               </td>
                               <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(item.generation.netSalary)}</td>
+                              <td style={{ textAlign: 'right', color: '#10b981', fontSize: '0.75rem' }}>
+                                {(() => {
+                                  const adjustments = item.generation.calculationDetails?.adjustments || [];
+                                  const bonus = adjustments.filter(a => a.type === 'bonus').reduce((sum, a) => sum + a.amount, 0);
+                                  const leaveBonus = item.generation.calculationDetails?.leaveBonusAmount ?? item.generation.leaveBonusAmount ?? 0;
+                                  const totalBonus = bonus + leaveBonus;
+                                  return totalBonus > 0 ? `+${formatCurrency(totalBonus)}` : '-';
+                                })()}
+                              </td>
+                              <td style={{ textAlign: 'right', color: '#ef4444', fontSize: '0.75rem' }}>
+                                {(() => {
+                                  const adjustments = item.generation.calculationDetails?.adjustments || [];
+                                  const fine = adjustments.filter(a => a.type !== 'bonus').reduce((sum, a) => sum + a.amount, 0);
+                                  return fine > 0 ? `-${formatCurrency(fine)}` : '-';
+                                })()}
+                              </td>
                               <td style={{ textAlign: 'right', color: '#10b981' }}>{formatCurrency(item.totalPaid)}</td>
                               <td style={{ textAlign: 'right', color: item.remainingBalance > 0 ? '#ef4444' : '#10b981', fontWeight: 600 }}>
                                 {formatCurrency(item.remainingBalance)}
@@ -1029,28 +1054,30 @@ const PayrollPaymentsList: React.FC = () => {
                                   <StatusBadge>{payment.paymentMode.replace(/_/g, ' ')}</StatusBadge>
                                 </td>
                                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                                  <IconButton
-                                    onClick={() => handleOpenEditPayment(payment)}
-                                    title="Edit Payment"
-                                    style={{ color: theme.ACCENT }}
-                                  >
-                                    <EditIcon style={{ fontSize: '0.9rem' }} />
-                                  </IconButton>
-                                  <IconButton
-                                    onClick={() => handleDownloadReceipt(payment.paymentIds)}
-                                    title="Download Receipt"
-                                    style={{ color: theme.ACCENT }}
-                                  >
-                                    <PictureAsPdfIcon style={{ fontSize: '0.9rem' }} />
-                                  </IconButton>
-                                  <IconButton
-                                    onClick={() => handleDeletePayment(payment.paymentIds[0], payment.paymentGroupId)}
-                                    title="Delete Payment"
-                                    disabled={deletingPaymentId === payment.paymentIds[0]}
-                                    style={{ color: '#ef4444' }}
-                                  >
-                                    <DeleteIcon style={{ fontSize: '0.9rem' }} />
-                                  </IconButton>
+                                  <Box display="flex" justifyContent="flex-end" gap={0.5}>
+                                    <IconButton
+                                      onClick={() => handleOpenEditPayment(payment)}
+                                      title="Edit Payment"
+                                      style={{ color: theme.ACCENT }}
+                                    >
+                                      <EditIcon style={{ fontSize: '0.9rem' }} />
+                                    </IconButton>
+                                    <IconButton
+                                      onClick={() => handleDownloadReceipt(payment.paymentIds)}
+                                      title="Download Receipt"
+                                      style={{ color: theme.ACCENT }}
+                                    >
+                                      <PictureAsPdfIcon style={{ fontSize: '0.9rem' }} />
+                                    </IconButton>
+                                    <IconButton
+                                      onClick={() => handleDeletePaymentClick(payment)}
+                                      title="Delete Payment"
+                                      disabled={deletingPaymentId === payment.paymentIds[0]}
+                                      style={{ color: '#ef4444' }}
+                                    >
+                                      <DeleteIcon style={{ fontSize: '0.9rem' }} />
+                                    </IconButton>
+                                  </Box>
                                 </td>
                               </tr>
                             ))
@@ -1291,6 +1318,55 @@ const PayrollPaymentsList: React.FC = () => {
                   <SaveIcon style={{ fontSize: 16 }} />
                 )}
                 Save Changes
+              </EditButton>
+            </EditModalFooter>
+          </EditModalCard>
+        </EditModalOverlay>,
+        document.body
+      )}
+
+      {confirmDeletePayment && ReactDOM.createPortal(
+        <EditModalOverlay theme={theme} onClick={() => setConfirmDeletePayment(null)}>
+          <EditModalCard theme={theme} style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
+            <EditModalHeader theme={theme}>
+              <EditModalTitle theme={theme} style={{ color: '#ef4444' }}>
+                <DeleteIcon style={{ fontSize: 20 }} />
+                Confirm Deletion
+              </EditModalTitle>
+              <IconButton onClick={() => setConfirmDeletePayment(null)} title="Close">
+                <CloseIcon style={{ fontSize: '0.95rem' }} />
+              </IconButton>
+            </EditModalHeader>
+
+            <EditModalBody theme={theme} style={{ textAlign: 'center', padding: '1.5rem 1.25rem' }}>
+              <div style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.5rem', color: theme.TEXT_PRIMARY }}>
+                Are you sure you want to delete this payment?
+              </div>
+              <div style={{ fontSize: '0.82rem', color: theme.TEXT_SECONDARY, lineHeight: 1.5 }}>
+                {confirmDeletePayment.employeeName} for {confirmDeletePayment.periods.join(', ')} ( {formatCurrency(confirmDeletePayment.amount)} )
+              </div>
+              <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: '#ef4444', fontWeight: 500 }}>
+                This action cannot be undone and will restore the pending balance for the affected months.
+              </div>
+            </EditModalBody>
+
+            <EditModalFooter theme={theme}>
+              <EditButton type="button" $variant="secondary" onClick={() => setConfirmDeletePayment(null)}>
+                <CloseIcon style={{ fontSize: 16 }} />
+                Cancel
+              </EditButton>
+              <EditButton
+                type="button"
+                style={{ background: '#ef4444' }}
+                onClick={handleConfirmDelete}
+                disabled={deletingPaymentId === confirmDeletePayment.paymentIds[0]}
+              >
+                {deletingPaymentId === confirmDeletePayment.paymentIds[0] ? (
+                  <CircularProgress size={16} color="inherit" />
+                ) : (
+                  <DeleteIcon style={{ fontSize: 16 }} />
+                )}
+                Yes, Delete Payment
               </EditButton>
             </EditModalFooter>
           </EditModalCard>

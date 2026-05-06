@@ -402,23 +402,19 @@ export const calculateSalaryBreakdown = (
   calculationMode: 'full' | 'partial' = 'partial',
   leaveBonusDays: number = 0 // 0 means no bonus, 1 or 2 means bonus days
 ): SalaryCalculationResult => {
-  // Calculate gross salary (includes allowances)
-  const grossSalary = calculateGrossSalary(plan, planItems);
+  // Calculate full gross salary from plan (includes full basic + full allowances)
+  const fullGrossSalary = calculateGrossSalary(plan, planItems);
 
-  // Calculate allowances
-  const allowances = calculateAllowances(plan, planItems);
+  // Calculate full allowances and deductions from plan
+  const fullAllowances = calculateAllowances(plan, planItems);
+  const fullDeductions = calculateDeductions(plan, planItems, fullGrossSalary);
 
-  // Calculate deductions from plan
-  const deductions = calculateDeductions(plan, planItems, grossSalary);
-
-  // Calculate daily rate (using gross salary for deductions)
-  const dailyRate = calculateDailyRate(grossSalary, attendance.workingDays);
-  
-  // Calculate basic daily rate (for bonus and potentially other basic-pay-only components)
+  // Calculate daily rates
+  const dailyRate = calculateDailyRate(fullGrossSalary, attendance.workingDays);
   const basicDailyRate = calculateDailyRate(plan.basicPay, attendance.workingDays);
   
   // Debug: Log calculation mode and gross salary
-  console.log(`[Payroll Calculation] Mode: ${calculationMode}, Gross Salary: ${grossSalary}, Daily Rate: ${dailyRate}`);
+  console.log(`[Payroll Calculation] Mode: ${calculationMode}, Full Gross Salary: ${fullGrossSalary}, Daily Rate: ${dailyRate}`);
 
   // Convert half leaves to full days (2 half leaves = 1 full day)
   const halfLeavesAsFullDays = Math.floor(attendance.halfDayLeaves / 2);
@@ -429,20 +425,36 @@ export const calculateSalaryBreakdown = (
   if (leaveBonusDays > 0 && attendance.absentDays === 0 && attendance.leaveDays === 0) {
     bonusLeaveDays = leaveBonusDays;
   }
+  const leaveBonusAmount = bonusLeaveDays * basicDailyRate;
 
-  let grossPay: number;
+  let earnedGrossSalary: number;
+  let earnedAllowances: { name: string; amount: number }[];
+  let earnedDeductions: { name: string; amount: number }[];
   let absentDeductions: number = 0;
   let leaveDeductions: number = 0;
   let lateDeductions: number = 0;
 
   if (calculationMode === 'partial') {
     // PARTIAL MODE: Only pay for days with records
-    // Payable Days = Present + Late (+ half leaves converted if needed) + Bonus Leave Days
+    // Payable Days = Present + Late (+ half leaves converted if needed) + Paid Leaves
     // Note: attendance.presentDays already includes lateDays (late is counted as present)
     const payableDaysWithoutBonus = attendance.presentDays + halfLeavesAsFullDays + (remainingHalfLeaves * 0.5) + (attendance.paidLeaveDays || 0);
-    const leaveBonusAmount = bonusLeaveDays * basicDailyRate;
-    grossPay = (payableDaysWithoutBonus * dailyRate) + leaveBonusAmount;
-    console.log(`[Partial Mode] Payable Days (excl bonus): ${payableDaysWithoutBonus}, Bonus Days: ${bonusLeaveDays}, Bonus Amount: ${leaveBonusAmount}, Gross Pay: ${grossPay}`);
+    
+    // Calculate prorated factor for basic pay, allowances and deductions
+    const prorateFactor = attendance.workingDays > 0 ? (payableDaysWithoutBonus / attendance.workingDays) : 0;
+    
+    // Prorate everything
+    earnedGrossSalary = Math.round(fullGrossSalary * prorateFactor * 100) / 100;
+    earnedAllowances = fullAllowances.map(a => ({
+      name: a.name,
+      amount: Math.round(a.amount * prorateFactor * 100) / 100
+    }));
+    earnedDeductions = fullDeductions.map(d => ({
+      name: d.name,
+      amount: Math.round(d.amount * prorateFactor * 100) / 100
+    }));
+
+    console.log(`[Partial Mode] Payable Days (excl bonus): ${payableDaysWithoutBonus}, Prorate Factor: ${prorateFactor}, Earned Gross: ${earnedGrossSalary}`);
     
     // In Partial mode: No absent/leave deductions, only late deductions (for ALL late days)
     absentDeductions = 0;
@@ -458,19 +470,17 @@ export const calculateSalaryBreakdown = (
     );
   } else {
     // FULL MODE: Use full gross salary, apply deductions
-    // In Full mode, employee gets full gross salary regardless of attendance
-    // Add bonus leave days amount to gross pay if applicable (based on basic pay only)
-    const leaveBonusAmount = bonusLeaveDays * basicDailyRate;
-    grossPay = grossSalary + leaveBonusAmount; 
-    console.log(`[Full Mode] Gross Pay (full salary + bonus): ${grossPay}, Gross Salary: ${grossSalary}, Bonus Days: ${bonusLeaveDays}, Bonus Amount: ${leaveBonusAmount}`);
+    earnedGrossSalary = fullGrossSalary;
+    earnedAllowances = fullAllowances;
+    earnedDeductions = fullDeductions;
+    
+    console.log(`[Full Mode] Full Gross Salary: ${fullGrossSalary}`);
     
     // Absent deductions: ALWAYS deducted (even the first one)
-    // All absent days are deducted at per day rate
     absentDeductions = attendance.absentDays * dailyRate;
     
     // Leave deductions: Only for excess leaves (beyond allowed + bonus)
-    // Formula: ExcessLeaves = max(0, Leaves - AllowedLeaves - BonusLeaveDays)
-    const totalAllowedLeaves = allowedLeavesPerMonth + bonusLeaveDays + (attendance.paidLeaveDays || 0);
+    const totalAllowedLeaves = allowedLeavesPerMonth + (attendance.paidLeaveDays || 0);
     const excessLeaves = Math.max(0, attendance.leaveDays - totalAllowedLeaves);
     if (excessLeaves > 0) {
       switch (leaveDeductionMethod) {
@@ -490,23 +500,15 @@ export const calculateSalaryBreakdown = (
     }
     
     // Late deductions: Only for excess late days (beyond allowed)
-    // Formula: ExcessLates = max(0, Lates - AllowedLates)
-    if (lateDeductionEnabled && attendance.lateDays > 0) {
-      const excessLates = Math.max(0, attendance.lateDays - allowedLateDaysPerMonth);
-      if (excessLates > 0) {
-        if (lateDeductionType === 'fixed') {
-          lateDeductions = excessLates * lateDeductionAmount;
-        } else if (lateDeductionType === 'percentage') {
-          const deductionPerLate = (dailyRate * lateDeductionAmount) / 100;
-          lateDeductions = excessLates * deductionPerLate;
-        }
-        lateDeductions = Math.round(lateDeductions * 100) / 100;
-      } else {
-        lateDeductions = 0;
-      }
-    } else {
-      lateDeductions = 0;
-    }
+    lateDeductions = calculateLateDeductions(
+      attendance,
+      lateDeductionEnabled,
+      allowedLateDaysPerMonth,
+      lateDeductionAmount,
+      lateDeductionType,
+      dailyRate,
+      'full'
+    );
   }
 
   // Calculate advance deductions (same for both modes)
@@ -521,35 +523,31 @@ export const calculateSalaryBreakdown = (
       type: adj.adjustmentType,
     }));
 
+  // Calculate total earnings: Earned Gross (incl allowances) + Leave Bonus + Bonus Adjustments
+  const bonusAdjustments = adjustmentItems.filter(a => a.type === 'bonus').reduce((sum, a) => sum + a.amount, 0);
+  const totalEarnings = earnedGrossSalary + leaveBonusAmount + bonusAdjustments;
+
+  // Calculate total deductions: Earned Deductions + Absent + Leave + Late + Advance + Fine Adjustments
+  const planDeductionsAmount = earnedDeductions.reduce((sum, d) => sum + d.amount, 0);
+  const fineAdjustments = adjustmentItems.filter(a => a.type !== 'bonus').reduce((sum, a) => sum + a.amount, 0);
+  const totalDeductions = planDeductionsAmount + absentDeductions + leaveDeductions + lateDeductions + advanceDeductions + fineAdjustments;
+
   // Calculate net salary
-  const totalDeductions = deductions.reduce((sum, d) => sum + d.amount, 0);
-  const totalAdjustments = adjustmentItems.reduce((sum, a) => {
-    // Bonuses add to salary, fines/cuts subtract
-    if (a.type === 'bonus') {
-      return sum + a.amount;
-    } else {
-      return sum - a.amount;
-    }
-  }, 0);
-
-  const netSalary = grossPay - totalDeductions - absentDeductions - leaveDeductions - lateDeductions - advanceDeductions + totalAdjustments;
-
-  // Calculate leave bonus amount (based on basic pay daily rate)
-  const leaveBonusAmount = bonusLeaveDays > 0 ? bonusLeaveDays * basicDailyRate : 0;
+  const netSalary = totalEarnings - totalDeductions;
 
   return {
-    grossSalary: grossSalary, // Always return the full gross salary from plan (not grossPay)
-    allowances,
-    deductions,
-    leaveDeductions: leaveDeductions, // Only leave deductions (excess leaves)
+    grossSalary: earnedGrossSalary, // Now returns earned amount (prorated in partial mode)
+    allowances: earnedAllowances,
+    deductions: earnedDeductions, // Now returns earned amount (prorated in partial mode)
+    leaveDeductions: leaveDeductions,
     lateDeductions,
     advanceDeductions,
     adjustments: adjustmentItems,
-    netSalary: Math.max(0, Math.round(netSalary * 100) / 100), // Ensure non-negative
+    netSalary: Math.max(0, Math.round(netSalary * 100) / 100),
+    totalEarnings: Math.round(totalEarnings * 100) / 100,
+    totalDeductions: Math.round(totalDeductions * 100) / 100,
     attendanceSummary: attendance,
-    // Store absent deductions separately for display (Full mode only)
     absentDeductions: absentDeductions,
-    // Store leave bonus amount for display
     leaveBonusAmount: leaveBonusAmount > 0 ? Math.round(leaveBonusAmount * 100) / 100 : undefined,
   };
 };

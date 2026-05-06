@@ -79,8 +79,8 @@ const drawCopy = (
   const pageWidth = 210;
   const left = 10;
   const right = pageWidth - 10;
-  const sectionHeight = 136;
-  const sectionTop = startY + 6;
+  const sectionHeight = 142; // Increased to accommodate adjustments
+  const sectionTop = startY + 4; // Slightly tighter top margin
   const sectionBottom = sectionTop + sectionHeight;
   const period = monthLabel(generation.payrollMonth, generation.payrollYear);
   const attendance = generation.attendanceData?.summary;
@@ -99,6 +99,7 @@ const drawCopy = (
   const innerRight = right - 2;
   const innerWidth = innerRight - innerLeft;
   const panelGap = 2;
+
   const attendanceRecords = generation.attendanceData?.records || [];
   const attendanceFromRecords = attendanceRecords.length > 0
     ? attendanceRecords.reduce(
@@ -116,6 +117,21 @@ const drawCopy = (
         { present: 0, leave: 0, absent: 0, late: 0 }
       )
     : null;
+
+  const adjustments = generation.calculationDetails?.adjustments || [];
+  const bonusTotal = adjustments.filter(a => a.type === 'bonus').reduce((sum, a) => sum + a.amount, 0);
+  const fineTotal = adjustments.filter(a => a.type !== 'bonus').reduce((sum, a) => sum + a.amount, 0);
+  
+  // Robust leave bonus extraction - strictly use the dedicated database field or explicit calculation details
+  const leaveBonus = generation.leaveBonusAmount ?? generation.calculationDetails?.leaveBonusAmount ?? 0;
+  
+  // Explicitly use the fields from generation/breakdown
+  const basicGross = generation.grossSalary ?? (generation.netSalary ? generation.netSalary - leaveBonus - bonusTotal + (generation.totalDeductions || 0) + fineTotal : 0);
+  const standardDeductions = (generation.absentDeductions ?? 0) + (generation.leaveDeductions ?? 0) + (generation.lateDeductions ?? 0) + (generation.advanceDeductions ?? 0);
+  
+  // Total Net for the month = (Basic Gross + Leave Bonus + Other Bonuses) - (Standard Deductions + Fines)
+  const netTotalForMonth = (basicGross + leaveBonus + bonusTotal) - (standardDeductions + fineTotal);
+  const finalNetTotal = netTotalForMonth + oldBalance;
 
   const drawPanel = (
     x: number,
@@ -243,11 +259,11 @@ const drawCopy = (
   drawDetailRow(paymentPanelX + 63, sectionTop + 48, 'Ref', safeText(payment.referenceNo), paymentPanelWidth - 66, false, 8);
 
   const metricWidth = (innerWidth - panelGap * 4) / 5;
-  drawMetric(innerLeft, sectionTop + 55, metricWidth, 'Old Balance', formatPayrollCurrency(oldBalance, roundUpAmounts));
-  drawMetric(innerLeft + (metricWidth + panelGap), sectionTop + 55, metricWidth, 'Current Gross', formatPayrollCurrency(currentMonthGross, roundUpAmounts));
-  drawMetric(innerLeft + (metricWidth + panelGap) * 2, sectionTop + 55, metricWidth, 'Deductions', formatPayrollCurrency(currentMonthDeductions, roundUpAmounts));
-  drawMetric(innerLeft + (metricWidth + panelGap) * 3, sectionTop + 55, metricWidth, 'Prior Payments', formatPayrollCurrency(priorPaymentsThisMonth, roundUpAmounts));
-  drawMetric(innerLeft + (metricWidth + panelGap) * 4, sectionTop + 55, metricWidth, 'Net Amount', formatPayrollCurrency(netPayroll, roundUpAmounts), true);
+  drawMetric(innerLeft, sectionTop + 55, metricWidth, 'Basic Gross', formatPayrollCurrency(basicGross, roundUpAmounts));
+  drawMetric(innerLeft + (metricWidth + panelGap), sectionTop + 55, metricWidth, 'Allowances', formatPayrollCurrency(leaveBonus + bonusTotal, roundUpAmounts));
+  drawMetric(innerLeft + (metricWidth + panelGap) * 2, sectionTop + 55, metricWidth, 'Deductions', formatPayrollCurrency(standardDeductions + fineTotal, roundUpAmounts));
+  drawMetric(innerLeft + (metricWidth + panelGap) * 3, sectionTop + 55, metricWidth, 'Old Balance', formatPayrollCurrency(oldBalance, roundUpAmounts));
+  drawMetric(innerLeft + (metricWidth + panelGap) * 4, sectionTop + 55, metricWidth, 'Net Total', formatPayrollCurrency(finalNetTotal, roundUpAmounts), true);
 
   const attendancePanelWidth = 82;
   const paymentFlowX = innerLeft + attendancePanelWidth + panelGap;
@@ -277,14 +293,11 @@ const drawCopy = (
   drawPanel(paymentFlowX, sectionTop + 72, paymentFlowWidth, 24, 'Payment Flow');
   const flowInnerX = paymentFlowX + 3;
   const flowInnerWidth = paymentFlowWidth - 6;
-  const flowPairGap = 5;
-  const flowPairWidth = (flowInnerWidth - flowPairGap) / 2;
-  drawDetailRow(flowInnerX, sectionTop + 80.5, 'Salary Months', salaryMonthsDisplay, flowPairWidth, false, 23);
-  drawDetailRow(flowInnerX + flowPairWidth + flowPairGap, sectionTop + 80.5, 'Current Payment', formatPayrollCurrency(currentPaymentAmount, roundUpAmounts), flowPairWidth, true, 27, [15, 23, 42], 'right');
-  drawDetailRow(flowInnerX, sectionTop + 88.9, 'Issued', issueTime, flowPairWidth, false, 13);
-  drawDetailRow(flowInnerX + flowPairWidth + flowPairGap, sectionTop + 88.9, 'Remaining', formatPayrollCurrency(remainingAfterThisReceipt, roundUpAmounts), flowPairWidth, true, 27, [220, 38, 38], 'right');
+  drawDetailRow(paymentFlowX + 3, sectionTop + 80.5, 'Salary Months', salaryMonthsDisplay, paymentFlowWidth - 6, false, 23);
+  drawDetailRow(paymentFlowX + 3, sectionTop + 88.9, 'Paid Now', formatPayrollCurrency(currentPaymentAmount, roundUpAmounts), (paymentFlowWidth - 6) / 2, true, 16);
+  drawDetailRow(paymentFlowX + (paymentFlowWidth - 6) / 2 + 6, sectionTop + 88.9, 'Remaining', formatPayrollCurrency(remainingAfterThisReceipt, roundUpAmounts), (paymentFlowWidth - 6) / 2 - 3, true, 16, [220, 38, 38], 'right');
 
-  drawPanel(innerLeft, sectionTop + 99, innerWidth, 18, 'Deduction Breakdown');
+  drawPanel(innerLeft, sectionTop + 99, innerWidth, 15, 'Deduction Breakdown');
   const deductionItems = [
     { label: 'Absent Ded.', value: formatPayrollCurrency(payment.absentDeductionAmount ?? generation.absentDeductions ?? 0, roundUpAmounts) },
     { label: 'Leave Ded.', value: formatPayrollCurrency(payment.leaveDeductionAmount ?? generation.leaveDeductions ?? 0, roundUpAmounts) },
@@ -294,28 +307,42 @@ const drawCopy = (
   const deductionWidth = innerWidth / 4;
   deductionItems.forEach((item, index) => {
     const boxX = innerLeft + 3 + index * deductionWidth;
-    doc.setDrawColor(226, 232, 240);
-    if (index > 0) {
-      doc.line(boxX - 1.5, sectionTop + 104.2, boxX - 1.5, sectionTop + 114.8);
-    }
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.4);
-    doc.setTextColor(100, 116, 139);
-    doc.text(item.label.toUpperCase(), boxX, sectionTop + 105.8);
-    doc.setFontSize(8);
-    doc.setTextColor(15, 23, 42);
-    doc.text(item.value, boxX, sectionTop + 111.8);
+    if (index > 0) { doc.setDrawColor(226, 232, 240); doc.line(boxX - 1.5, sectionTop + 105, boxX - 1.5, sectionTop + 113); }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(6.2); doc.setTextColor(100, 116, 139); doc.text(item.label.toUpperCase(), boxX, sectionTop + 106);
+    doc.setFontSize(7.5); doc.setTextColor(15, 23, 42); doc.text(item.value, boxX, sectionTop + 111);
   });
 
-  drawPanel(innerLeft, sectionTop + 120, innerWidth, 10, 'Remarks');
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.2);
-  doc.setTextColor(15, 23, 42);
-  doc.text(safeText(payment.remarks), innerLeft + 16, sectionTop + 126.2, { maxWidth: innerWidth - 20 });
+  const bottomRowY = sectionTop + 117;
+  const sidePanelWidth = (innerWidth - panelGap) / 2;
+  
+  if (leaveBonus > 0) {
+    drawPanel(innerLeft, bottomRowY, sidePanelWidth, 14, 'Casual Leave Allowance');
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8); doc.setTextColor(15, 23, 42);
+    doc.text(`Monthly Allowance Granted:`, innerLeft + 3, bottomRowY + 8.5);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(16, 185, 129);
+    doc.text(formatPayrollCurrency(leaveBonus, roundUpAmounts), innerLeft + sidePanelWidth - 3, bottomRowY + 11.2, { align: 'right' });
+  }
 
-  doc.setFontSize(6.5);
-  doc.setTextColor(148, 163, 184);
-  doc.text('Computer generated payroll payment receipt', left + contentWidth / 2, sectionBottom - 3.8, { align: 'center' });
+  if (bonusTotal > 0 || fineTotal > 0 || oldBalance !== 0) {
+    const adjPanelX = innerLeft + (leaveBonus > 0 ? sidePanelWidth + panelGap : 0);
+    const adjPanelWidth = leaveBonus > 0 ? sidePanelWidth : innerWidth;
+    drawPanel(adjPanelX, bottomRowY, adjPanelWidth, 14, 'Adjustments & Balances');
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(100, 116, 139);
+    doc.text(`Previous Balance:`, adjPanelX + 3, bottomRowY + 8.2);
+    doc.text(`Current Adjustments:`, adjPanelX + 3, bottomRowY + 11.2);
+    doc.setFontSize(7); doc.setTextColor(15, 23, 42);
+    doc.text(formatPayrollCurrency(oldBalance, roundUpAmounts), adjPanelX + adjPanelWidth - 3, bottomRowY + 8.2, { align: 'right' });
+    const adjNet = bonusTotal - fineTotal;
+    doc.setTextColor(adjNet >= 0 ? 16 : 220, adjNet >= 0 ? 185 : 38, adjNet >= 0 ? 129 : 38);
+    doc.text(`${adjNet >= 0 ? '+' : ''}${formatPayrollCurrency(adjNet, roundUpAmounts)}`, adjPanelX + adjPanelWidth - 3, bottomRowY + 11.2, { align: 'right' });
+  }
+
+  drawPanel(innerLeft, sectionTop + 133, innerWidth, 7, 'Remarks');
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8); doc.setTextColor(15, 23, 42);
+  doc.text(safeText(payment.remarks), innerLeft + 16, sectionTop + 137.8, { maxWidth: innerWidth - 20 });
+
+  doc.setFontSize(6.5); doc.setTextColor(148, 163, 184);
+  doc.text('Computer generated payroll payment receipt', left + contentWidth / 2, sectionBottom - 2.5, { align: 'center' });
 };
 
 export const generatePayrollPaymentReceipt = async (
@@ -362,7 +389,7 @@ export const generatePayrollPaymentReceipt = async (
     drawCopy(
       doc,
       0,
-      'OFFICE COPY',
+      'EMPLOYEE COPY',
       school,
       payment,
       generation,
@@ -383,7 +410,7 @@ export const generatePayrollPaymentReceipt = async (
     drawCopy(
       doc,
       148.5,
-      'EMPLOYEE COPY',
+      'OFFICE COPY',
       school,
       payment,
       generation,
@@ -422,7 +449,7 @@ export const generatePayrollPaymentReceipt = async (
   }).length;
   const salaryMonthsLabel = buildSalaryMonthsLabel(latestGeneration, oldMonthCount);
 
-  const receiptNetAmount = oldBalance + (latestGeneration.grossSalary || latestGeneration.totalEarnings || 0) - (latestGeneration.totalDeductions || 0) - priorPaymentsThisMonth;
+  const receiptNetAmount = (latestGeneration.netSalary || 0) + oldBalance - priorPaymentsThisMonth;
   const remainingAfterThisReceipt = Math.max(0, receiptNetAmount - payment.amount);
 
   const doc = new jsPDF({
@@ -431,14 +458,14 @@ export const generatePayrollPaymentReceipt = async (
     format: 'a4',
   });
 
-  drawCopy(doc, 0, 'OFFICE COPY', school, payment, latestGeneration, oldBalance, receiptNetAmount, payment.amount, remainingAfterThisReceipt, roundUpAmounts, priorPaymentsThisMonth, salaryMonthsLabel);
+  drawCopy(doc, 0, 'EMPLOYEE COPY', school, payment, latestGeneration, oldBalance, receiptNetAmount, payment.amount, remainingAfterThisReceipt, roundUpAmounts, priorPaymentsThisMonth, salaryMonthsLabel);
 
   doc.setDrawColor(148, 163, 184);
   doc.setLineDashPattern([2, 2], 0);
   doc.line(10, 148.5, 200, 148.5);
   doc.setLineDashPattern([], 0);
 
-  drawCopy(doc, 148.5, 'EMPLOYEE COPY', school, payment, latestGeneration, oldBalance, receiptNetAmount, payment.amount, remainingAfterThisReceipt, roundUpAmounts, priorPaymentsThisMonth, salaryMonthsLabel);
+  drawCopy(doc, 148.5, 'OFFICE COPY', school, payment, latestGeneration, oldBalance, receiptNetAmount, payment.amount, remainingAfterThisReceipt, roundUpAmounts, priorPaymentsThisMonth, salaryMonthsLabel);
 
   const filePeriod = `${latestGeneration.payrollYear}_${String(latestGeneration.payrollMonth).padStart(2, '0')}`;
   const fileName = `Payroll_Receipt_${filePeriod}_${String(payment.id).padStart(5, '0')}.pdf`;
@@ -513,7 +540,7 @@ export const generateCombinedPayrollPaymentReceipt = async (
   const priorPaymentsThisMonth = allPayments
     .filter(item => item.generationId === latestGeneration.id && item.status === 'completed' && !uniquePaymentIds.includes(item.id))
     .reduce((sum, item) => sum + item.amount, 0);
-  const latestMonthNetAmount = oldBalanceCollected + (latestGeneration.grossSalary || latestGeneration.totalEarnings || 0) - (latestGeneration.totalDeductions || 0) - priorPaymentsThisMonth;
+  const latestMonthNetAmount = (latestGeneration.netSalary || 0) + oldBalanceCollected - priorPaymentsThisMonth;
   const latestMonthRemainingAfter = Math.max(0, latestMonthNetAmount - totalPaidThisSlip);
   const oldMonthCount = staffBalances.filter(item => getGenerationPeriodNumber(item.generation) < latestPeriod).length;
   const salaryMonthsLabel = buildSalaryMonthsLabel(latestGeneration, oldMonthCount);
@@ -534,7 +561,7 @@ export const generateCombinedPayrollPaymentReceipt = async (
   drawCopy(
     doc,
     0,
-    'OFFICE COPY',
+    'EMPLOYEE COPY',
     school,
     combinedPayment,
     latestGeneration,
@@ -554,7 +581,7 @@ export const generateCombinedPayrollPaymentReceipt = async (
   drawCopy(
     doc,
     148.5,
-    'EMPLOYEE COPY',
+    'OFFICE COPY',
     school,
     combinedPayment,
     latestGeneration,

@@ -108,6 +108,8 @@ export interface PayrollGeneration {
   leaveDeductions?: number;
   lateDeductions?: number;
   advanceDeductions?: number;
+  leaveBonusAmount?: number;
+  oldBalanceAmount?: number;
   attendanceData?: {
     records: Array<{ status: string; date: string; paidLeave?: boolean }>;
     halfLeaves: Array<{ date: string; type: 'first_half' | 'second_half' }>;
@@ -134,6 +136,8 @@ export interface PayrollGeneration {
     leaveDeductions: number;
     lateDeductions: number;
     advanceDeductions: number;
+    leaveBonusAmount: number;
+    oldBalanceAmount: number;
     adjustments: Array<{ name: string; amount: number; type: string }>;
     netSalary: number;
     settings: {
@@ -395,6 +399,8 @@ export interface SalaryCalculationResult {
   advanceDeductions: number;
   adjustments: { name: string; amount: number; type: string }[];
   netSalary: number;
+  totalEarnings: number;
+  totalDeductions: number;
   attendanceSummary: AttendanceSummary;
   absentDeductions?: number; // Absent deductions (Full mode only, always deducted)
   leaveBonusAmount?: number; // Leave bonus amount added to gross pay
