@@ -75,6 +75,7 @@ export interface CachedAttendanceHistoryItem {
     status?: string | null;
     check_in_time?: string | null;
     check_out_time?: string | null;
+    late_count?: number | null;
     source?: string | null;
     updated_at?: string;
 }
@@ -450,12 +451,14 @@ class RFIDOfflineService {
         return cachedSettings;
     }
 
-    private buildHistoryItem(
-        schoolId: number,
-        date: string,
-        person: RFIDMapping,
-        fields: Partial<CachedAttendanceHistoryItem>
-    ): CachedAttendanceHistoryItem {
+    private buildHistoryItem(schoolId: number, date: string, person: RFIDMapping, record: {
+        status: string | null;
+        check_in_time: string | null;
+        check_out_time: string | null;
+        late_count?: number | null;
+        source: string | null;
+        updated_at: string;
+    }): CachedAttendanceHistoryItem {
         return {
             key: this.buildDailyHistoryKey(schoolId, date, person.type, person.person_id),
             school_id: schoolId,
@@ -471,7 +474,12 @@ class RFIDOfflineService {
             class_name: person.class_name,
             section_name: person.section_name,
             picture_url: person.picture_url,
-            ...fields,
+            status: record.status,
+            check_in_time: record.check_in_time,
+            check_out_time: record.check_out_time,
+            late_count: record.late_count,
+            source: record.source,
+            updated_at: record.updated_at,
         };
     }
 
@@ -562,12 +570,12 @@ class RFIDOfflineService {
     /**
      * Cache student and employee RFID mappings for offline lookup
      */
-    async cacheMappings(schoolId: string): Promise<void> {
+    async cacheMappings(schoolId: string, onProgress?: (curr: number, total: number, status: string) => void): Promise<void> {
         // If a cache refresh is already running, wait for it and skip re-running to avoid double store.clear()
         if (this.cacheMappingsPromise) {
             return this.cacheMappingsPromise;
         }
-        this.cacheMappingsPromise = this._cacheMappingsImpl(schoolId);
+        this.cacheMappingsPromise = this._cacheMappingsImpl(schoolId, onProgress);
         try {
             await this.cacheMappingsPromise;
         } finally {
@@ -575,13 +583,14 @@ class RFIDOfflineService {
         }
     }
 
-    private async _cacheMappingsImpl(schoolId: string): Promise<void> {
+    private async _cacheMappingsImpl(schoolId: string, onProgress?: (curr: number, total: number, status: string) => void): Promise<void> {
         if (!navigator.onLine) {
             await this.rehydrateMappingsFromFallbackCache(schoolId);
             return;
         }
 
         try {
+            if (onProgress) onProgress(0, 100, 'Fetching students and staff...');
             // Fetch students
             const { data: students } = await supabase
                 .from('students')
@@ -605,6 +614,10 @@ class RFIDOfflineService {
 
             // Add new mappings
             const serializedMappings: RFIDMapping[] = [];
+            const totalCount = (students?.length || 0) + (staff?.length || 0);
+            let processedCount = 0;
+
+            if (onProgress) onProgress(0, totalCount, 'Storing local mappings...');
 
             students?.forEach(s => {
                 const mapping: RFIDMapping = {
@@ -625,6 +638,11 @@ class RFIDOfflineService {
                 const uidCandidates = buildRfidUidCandidates(s.rfid_uid);
                 uidCandidates.forEach(uid => store.put({ ...mapping, rfid_uid: uid }));
                 serializedMappings.push(mapping);
+                
+                processedCount++;
+                if (onProgress && processedCount % 20 === 0) {
+                    onProgress(processedCount, totalCount, `Processing students... (${processedCount}/${totalCount})`);
+                }
             });
 
             staff?.forEach(s => {
@@ -641,15 +659,28 @@ class RFIDOfflineService {
                 const uidCandidates = buildRfidUidCandidates(s.rfid_uid);
                 uidCandidates.forEach(uid => store.put({ ...mapping, rfid_uid: uid }));
                 serializedMappings.push(mapping);
+
+                processedCount++;
+                if (onProgress && processedCount % 5 === 0) {
+                    onProgress(processedCount, totalCount, `Processing staff... (${processedCount}/${totalCount})`);
+                }
             });
+
+            if (onProgress) onProgress(totalCount, totalCount, 'Finalizing local storage...');
 
             // Use a chunked approach to fetch and cache images concurrently but without overloading
             const cacheImages = async (mappings: RFIDMapping[]) => {
+                const totalImages = mappings.filter(m => m.picture_url && !m.picture_url.startsWith('data:')).length;
+                if (totalImages === 0) return;
+
+                let imageProcessedCount = 0;
                 const chunks = [];
                 const chunkSize = 5;
                 for (let i = 0; i < mappings.length; i += chunkSize) {
                     chunks.push(mappings.slice(i, i + chunkSize));
                 }
+
+                if (onProgress) onProgress(0, totalImages, `Caching student images... (0/${totalImages})`);
 
                 for (const chunk of chunks) {
                     await Promise.all(chunk.map(async (m) => {
@@ -657,22 +688,23 @@ class RFIDOfflineService {
                             const cached = await this.fetchAndCacheImage(m.picture_url);
                             if (cached) {
                                 m.picture_url = cached;
-                                // Re-save ALL UID candidate entries with the cached image.
-                                // IMPORTANT: do NOT use m.rfid_uid directly as it may be the raw
-                                // lowercase value from the DB — we must write to every candidate key
-                                // (e.g. '7751E534' AND '34E55177') so lookupRFID can still find them.
                                 const uidCandidates = buildRfidUidCandidates(m.rfid_uid);
                                 const txImg = db.transaction(STORE_MAPPINGS, 'readwrite');
                                 const storeImg = txImg.objectStore(STORE_MAPPINGS);
                                 uidCandidates.forEach(uid => storeImg.put({ ...m, rfid_uid: uid }));
                             }
+                            imageProcessedCount++;
+                            if (onProgress && imageProcessedCount % 5 === 0) {
+                                onProgress(imageProcessedCount, totalImages, `Caching student images... (${imageProcessedCount}/${totalImages})`);
+                            }
                         }
                     }));
                 }
+                if (onProgress) onProgress(totalImages, totalImages, 'Images cached successfully.');
             };
 
-            // Start image caching in background after initial sync
-            cacheImages(serializedMappings).catch(err => console.warn('Background image caching failed:', err));
+            // Await image caching so the UI shows the full progress of offline data preparation
+            await cacheImages(serializedMappings);
 
             let sessionId: number | null = null;
             let settingsPayload: any = null;
@@ -1557,7 +1589,7 @@ class RFIDOfflineService {
                                     scan_type: 'out', platform, sync_status: 'pending', sequence_order: Date.now(), source: 'rfid-offline',
                                     class_id: currentPerson.class_id, section_id: currentPerson.section_id
                                 });
-                                result = { success: true, person: currentPerson, type: 'out', attendance_status: existingRecord.status || 'present', recorded_time: now };
+                                result = { success: true, person: currentPerson, type: 'offline_checkout', attendance_status: existingRecord.status || 'present', recorded_time: now };
                             }
                         } else if (currentPerson.type === 'employee' && existingRecord.check_out_time) {
                             result = { success: true, person: currentPerson, type: 'already_out', attendance_status: existingRecord.status || 'present', recorded_time: existingRecord.check_out_time };

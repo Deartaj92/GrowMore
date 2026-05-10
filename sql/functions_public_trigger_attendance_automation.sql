@@ -114,9 +114,32 @@ BEGIN
     RETURN jsonb_build_object('status', 'skipped', 'reason', 'NoActiveSession', 'message', 'No active session for this school');
   END IF;
 
-  sql := 'INSERT INTO attendance_records (school_id, student_id, class_id, date, status, session_id) ' ||
-         'SELECT $1, s.id, s.class_id, $2, ''absent'', ' || session_id || ' FROM students s ' ||
-         'WHERE s.school_id = $1 AND s.class_id IS NOT NULL';
+  -- Determine columns to insert
+  DECLARE
+    has_attendance_section_id boolean := false;
+    has_attendance_source boolean := false;
+    cols_str text := 'school_id, student_id, class_id, date, status, session_id';
+    select_str text := '$1, s.id, sch.new_class_id, $2, ''absent'', ' || session_id;
+  BEGIN
+    SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'attendance_records' AND column_name = 'section_id' AND table_schema = 'public') INTO has_attendance_section_id;
+    SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'attendance_records' AND column_name = 'source' AND table_schema = 'public') INTO has_attendance_source;
+
+    IF has_attendance_section_id THEN
+      cols_str := cols_str || ', section_id';
+      select_str := select_str || ', sch.new_section_id';
+    END IF;
+
+    IF has_attendance_source THEN
+      cols_str := cols_str || ', source';
+      select_str := select_str || ', ''manual-trigger''';
+    END IF;
+
+    sql := 'INSERT INTO attendance_records (' || cols_str || ') ' ||
+           'SELECT ' || select_str || ' FROM students s ' ||
+           'INNER JOIN student_class_history sch ON s.id = sch.student_id AND s.school_id = sch.school_id ' ||
+           'WHERE s.school_id = $1 AND sch.session_id = ' || session_id || ' AND sch.new_class_id IS NOT NULL';
+  END;
+
   -- Optional filters if columns exist
   -- Filter for active students
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'students' AND column_name = 'status' AND table_schema = 'public') THEN

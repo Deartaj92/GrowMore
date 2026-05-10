@@ -880,7 +880,7 @@ const AttendanceReport: React.FC = () => {
   // Fetch students and attendance when filters change
   useEffect(() => {
     const fetchData = async () => {
-      if (!selectedClass || !selectedMonth || !user?.school_id) return;
+      if (!selectedClass || !selectedMonth || !user?.school_id || !sessionId) return;
 
       const selectedClassObj = classes.find(c => String(c.id) === String(selectedClass));
       const hasSections = selectedClassObj?.has_sections ?? true;
@@ -903,6 +903,7 @@ const AttendanceReport: React.FC = () => {
         .select('student_id, date, status')
         .eq('class_id', selectedClass)
         .eq('school_id', user.school_id)
+        .eq('session_id', sessionId)
         .gte('date', startDate)
         .lte('date', endDate);
 
@@ -1043,6 +1044,18 @@ const AttendanceReport: React.FC = () => {
     };
     fetchData();
   }, [selectedClass, selectedSection, selectedMonth, user?.school_id, sessionId, classes]);
+  
+  // Listen for attendance automation events to refresh data
+  useEffect(() => {
+    const handleRefresh = () => {
+      // Clear matrix and students to force a re-fetch via the effects
+      setAttendanceMatrix([]);
+      setStudents([]);
+    };
+
+    window.addEventListener('attendance-automation-triggered', handleRefresh);
+    return () => window.removeEventListener('attendance-automation-triggered', handleRefresh);
+  }, []);
 
   // Real-time subscription for attendance_records
   useEffect(() => {
@@ -1302,44 +1315,40 @@ const AttendanceReport: React.FC = () => {
       };
 
 
-      // First, check if record already exists
+      // First, check if record already exists to determine if we should update or insert
+      // Use maybeSingle() to avoid 406/404 errors if no record exists
       let checkQuery = supabase
         .from('attendance_records')
-        .select('id, status')
+        .select('id')
         .eq('student_id', student.id)
-        .eq('class_id', selectedClass)
+        .eq('date', dateStr)
         .eq('school_id', user.school_id)
-        .eq('session_id', sessionId)
-        .eq('date', dateStr);
+        .eq('session_id', sessionId);
 
-      if (hasSections) {
-        checkQuery = checkQuery.eq('section_id', selectedSection);
-      } else {
-        checkQuery = checkQuery.is('section_id', null);
-      }
+      const { data: existingRecord, error: checkError } = await checkQuery.maybeSingle();
 
-      const { data: existingRecord, error: checkError } = await checkQuery.single();
-
-      if (checkError && checkError.code !== 'PGRST116') {
+      if (checkError) {
         throw checkError;
       }
 
       let data, error;
 
-      if (existingRecord) {
-        // Record exists, update it
+      if (existingRecord?.id) {
+        // Record exists, perform update using the primary key
         const updateResult = await supabase
           .from('attendance_records')
-          .update({ status: dbStatus })
+          .update({ 
+            status: dbStatus,
+            class_id: selectedClass,
+            section_id: hasSections ? selectedSection : null
+          })
           .eq('id', existingRecord.id);
-        data = updateResult.data;
         error = updateResult.error;
       } else {
-        // Record doesn't exist, insert it
+        // Record doesn't exist, perform insert
         const insertResult = await supabase
           .from('attendance_records')
           .insert([upsertPayload]);
-        data = insertResult.data;
         error = insertResult.error;
       }
 

@@ -390,6 +390,7 @@ interface AttendanceTabProps {
   consecutiveAbsentStudents: any[];
 
   // Absentees
+  dashboardDate: string;
   absentDate: string;
   setAbsentDate: (date: string) => void;
   isAbsenteesExpanded: boolean;
@@ -446,6 +447,7 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
   weekAvgAttendanceRate,
   consecutiveAbsentLoading,
   consecutiveAbsentStudents,
+  dashboardDate,
   absentDate,
   setAbsentDate,
   isAbsenteesExpanded,
@@ -494,7 +496,7 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
   const triggerManualAbsentMarkTab = async () => {
     if (!user?.school_id) return;
     // Client-side Sunday guard
-    const dateObj = new Date(absentDate);
+    const dateObj = new Date(dashboardDate);
     const isSunday = dateObj.getDay() === 0;
     if (isSunday) {
       toast.showToast('Cannot mark absents on Sundays.', 'warning');
@@ -504,7 +506,7 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
     try {
       const { data, error } = await supabase.rpc('trigger_attendance_automation', {
         p_school_id: user.school_id,
-        p_date: absentDate,
+        p_date: dashboardDate,
       });
       if (error) throw error;
       if (data?.status === 'ok') {

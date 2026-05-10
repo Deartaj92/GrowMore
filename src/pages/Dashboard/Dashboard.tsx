@@ -908,7 +908,6 @@ const Dashboard: React.FC = () => {
             .select('date, status')
             .gte('date', minDate)
             .lte('date', maxDate)
-            .eq('session_id', sessionData.id)
             .eq('school_id', user.school_id)
             .range(from, to);
           return { data: result.data, error: result.error };
@@ -929,21 +928,23 @@ const Dashboard: React.FC = () => {
         // Process ALL attendance data
         if (allAttendanceData && allAttendanceData.length > 0) {
           allAttendanceData.forEach((record: any) => {
-            // Ensure date is in YYYY-MM-DD format
             let dateStr = record.date;
             if (dateStr && typeof dateStr === 'string') {
-              // If date includes time, extract just the date part
               dateStr = dateStr.split('T')[0];
 
-              // Only process if it's in our date range
               if (daysDateStrs.has(dateStr)) {
                 const stats = attendanceByDate.get(dateStr);
                 if (stats) {
                   stats.total++;
-                  if (record.status === 'present' || record.status === 'late' || record.status === 'half_day') {
+                  const s = record.status;
+                  if (s === 'present') {
                     stats.present++;
-                  } else if (record.status === 'absent' || record.status === 'leave') {
+                  } else if (s === 'absent') {
                     stats.absent++;
+                  } else if (s === 'leave') {
+                    stats.leave++;
+                  } else if (s === 'late' || s === 'half_day') {
+                    stats.late++;
                   }
                 }
               }
@@ -952,18 +953,18 @@ const Dashboard: React.FC = () => {
         }
 
         if (isSelectedDateWorkingDay && daysDateStrs.has(selectedDateStr)) {
-          const selectedDatePresent = attendanceDataForDate.filter(a => a.status === 'present' || a.status === 'late' || a.status === 'half_day').length;
-          const selectedDateAbsent = attendanceDataForDate.filter(a => a.status === 'absent' || a.status === 'leave').length;
-          const selectedDateLeave = attendanceDataForDate.filter(a => a.status === 'leave').length;
-          const selectedDateLate = attendanceDataForDate.filter(a => a.status === 'late').length;
-          const selectedDateTotal = attendanceDataForDate.length;
+          const sPresent = attendanceDataForDate.filter(a => a.status === 'present').length;
+          const sAbsent = attendanceDataForDate.filter(a => a.status === 'absent').length;
+          const sLeave = attendanceDataForDate.filter(a => a.status === 'leave').length;
+          const sLate = attendanceDataForDate.filter(a => a.status === 'late' || a.status === 'half_day').length;
+          const sTotal = attendanceDataForDate.length;
 
           attendanceByDate.set(selectedDateStr, {
-            total: selectedDateTotal,
-            present: selectedDatePresent,
-            absent: selectedDateAbsent,
-            leave: selectedDateLeave,
-            late: selectedDateLate
+            total: sTotal,
+            present: sPresent,
+            absent: sAbsent,
+            leave: sLeave,
+            late: sLate
           });
         }
 
@@ -979,7 +980,7 @@ const Dashboard: React.FC = () => {
             absent: stats.absent,
             leave: stats.leave,
             late: stats.late,
-            presentWithLate: stats.present
+            presentWithLate: stats.present + stats.late
           });
           totalRate += rate;
         });
@@ -1670,7 +1671,6 @@ const Dashboard: React.FC = () => {
             .select('date, status')
             .gte('date', minDate)
             .lte('date', maxDate)
-            .eq('session_id', sessionData.id)
             .eq('school_id', user.school_id)
             .range(from, to);
           return { data: result.data, error: result.error };
@@ -3588,6 +3588,7 @@ const Dashboard: React.FC = () => {
               weekAvgAttendanceRate={weekAvgAttendanceRate}
               consecutiveAbsentLoading={consecutiveAbsentLoading}
               consecutiveAbsentStudents={consecutiveAbsentStudents}
+              dashboardDate={dashboardDate}
               absentDate={absentDate}
               setAbsentDate={setAbsentDate}
               isAbsenteesExpanded={isAbsenteesExpanded}
