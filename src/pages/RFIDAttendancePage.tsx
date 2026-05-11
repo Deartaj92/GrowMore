@@ -2190,7 +2190,9 @@ const RFIDAttendancePage: React.FC = () => {
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         const target = e.target as HTMLElement | null;
         if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
-            return;
+            if (target.id !== 'rfid-hidden-input') {
+                return;
+            }
         }
 
         if (e.key === 'Shift' || e.key === 'CapsLock' || e.key === 'Alt' || e.key === 'Control') return;
