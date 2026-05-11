@@ -2418,7 +2418,7 @@ const RFIDAttendancePage: React.FC = () => {
             
             setAttnSettings(newSettings);
             // Also update the local offline cache so the offline service respects the change immediately
-            await rfidOfflineService.setConfig('attendance_settings', newSettings);
+            await rfidOfflineService.cacheConfig('attendance_settings', newSettings);
             
             showToast(`Mark Late turned ${enabled ? 'ON' : 'OFF'}${!isOnline ? ' (Offline)' : ''}`, 'success');
         } catch (err: any) {

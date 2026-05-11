@@ -82,7 +82,7 @@ DECLARE
   col_exists boolean := false;
   has_attendance_class_id boolean := false;
   has_student_class_id boolean := false;
-  session_id integer;
+  v_session_id integer;
   sql text;
 BEGIN
   -- Basic Sunday guard (redundant, but safe)
@@ -109,8 +109,8 @@ BEGIN
     RETURN jsonb_build_object('status', 'skipped', 'reason', 'MissingColumn', 'message', 'Missing required class_id column');
   END IF;
   -- Determine active session for the school
-  SELECT id INTO session_id FROM sessions WHERE school_id = p_school_id AND is_active = true LIMIT 1;
-  IF session_id IS NULL THEN
+  SELECT id INTO v_session_id FROM sessions WHERE school_id = p_school_id AND is_active = true LIMIT 1;
+  IF v_session_id IS NULL THEN
     RETURN jsonb_build_object('status', 'skipped', 'reason', 'NoActiveSession', 'message', 'No active session for this school');
   END IF;
 
@@ -119,7 +119,7 @@ BEGIN
     has_attendance_section_id boolean := false;
     has_attendance_source boolean := false;
     cols_str text := 'school_id, student_id, class_id, date, status, session_id';
-    select_str text := '$1, s.id, sch.new_class_id, $2, ''absent'', ' || session_id;
+    select_str text := '$1, s.id, sch.new_class_id, $2, ''absent'', $3';
   BEGIN
     SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'attendance_records' AND column_name = 'section_id' AND table_schema = 'public') INTO has_attendance_section_id;
     SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'attendance_records' AND column_name = 'source' AND table_schema = 'public') INTO has_attendance_source;
@@ -137,7 +137,7 @@ BEGIN
     sql := 'INSERT INTO attendance_records (' || cols_str || ') ' ||
            'SELECT ' || select_str || ' FROM students s ' ||
            'INNER JOIN student_class_history sch ON s.id = sch.student_id AND s.school_id = sch.school_id ' ||
-           'WHERE s.school_id = $1 AND sch.session_id = ' || session_id || ' AND sch.new_class_id IS NOT NULL';
+           'WHERE s.school_id = $1 AND sch.session_id = $3 AND sch.new_class_id IS NOT NULL';
   END;
 
   -- Optional filters if columns exist
@@ -158,7 +158,7 @@ BEGIN
   sql := sql || ' AND NOT EXISTS (' ||
          'SELECT 1 FROM attendance_records ar WHERE ar.school_id = $1 AND ar.student_id = s.id AND ar.date = $2' ||
          ')';
-  EXECUTE sql USING p_school_id, p_date;
+  EXECUTE sql USING p_school_id, p_date, v_session_id;
   GET DIAGNOSTICS cnt = ROW_COUNT;
   
 
