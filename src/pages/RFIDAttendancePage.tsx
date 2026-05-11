@@ -2298,8 +2298,8 @@ const RFIDAttendancePage: React.FC = () => {
 
                 triggerPopup({
                     name: p.name,
-                    subInfo: personType === 'student' ? `Roll: ${(p as any).roll_no || 'N/A'}` : `Role: ${(p as any).role || 'Staff'}`,
-                    status: result.attendance_status as any,
+                    subInfo: personType === 'student' && (p as any).father_name ? `Father: ${(p as any).father_name}` : '',
+                    status: isCheckout ? 'checked_out' : result.attendance_status as any,
                     time,
                     picture_url: p.picture_url
                 });
@@ -2315,7 +2315,7 @@ const RFIDAttendancePage: React.FC = () => {
 
         window.addEventListener('rfid-scan-processed', handleGlobalScan);
         return () => window.removeEventListener('rfid-scan-processed', handleGlobalScan);
-    }, [addFeedItem, fetchPersonMonthlyLateCount, triggerPopup]);
+    }, [addFeedItem, fetchPersonMonthlyLateCount, triggerPopup, speak]);
 
     const openClearPasswordModal = () => {
         setClearPassword('');
@@ -2399,23 +2399,28 @@ const RFIDAttendancePage: React.FC = () => {
                 staff_mark_late_enabled: enabled
             };
             
-            const { error } = await supabase
-                .from('attendance_settings')
-                .upsert({
-                    school_id: user.school_id,
-                    ...newSettings,
-                    student_start_time: toDbTime(newSettings.student_start_time, '08:00'),
-                    staff_start_time: toDbTime(newSettings.staff_start_time, '08:00'),
-                    staff_end_time: toDbTime(newSettings.staff_end_time, '14:00'),
-                    student_cutoff_time: toDbTime(newSettings.student_cutoff_time, '08:15'),
-                    staff_cutoff_time: toDbTime(newSettings.staff_cutoff_time, '08:15'),
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'school_id' });
+            if (isOnline) {
+                const { error } = await supabase
+                    .from('attendance_settings')
+                    .upsert({
+                        school_id: user.school_id,
+                        ...newSettings,
+                        student_start_time: toDbTime(newSettings.student_start_time, '08:00'),
+                        staff_start_time: toDbTime(newSettings.staff_start_time, '08:00'),
+                        staff_end_time: toDbTime(newSettings.staff_end_time, '14:00'),
+                        student_cutoff_time: toDbTime(newSettings.student_cutoff_time, '08:15'),
+                        staff_cutoff_time: toDbTime(newSettings.staff_cutoff_time, '08:15'),
+                        updated_at: new Date().toISOString()
+                    }, { onConflict: 'school_id' });
 
-            if (error) throw error;
+                if (error) throw error;
+            }
             
             setAttnSettings(newSettings);
-            showToast(`Mark Late turned ${enabled ? 'ON' : 'OFF'}`, 'success');
+            // Also update the local offline cache so the offline service respects the change immediately
+            await rfidOfflineService.setConfig('attendance_settings', newSettings);
+            
+            showToast(`Mark Late turned ${enabled ? 'ON' : 'OFF'}${!isOnline ? ' (Offline)' : ''}`, 'success');
         } catch (err: any) {
             showToast('Failed to update: ' + err.message, 'error');
         }
