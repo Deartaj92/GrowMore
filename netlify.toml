@@ -12,8 +12,8 @@
   [build.environment]
     NODE_VERSION = "20"
     PUBLIC_URL = "/"
-    # V8 heap cap (stay below VM RAM so Linux OOM killer does not nuke webpack mid-build)
-    NODE_OPTIONS = "--max-old-space-size=6144"
+    # V8 heap cap; keep moderate so RSS+workers stay under Netlify cgroup (script must not override this).
+    NODE_OPTIONS = "--max-old-space-size=4096"
     # Skip eslint-webpack-plugin in production — large memory savings on CI
     DISABLE_ESLINT_PLUGIN = "true"
     # Disable source maps in production to reduce bundle size and build RAM

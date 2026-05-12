@@ -1,3 +1,29 @@
+/**
+ * Netlify build VMs are easy to OOM-kill during webpack minify + fork-ts-checker.
+ * When NETLIFY=true (set by Netlify), drop type-check plugin and cap Terser workers.
+ * @param {import('webpack').Configuration} webpackConfig
+ */
+function applyNetlifyLowMemoryWebpack(webpackConfig) {
+    if (process.env.NETLIFY !== 'true') return;
+
+    const plugins = webpackConfig.plugins;
+    if (Array.isArray(plugins)) {
+        webpackConfig.plugins = plugins.filter((p) => {
+            const name = p?.constructor?.name || '';
+            return !/ForkTsChecker/i.test(name);
+        });
+    }
+
+    const minimizers = webpackConfig.optimization?.minimizer;
+    if (!Array.isArray(minimizers)) return;
+
+    for (const m of minimizers) {
+        if (m?.constructor?.name === 'TerserPlugin' && m.options) {
+            m.options.parallel = false;
+        }
+    }
+}
+
 /** @param {import('webpack').Configuration} webpackConfig */
 function excludeFaceApiFromSourceMaps(webpackConfig) {
     const rules = webpackConfig.module?.rules;
@@ -28,6 +54,7 @@ module.exports = {
             };
 
             excludeFaceApiFromSourceMaps(webpackConfig);
+            applyNetlifyLowMemoryWebpack(webpackConfig);
             return webpackConfig;
         },
     },
