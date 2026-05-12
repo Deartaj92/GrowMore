@@ -52,14 +52,13 @@ try {
     buildEnvWithToken.REACT_APP_GITHUB_TOKEN = githubToken;
   }
   
-  // Run react-scripts build directly with environment variables
-  // This bypasses npm scripts to ensure our env vars are used
-  const reactScriptsPath = path.join(__dirname, '..', 'node_modules', '.bin', 'react-scripts');
-  const reactScriptsCommand = process.platform === 'win32' 
-    ? reactScriptsPath + '.cmd'
-    : reactScriptsPath;
-  
-  execSync(`${reactScriptsCommand} build`, { 
+  // Run craco build (same as npm run build) so webpack resolve.fallback etc. apply
+  const cracoPath = path.join(__dirname, '..', 'node_modules', '.bin', 'craco');
+  const cracoCommand = process.platform === 'win32'
+    ? cracoPath + '.cmd'
+    : cracoPath;
+
+  execSync(`${cracoCommand} build`, {
     stdio: 'inherit', 
     env: buildEnvWithToken,
     cwd: path.join(__dirname, '..')

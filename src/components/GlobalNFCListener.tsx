@@ -30,7 +30,8 @@ const GlobalNFCListener: React.FC = () => {
     const isAttendancePageRef = useRef(false);
     const isRfidCardAssignmentPageRef = useRef(false);
     useEffect(() => {
-        isAttendancePageRef.current = location.pathname.includes('/rfid-scanner');
+        isAttendancePageRef.current =
+            location.pathname.includes('/rfid-scanner') || location.pathname.includes('/qr-scanner');
         isRfidCardAssignmentPageRef.current = location.pathname.includes('/rfid-cards');
     }, [location.pathname]);
 

@@ -1110,7 +1110,7 @@ const Layout: React.FC = () => {
                         boxSizing: 'border-box'
                       }}
                     >
-                      {isOnline || location.pathname.includes('/attendance/rfid-scanner') || location.pathname.includes('/attendance/rfid-cards') ? (
+                      {isOnline || location.pathname.includes('/attendance/rfid-scanner') || location.pathname.includes('/attendance/qr-scanner') || location.pathname.includes('/attendance/rfid-cards') || location.pathname.includes('/attendance/student-qr-labels') ? (
                         <Outlet />
                       ) : (
                         <OfflineContainer>

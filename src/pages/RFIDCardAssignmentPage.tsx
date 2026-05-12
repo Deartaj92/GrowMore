@@ -16,7 +16,14 @@ import { supabase } from '../supabaseClient';
 import { rfidOfflineService } from '../services/rfidOfflineService';
 import { fetchAllRows } from '../utils/paginationHelper';
 import { sortClasses } from '../utils/classUtils';
-import { buildRfidUidCandidates, normalizeDesktopScannerUid, sanitizeRfidUid } from '../utils/rfidUtils';
+import { mergeStudentsWithSessionClassHistory } from '../utils/studentSessionMerge';
+import {
+    buildRfidUidCandidates,
+    normalizeDesktopScannerUid,
+    resolveAssignmentUidFromInput,
+    resolveQrAssignmentFromInput,
+    sanitizeRfidUid,
+} from '../utils/rfidUtils';
 import {
     CreditCard,
     Search,
@@ -29,8 +36,11 @@ import {
     Work,
     Delete,
     Sensors as NfcIcon,
+    QrCodeScanner as QrCodeScannerIcon,
+    Face as FaceIcon,
 } from '@mui/icons-material';
 import { CircularProgress } from '@mui/material';
+import FaceRecordModal from '../components/FaceRecordModal';
 
 // ─── Animations ────────────────────────────────────────────────────────────────
 
@@ -305,6 +315,14 @@ const NfcDiagnosticTxt = styled.div`
   text-align: center;
 `;
 
+const QrPasteHint = styled.div`
+  font-size: 0.68rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  margin-top: 0.35rem;
+  max-width: 320px;
+  line-height: 1.35;
+`;
+
 const EmptyState = styled.div`
   padding: 3rem 1rem;
   text-align: center;
@@ -346,16 +364,41 @@ const PageBtn = styled.button`
 
 type Mode = 'students' | 'employees';
 
+type PersonStatusFilter =
+    | 'all'
+    | 'active'
+    | 'inactive'
+    | 'suspended'
+    | 'withdrawn'
+    | 'terminated'
+    | 'left'
+    | 'contract_ended';
+
+const PERSON_STATUS_FILTER_OPTIONS: { value: PersonStatusFilter; label: string }[] = [
+    { value: 'all', label: 'All statuses' },
+    { value: 'active', label: 'Active' },
+    { value: 'inactive', label: 'Inactive' },
+    { value: 'suspended', label: 'Suspended' },
+    { value: 'withdrawn', label: 'Withdrawn' },
+    { value: 'terminated', label: 'Terminated' },
+    { value: 'left', label: 'Left / Absent' },
+    { value: 'contract_ended', label: 'Contract ended' },
+];
+
 interface PersonRow {
     id: number;
     name: string;
     rfid_uid: string | null;
+    qr_uid: string | null;
     attendance_mode?: 'rfid_required' | 'manual_only' | 'hybrid' | null;
     roll_number?: string;
     class_id?: number;
     section_id?: number;
+    session_id?: number | null;
     role?: string;
     status?: string;
+    /** Present when loaded for students; used only to show face enrollment status (compact template in DB). */
+    face_embedding?: string | null;
 }
 
 const getEffectiveAttendanceMode = (
@@ -371,6 +414,7 @@ const getEffectiveAttendanceMode = (
 
 interface ClassRow { id: number; name: string; }
 interface SectionRow { id: number; name: string; class_id: number; }
+interface SessionRow { id: number; name: string; is_active?: boolean | null; }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -387,14 +431,22 @@ const RFIDCardAssignmentPage: React.FC = () => {
     const [filterClass, setFilterClass] = useState('all');
     const [filterSection, setFilterSection] = useState('all');
     const [filterStatus, setFilterStatus] = useState<'all' | 'assigned' | 'unassigned'>('all');
+    const [filterPersonStatus, setFilterPersonStatus] = useState<PersonStatusFilter>('active');
     const [loading, setLoading] = useState(false);
     const [people, setPeople] = useState<PersonRow[]>([]);
     const [classes, setClasses] = useState<ClassRow[]>([]);
     const [sections, setSections] = useState<SectionRow[]>([]);
+    const [sessions, setSessions] = useState<SessionRow[]>([]);
+    const [filterSession, setFilterSession] = useState('');
     const [page, setPage] = useState(0);
+    const [faceRecordTarget, setFaceRecordTarget] = useState<{
+        id: number;
+        name: string;
+        kind: 'student' | 'employee';
+    } | null>(null);
 
-    // Editing state
-    const [editingId, setEditingId] = useState<number | null>(null);
+    type EditField = 'rfid' | 'qr';
+    const [editing, setEditing] = useState<{ personId: number; field: EditField } | null>(null);
     const [editValue, setEditValue] = useState('');
     const [editAttendanceMode, setEditAttendanceMode] = useState<'rfid_required' | 'manual_only' | 'hybrid'>('hybrid');
     const [saving, setSaving] = useState(false);
@@ -407,6 +459,22 @@ const RFIDCardAssignmentPage: React.FC = () => {
     useEffect(() => {
         setIsNfcSupported(('NDEFReader' in window) || (!!(window as any).nfc));
     }, []);
+
+    useEffect(() => {
+        if (!user?.school_id) return;
+        setFilterSession('');
+        (async () => {
+            const { data } = await supabase
+                .from('sessions')
+                .select('id,name,is_active')
+                .eq('school_id', user.school_id)
+                .order('name');
+            const list = (data || []) as SessionRow[];
+            setSessions(list);
+            const active = list.find(s => s.is_active);
+            if (active) setFilterSession(String(active.id));
+        })();
+    }, [user?.school_id]);
 
     const isSecureContext = window.isSecureContext;
 
@@ -430,18 +498,27 @@ const RFIDCardAssignmentPage: React.FC = () => {
             // Fetch people
             const table = mode === 'students' ? 'students' : 'staff';
             const selectFields = mode === 'students'
-                ? 'id,name,rfid_uid,attendance_mode,roll_number,class_id,section_id,status'
-                : 'id,name,rfid_uid,attendance_mode,role';
+                ? 'id,name,rfid_uid,qr_uid,attendance_mode,roll_number,class_id,section_id,status,session_id,face_embedding'
+                : 'id,name,rfid_uid,qr_uid,attendance_mode,role,status,face_embedding';
 
-            const data = await fetchAllRows(async (from, to) => {
+            let data = await fetchAllRows<PersonRow>(async (from, to) => {
                 return await supabase
                     .from(table)
-                    .select(selectFields)
+                    // session_id may not be present in generated Database types on older schemas
+                    .select(selectFields as '*')
                     .eq('school_id', user.school_id)
                     .order('name')
                     .range(from, to);
             });
-            setPeople((data as any as PersonRow[]) || []);
+            if (mode === 'students' && filterSession) {
+                data = await mergeStudentsWithSessionClassHistory(
+                    supabase,
+                    user.school_id,
+                    filterSession,
+                    data || []
+                );
+            }
+            setPeople(data || []);
             rfidOfflineService.cacheMappings(String(user.school_id)).catch(error => {
                 console.warn('Failed to refresh native RFID mapping cache:', error);
             });
@@ -450,16 +527,21 @@ const RFIDCardAssignmentPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [user?.school_id, mode]);
+    }, [user?.school_id, mode, filterSession]);
 
     useEffect(() => {
         fetchData();
+    }, [fetchData]);
+
+    useEffect(() => {
         setPage(0);
         setSearch('');
         setFilterClass('all');
         setFilterSection('all');
         setFilterStatus('all');
-    }, [fetchData]);
+        setFilterPersonStatus('active');
+        setFaceRecordTarget(null);
+    }, [user?.school_id, mode]);
 
     const filteredSections = useMemo(() => {
         if (filterClass === 'all') {
@@ -472,8 +554,8 @@ const RFIDCardAssignmentPage: React.FC = () => {
     // Filter
     const filtered = useMemo(() => {
         return people.filter(p => {
-            // Status filter (only for students)
-            if (mode === 'students' && p.status && p.status !== 'active') return false;
+            if (filterPersonStatus !== 'all' && String(p.status) !== filterPersonStatus) return false;
+            if (mode === 'students' && filterSession && String(p.session_id) !== filterSession) return false;
 
             // Search
             if (search.trim()) {
@@ -481,24 +563,26 @@ const RFIDCardAssignmentPage: React.FC = () => {
                 const name = (p.name || '').toLowerCase();
                 const roll = String(p.roll_number || '').toLowerCase();
                 const uid = (p.rfid_uid || '').toLowerCase();
+                const qr = (p.qr_uid || '').toLowerCase();
                 const role = (p.role || '').toLowerCase();
-                if (!name.includes(q) && !roll.includes(q) && !uid.includes(q) && !role.includes(q)) return false;
+                if (!name.includes(q) && !roll.includes(q) && !uid.includes(q) && !qr.includes(q) && !role.includes(q)) return false;
             }
             // Class filter
             if (filterClass !== 'all' && String(p.class_id) !== filterClass) return false;
             // Section filter
             if (filterSection !== 'all' && String(p.section_id) !== filterSection) return false;
             // Assigned/unassigned filter
-            if (filterStatus === 'assigned' && !p.rfid_uid) return false;
-            if (filterStatus === 'unassigned' && p.rfid_uid) return false;
+            const hasAnyCard = !!(p.rfid_uid || p.qr_uid);
+            if (filterStatus === 'assigned' && !hasAnyCard) return false;
+            if (filterStatus === 'unassigned' && hasAnyCard) return false;
             return true;
         });
-    }, [people, search, filterClass, filterSection, filterStatus, mode]);
+    }, [people, search, filterClass, filterSection, filterStatus, filterPersonStatus, filterSession, mode]);
 
     const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
     const pageData = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
-    const assignedCount = people.filter(p => p.rfid_uid).length;
+    const assignedCount = people.filter(p => p.rfid_uid || p.qr_uid).length;
     const totalCount = people.length;
 
     const saveAndConfirmPerson = useCallback(async (
@@ -558,20 +642,20 @@ const RFIDCardAssignmentPage: React.FC = () => {
         };
     }, [user?.school_id]);
 
-    // Handle RFID assignment
-    const handleSave = async (personId: number, uidOverride?: string) => {
+    // Handle RFID-only assignment (NFC + USB + typed UID). QR is assigned separately per row.
+    const handleSaveRfid = async (personId: number, uidOverride?: string) => {
         if (!user?.school_id) return;
         const table = mode === 'students' ? 'students' : 'staff';
-        const cleanUID = sanitizeRfidUid(uidOverride ?? editValue);
+        const cleanUID = resolveAssignmentUidFromInput(uidOverride ?? editValue);
         const uidCandidates = buildRfidUidCandidates(cleanUID);
 
         if (cleanUID && cleanUID.length < 4) {
-            toast.showToast('RFID UID must be at least 4 characters', 'error');
+            toast.showToast('Card UID must be at least 4 hex characters.', 'error');
             return;
         }
 
         if (!cleanUID && editAttendanceMode !== 'manual_only') {
-            toast.showToast('Assign a card before using RFID Required or Hybrid mode', 'error');
+            toast.showToast('Assign an RFID card before using RFID Required or Hybrid mode', 'error');
             return;
         }
 
@@ -596,12 +680,24 @@ const RFIDCardAssignmentPage: React.FC = () => {
                 if (existingSameData) {
                     const existingSame = existingSameData as any;
                     if (table === 'students') {
-                        // For students, fetch class/section data separately or use simpler joins if needed
-                        // But here we just want the name for the toast
                         toast.showToast(`Already assigned to student: ${existingSame.name}`, 'error');
                     } else {
                         toast.showToast(`Already assigned to staff: ${existingSame.name}${existingSame.role ? ` (${existingSame.role})` : ''}`, 'error');
                     }
+                    setSaving(false);
+                    return;
+                }
+
+                const { data: dupQrSameTable } = await supabase
+                    .from(table)
+                    .select(sameSelect)
+                    .eq('school_id', user.school_id)
+                    .in('qr_uid', uidCandidates)
+                    .neq('id', personId)
+                    .maybeSingle();
+
+                if (dupQrSameTable) {
+                    toast.showToast('This UID is already assigned as a QR token to someone else.', 'error');
                     setSaving(false);
                     return;
                 }
@@ -627,6 +723,19 @@ const RFIDCardAssignmentPage: React.FC = () => {
                     setSaving(false);
                     return;
                 }
+
+                const { data: dupQrOtherTable } = await supabase
+                    .from(otherTable)
+                    .select(otherSelect)
+                    .eq('school_id', user.school_id)
+                    .in('qr_uid', uidCandidates)
+                    .maybeSingle();
+
+                if (dupQrOtherTable) {
+                    toast.showToast('This UID is already assigned as a QR token to someone else.', 'error');
+                    setSaving(false);
+                    return;
+                }
             }
 
             const nextAttendanceMode = cleanUID ? editAttendanceMode : 'manual_only';
@@ -636,19 +745,18 @@ const RFIDCardAssignmentPage: React.FC = () => {
                 attendance_mode: nextAttendanceMode
             });
 
-            // Update local state
             setPeople(prev => prev.map(p => p.id === personId ? {
                 ...p,
                 rfid_uid: updatedRow.rfid_uid || null,
                 attendance_mode: updatedRow.attendance_mode as 'rfid_required' | 'manual_only' | 'hybrid' | null
             } : p));
-            setEditingId(null);
+            setEditing(null);
             setEditValue('');
             setEditAttendanceMode('hybrid');
             rfidOfflineService.cacheMappings(String(user.school_id)).catch(error => {
                 console.warn('Failed to refresh native RFID mapping cache after save:', error);
             });
-            toast.showToast(cleanUID ? 'RFID card settings saved successfully' : 'RFID card removed', 'success');
+            toast.showToast(cleanUID ? 'RFID settings saved successfully' : 'RFID assignment cleared', 'success');
         } catch (e: any) {
             toast.showToast('Failed to save: ' + (e?.message || ''), 'error');
         } finally {
@@ -656,14 +764,124 @@ const RFIDCardAssignmentPage: React.FC = () => {
         }
     };
 
-    const handleRemove = async (personId: number) => {
+    const handleSaveQr = async (personId: number, uidOverride?: string) => {
+        if (!user?.school_id) return;
+        const table = mode === 'students' ? 'students' : 'staff';
+        const cleanUID = resolveQrAssignmentFromInput(uidOverride ?? editValue);
+        const rfidDupCandidates = buildRfidUidCandidates(cleanUID);
+
+        if (cleanUID && cleanUID.length < 4) {
+            toast.showToast('QR value is too short after normalization (min 4 characters).', 'error');
+            return;
+        }
+
+        setSaving(true);
+        try {
+            if (cleanUID) {
+                const otherTable = table === 'students' ? 'staff' : 'students';
+                const sameSelect = table === 'students' ? 'id,name' : 'id,name,role';
+                const { data: existingSameData } = await supabase
+                    .from(table)
+                    .select(sameSelect)
+                    .eq('school_id', user.school_id)
+                    .eq('qr_uid', cleanUID)
+                    .neq('id', personId)
+                    .maybeSingle();
+
+                if (existingSameData) {
+                    const existingSame = existingSameData as any;
+                    toast.showToast(
+                        table === 'students'
+                            ? `This QR is already assigned to student: ${existingSame.name}`
+                            : `This QR is already assigned to staff: ${existingSame.name}${existingSame.role ? ` (${existingSame.role})` : ''}`,
+                        'error'
+                    );
+                    setSaving(false);
+                    return;
+                }
+
+                const otherSelect = otherTable === 'students' ? 'id,name' : 'id,name,role';
+                const { data: existingOtherData } = await supabase
+                    .from(otherTable)
+                    .select(otherSelect)
+                    .eq('school_id', user.school_id)
+                    .eq('qr_uid', cleanUID)
+                    .maybeSingle();
+
+                if (existingOtherData) {
+                    const existingOther = existingOtherData as any;
+                    toast.showToast(
+                        otherTable === 'students'
+                            ? `This QR is already assigned to student: ${existingOther.name}`
+                            : `This QR is already assigned to staff: ${existingOther.name}${existingOther.role ? ` (${existingOther.role})` : ''}`,
+                        'error'
+                    );
+                    setSaving(false);
+                    return;
+                }
+
+                if (rfidDupCandidates.length > 0) {
+                    const { data: dupRfidSame } = await supabase
+                        .from(table)
+                        .select(sameSelect)
+                        .eq('school_id', user.school_id)
+                        .in('rfid_uid', rfidDupCandidates)
+                        .neq('id', personId)
+                        .maybeSingle();
+
+                    if (dupRfidSame) {
+                        toast.showToast('This token is already assigned as an RFID card to someone else.', 'error');
+                        setSaving(false);
+                        return;
+                    }
+
+                    const { data: dupRfidOther } = await supabase
+                        .from(otherTable)
+                        .select(otherSelect)
+                        .eq('school_id', user.school_id)
+                        .in('rfid_uid', rfidDupCandidates)
+                        .maybeSingle();
+
+                    if (dupRfidOther) {
+                        toast.showToast('This token is already assigned as an RFID card to someone else.', 'error');
+                        setSaving(false);
+                        return;
+                    }
+                }
+            }
+
+            const { error } = await supabase
+                .from(table)
+                .update({ qr_uid: cleanUID || null })
+                .eq('id', personId)
+                .eq('school_id', user.school_id);
+
+            if (error) throw error;
+
+            setPeople(prev => prev.map(p => (p.id === personId ? { ...p, qr_uid: cleanUID || null } : p)));
+            setEditing(null);
+            setEditValue('');
+            rfidOfflineService.cacheMappings(String(user.school_id)).catch(error => {
+                console.warn('Failed to refresh RFID mapping cache after QR save:', error);
+            });
+            toast.showToast(cleanUID ? 'QR assignment saved' : 'QR assignment cleared', 'success');
+        } catch (e: any) {
+            toast.showToast('Failed to save QR: ' + (e?.message || ''), 'error');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleRemoveRfid = async (personId: number) => {
         if (!window.confirm('Remove RFID card assignment?')) return;
         if (!user?.school_id) return;
         const table = mode === 'students' ? 'students' : 'staff';
+        const person = people.find(p => p.id === personId);
         try {
+            const nextMode = getEffectiveAttendanceMode(person?.attendance_mode, !!person?.qr_uid);
             const updatedRow = await saveAndConfirmPerson(table, personId, {
                 rfid_uid: null,
-                attendance_mode: 'manual_only'
+                attendance_mode: nextMode,
             });
             setPeople(prev => prev.map(p => p.id === personId ? {
                 ...p,
@@ -673,16 +891,46 @@ const RFIDCardAssignmentPage: React.FC = () => {
             rfidOfflineService.cacheMappings(String(user.school_id)).catch(error => {
                 console.warn('Failed to refresh native RFID mapping cache after removal:', error);
             });
-            toast.showToast('RFID card removed', 'success');
+            toast.showToast('RFID assignment removed', 'success');
         } catch (e: any) {
             toast.showToast('Failed to remove: ' + (e?.message || ''), 'error');
         }
     };
 
-    const startEdit = (person: PersonRow) => {
-        setEditingId(person.id);
+    const handleRemoveQr = async (personId: number) => {
+        if (!window.confirm('Remove QR assignment?')) return;
+        if (!user?.school_id) return;
+        const table = mode === 'students' ? 'students' : 'staff';
+        const person = people.find(p => p.id === personId);
+        try {
+            const nextMode = getEffectiveAttendanceMode(person?.attendance_mode, !!person?.rfid_uid);
+            const { error } = await supabase
+                .from(table)
+                .update({ qr_uid: null, attendance_mode: nextMode })
+                .eq('id', personId)
+                .eq('school_id', user.school_id);
+
+            if (error) throw error;
+
+            setPeople(prev => prev.map(p => (p.id === personId ? { ...p, qr_uid: null, attendance_mode: nextMode } : p)));
+            rfidOfflineService.cacheMappings(String(user.school_id)).catch(error => {
+                console.warn('Failed to refresh RFID mapping cache after QR removal:', error);
+            });
+            toast.showToast('QR assignment removed', 'success');
+        } catch (e: any) {
+            toast.showToast('Failed to remove QR: ' + (e?.message || ''), 'error');
+        }
+    };
+
+    const startEditRfid = (person: PersonRow) => {
+        setEditing({ personId: person.id, field: 'rfid' });
         setEditValue(person.rfid_uid || '');
-        setEditAttendanceMode(getEffectiveAttendanceMode(person.attendance_mode, !!person.rfid_uid));
+        setEditAttendanceMode(getEffectiveAttendanceMode(person.attendance_mode, !!(person.rfid_uid || person.qr_uid)));
+    };
+
+    const startEditQr = (person: PersonRow) => {
+        setEditing({ personId: person.id, field: 'qr' });
+        setEditValue(person.qr_uid || '');
     };
 
     const cancelEdit = () => {
@@ -695,7 +943,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
             clearTimeout(editNormalizeTimerRef.current);
             editNormalizeTimerRef.current = null;
         }
-        setEditingId(null);
+        setEditing(null);
         setEditValue('');
         setEditAttendanceMode('hybrid');
     };
@@ -722,7 +970,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
     };
 
     const handleStartNfc = async () => {
-        if (!editingId) return;
+        if (!editing || editing.field !== 'rfid') return;
 
         // --- 1. Pure Native Android APK (PhoneGap-NFC) ---
         if (window.nfc) {
@@ -810,11 +1058,17 @@ const RFIDCardAssignmentPage: React.FC = () => {
                 editNormalizeTimerRef.current = null;
             }
 
-            const normalizedUid = normalizeDesktopScannerUid(editValue);
+            const normalizedUid = editing?.field === 'qr'
+                ? resolveQrAssignmentFromInput(editValue)
+                : resolveAssignmentUidFromInput(editValue);
             if (normalizedUid !== editValue) {
                 setEditValue(normalizedUid);
             }
-            handleSave(personId);
+            if (editing?.field === 'qr') {
+                handleSaveQr(personId, normalizedUid);
+            } else {
+                handleSaveRfid(personId, normalizedUid);
+            }
         }
         if (e.key === 'Escape') {
             if (editNormalizeTimerRef.current) {
@@ -832,7 +1086,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
             <TopBar>
                 <Title theme={themeObj}>
                     <CreditCard style={{ fontSize: 22 }} />
-                    RFID Card Assignment
+                    RFID / QR Card Assignment
                 </Title>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <FilterBadge>{assignedCount}/{totalCount} assigned</FilterBadge>
@@ -854,7 +1108,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
                     <SearchIcon theme={themeObj}><Search /></SearchIcon>
                     <SearchInput
                         theme={themeObj}
-                        placeholder={mode === 'students' ? 'Search by name, roll number, or RFID...' : 'Search by name, role, or RFID...'}
+                        placeholder={mode === 'students' ? 'Search by name, roll number, or card UID...' : 'Search by name, role, or card UID...'}
                         value={search}
                         onChange={e => { setSearch(e.target.value); setPage(0); }}
                     />
@@ -877,6 +1131,37 @@ const RFIDCardAssignmentPage: React.FC = () => {
                         ))}
                     </Select>
                 )}
+
+                {mode === 'students' && (
+                    <Select
+                        theme={themeObj}
+                        value={filterSession}
+                        onChange={e => { setFilterSession(e.target.value); setPage(0); }}
+                        aria-label="Session"
+                    >
+                        {sessions.length === 0 ? (
+                            <option value="">Loading…</option>
+                        ) : (
+                            sessions.map(s => (
+                                <option key={s.id} value={String(s.id)}>{s.name}</option>
+                            ))
+                        )}
+                    </Select>
+                )}
+
+                <Select
+                    theme={themeObj}
+                    value={filterPersonStatus}
+                    onChange={e => {
+                        setFilterPersonStatus(e.target.value as PersonStatusFilter);
+                        setPage(0);
+                    }}
+                    aria-label="Enrollment status"
+                >
+                    {PERSON_STATUS_FILTER_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                </Select>
 
                 <Select theme={themeObj} value={filterStatus} onChange={e => { setFilterStatus(e.target.value as any); setPage(0); }}>
                     <option value="all">All Cards</option>
@@ -908,17 +1193,19 @@ const RFIDCardAssignmentPage: React.FC = () => {
                                         <TH theme={themeObj}>Name</TH>
                                         {mode === 'students' && <TH theme={themeObj}>Roll No</TH>}
                                         {mode === 'students' && <TH theme={themeObj}>Class / Section</TH>}
+                                        {mode === 'students' && <TH theme={themeObj}>Face</TH>}
                                         {mode === 'employees' && <TH theme={themeObj}>Role</TH>}
+                                        {mode === 'employees' && <TH theme={themeObj}>Face</TH>}
                                         <TH theme={themeObj}>Attendance Mode</TH>
-                                        <TH theme={themeObj}>RFID Card</TH>
-                                        <TH theme={themeObj} style={{ width: 180 }}>
-                                            {editingId ? 'Scan Card / Type UID' : 'Actions'}
-                                        </TH>
+                                        <TH theme={themeObj}>RFID card</TH>
+                                        <TH theme={themeObj}>QR code</TH>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {pageData.map((person, idx) => {
-                                        const isEditing = editingId === person.id;
+                                        const isEditingRfid = editing?.personId === person.id && editing.field === 'rfid';
+                                        const isEditingQr = editing?.personId === person.id && editing.field === 'qr';
+                                        const hasAnyCard = !!(person.rfid_uid || person.qr_uid);
                                         const className = person.class_id ? classesMap.get(person.class_id) || '' : '';
                                         const sectionName = person.section_id ? sectionsMap.get(person.section_id) || '' : '';
                                         const classLabel = className && sectionName
@@ -931,9 +1218,69 @@ const RFIDCardAssignmentPage: React.FC = () => {
                                                 <TD theme={themeObj} style={{ fontWeight: 600 }}>{person.name}</TD>
                                                 {mode === 'students' && <TD theme={themeObj}>{person.roll_number || person.id}</TD>}
                                                 {mode === 'students' && <TD theme={themeObj}>{classLabel}</TD>}
+                                                {mode === 'students' && (
+                                                    <TD theme={themeObj}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                setFaceRecordTarget({
+                                                                    id: person.id,
+                                                                    name: person.name,
+                                                                    kind: 'student',
+                                                                })
+                                                            }
+                                                            style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: 6,
+                                                                padding: '0.35rem 0.65rem',
+                                                                borderRadius: 8,
+                                                                border: '1px solid rgba(168,85,247,0.45)',
+                                                                background: person.face_embedding ? 'rgba(168,85,247,0.12)' : 'transparent',
+                                                                color: '#a855f7',
+                                                                fontSize: '0.78rem',
+                                                                fontWeight: 600,
+                                                                cursor: 'pointer',
+                                                            }}
+                                                        >
+                                                            <FaceIcon style={{ fontSize: 16 }} />
+                                                            {person.face_embedding ? 'Update' : 'Record'}
+                                                        </button>
+                                                    </TD>
+                                                )}
                                                 {mode === 'employees' && <TD theme={themeObj}>{person.role || '—'}</TD>}
+                                                {mode === 'employees' && (
+                                                    <TD theme={themeObj}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                setFaceRecordTarget({
+                                                                    id: person.id,
+                                                                    name: person.name,
+                                                                    kind: 'employee',
+                                                                })
+                                                            }
+                                                            style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: 6,
+                                                                padding: '0.35rem 0.65rem',
+                                                                borderRadius: 8,
+                                                                border: '1px solid rgba(168,85,247,0.45)',
+                                                                background: person.face_embedding ? 'rgba(168,85,247,0.12)' : 'transparent',
+                                                                color: '#a855f7',
+                                                                fontSize: '0.78rem',
+                                                                fontWeight: 600,
+                                                                cursor: 'pointer',
+                                                            }}
+                                                        >
+                                                            <FaceIcon style={{ fontSize: 16 }} />
+                                                            {person.face_embedding ? 'Update' : 'Record'}
+                                                        </button>
+                                                    </TD>
+                                                )}
                                                 <TD theme={themeObj}>
-                                                    {isEditing ? (
+                                                    {isEditingRfid ? (
                                                         <Select
                                                             theme={themeObj}
                                                             value={editAttendanceMode}
@@ -946,24 +1293,24 @@ const RFIDCardAssignmentPage: React.FC = () => {
                                                         </Select>
                                                     ) : (
                                                         <RfidBadge
-                                                            $assigned={getEffectiveAttendanceMode(person.attendance_mode, !!person.rfid_uid) !== 'manual_only'}
-                                                            title="Controls whether backend cutoff expects an RFID scan"
+                                                            $assigned={getEffectiveAttendanceMode(person.attendance_mode, hasAnyCard) !== 'manual_only'}
+                                                            title="Based on RFID/QR assignment"
                                                         >
-                                                            {getEffectiveAttendanceMode(person.attendance_mode, !!person.rfid_uid) === 'hybrid'
+                                                            {getEffectiveAttendanceMode(person.attendance_mode, hasAnyCard) === 'hybrid'
                                                                 ? 'Hybrid'
-                                                                : getEffectiveAttendanceMode(person.attendance_mode, !!person.rfid_uid) === 'rfid_required'
+                                                                : getEffectiveAttendanceMode(person.attendance_mode, hasAnyCard) === 'rfid_required'
                                                                     ? 'RFID Required'
                                                                     : 'Manual Only'}
                                                         </RfidBadge>
                                                     )}
                                                 </TD>
                                                 <TD theme={themeObj}>
-                                                    {isEditing ? (
+                                                    {isEditingRfid ? (
                                                         <>
                                                             <ScanInput
                                                                 theme={themeObj}
                                                                 autoFocus
-                                                                placeholder="Tap card or type UID..."
+                                                                placeholder="NFC tap, USB RFID reader, or paste UID..."
                                                                 value={editValue}
                                                                 onChange={e => handleEditInputChange(e.target.value)}
                                                                 onKeyDown={e => handleEditKeyDown(e, person.id)}
@@ -982,49 +1329,102 @@ const RFIDCardAssignmentPage: React.FC = () => {
                                                                     </NfcDiagnosticTxt>
                                                                 )
                                                             )}
+                                                            <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.45rem', flexWrap: 'wrap' }}>
+                                                                <ActionBtn
+                                                                    $color="#22c55e"
+                                                                    onClick={() => handleSaveRfid(person.id)}
+                                                                    disabled={saving}
+                                                                >
+                                                                    {saving ? <CircularProgress size={12} /> : <CheckCircle style={{ fontSize: 14 }} />}
+                                                                    Save RFID
+                                                                </ActionBtn>
+                                                                <ActionBtn $color="#94a3b8" onClick={cancelEdit}>
+                                                                    <Cancel style={{ fontSize: 14 }} />
+                                                                    Cancel
+                                                                </ActionBtn>
+                                                            </div>
                                                         </>
                                                     ) : (
-                                                        <RfidBadge $assigned={!!person.rfid_uid}>
-                                                            {person.rfid_uid ? (
-                                                                <>
-                                                                    <Nfc style={{ fontSize: 14 }} />
-                                                                    {person.rfid_uid}
-                                                                </>
-                                                            ) : (
-                                                                'Not assigned'
-                                                            )}
-                                                        </RfidBadge>
+                                                        <>
+                                                            <RfidBadge $assigned={!!person.rfid_uid}>
+                                                                {person.rfid_uid ? (
+                                                                    <>
+                                                                        <Nfc style={{ fontSize: 14 }} />
+                                                                        {person.rfid_uid}
+                                                                    </>
+                                                                ) : (
+                                                                    'Not assigned'
+                                                                )}
+                                                            </RfidBadge>
+                                                            <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                                                                <ActionBtn $color="#a855f7" onClick={() => startEditRfid(person)}>
+                                                                    <CreditCard style={{ fontSize: 14 }} />
+                                                                    {person.rfid_uid ? 'Change RFID' : 'Assign RFID'}
+                                                                </ActionBtn>
+                                                                {person.rfid_uid && (
+                                                                    <ActionBtn $color="#ef4444" onClick={() => handleRemoveRfid(person.id)}>
+                                                                        <Delete style={{ fontSize: 14 }} />
+                                                                        Clear RFID
+                                                                    </ActionBtn>
+                                                                )}
+                                                            </div>
+                                                        </>
                                                     )}
                                                 </TD>
                                                 <TD theme={themeObj}>
-                                                    {isEditing ? (
-                                                        <div style={{ display: 'flex', gap: '0.35rem' }}>
-                                                            <ActionBtn
-                                                                $color="#22c55e"
-                                                                onClick={() => handleSave(person.id)}
-                                                                disabled={saving}
-                                                            >
-                                                                {saving ? <CircularProgress size={12} /> : <CheckCircle style={{ fontSize: 14 }} />}
-                                                                Save
-                                                            </ActionBtn>
-                                                            <ActionBtn $color="#94a3b8" onClick={cancelEdit}>
-                                                                <Cancel style={{ fontSize: 14 }} />
-                                                                Cancel
-                                                            </ActionBtn>
-                                                        </div>
-                                                    ) : (
-                                                        <div style={{ display: 'flex', gap: '0.35rem' }}>
-                                                            <ActionBtn $color="#a855f7" onClick={() => startEdit(person)}>
-                                                                <CreditCard style={{ fontSize: 14 }} />
-                                                                {person.rfid_uid ? 'Change' : 'Assign'}
-                                                            </ActionBtn>
-                                                            {person.rfid_uid && (
-                                                                <ActionBtn $color="#ef4444" onClick={() => handleRemove(person.id)}>
-                                                                    <Delete style={{ fontSize: 14 }} />
-                                                                    Remove
+                                                    {isEditingQr ? (
+                                                        <>
+                                                            <QrPasteHint theme={themeObj}>
+                                                                Camera scanning is only on <b>QR Attendance</b>. Paste a value here, use a USB QR keyboard wedge, or use <b>Student QR labels</b> to generate codes.
+                                                            </QrPasteHint>
+                                                            <ScanInput
+                                                                theme={themeObj}
+                                                                autoFocus
+                                                                placeholder="Camera scan or paste QR text..."
+                                                                value={editValue}
+                                                                onChange={e => setEditValue(e.target.value)}
+                                                                onKeyDown={e => handleEditKeyDown(e, person.id)}
+                                                            />
+                                                            <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.45rem', flexWrap: 'wrap' }}>
+                                                                <ActionBtn
+                                                                    $color="#22c55e"
+                                                                    onClick={() => handleSaveQr(person.id)}
+                                                                    disabled={saving}
+                                                                >
+                                                                    {saving ? <CircularProgress size={12} /> : <CheckCircle style={{ fontSize: 14 }} />}
+                                                                    Save QR
                                                                 </ActionBtn>
-                                                            )}
-                                                        </div>
+                                                                <ActionBtn $color="#94a3b8" onClick={cancelEdit}>
+                                                                    <Cancel style={{ fontSize: 14 }} />
+                                                                    Cancel
+                                                                </ActionBtn>
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <RfidBadge $assigned={!!person.qr_uid} style={{ borderColor: 'rgba(14,165,233,0.35)' }}>
+                                                                {person.qr_uid ? (
+                                                                    <>
+                                                                        <QrCodeScannerIcon style={{ fontSize: 14 }} />
+                                                                        {person.qr_uid}
+                                                                    </>
+                                                                ) : (
+                                                                    'Not assigned'
+                                                                )}
+                                                            </RfidBadge>
+                                                            <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                                                                <ActionBtn $color="#0ea5e9" onClick={() => startEditQr(person)}>
+                                                                    <QrCodeScannerIcon style={{ fontSize: 14 }} />
+                                                                    {person.qr_uid ? 'Change QR' : 'Assign QR'}
+                                                                </ActionBtn>
+                                                                {person.qr_uid && (
+                                                                    <ActionBtn $color="#ef4444" onClick={() => handleRemoveQr(person.id)}>
+                                                                        <Delete style={{ fontSize: 14 }} />
+                                                                        Clear QR
+                                                                    </ActionBtn>
+                                                                )}
+                                                            </div>
+                                                        </>
                                                     )}
                                                 </TD>
                                             </Row>
@@ -1048,6 +1448,20 @@ const RFIDCardAssignmentPage: React.FC = () => {
                     </>
                 )}
             </TableCard>
+
+            {faceRecordTarget && user?.school_id != null && (
+                <FaceRecordModal
+                    open
+                    personKind={faceRecordTarget.kind === 'employee' ? 'employee' : 'student'}
+                    personId={faceRecordTarget.id}
+                    schoolId={user.school_id}
+                    personName={faceRecordTarget.name}
+                    onClose={() => setFaceRecordTarget(null)}
+                    onSaved={() => {
+                        void fetchData();
+                    }}
+                />
+            )}
         </Page>
     );
 };

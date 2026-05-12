@@ -42,6 +42,8 @@ import {
   AccountBalanceWallet as AccountBalanceWalletIcon,
   Badge as BadgeIcon,
   Nfc as NfcIcon,
+  QrCodeScanner as QrCodeScannerIcon,
+  QrCode2 as QrCode2Icon,
   CreditCard as CreditCardIcon,
 } from '@mui/icons-material';
 
@@ -236,6 +238,13 @@ export const employeeAttendanceMenuItems: MenuItem[] = [
 
 export const otherAttendanceMenuItems: MenuItem[] = [
   {
+    title: 'QR Scanner',
+    description: 'Mark attendance via QR code scanning at school entrance',
+    icon: React.createElement(QrCodeScannerIcon),
+    path: '/attendance/qr-scanner',
+    color: '#0ea5e9'
+  },
+  {
     title: 'RFID Scanner',
     description: 'Mark attendance via RFID card scanning at school entrance',
     icon: React.createElement(NfcIcon),
@@ -248,6 +257,13 @@ export const otherAttendanceMenuItems: MenuItem[] = [
     icon: React.createElement(CreditCardIcon),
     path: '/attendance/rfid-cards',
     color: '#a855f7'
+  },
+  {
+    title: 'Student QR labels',
+    description: 'Generate attendance QR codes for students, assign in bulk, and print PDF',
+    icon: React.createElement(QrCode2Icon),
+    path: '/attendance/student-qr-labels',
+    color: '#14b8a6'
   },
   {
     title: 'Holidays',

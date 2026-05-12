@@ -42,7 +42,9 @@ export const pathToPermissionKey: Record<string, string> = {
   '/attendance/staff-half-leaves': 'staff-half-leaves',
   '/attendance/leave-requests': 'leave-requests',
   '/attendance/rfid-scanner': 'rfid-scanner',
+  '/attendance/qr-scanner': 'rfid-scanner',
   '/attendance/rfid-cards': 'rfid-card-assignment',
+  '/attendance/student-qr-labels': 'rfid-card-assignment',
 
   // Reports
   '/reports': 'reports-students', // Student Reports page

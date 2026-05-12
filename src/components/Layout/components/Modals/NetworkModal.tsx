@@ -100,7 +100,9 @@ const NetworkModal: React.FC<NetworkModalProps> = ({
 
   const isOnRFIDPage =
     location.pathname.includes('/attendance/rfid-scanner') ||
-    location.pathname.includes('/attendance/rfid-cards');
+    location.pathname.includes('/attendance/qr-scanner') ||
+    location.pathname.includes('/attendance/rfid-cards') ||
+    location.pathname.includes('/attendance/student-qr-labels');
 
   const shouldShowModal = isOpen && !isOnRFIDPage;
 
@@ -121,7 +123,7 @@ const NetworkModal: React.FC<NetworkModalProps> = ({
       setSecondsRemaining(prev => {
         if (prev <= 1) {
           window.clearInterval(intervalId);
-          navigate('/attendance/rfid-scanner');
+          navigate('/attendance/qr-scanner');
           return 0;
         }
 
@@ -135,7 +137,7 @@ const NetworkModal: React.FC<NetworkModalProps> = ({
   if (!isOpen || isOnRFIDPage) return null;
 
   const handleGoToRFID = () => {
-    navigate('/attendance/rfid-scanner');
+    navigate('/attendance/qr-scanner');
   };
 
   return (
@@ -163,12 +165,12 @@ const NetworkModal: React.FC<NetworkModalProps> = ({
         <Divider>
           <span>or</span>
         </Divider>
-        <OfflineHint>RFID attendance works without internet</OfflineHint>
-        <CountdownText>Opening RFID Scanner automatically in {countdownLabel}</CountdownText>
+        <OfflineHint>QR and RFID attendance work without internet</OfflineHint>
+        <CountdownText>Opening QR Scanner automatically in {countdownLabel}</CountdownText>
         <RFIDButtonWrap>
           <RFIDButton onClick={handleGoToRFID}>
             <NfcIcon />
-            Open RFID Scanner
+            Open QR Scanner
           </RFIDButton>
         </RFIDButtonWrap>
       </NetworkModalContent>

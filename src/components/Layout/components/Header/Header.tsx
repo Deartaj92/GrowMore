@@ -55,6 +55,8 @@ import {
   Calculate as CalculateIcon,
   Badge as BadgeIcon,
   Nfc as NfcIcon,
+  QrCodeScanner as QrCodeScannerIcon,
+  QrCode2 as QrCode2Icon,
   CreditCard as CreditCardIcon,
 } from '@mui/icons-material';
 import styled from 'styled-components';
@@ -1961,6 +1963,13 @@ const Header: React.FC<HeaderProps> = ({
 
   const otherAttendanceMenuItems = [
     {
+      title: 'QR Scanner',
+      description: 'Mark attendance via QR code scanning',
+      icon: <QrCodeScannerIcon />,
+      path: '/attendance/qr-scanner',
+      color: '#0ea5e9'
+    },
+    {
       title: 'RFID Scanner',
       description: 'Mark attendance via RFID card scanning',
       icon: <NfcIcon />,
@@ -1973,6 +1982,13 @@ const Header: React.FC<HeaderProps> = ({
       icon: <CreditCardIcon />,
       path: '/attendance/rfid-cards',
       color: '#a855f7'
+    },
+    {
+      title: 'Student QR labels',
+      description: 'Generate and print student attendance QR codes',
+      icon: <QrCode2Icon />,
+      path: '/attendance/student-qr-labels',
+      color: '#14b8a6'
     },
     {
       title: 'Holidays',

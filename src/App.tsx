@@ -122,8 +122,10 @@ import StudentAttendanceAnalyticsPage from './pages/StudentAttendanceAnalyticsPa
 import StaffAttendanceAnalyticsPage from './pages/StaffAttendanceAnalyticsPage';
 // RFID Attendance Scanner
 import RFIDAttendancePage from './pages/RFIDAttendancePage';
+import QRAttendancePage from './pages/QRAttendancePage';
 // RFID Card Assignment
 import RFIDCardAssignmentPage from './pages/RFIDCardAssignmentPage';
+import StudentAttendanceQrPrintPage from './pages/StudentAttendanceQrPrintPage';
 // Finance Management Components
 import FinanceDashboard from './components/FinanceDashboard';
 // Communication Management Components
@@ -1062,10 +1064,28 @@ const App: React.FC = () => {
                           />
 
                           <Route
+                            path="attendance/qr-scanner"
+                            element={
+                              <ProtectedRoute requiredPermission="rfid-scanner">
+                                <QRAttendancePage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
                             path="attendance/rfid-cards"
                             element={
                               <ProtectedRoute requiredPermission="rfid-card-assignment">
                                 <RFIDCardAssignmentPage />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="attendance/student-qr-labels"
+                            element={
+                              <ProtectedRoute requiredPermission="rfid-card-assignment">
+                                <StudentAttendanceQrPrintPage />
                               </ProtectedRoute>
                             }
                           />
