@@ -12,9 +12,11 @@
   [build.environment]
     NODE_VERSION = "20"
     PUBLIC_URL = "/"
-    # Increase Node memory limit for large builds (8GB for Netlify)
-    NODE_OPTIONS = "--max-old-space-size=2048"
-    # Disable source maps in production to reduce bundle size
+    # V8 heap cap (stay below VM RAM so Linux OOM killer does not nuke webpack mid-build)
+    NODE_OPTIONS = "--max-old-space-size=6144"
+    # Skip eslint-webpack-plugin in production — large memory savings on CI
+    DISABLE_ESLINT_PLUGIN = "true"
+    # Disable source maps in production to reduce bundle size and build RAM
     GENERATE_SOURCEMAP = "false"
 
 # SPA Redirect Rule - Critical for React Router
