@@ -58,8 +58,10 @@ import {
   QrCodeScanner as QrCodeScannerIcon,
   QrCode2 as QrCode2Icon,
   CreditCard as CreditCardIcon,
+  Lock,
+  LockOpen,
 } from '@mui/icons-material';
-import styled from 'styled-components';
+import styled, { useTheme as useStyledTheme } from 'styled-components';
 import {
   Header as HeaderStyled,
   HeaderLeft,
@@ -71,6 +73,7 @@ import { StudentInfo, ParentInfo, InstituteProfile } from '../../types';
 import NotificationBell from '../../../NotificationBell';
 import ProfileDropdown from '../ProfileDropdown/ProfileDropdown';
 import { getSequenceNumber } from '../../../../utils/studentUtils';
+import { useAppInputLock } from '../../../../contexts/AppInputLockContext';
 
 // Mac-style window controls (for Electron)
 const MacWindowControls = styled.div`
@@ -1344,6 +1347,8 @@ const Header: React.FC<HeaderProps> = ({
   const [imageError, setImageError] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const styledTheme = useStyledTheme();
+  const appInputLock = useAppInputLock();
   const { user: authUser } = useAuth();
   const searchSchoolId = authUser?.school_id || user?.school_id;
 
@@ -3729,6 +3734,46 @@ const Header: React.FC<HeaderProps> = ({
             </GlobalSearchWrapper>
           )}
           {(user || studentInfo || parentInfo) && <NotificationBell />}
+          {appInputLock.isScreenLockEnvironment && (
+          <HeaderIconCircle
+            data-app-input-lock-control
+            role="button"
+            tabIndex={0}
+            onClick={() => {
+              if (appInputLock.isLockActive) appInputLock.openUnlockModal();
+              else appInputLock.lockApp();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                if (appInputLock.isLockActive) appInputLock.openUnlockModal();
+                else appInputLock.lockApp();
+              }
+            }}
+            aria-label={appInputLock.isLockActive ? 'Unlock app' : 'Lock app'}
+            aria-pressed={appInputLock.isLockActive}
+            title={
+              appInputLock.isLockActive
+                ? 'Unlock app (same password as Settings)'
+                : 'Lock app — blocks the rest of the app until you unlock; USB RFID scanner still works on the RFID page'
+            }
+            style={
+              appInputLock.isLockActive
+                ? {
+                    background: 'rgba(239, 68, 68, 0.22)',
+                    borderColor: 'rgba(239, 68, 68, 0.42)',
+                    color: '#b91c1c',
+                  }
+                : {
+                    background: 'rgba(34, 197, 94, 0.22)',
+                    borderColor: 'rgba(34, 197, 94, 0.42)',
+                    color: '#15803d',
+                  }
+            }
+          >
+            {appInputLock.isLockActive ? <Lock /> : <LockOpen />}
+          </HeaderIconCircle>
+          )}
           <HeaderIconCircle
             role="button"
             tabIndex={0}

@@ -24,24 +24,6 @@ function applyNetlifyLowMemoryWebpack(webpackConfig) {
     }
 }
 
-/** @param {import('webpack').Configuration} webpackConfig */
-function excludeFaceApiFromSourceMaps(webpackConfig) {
-    const rules = webpackConfig.module?.rules;
-    if (!Array.isArray(rules)) return;
-
-    const faceApiRe = /node_modules[/\\]face-api\.js[/\\]/;
-
-    for (const rule of rules) {
-        if (!rule || rule.enforce !== 'pre') continue;
-        const loader = rule.loader || (Array.isArray(rule.use) && rule.use[0]?.loader);
-        if (typeof loader !== 'string' || !loader.includes('source-map-loader')) continue;
-
-        const ex = rule.exclude;
-        rule.exclude = [...(Array.isArray(ex) ? ex : ex != null ? [ex] : []), faceApiRe];
-        break;
-    }
-}
-
 module.exports = {
     webpack: {
         configure(webpackConfig) {
@@ -53,7 +35,6 @@ module.exports = {
                 crypto: false,
             };
 
-            excludeFaceApiFromSourceMaps(webpackConfig);
             applyNetlifyLowMemoryWebpack(webpackConfig);
             return webpackConfig;
         },

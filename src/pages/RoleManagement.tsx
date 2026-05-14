@@ -14,6 +14,7 @@ import {
   Person as PersonIcon,
   Work as WorkIcon,
   WhatsApp as WhatsAppIcon,
+  SmartToy as ManualAbsentTriggerIcon,
   AccountBalanceWallet,
   AccountBalance as AccountBalanceIcon,
   EventNote,
@@ -25,7 +26,7 @@ import {
 } from '@mui/icons-material';
 import { useToast } from '../components/useToast';
 import { menuStructure, MenuItem as MenuItemType, MenuSection } from '../components/Layout/menuStructure';
-import { getPermissionKeyForPath } from '../utils/permissionMapping';
+import { getPermissionKeyForPath, ATTENDANCE_MANUAL_ABSENCE_AUTOMATION_PERMISSION_KEY } from '../utils/permissionMapping';
 import Loader from '../components/Loader';
 
 const Container = styled.div`
@@ -627,10 +628,27 @@ const RoleManagement: React.FC = () => {
     return permissionKeyToId.get('attendance.send_whatsapp_notifications') || null;
   }, [permissionKeyToId]);
 
+  const manualAbsentAutomationPermissionId = useMemo(() => {
+    return permissionKeyToId.get(ATTENDANCE_MANUAL_ABSENCE_AUTOMATION_PERMISSION_KEY) || null;
+  }, [permissionKeyToId]);
+
+  const dashboardFeaturePermissionIds = useMemo(
+    () =>
+      [whatsappPermissionId, manualAbsentAutomationPermissionId].filter(
+        (id): id is number => id !== null
+      ),
+    [whatsappPermissionId, manualAbsentAutomationPermissionId]
+  );
+
   // Check if WhatsApp permission is checked
   const isWhatsAppPermissionChecked = (): boolean => {
     if (!whatsappPermissionId) return false;
     return rolePermissions.has(whatsappPermissionId);
+  };
+
+  const isManualAbsentAutomationPermissionChecked = (): boolean => {
+    if (!manualAbsentAutomationPermissionId) return false;
+    return rolePermissions.has(manualAbsentAutomationPermissionId);
   };
 
   // Find permission ID for a menu item path
@@ -832,6 +850,9 @@ const RoleManagement: React.FC = () => {
     const featurePermissionIds: number[] = [];
     if (whatsappPermissionId) {
       featurePermissionIds.push(whatsappPermissionId);
+    }
+    if (manualAbsentAutomationPermissionId) {
+      featurePermissionIds.push(manualAbsentAutomationPermissionId);
     }
 
     // Combine and return unique IDs
@@ -1568,18 +1589,22 @@ const RoleManagement: React.FC = () => {
                       marginBottom: '8px'
                     }}>
                       <ColumnTitle>Features</ColumnTitle>
-                      {whatsappPermissionId && (
+                      {dashboardFeaturePermissionIds.length > 0 && (
                         <Button
                           $variant="secondary"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const isChecked = isWhatsAppPermissionChecked();
+                            const allChecked = dashboardFeaturePermissionIds.every(id =>
+                              rolePermissions.has(id)
+                            );
                             const newPermissions = new Set(rolePermissions);
-                            if (isChecked) {
-                              newPermissions.delete(whatsappPermissionId);
-                            } else {
-                              newPermissions.add(whatsappPermissionId);
-                            }
+                            dashboardFeaturePermissionIds.forEach(id => {
+                              if (allChecked) {
+                                newPermissions.delete(id);
+                              } else {
+                                newPermissions.add(id);
+                              }
+                            });
                             setRolePermissions(newPermissions);
                           }}
                           style={{
@@ -1588,7 +1613,9 @@ const RoleManagement: React.FC = () => {
                             minWidth: 'auto'
                           }}
                         >
-                          {isWhatsAppPermissionChecked() ? 'Deselect All' : 'Select All'}
+                          {dashboardFeaturePermissionIds.every(id => rolePermissions.has(id))
+                            ? 'Deselect All'
+                            : 'Select All'}
                         </Button>
                       )}
                     </div>
@@ -1620,6 +1647,43 @@ const RoleManagement: React.FC = () => {
                         <div className="menu-content">
                           <div className="menu-title">Send WhatsApp Notifications</div>
                           <div className="menu-description">Allow sending WhatsApp and SMS notifications when marking attendance</div>
+                        </div>
+                      </DropdownMenuItem>
+                    )}
+                    {manualAbsentAutomationPermissionId && (
+                      <DropdownMenuItem
+                        $color="#f97316"
+                        $checked={isManualAbsentAutomationPermissionChecked()}
+                        htmlFor="manual-absent-automation-permission"
+                      >
+                        <input
+                          type="checkbox"
+                          id="manual-absent-automation-permission"
+                          checked={isManualAbsentAutomationPermissionChecked()}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handlePermissionToggle(manualAbsentAutomationPermissionId);
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                        />
+                        <div className="checkbox-indicator">
+                          {isManualAbsentAutomationPermissionChecked() ? (
+                            <CheckBoxIcon />
+                          ) : (
+                            <CheckBoxOutlineBlankIcon />
+                          )}
+                        </div>
+                        <div className="menu-icon">
+                          <ManualAbsentTriggerIcon />
+                        </div>
+                        <div className="menu-content">
+                          <div className="menu-title">Dashboard Manual Absence Trigger (A)</div>
+                          <div className="menu-description">
+                            Use the floating A button on the Dashboard attendance tab to run absence automation for the
+                            selected date
+                          </div>
                         </div>
                       </DropdownMenuItem>
                     )}

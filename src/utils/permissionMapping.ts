@@ -158,6 +158,10 @@ export function getPermissionKeyForPath(path: string): string | null {
   return pathToPermissionKey[basePath] || pathToPermissionKey[path] || null;
 }
 
+/** Dashboard attendance tab: floating "A" runs absence automation for the selected date */
+export const ATTENDANCE_MANUAL_ABSENCE_AUTOMATION_PERMISSION_KEY =
+  'attendance.manual_absence_automation_trigger';
+
 /**
  * Check if a menu item should be visible based on permissions
  * Returns true if:

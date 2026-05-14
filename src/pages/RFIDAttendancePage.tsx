@@ -18,6 +18,7 @@ import { useToast } from '../components/useToast';
 import { supabase } from '../supabaseClient';
 import { normalizeDesktopScannerUid, sanitizeRfidUid } from '../utils/rfidUtils';
 import { getStudentDisplayId } from '../utils/studentUtils';
+import { useAppInputLock } from '../contexts/AppInputLockContext';
 import {
     CheckCircle,
     Cancel as XCircle,
@@ -83,22 +84,6 @@ const slideUp = keyframes`
   to   { opacity: 1; transform: translateY(0); }
 `;
 
-const scanLine = keyframes`
-  0%   { top: 10%; opacity: 1; }
-  50%  { opacity: 0.4; }
-  100% { top: 90%; opacity: 1; }
-`;
-
-const rippleGreen = keyframes`
-  0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
-  100% { box-shadow: 0 0 0 40px rgba(34,197,94,0); }
-`;
-
-const rippleRed = keyframes`
-  0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
-  100% { box-shadow: 0 0 0 40px rgba(239,68,68,0); }
-`;
-
 // ─── Styled Components ─────────────────────────────────────────────────────────
 
 const Page = styled.div`
@@ -125,9 +110,10 @@ const Page = styled.div`
 const TopBar = styled.div`
   ${clayCardStyle}
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.65rem 1rem;
   padding: 0.4rem 1.2rem;
   border-radius: 0 0 16px 16px;
 
@@ -163,10 +149,48 @@ const TopBarActions = styled.div`
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  margin-left: auto;
+  flex-shrink: 0;
 
   @media (max-width: 768px) {
     gap: 0.5rem;
   }
+`;
+
+const TopBarLeading = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.85rem 1.1rem;
+  flex-wrap: wrap;
+  min-width: 0;
+  flex: 1;
+`;
+
+const TopBarDateWrap = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-left: 0.85rem;
+  margin-left: 0.15rem;
+  border-left: 1px solid ${({ theme }) => theme.BORDER};
+
+  @media (max-width: 640px) {
+    width: 100%;
+    padding-left: 0;
+    margin-left: 0;
+    border-left: none;
+    border-top: 1px solid ${({ theme }) => theme.BORDER};
+    padding-top: 0.5rem;
+  }
+`;
+
+const TopBarDateLabel = styled.span`
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
 `;
 
 const StatusBadgeRow = styled.div`
@@ -198,27 +222,6 @@ const DateAndSettingsRow = styled.div`
       justify-content: center;
     }
   }
-`;
-
-const ModeToggle = styled.div`
-  display: flex;
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 10px;
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  overflow: hidden;
-`;
-
-const ModeBtn = styled.button<{ $active?: boolean }>`
-  padding: 0.45rem 1rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s;
-  background: ${({ $active, theme }) => $active ? theme.ACCENT : 'transparent'};
-  color: ${({ $active, theme }) => $active ? '#fff' : theme.TEXT_SECONDARY};
-
-  &:hover { opacity: 0.85; }
 `;
 
 const OfflineBadge = styled.div`
@@ -375,6 +378,7 @@ const ProminentDate = styled.div`
 const MainGrid = styled.div`
   display: grid;
   grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 0.75rem;
   flex: 1;
   min-height: 0;
@@ -382,6 +386,7 @@ const MainGrid = styled.div`
 
   @media (max-width: 960px) {
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
     min-height: auto;
   }
 `;
@@ -393,60 +398,139 @@ const ScannerCard = styled.div`
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.2rem;
+  align-items: stretch;
+  gap: 0.85rem;
   min-height: 0;
+  height: 100%;
+  box-sizing: border-box;
 
   @media (max-width: 768px) {
     padding: 1rem;
-    gap: 0.9rem;
+    gap: 0.75rem;
   }
 `;
 
-const ScanArea = styled.div<{ $status: 'idle' | 'success' | 'error' }>`
+const RfidHeroPanel = styled.div<{ $status: 'idle' | 'success' | 'error' }>`
   ${clayInsetStyle}
-  width: 188px;
-  height: 188px;
-  border-radius: 28px;
+  width: 100%;
+  min-height: 108px;
+  border-radius: ${CARD_RADIUS_LG};
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  transition: all 0.4s;
-  overflow: hidden;
+  transition: background 0.35s, border-color 0.35s;
   background: ${({ $status }) =>
-        $status === 'success' ? 'rgba(34,197,94,0.12)' :
-            $status === 'error' ? 'rgba(239,68,68,0.12)' :
+        $status === 'success' ? 'rgba(34,197,94,0.1)' :
+            $status === 'error' ? 'rgba(239,68,68,0.1)' :
                 'rgba(59,130,246,0.06)'};
-  animation: ${({ $status }) =>
-        $status === 'success' ? css`${rippleGreen} 0.6s ease-out` :
-            $status === 'error' ? css`${rippleRed} 0.6s ease-out` :
-                css`${pulse} 2.5s ease-in-out infinite`};
-  transition: color 0.3s;
+  border: 1px solid ${({ theme, $status }) =>
+        $status === 'success' ? 'rgba(34,197,94,0.35)' :
+            $status === 'error' ? 'rgba(239,68,68,0.35)' :
+                theme.BORDER};
+
+  svg {
+    color: ${({ $status }) =>
+        $status === 'success' ? '#22c55e' :
+            $status === 'error' ? '#ef4444' :
+                '#3b82f6'};
+    font-size: 52px !important;
+  }
 
   @media (max-width: 768px) {
-    width: 146px;
-    height: 146px;
-    border-radius: 22px;
-
-    svg {
-      font-size: 46px !important;
-    }
+    min-height: 96px;
+    svg { font-size: 44px !important; }
   }
+`;
+
+const scanLineSweep = keyframes`
+  0% { transform: translateX(-42%); opacity: 0.35; }
+  50% { opacity: 1; }
+  100% { transform: translateX(42%); opacity: 0.35; }
+`;
+
+const ScanArea = styled(RfidHeroPanel)`
+  position: relative;
+  overflow: hidden;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  min-height: 112px;
+  width: 100%;
 `;
 
 const ScanLineBar = styled.div<{ $active: boolean }>`
   position: absolute;
-  left: 20%;
-  width: 60%;
+  left: 8%;
+  right: 8%;
+  bottom: 10px;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #3b82f6, transparent);
-  border-radius: 2px;
-  animation: ${({ $active }) => $active ? css`${scanLine} 1.6s ease-in-out infinite` : 'none'};
-  top: 50%;
-  opacity: ${({ $active }) => $active ? 1 : 0};
-  transition: opacity 0.3s;
+  border-radius: 99px;
+  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.55), transparent);
+  opacity: ${({ $active }) => ($active ? 0.9 : 0)};
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  ${({ $active }) =>
+    $active
+      ? css`
+          animation: ${scanLineSweep} 1.55s ease-in-out infinite;
+        `
+      : css``};
+`;
+
+const ScannerUpper = styled.div`
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+`;
+
+const ScannerSummaryRow = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  width: 100%;
+  margin-top: auto;
+`;
+
+const ScannerSummaryChip = styled.div<{ $tone: 'ok' | 'bad' | 'warn' | 'info' }>`
+  ${clayInsetStyle}
+  border-radius: 14px;
+  padding: 0.5rem 0.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  min-width: 0;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  background: ${({ $tone }) =>
+        $tone === 'ok' ? 'rgba(34,197,94,0.07)' :
+            $tone === 'bad' ? 'rgba(239,68,68,0.07)' :
+                $tone === 'warn' ? 'rgba(234,179,8,0.09)' :
+                    'rgba(59,130,246,0.07)'};
+`;
+
+const ScannerSummaryNum = styled.span<{ $tone: 'ok' | 'bad' | 'warn' | 'info' }>`
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: ${({ $tone }) =>
+        $tone === 'ok' ? '#22c55e' :
+            $tone === 'bad' ? '#ef4444' :
+                $tone === 'warn' ? '#ca8a04' :
+                    '#3b82f6'};
+`;
+
+const ScannerSummaryLabel = styled.span`
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  text-align: center;
+  line-height: 1.15;
 `;
 
 const HiddenInput = styled.input`
@@ -488,6 +572,14 @@ const DateSelect = styled.input`
   width: 100%;
   box-sizing: border-box;
   cursor: pointer;
+`;
+
+const TopBarDateSelect = styled(DateSelect)`
+  width: auto;
+  min-width: 140px;
+  max-width: 200px;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.82rem;
 `;
 
 const StatsRow = styled.div`
@@ -532,6 +624,7 @@ const FeedCard = styled.div`
   display: flex;
   flex-direction: column;
   min-height: 0;
+  height: 100%;
   padding: 0;
   overflow: hidden;
 `;
@@ -641,15 +734,36 @@ const SectionHeader = styled.div<{ $mode: 'student' | 'employee' }>`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.5rem;
   border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+`;
 
-  span:last-child {
-    background: ${({ theme }) => theme.ACCENT}15;
-    color: ${({ theme }) => theme.ACCENT};
-    padding: 2px 8px;
-    border-radius: 999px;
-    font-size: 0.7rem;
-  }
+const SectionHeaderStats = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+`;
+
+const SectionHeaderBadge = styled.span<{ $variant?: 'present' | 'late'; $dimmed?: boolean }>`
+  font-size: 0.66rem;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: ${({ $dimmed }) => ($dimmed ? 0.52 : 1)};
+  ${({ $variant, theme }) =>
+    $variant === 'late'
+      ? css`
+          background: rgba(245, 158, 11, 0.22);
+          color: #b45309;
+        `
+      : css`
+          background: ${theme.ACCENT}15;
+          color: ${theme.ACCENT};
+        `};
 `;
 
 const SectionBody = styled.div`
@@ -1055,15 +1169,13 @@ const SyncProgressBanner = styled.div`
 
 const FullScreenPopup = styled.div<{ $status: 'present' | 'late' | 'checked_out' | 'error' | 'offline' }>`
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   z-index: 99999;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  touch-action: none;
   background: ${({ $status }) =>
         $status === 'present' ? 'linear-gradient(135deg, rgba(34,197,94,0.97) 0%, rgba(16,185,129,1) 100%)' :
         $status === 'late' ? 'linear-gradient(135deg, rgba(245,158,11,0.97) 0%, rgba(217,119,6,1) 100%)' :
@@ -1084,6 +1196,7 @@ const PopupProgressBar = styled.div`
   height: 6px;
   background: rgba(255,255,255,0.3);
   overflow: hidden;
+  z-index: 2;
 `;
 
 const PopupProgressFill = styled.div<{ $progress: number }>`
@@ -1095,13 +1208,17 @@ const PopupProgressFill = styled.div<{ $progress: number }>`
 `;
 
 const PopupContent = styled.div`
+  flex: 1;
+  width: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: 4.5rem;
   max-width: 1200px;
-  width: 92%;
+  padding: 0 1.5rem;
+  box-sizing: border-box;
   text-align: left;
 
   @media (max-width: 1024px) {
@@ -1115,8 +1232,10 @@ const PopupInfoWrapper = styled.div`
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  flex: 1;
+  justify-content: center;
+  flex: 0 1 auto;
   min-width: 0;
+  gap: 0.25rem;
 
   @media (max-width: 1024px) {
     align-items: center;
@@ -1144,26 +1263,6 @@ const PopupImage = styled.img`
     width: 200px;
     height: 200px;
     border-radius: 32px;
-  }
-`;
-
-const PopupIconWrapper = styled.div<{ $status: 'present' | 'late' | 'checked_out' | 'error' | 'offline' }>`
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 2.5rem;
-  animation: ${popupPulse} 0.6s ease-out;
-  box-shadow: 0 25px 80px rgba(0,0,0,0.4);
-  border: 4px solid rgba(255,255,255,0.3);
-  
-  svg {
-    font-size: 90px;
-    color: #fff;
-    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));
   }
 `;
 
@@ -1217,7 +1316,7 @@ const PopupStatus = styled.div<{ $status: 'present' | 'late' | 'checked_out' | '
 `;
 
 const PopupTime = styled.div`
-  margin-top: 2rem;
+  margin-top: 1rem;
   font-size: clamp(1.2rem, 4vw, 2rem);
   font-weight: 700;
   color: rgba(255,255,255,0.9);
@@ -1226,10 +1325,17 @@ const PopupTime = styled.div`
 
 const PopupDismiss = styled.div`
   position: absolute;
-  bottom: 2.5rem;
-  font-size: 1rem;
-  color: rgba(255,255,255,0.6);
-  font-weight: 500;
+  top: 14px;
+  left: 1.25rem;
+  z-index: 3;
+  font-size: 0.92rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  text-align: left;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  max-width: min(360px, calc(100vw - 2.5rem));
+  line-height: 1.35;
+  pointer-events: none;
 `;
 
 
@@ -1254,6 +1360,20 @@ interface ScanResult {
     attendanceStatus?: string;
     attendanceLateCount?: number;
     fatherName?: string;
+}
+
+/** Check-ins counted as “present” in section headers: on-time present, late, or legacy success rows (excludes checkout). */
+function countFeedPresentInSection(items: ScanResult[]): number {
+    return items.filter((i) => {
+        if (i.type !== 'success') return false;
+        if (i.attendanceStatus === 'checked_out') return false;
+        return (
+            i.attendanceStatus === 'present' ||
+            i.attendanceStatus === 'late' ||
+            i.attendanceStatus == null ||
+            i.attendanceStatus === ''
+        );
+    }).length;
 }
 
 interface PersistedDailyScanHistory {
@@ -1369,6 +1489,7 @@ const RFIDAttendancePage: React.FC = () => {
     const { theme } = useTheme();
     const { showToast } = useToast();
     const themeObj = theme === 'dark' ? darkTheme : lightTheme;
+    const { isLockActive: isAppInputLocked, isUnlockModalOpen, setScannerBypassRef } = useAppInputLock();
     const { user } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
@@ -1571,6 +1692,11 @@ const RFIDAttendancePage: React.FC = () => {
     const [queueCount, setQueueCount] = useState(0);
     const navigationContext = useContext(UNSAFE_NavigationContext);
     const pendingNavigationRef = useRef<{ path: string; replace?: boolean; retry?: () => void } | null>(null);
+
+    useEffect(() => {
+        setScannerBypassRef(hiddenInputRef);
+        return () => setScannerBypassRef(null);
+    }, [setScannerBypassRef]);
 
     const clearPersistedDailyHistory = useCallback(() => {
         if (!user?.school_id) return;
@@ -2113,7 +2239,7 @@ const RFIDAttendancePage: React.FC = () => {
 
                 triggerPopup({
                     name: p.name,
-                    subInfo: personType === 'student' ? `Roll: ${(p as any).roll_no || 'N/A'}` : `Role: ${(p as any).role || 'Staff'}`,
+                    subInfo: '',
                     status: isCheckout ? 'checked_out' : result.attendance_status as any,
                     time,
                     picture_url: p.picture_url
@@ -2298,7 +2424,7 @@ const RFIDAttendancePage: React.FC = () => {
 
                 triggerPopup({
                     name: p.name,
-                    subInfo: personType === 'student' && (p as any).father_name ? `Father: ${(p as any).father_name}` : '',
+                    subInfo: '',
                     status: isCheckout ? 'checked_out' : result.attendance_status as any,
                     time,
                     picture_url: p.picture_url
@@ -2481,6 +2607,10 @@ const RFIDAttendancePage: React.FC = () => {
 
     const filteredEmployeeFeed = filteredFeed.filter(item => item.personType === 'employee');
     const filteredStudentFeed = filteredFeed.filter(item => item.personType === 'student');
+    const employeeFeedLateCount = filteredEmployeeFeed.filter(i => i.attendanceStatus === 'late').length;
+    const studentFeedLateCount = filteredStudentFeed.filter(i => i.attendanceStatus === 'late').length;
+    const employeeFeedPresentCount = countFeedPresentInSection(filteredEmployeeFeed);
+    const studentFeedPresentCount = countFeedPresentInSection(filteredStudentFeed);
 
     const renderFeedSub = (item: ScanResult, theme: any) => (
         <FeedSub theme={theme}>
@@ -2507,34 +2637,74 @@ const RFIDAttendancePage: React.FC = () => {
         </FeedSub>
     );
 
-    const scanIcon = scanStatus === 'success' ? <CheckCircle style={{ fontSize: 56 }} /> :
-        scanStatus === 'error' ? <XCircle style={{ fontSize: 56 }} /> :
-            <Scan style={{ fontSize: 56 }} />;
-
     useEffect(() => {
+        const isLockControl = (el: HTMLElement | null) =>
+            !!el?.closest?.('[data-app-input-lock-control]');
+
         const focusInput = (event?: MouseEvent) => {
             const target = event?.target as HTMLElement | null;
+            if (isLockControl(target)) return;
+
+            if (isAppInputLocked && !isUnlockModalOpen) {
+                if (target === hiddenInputRef.current) return;
+                hiddenInputRef.current?.focus();
+                return;
+            }
+
             if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
                 return;
             }
-            if (!showSettings && !showPopup && !showSuccess && !isSyncing && !showSettingsPasswordModal && !showClearPasswordModal && !showLatePasswordModal) {
+            if (!showSettings && !showPopup && !showSuccess && !isSyncing && !showSettingsPasswordModal && !showClearPasswordModal && !showLatePasswordModal && !isUnlockModalOpen) {
                 hiddenInputRef.current?.focus();
             }
         };
 
-        const interval = setInterval(() => focusInput(), 2000);
-        document.addEventListener('click', focusInput);
+        const tick = () => {
+            if (isAppInputLocked && !isUnlockModalOpen) {
+                if (document.activeElement !== hiddenInputRef.current) {
+                    hiddenInputRef.current?.focus();
+                }
+                return;
+            }
+            focusInput();
+        };
+
+        const intervalMs = isAppInputLocked && !isUnlockModalOpen ? 350 : 2000;
+        const interval = setInterval(tick, intervalMs);
+        document.addEventListener('click', focusInput, true);
         return () => {
             clearInterval(interval);
-            document.removeEventListener('click', focusInput);
+            document.removeEventListener('click', focusInput, true);
         };
-    }, [showSettings, showPopup, showSuccess, isSyncing, showSettingsPasswordModal, showClearPasswordModal, showLatePasswordModal]);
+    }, [showSettings, showPopup, showSuccess, isSyncing, showSettingsPasswordModal, showClearPasswordModal, showLatePasswordModal, isAppInputLocked, isUnlockModalOpen]);
+
+    const scanIcon =
+        scanStatus === 'success' ? (
+            <CheckCircle aria-hidden />
+        ) : scanStatus === 'error' ? (
+            <XCircle aria-hidden />
+        ) : (
+            <Scan aria-hidden />
+        );
+
     return (
         <Page theme={themeObj}>
             <TopBar theme={themeObj}>
-                <Title theme={themeObj}>
-                    <Scan /> RFID Attendance
-                </Title>
+                <TopBarLeading>
+                    <Title theme={themeObj}>
+                        <Scan /> RFID Attendance
+                    </Title>
+                    <TopBarDateWrap theme={themeObj}>
+                        <TopBarDateLabel theme={themeObj}>Date</TopBarDateLabel>
+                        <TopBarDateSelect
+                            theme={themeObj}
+                            type="date"
+                            value={selectedDate}
+                            max={today}
+                            onChange={e => setSelectedDate(e.target.value)}
+                        />
+                    </TopBarDateWrap>
+                </TopBarLeading>
 
                 <TopBarActions>
                     <StatusBadgeRow>
@@ -2941,20 +3111,21 @@ const RFIDAttendancePage: React.FC = () => {
             <MainGrid>
                 {/* ── Left: Scanner ── */}
                 <ScannerCard theme={themeObj}>
-                    <ScanArea $status={scanStatus}>
-                        {scanIcon}
-                        <ScanLineBar $active={scanStatus === 'idle'} />
-                    </ScanArea>
+                    <ScannerUpper>
+                        <ScanArea $status={scanStatus}>
+                            {scanIcon}
+                            <ScanLineBar $active={scanStatus === 'idle'} />
+                        </ScanArea>
 
-                    <StatusText $status={scanStatus} theme={themeObj}>{statusMsg}</StatusText>
-                    <SubText theme={themeObj}>
-                        {scanStatus === 'idle'
-                            ? 'Hold RFID card near the USB reader'
-                            : scanStatus === 'success'
-                                ? 'Attendance marked successfully'
-                                : 'Scan failed \u2013 see feed for details'}
-                    </SubText>
-
+                        <StatusText $status={scanStatus} theme={themeObj}>{statusMsg}</StatusText>
+                        <SubText theme={themeObj}>
+                            {scanStatus === 'idle'
+                                ? 'Hold RFID card near the USB reader'
+                                : scanStatus === 'success'
+                                    ? 'Attendance marked successfully'
+                                    : 'Scan failed \u2013 see feed for details'}
+                        </SubText>
+                    </ScannerUpper>
 
                     {/* Stats */}
                     <StatsRow>
@@ -3026,7 +3197,12 @@ const RFIDAttendancePage: React.FC = () => {
                         <FeedSection theme={themeObj}>
                             <SectionHeader theme={themeObj} $mode="employee">
                                 <span>Employees</span>
-                                <span style={{ opacity: 0.8 }}>{filteredEmployeeFeed.length}</span>
+                                <SectionHeaderStats>
+                                    <SectionHeaderBadge>{employeeFeedPresentCount} present</SectionHeaderBadge>
+                                    <SectionHeaderBadge $variant="late" $dimmed={employeeFeedLateCount === 0}>
+                                        {employeeFeedLateCount} late
+                                    </SectionHeaderBadge>
+                                </SectionHeaderStats>
                             </SectionHeader>
                             <SectionBody>
                                 <FeedList>
@@ -3078,7 +3254,12 @@ const RFIDAttendancePage: React.FC = () => {
                         <FeedSection theme={themeObj}>
                             <SectionHeader theme={themeObj} $mode="student">
                                 <span>Students</span>
-                                <span style={{ opacity: 0.6 }}>{filteredStudentFeed.length}</span>
+                                <SectionHeaderStats>
+                                    <SectionHeaderBadge>{studentFeedPresentCount} present</SectionHeaderBadge>
+                                    <SectionHeaderBadge $variant="late" $dimmed={studentFeedLateCount === 0}>
+                                        {studentFeedLateCount} late
+                                    </SectionHeaderBadge>
+                                </SectionHeaderStats>
                             </SectionHeader>
                             <SectionBody>
                                 <FeedList>
@@ -3206,6 +3387,7 @@ const RFIDAttendancePage: React.FC = () => {
                     <PopupProgressBar>
                         <PopupProgressFill $progress={popupProgress} />
                     </PopupProgressBar>
+                    <PopupDismiss>Auto-dismissing in a few seconds...</PopupDismiss>
                     <PopupContent>
                         <PopupImage
                             src={popupData.picture_url || 'https://placehold.co/400x400?text=No+Photo'}
@@ -3216,21 +3398,10 @@ const RFIDAttendancePage: React.FC = () => {
                             }}
                         />
                         <PopupInfoWrapper>
-                            {popupData.status === 'present' || popupData.status === 'late' ? (
-                                <PopupIconWrapper $status={popupData.status}>
-                                    <UserCheck />
-                                </PopupIconWrapper>
-                            ) : popupData.status === 'checked_out' ? (
-                                <PopupIconWrapper $status={popupData.status}>
-                                    <Clock />
-                                </PopupIconWrapper>
-                            ) : (
-                                <PopupIconWrapper $status={popupData.status}>
-                                    <AlertCircle />
-                                </PopupIconWrapper>
-                            )}
                             <PopupName $color={popupData.nameColor}>{popupData.name}</PopupName>
-                            <PopupSubInfo $color={popupData.subColor}>{popupData.subInfo}</PopupSubInfo>
+                            {popupData.subInfo?.trim() ? (
+                                <PopupSubInfo $color={popupData.subColor}>{popupData.subInfo}</PopupSubInfo>
+                            ) : null}
                             <PopupStatus $status={popupData.status} $bgColor={popupData.statusBgColor}>
                                 {popupData.status === 'late' ? 'LATE' :
                                     popupData.status === 'checked_out' ? 'CHECK OUT' :
@@ -3240,7 +3411,6 @@ const RFIDAttendancePage: React.FC = () => {
                             <PopupTime>{popupData.time}</PopupTime>
                         </PopupInfoWrapper>
                     </PopupContent>
-                    <PopupDismiss>Auto-dismissing in a few seconds...</PopupDismiss>
                 </FullScreenPopup>
             )}
         </Page>

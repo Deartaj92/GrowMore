@@ -37,10 +37,8 @@ import {
     Delete,
     Sensors as NfcIcon,
     QrCodeScanner as QrCodeScannerIcon,
-    Face as FaceIcon,
 } from '@mui/icons-material';
 import { CircularProgress } from '@mui/material';
-import FaceRecordModal from '../components/FaceRecordModal';
 
 // ─── Animations ────────────────────────────────────────────────────────────────
 
@@ -397,8 +395,6 @@ interface PersonRow {
     session_id?: number | null;
     role?: string;
     status?: string;
-    /** Present when loaded for students; used only to show face enrollment status (compact template in DB). */
-    face_embedding?: string | null;
 }
 
 const getEffectiveAttendanceMode = (
@@ -439,11 +435,6 @@ const RFIDCardAssignmentPage: React.FC = () => {
     const [sessions, setSessions] = useState<SessionRow[]>([]);
     const [filterSession, setFilterSession] = useState('');
     const [page, setPage] = useState(0);
-    const [faceRecordTarget, setFaceRecordTarget] = useState<{
-        id: number;
-        name: string;
-        kind: 'student' | 'employee';
-    } | null>(null);
 
     type EditField = 'rfid' | 'qr';
     const [editing, setEditing] = useState<{ personId: number; field: EditField } | null>(null);
@@ -498,8 +489,8 @@ const RFIDCardAssignmentPage: React.FC = () => {
             // Fetch people
             const table = mode === 'students' ? 'students' : 'staff';
             const selectFields = mode === 'students'
-                ? 'id,name,rfid_uid,qr_uid,attendance_mode,roll_number,class_id,section_id,status,session_id,face_embedding'
-                : 'id,name,rfid_uid,qr_uid,attendance_mode,role,status,face_embedding';
+                ? 'id,name,rfid_uid,qr_uid,attendance_mode,roll_number,class_id,section_id,status,session_id'
+                : 'id,name,rfid_uid,qr_uid,attendance_mode,role,status';
 
             let data = await fetchAllRows<PersonRow>(async (from, to) => {
                 return await supabase
@@ -540,7 +531,6 @@ const RFIDCardAssignmentPage: React.FC = () => {
         setFilterSection('all');
         setFilterStatus('all');
         setFilterPersonStatus('active');
-        setFaceRecordTarget(null);
     }, [user?.school_id, mode]);
 
     const filteredSections = useMemo(() => {
@@ -1193,9 +1183,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
                                         <TH theme={themeObj}>Name</TH>
                                         {mode === 'students' && <TH theme={themeObj}>Roll No</TH>}
                                         {mode === 'students' && <TH theme={themeObj}>Class / Section</TH>}
-                                        {mode === 'students' && <TH theme={themeObj}>Face</TH>}
                                         {mode === 'employees' && <TH theme={themeObj}>Role</TH>}
-                                        {mode === 'employees' && <TH theme={themeObj}>Face</TH>}
                                         <TH theme={themeObj}>Attendance Mode</TH>
                                         <TH theme={themeObj}>RFID card</TH>
                                         <TH theme={themeObj}>QR code</TH>
@@ -1218,67 +1206,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
                                                 <TD theme={themeObj} style={{ fontWeight: 600 }}>{person.name}</TD>
                                                 {mode === 'students' && <TD theme={themeObj}>{person.roll_number || person.id}</TD>}
                                                 {mode === 'students' && <TD theme={themeObj}>{classLabel}</TD>}
-                                                {mode === 'students' && (
-                                                    <TD theme={themeObj}>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() =>
-                                                                setFaceRecordTarget({
-                                                                    id: person.id,
-                                                                    name: person.name,
-                                                                    kind: 'student',
-                                                                })
-                                                            }
-                                                            style={{
-                                                                display: 'inline-flex',
-                                                                alignItems: 'center',
-                                                                gap: 6,
-                                                                padding: '0.35rem 0.65rem',
-                                                                borderRadius: 8,
-                                                                border: '1px solid rgba(168,85,247,0.45)',
-                                                                background: person.face_embedding ? 'rgba(168,85,247,0.12)' : 'transparent',
-                                                                color: '#a855f7',
-                                                                fontSize: '0.78rem',
-                                                                fontWeight: 600,
-                                                                cursor: 'pointer',
-                                                            }}
-                                                        >
-                                                            <FaceIcon style={{ fontSize: 16 }} />
-                                                            {person.face_embedding ? 'Update' : 'Record'}
-                                                        </button>
-                                                    </TD>
-                                                )}
                                                 {mode === 'employees' && <TD theme={themeObj}>{person.role || '—'}</TD>}
-                                                {mode === 'employees' && (
-                                                    <TD theme={themeObj}>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() =>
-                                                                setFaceRecordTarget({
-                                                                    id: person.id,
-                                                                    name: person.name,
-                                                                    kind: 'employee',
-                                                                })
-                                                            }
-                                                            style={{
-                                                                display: 'inline-flex',
-                                                                alignItems: 'center',
-                                                                gap: 6,
-                                                                padding: '0.35rem 0.65rem',
-                                                                borderRadius: 8,
-                                                                border: '1px solid rgba(168,85,247,0.45)',
-                                                                background: person.face_embedding ? 'rgba(168,85,247,0.12)' : 'transparent',
-                                                                color: '#a855f7',
-                                                                fontSize: '0.78rem',
-                                                                fontWeight: 600,
-                                                                cursor: 'pointer',
-                                                            }}
-                                                        >
-                                                            <FaceIcon style={{ fontSize: 16 }} />
-                                                            {person.face_embedding ? 'Update' : 'Record'}
-                                                        </button>
-                                                    </TD>
-                                                )}
                                                 <TD theme={themeObj}>
                                                     {isEditingRfid ? (
                                                         <Select
@@ -1449,19 +1377,6 @@ const RFIDCardAssignmentPage: React.FC = () => {
                 )}
             </TableCard>
 
-            {faceRecordTarget && user?.school_id != null && (
-                <FaceRecordModal
-                    open
-                    personKind={faceRecordTarget.kind === 'employee' ? 'employee' : 'student'}
-                    personId={faceRecordTarget.id}
-                    schoolId={user.school_id}
-                    personName={faceRecordTarget.name}
-                    onClose={() => setFaceRecordTarget(null)}
-                    onSaved={() => {
-                        void fetchData();
-                    }}
-                />
-            )}
         </Page>
     );
 };

@@ -6,6 +6,15 @@ import { useToast } from '../components/useToast';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import Loader from '../components/Loader';
 import {
+  AUTO_LOCK_IDLE_SECOND_OPTIONS,
+  formatAutoLockIdleLabel,
+  getAutoLockEnabled,
+  getAutoLockIdleSeconds,
+  SCREEN_LOCK_MIN_WIDTH,
+  setAutoLockEnabled as writeAutoLockEnabledToStorage,
+  setAutoLockIdleSeconds as writeAutoLockIdleSecondsToStorage,
+} from '../utils/appScreenLockSettings';
+import {
   Box,
   Typography,
   Switch,
@@ -35,7 +44,11 @@ import {
   ListItemIcon,
   ListItemText,
   TextField,
-  Grid
+  Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   Settings as SettingsIcon,
@@ -50,7 +63,8 @@ import {
   Timer,
   Assignment,
   Assessment,
-  EventBusy
+  EventBusy,
+  DesktopWindows as DesktopWindowsIcon,
 } from '@mui/icons-material';
 
 const Container = styled.div<{ $theme: any }>`
@@ -218,6 +232,8 @@ const GeneralSettings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+  const [autoLockEnabled, setAutoLockEnabled] = useState(getAutoLockEnabled);
+  const [autoLockIdleSeconds, setAutoLockIdleSeconds] = useState(getAutoLockIdleSeconds);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [teacherSettings, setTeacherSettings] = useState<Map<number, TeacherScoreSettings>>(new Map());
 
@@ -311,7 +327,7 @@ const GeneralSettings: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!user?.school_id) return;
+    if (activeTab === 0 && !user?.school_id) return;
 
     try {
       setSaving(true);
@@ -333,6 +349,9 @@ const GeneralSettings: React.FC = () => {
           });
 
         if (error) throw error;
+      } else if (activeTab === 1) {
+        writeAutoLockEnabledToStorage(autoLockEnabled);
+        writeAutoLockIdleSecondsToStorage(autoLockIdleSeconds);
       }
 
       setHasChanges(false);
@@ -380,6 +399,7 @@ const GeneralSettings: React.FC = () => {
 
         <Tabs value={activeTab} onChange={handleTabChange} sx={{ mb: 3 }}>
           <Tab label="Teachers Score Deduction" />
+          <Tab label="Screen" />
         </Tabs>
 
         {activeTab === 0 && (
@@ -529,6 +549,79 @@ const GeneralSettings: React.FC = () => {
               >
                 Reset to Defaults
               </Button>
+              <Button
+                variant="contained"
+                startIcon={<SaveIcon />}
+                onClick={handleSave}
+                disabled={!hasChanges || saving}
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </ActionsContainer>
+          </SettingsCard>
+        )}
+
+        {activeTab === 1 && (
+          <SettingsCard $theme={theme}>
+            <SectionTitleContainer $theme={theme}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                <DesktopWindowsIcon />
+                <Typography variant="h6" component="div">
+                  Screen & auto-lock
+                </Typography>
+              </Box>
+              <Chip size="small" label="Desktop only" color="primary" variant="outlined" />
+            </SectionTitleContainer>
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Manual screen lock and automatic idle lock apply only on <strong>desktop-sized</strong> windows
+              (browser or Electron), at least {SCREEN_LOCK_MIN_WIDTH}px wide. They are not used on phones or narrow layouts.
+            </Alert>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              When enabled, the app locks after no keyboard, mouse, or scroll activity for the chosen period.
+              Configure the same behaviour from the header lock control on supported desktops.
+            </Typography>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={autoLockEnabled}
+                  onChange={(e) => {
+                    setAutoLockEnabled(e.target.checked);
+                    setHasChanges(true);
+                  }}
+                  color="primary"
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant="body2" fontWeight={600}>
+                    Auto-lock after idle
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Locks the application until the login password is entered
+                  </Typography>
+                </Box>
+              }
+              sx={{ alignItems: 'flex-start', mb: 2, ml: 0 }}
+            />
+            <FormControl fullWidth disabled={!autoLockEnabled} sx={{ maxWidth: 360, mb: 2 }}>
+              <InputLabel id="auto-lock-idle-label">Idle time before lock</InputLabel>
+              <Select
+                labelId="auto-lock-idle-label"
+                label="Idle time before lock"
+                value={autoLockIdleSeconds}
+                onChange={(e) => {
+                  setAutoLockIdleSeconds(Number(e.target.value));
+                  setHasChanges(true);
+                }}
+              >
+                {AUTO_LOCK_IDLE_SECOND_OPTIONS.map((sec) => (
+                  <MenuItem key={sec} value={sec}>
+                    {formatAutoLockIdleLabel(sec)}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <ActionsContainer $theme={theme}>
               <Button
                 variant="contained"
                 startIcon={<SaveIcon />}

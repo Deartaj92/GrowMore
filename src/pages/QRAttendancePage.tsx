@@ -13,9 +13,6 @@ declare global {
 }
 import { useTheme } from '../components/Layout/contexts/ThemeContext';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-import { FormControlLabel, Switch } from '@mui/material';
-import { Face as FaceIcon } from '@mui/icons-material';
-import { useQrAttendanceFace, readFaceToggleFromStorage, writeFaceToggleToStorage } from '../hooks/useQrAttendanceFace';
 import { darkTheme, lightTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/useToast';
@@ -27,8 +24,8 @@ import {
     sanitizeRfidUid,
 } from '../utils/rfidUtils';
 import { getStudentDisplayId } from '../utils/studentUtils';
+import { useAppInputLock } from '../contexts/AppInputLockContext';
 import {
-    CheckCircle,
     Cancel as XCircle,
     Warning as AlertCircle,
     AccessTime as Clock,
@@ -90,22 +87,6 @@ const fadeIn = keyframes`
 const slideUp = keyframes`
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
-`;
-
-const scanLine = keyframes`
-  0%   { top: 10%; opacity: 1; }
-  50%  { opacity: 0.4; }
-  100% { top: 90%; opacity: 1; }
-`;
-
-const rippleGreen = keyframes`
-  0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
-  100% { box-shadow: 0 0 0 40px rgba(34,197,94,0); }
-`;
-
-const rippleRed = keyframes`
-  0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
-  100% { box-shadow: 0 0 0 40px rgba(239,68,68,0); }
 `;
 
 // ─── Styled Components ─────────────────────────────────────────────────────────
@@ -172,10 +153,59 @@ const TopBarActions = styled.div`
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  margin-left: auto;
 
   @media (max-width: 768px) {
     gap: 0.5rem;
   }
+`;
+
+const ScannerSummaryRow = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  gap: 0.5rem 0.55rem;
+  width: 100%;
+  margin-top: auto;
+  flex-shrink: 0;
+  padding: 0.45rem;
+  box-sizing: border-box;
+  border-radius: 12px;
+  background: ${({ theme }) => theme.FIELD_BG};
+  border: 1px solid ${({ theme }) => theme.BORDER};
+`;
+
+const ScannerSummaryChip = styled.div`
+  ${clayInsetStyle}
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.12rem;
+  padding: 0.45rem 0.4rem;
+  min-width: 0;
+  min-height: 3.35rem;
+  border-radius: 10px;
+  box-sizing: border-box;
+`;
+
+const ScannerSummaryVal = styled.span<{ $color: string }>`
+  font-size: clamp(0.95rem, 2.8vw, 1.05rem);
+  font-weight: 800;
+  color: ${({ $color }) => $color};
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+`;
+
+const ScannerSummaryKey = styled.span`
+  font-size: clamp(0.52rem, 1.8vw, 0.58rem);
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: center;
+  line-height: 1.2;
+  max-width: 100%;
 `;
 
 const StatusBadgeRow = styled.div`
@@ -399,63 +429,23 @@ const MainGrid = styled.div`
 
 const ScannerCard = styled.div`
   ${clayCardStyle}
-  padding: 1.5rem;
+  padding: 1.1rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.2rem;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.65rem;
+  flex: 1;
   min-height: 0;
+  height: 100%;
+  box-sizing: border-box;
 
   @media (max-width: 768px) {
-    padding: 1rem;
-    gap: 0.9rem;
+    padding: 0.85rem;
+    gap: 0.55rem;
+    height: auto;
+    flex: 0 1 auto;
   }
-`;
-
-const ScanArea = styled.div<{ $status: 'idle' | 'success' | 'error' }>`
-  ${clayInsetStyle}
-  width: 188px;
-  height: 188px;
-  border-radius: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  transition: all 0.4s;
-  overflow: hidden;
-  background: ${({ $status }) =>
-        $status === 'success' ? 'rgba(34,197,94,0.12)' :
-            $status === 'error' ? 'rgba(239,68,68,0.12)' :
-                'rgba(59,130,246,0.06)'};
-  animation: ${({ $status }) =>
-        $status === 'success' ? css`${rippleGreen} 0.6s ease-out` :
-            $status === 'error' ? css`${rippleRed} 0.6s ease-out` :
-                css`${pulse} 2.5s ease-in-out infinite`};
-  transition: color 0.3s;
-
-  @media (max-width: 768px) {
-    width: 146px;
-    height: 146px;
-    border-radius: 22px;
-
-    svg {
-      font-size: 46px !important;
-    }
-  }
-`;
-
-const ScanLineBar = styled.div<{ $active: boolean }>`
-  position: absolute;
-  left: 20%;
-  width: 60%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #3b82f6, transparent);
-  border-radius: 2px;
-  animation: ${({ $active }) => $active ? css`${scanLine} 1.6s ease-in-out infinite` : 'none'};
-  top: 50%;
-  opacity: ${({ $active }) => $active ? 1 : 0};
-  transition: opacity 0.3s;
 `;
 
 const HiddenInput = styled.input`
@@ -482,33 +472,11 @@ const StatusText = styled.div<{ $status: 'idle' | 'success' | 'error' }>`
   }
 `;
 
-const SubText = styled.div`
-  font-size: 0.82rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  text-align: center;
-
-  @media (max-width: 768px) {
-    font-size: 0.76rem;
-  }
-`;
-
 const DateSelect = styled.input`
   ${clayInputStyle}
   width: 100%;
   box-sizing: border-box;
   cursor: pointer;
-`;
-
-const StatsRow = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 0.6rem;
-  width: 100%;
-
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.5rem;
-  }
 `;
 
 const StatBox = styled.div<{ $color: string }>`
@@ -650,15 +618,36 @@ const SectionHeader = styled.div<{ $mode: 'student' | 'employee' }>`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.5rem;
   border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+`;
 
-  span:last-child {
-    background: ${({ theme }) => theme.ACCENT}15;
-    color: ${({ theme }) => theme.ACCENT};
-    padding: 2px 8px;
-    border-radius: 999px;
-    font-size: 0.7rem;
-  }
+const SectionHeaderStats = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+`;
+
+const SectionHeaderBadge = styled.span<{ $variant?: 'present' | 'late'; $dimmed?: boolean }>`
+  font-size: 0.66rem;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: ${({ $dimmed }) => ($dimmed ? 0.52 : 1)};
+  ${({ $variant, theme }) =>
+    $variant === 'late'
+      ? css`
+          background: rgba(245, 158, 11, 0.22);
+          color: #b45309;
+        `
+      : css`
+          background: ${theme.ACCENT}15;
+          color: ${theme.ACCENT};
+        `};
 `;
 
 const SectionBody = styled.div`
@@ -1064,15 +1053,13 @@ const SyncProgressBanner = styled.div`
 
 const FullScreenPopup = styled.div<{ $status: 'present' | 'late' | 'checked_out' | 'error' | 'offline' }>`
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   z-index: 99999;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  touch-action: none;
   background: ${({ $status }) =>
         $status === 'present' ? 'linear-gradient(135deg, rgba(34,197,94,0.97) 0%, rgba(16,185,129,1) 100%)' :
         $status === 'late' ? 'linear-gradient(135deg, rgba(245,158,11,0.97) 0%, rgba(217,119,6,1) 100%)' :
@@ -1093,6 +1080,7 @@ const PopupProgressBar = styled.div`
   height: 6px;
   background: rgba(255,255,255,0.3);
   overflow: hidden;
+  z-index: 2;
 `;
 
 const PopupProgressFill = styled.div<{ $progress: number }>`
@@ -1104,13 +1092,17 @@ const PopupProgressFill = styled.div<{ $progress: number }>`
 `;
 
 const PopupContent = styled.div`
+  flex: 1;
+  width: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: 4.5rem;
   max-width: 1200px;
-  width: 92%;
+  padding: 0 1.5rem;
+  box-sizing: border-box;
   text-align: left;
 
   @media (max-width: 1024px) {
@@ -1124,8 +1116,10 @@ const PopupInfoWrapper = styled.div`
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  flex: 1;
+  justify-content: center;
+  flex: 0 1 auto;
   min-width: 0;
+  gap: 0.25rem;
 
   @media (max-width: 1024px) {
     align-items: center;
@@ -1153,26 +1147,6 @@ const PopupImage = styled.img`
     width: 200px;
     height: 200px;
     border-radius: 32px;
-  }
-`;
-
-const PopupIconWrapper = styled.div<{ $status: 'present' | 'late' | 'checked_out' | 'error' | 'offline' }>`
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 2.5rem;
-  animation: ${popupPulse} 0.6s ease-out;
-  box-shadow: 0 25px 80px rgba(0,0,0,0.4);
-  border: 4px solid rgba(255,255,255,0.3);
-  
-  svg {
-    font-size: 90px;
-    color: #fff;
-    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));
   }
 `;
 
@@ -1226,7 +1200,7 @@ const PopupStatus = styled.div<{ $status: 'present' | 'late' | 'checked_out' | '
 `;
 
 const PopupTime = styled.div`
-  margin-top: 2rem;
+  margin-top: 1rem;
   font-size: clamp(1.2rem, 4vw, 2rem);
   font-weight: 700;
   color: rgba(255,255,255,0.9);
@@ -1235,10 +1209,17 @@ const PopupTime = styled.div`
 
 const PopupDismiss = styled.div`
   position: absolute;
-  bottom: 2.5rem;
-  font-size: 1rem;
-  color: rgba(255,255,255,0.6);
-  font-weight: 500;
+  top: 14px;
+  left: 1.25rem;
+  z-index: 3;
+  font-size: 0.92rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  text-align: left;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  max-width: min(360px, calc(100vw - 2.5rem));
+  line-height: 1.35;
+  pointer-events: none;
 `;
 
 
@@ -1250,6 +1231,25 @@ const getLocalToday = () => {
 };
 
 const buildDailyScanStorageKey = (schoolId: string | number) => `rfid_daily_scans_${schoolId}`;
+
+const QR_CAMERA_ENABLED_LS_KEY = 'qr_attendance_camera_enabled';
+
+/** `true` when key is missing or `'1'` — auto-start camera. `'0'` = stay off until user taps Start. */
+function readQrCameraEnabled(): boolean {
+    try {
+        return window.localStorage.getItem(QR_CAMERA_ENABLED_LS_KEY) !== '0';
+    } catch {
+        return true;
+    }
+}
+
+function writeQrCameraEnabled(enabled: boolean): void {
+    try {
+        window.localStorage.setItem(QR_CAMERA_ENABLED_LS_KEY, enabled ? '1' : '0');
+    } catch {
+        /* ignore */
+    }
+}
 
 interface ScanResult {
     id: string;
@@ -1263,6 +1263,20 @@ interface ScanResult {
     attendanceStatus?: string;
     attendanceLateCount?: number;
     fatherName?: string;
+}
+
+/** Check-ins counted as “present” in section headers: on-time present, late, or legacy success rows (excludes checkout). */
+function countFeedPresentInSection(items: ScanResult[]): number {
+    return items.filter((i) => {
+        if (i.type !== 'success') return false;
+        if (i.attendanceStatus === 'checked_out') return false;
+        return (
+            i.attendanceStatus === 'present' ||
+            i.attendanceStatus === 'late' ||
+            i.attendanceStatus == null ||
+            i.attendanceStatus === ''
+        );
+    }).length;
 }
 
 interface PersistedDailyScanHistory {
@@ -1382,6 +1396,7 @@ const QRAttendancePage: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const today = getLocalToday();
+    const { isLockActive: isAppInputLocked, isUnlockModalOpen, setScannerBypassRef } = useAppInputLock();
 
     const [attnSettings, setAttnSettings] = useState<{
         student_start_time: string;
@@ -1503,9 +1518,10 @@ const QRAttendancePage: React.FC = () => {
     const [isNfcScanning, setIsNfcScanning] = useState(false);
     const nfcAbortControllerRef = useRef<AbortController | null>(null);
     const cameraScannerRef = useRef<Html5Qrcode | null>(null);
+    /** False as soon as the route unmounts so async camera start/stop does not leak after navigation. */
+    const qrCameraPageActiveRef = useRef(true);
     const cameraRegionId = 'qr-camera-reader-region';
     const [isCameraScanning, setIsCameraScanning] = useState(false);
-    const [faceAttendanceEnabled, setFaceAttendanceEnabled] = useState(() => readFaceToggleFromStorage());
     const [cameraError, setCameraError] = useState('');
     const [cameraStatus, setCameraStatus] = useState('Initializing camera...');
     const [lastDetectedQr, setLastDetectedQr] = useState('');
@@ -1583,13 +1599,18 @@ const QRAttendancePage: React.FC = () => {
     const hiddenInputRef = useRef<HTMLInputElement>(null);
     const scanQueueRef = useRef<string[]>([]);
     const isProcessingQueueRef = useRef(false);
-    /** Always invoke latest executeUIDProcess (face + timers must not use stale selectedDate / handlers). */
+    /** Always invoke latest executeUIDProcess (timers must not use stale selectedDate / handlers). */
     const executeUIDProcessRef = useRef<(uid: string) => Promise<void>>(async () => {});
     const isProcessingRef = useRef(false);
     const isCacheReadyRef = useRef(false);
     const [queueCount, setQueueCount] = useState(0);
     const navigationContext = useContext(UNSAFE_NavigationContext);
     const pendingNavigationRef = useRef<{ path: string; replace?: boolean; retry?: () => void } | null>(null);
+
+    useEffect(() => {
+        setScannerBypassRef(hiddenInputRef);
+        return () => setScannerBypassRef(null);
+    }, [setScannerBypassRef]);
 
     const clearPersistedDailyHistory = useCallback(() => {
         if (!user?.school_id) return;
@@ -2141,7 +2162,7 @@ const QRAttendancePage: React.FC = () => {
 
                 triggerPopup({
                     name: p.name,
-                    subInfo: personType === 'student' ? `Roll: ${(p as any).roll_no || 'N/A'}` : `Role: ${(p as any).role || 'Staff'}`,
+                    subInfo: '',
                     status: isCheckout ? 'checked_out' : result.attendance_status as any,
                     time,
                     picture_url: p.picture_url
@@ -2243,9 +2264,12 @@ const QRAttendancePage: React.FC = () => {
         }
     }, [processUID]);
 
-    const stopCameraScanner = useCallback(async () => {
+    const stopCameraScanner = useCallback(async (opts?: { persistUserPreferenceOff?: boolean }) => {
         const scanner = cameraScannerRef.current;
-        if (!scanner) return;
+        if (!scanner) {
+            if (opts?.persistUserPreferenceOff) writeQrCameraEnabled(false);
+            return;
+        }
 
         try {
             await scanner.stop();
@@ -2260,18 +2284,31 @@ const QRAttendancePage: React.FC = () => {
         }
 
         cameraScannerRef.current = null;
-        setIsCameraScanning(false);
-        setCameraStatus('Camera stopped');
+        if (opts?.persistUserPreferenceOff) writeQrCameraEnabled(false);
+        if (qrCameraPageActiveRef.current) {
+            setIsCameraScanning(false);
+            setCameraStatus('Camera stopped');
+        }
     }, []);
 
     const startCameraScanner = useCallback(async () => {
         if (cameraScannerRef.current) return;
+        if (!qrCameraPageActiveRef.current) return;
 
         setCameraStatus('Starting camera...');
         setCameraError('');
         try {
             const scanner = new Html5Qrcode(cameraRegionId, { verbose: false });
             cameraScannerRef.current = scanner;
+            if (!qrCameraPageActiveRef.current) {
+                cameraScannerRef.current = null;
+                try {
+                    await scanner.clear();
+                } catch (_) {
+                    /* ignore */
+                }
+                return;
+            }
             const config = {
                 fps: 12,
                 aspectRatio: 1.333334,
@@ -2327,42 +2364,44 @@ const QRAttendancePage: React.FC = () => {
                 }
             }
 
+            if (!qrCameraPageActiveRef.current) {
+                await stopCameraScanner();
+                return;
+            }
+
             setIsCameraScanning(true);
-            setCameraStatus('Camera live. Aim QR inside frame.');
-            setStatusMsg('Camera scanner active. Show QR inside frame.');
+            setCameraStatus('Camera live');
+            setStatusMsg('Waiting for QR scan...');
+            writeQrCameraEnabled(true);
         } catch (error: any) {
-            setIsCameraScanning(false);
-            setCameraError(error?.message || 'Unable to access camera.');
-            setCameraStatus('Camera failed to start');
-            setStatusMsg('Camera scanner unavailable');
-            showToast(error?.message || 'Unable to access camera for QR scanning.', 'error');
+            if (qrCameraPageActiveRef.current) {
+                setIsCameraScanning(false);
+                setCameraError(error?.message || 'Unable to access camera.');
+                setCameraStatus('Camera failed to start');
+                setStatusMsg('Camera scanner unavailable');
+                showToast(error?.message || 'Unable to access camera for QR scanning.', 'error');
+            }
             await stopCameraScanner();
         }
     }, [processUID, showToast, stopCameraScanner]);
 
-    const { faceVideoRef, faceStatus, faceSyncing } = useQrAttendanceFace({
-        schoolId: user?.school_id,
-        selectedDate,
-        faceEnabled: faceAttendanceEnabled,
-        stopCameraScanner,
-        processUID,
-        showToast,
-    });
-
     useEffect(() => {
-        if (faceAttendanceEnabled) {
-            void stopCameraScanner();
-            return;
+        qrCameraPageActiveRef.current = true;
+        let timer: ReturnType<typeof window.setTimeout> | undefined;
+        if (readQrCameraEnabled()) {
+            setCameraStatus('Preparing camera...');
+            timer = window.setTimeout(() => {
+                void startCameraScanner();
+            }, 150);
+        } else {
+            setCameraStatus('Camera stopped');
         }
-        setCameraStatus('Preparing camera...');
-        const timer = window.setTimeout(() => {
-            startCameraScanner();
-        }, 150);
         return () => {
-            window.clearTimeout(timer);
-            stopCameraScanner();
+            qrCameraPageActiveRef.current = false;
+            if (timer) window.clearTimeout(timer);
+            void stopCameraScanner();
         };
-    }, [faceAttendanceEnabled, startCameraScanner, stopCameraScanner]);
+    }, [startCameraScanner, stopCameraScanner]);
 
     useEffect(() => {
         document.addEventListener('keydown', handleKeyDown);
@@ -2516,7 +2555,7 @@ const QRAttendancePage: React.FC = () => {
 
                 triggerPopup({
                     name: p.name,
-                    subInfo: personType === 'student' ? `Roll: ${(p as any).roll_no || 'N/A'}` : `Role: ${(p as any).role || 'Staff'}`,
+                    subInfo: '',
                     status: isCheckout ? 'checked_out' : result.attendance_status as any,
                     time,
                     picture_url: p.picture_url
@@ -2694,6 +2733,10 @@ const QRAttendancePage: React.FC = () => {
 
     const filteredEmployeeFeed = filteredFeed.filter(item => item.personType === 'employee');
     const filteredStudentFeed = filteredFeed.filter(item => item.personType === 'student');
+    const employeeFeedLateCount = filteredEmployeeFeed.filter(i => i.attendanceStatus === 'late').length;
+    const studentFeedLateCount = filteredStudentFeed.filter(i => i.attendanceStatus === 'late').length;
+    const employeeFeedPresentCount = countFeedPresentInSection(filteredEmployeeFeed);
+    const studentFeedPresentCount = countFeedPresentInSection(filteredStudentFeed);
 
     const renderFeedSub = (item: ScanResult, theme: any) => (
         <FeedSub theme={theme}>
@@ -2720,28 +2763,46 @@ const QRAttendancePage: React.FC = () => {
         </FeedSub>
     );
 
-    const scanIcon = scanStatus === 'success' ? <CheckCircle style={{ fontSize: 56 }} /> :
-        scanStatus === 'error' ? <XCircle style={{ fontSize: 56 }} /> :
-            <Scan style={{ fontSize: 56 }} />;
-
     useEffect(() => {
+        const isLockControl = (el: HTMLElement | null) =>
+            !!el?.closest?.('[data-app-input-lock-control]');
+
         const focusInput = (event?: MouseEvent) => {
             const target = event?.target as HTMLElement | null;
+            if (isLockControl(target)) return;
+
+            if (isAppInputLocked && !isUnlockModalOpen) {
+                if (target === hiddenInputRef.current) return;
+                hiddenInputRef.current?.focus();
+                return;
+            }
+
             if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
                 return;
             }
-            if (!showSettings && !showPopup && !showSuccess && !isSyncing && !showSettingsPasswordModal && !showClearPasswordModal && !showLatePasswordModal) {
+            if (!showSettings && !showPopup && !showSuccess && !isSyncing && !showSettingsPasswordModal && !showClearPasswordModal && !showLatePasswordModal && !isUnlockModalOpen) {
                 hiddenInputRef.current?.focus();
             }
         };
 
-        const interval = setInterval(() => focusInput(), 2000);
-        document.addEventListener('click', focusInput);
+        const tick = () => {
+            if (isAppInputLocked && !isUnlockModalOpen) {
+                if (document.activeElement !== hiddenInputRef.current) {
+                    hiddenInputRef.current?.focus();
+                }
+                return;
+            }
+            focusInput();
+        };
+
+        const intervalMs = isAppInputLocked && !isUnlockModalOpen ? 350 : 2000;
+        const interval = setInterval(tick, intervalMs);
+        document.addEventListener('click', focusInput, true);
         return () => {
             clearInterval(interval);
-            document.removeEventListener('click', focusInput);
+            document.removeEventListener('click', focusInput, true);
         };
-    }, [showSettings, showPopup, showSuccess, isSyncing, showSettingsPasswordModal, showClearPasswordModal, showLatePasswordModal]);
+    }, [showSettings, showPopup, showSuccess, isSyncing, showSettingsPasswordModal, showClearPasswordModal, showLatePasswordModal, isAppInputLocked, isUnlockModalOpen]);
     return (
         <Page theme={themeObj}>
             <TopBar theme={themeObj}>
@@ -3154,101 +3215,75 @@ const QRAttendancePage: React.FC = () => {
             <MainGrid>
                 {/* ── Left: Scanner ── */}
                 <ScannerCard theme={themeObj}>
-                    <CameraRegion theme={themeObj}>
-                        {faceAttendanceEnabled ? (
-                            <video ref={faceVideoRef} playsInline muted autoPlay style={{ width: '100%', minHeight: 250, objectFit: 'cover', display: 'block' }} />
-                        ) : (
+                    <ScannerUpper>
+                        <CameraRegion theme={themeObj}>
+                            {!isCameraScanning &&
+                                !cameraError &&
+                                scanStatus === 'idle' &&
+                                cameraStatus === 'Camera stopped' && (
+                                    <CameraStoppedOverlay theme={themeObj}>
+                                        <CameraStoppedWord $variant="blue">Camera</CameraStoppedWord>
+                                        <CameraStoppedWord $variant="red">Stopped</CameraStoppedWord>
+                                    </CameraStoppedOverlay>
+                                )}
                             <div id={cameraRegionId} style={{ width: '100%', minHeight: 250 }} />
-                        )}
-                    </CameraRegion>
-                    {cameraError && !faceAttendanceEnabled && (
-                        <CameraErrorText theme={themeObj}>{cameraError}</CameraErrorText>
-                    )}
-                    <CameraStatusText theme={themeObj}>
-                        {faceAttendanceEnabled ? (faceSyncing ? 'Face: syncing…' : faceStatus || 'Face attendance') : cameraStatus}
-                    </CameraStatusText>
-                    {!!lastDetectedQr && (
-                        <CameraLastScan theme={themeObj}>
-                            Last QR: {lastDetectedQr.length > 80 ? `${lastDetectedQr.slice(0, 80)}...` : lastDetectedQr}
-                        </CameraLastScan>
-                    )}
-
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 8, marginTop: 8 }}>
-                        <FormControlLabel
-                            control={
-                                <Switch
-                                    checked={faceAttendanceEnabled}
-                                    onChange={(_, checked) => {
-                                        writeFaceToggleToStorage(checked);
-                                        setFaceAttendanceEnabled(checked);
-                                    }}
-                                    color="secondary"
-                                />
-                            }
-                            label={
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600 }}>
-                                    <FaceIcon style={{ fontSize: 18, color: '#a855f7' }} />
-                                    Face recognition (uses front camera; QR camera pauses)
-                                </span>
-                            }
-                            sx={{ margin: 0, alignItems: 'center' }}
-                        />
+                        </CameraRegion>
+                        {cameraError && <CameraErrorText theme={themeObj}>{cameraError}</CameraErrorText>}
                         <CameraToggleBtn
                             type="button"
                             $active={isCameraScanning}
-                            disabled={faceAttendanceEnabled}
-                            title={faceAttendanceEnabled ? 'Turn off face recognition to use the QR camera here.' : undefined}
                             onClick={() => {
                                 if (isCameraScanning) {
-                                    stopCameraScanner();
+                                    void stopCameraScanner({ persistUserPreferenceOff: true });
                                 } else {
-                                    startCameraScanner();
+                                    void startCameraScanner();
                                 }
                             }}
                         >
                             <QrCodeScannerIcon style={{ fontSize: 20 }} />
-                            {isCameraScanning ? 'Stop Camera Scanner' : 'Start Camera Scanner'}
+                            {isCameraScanning ? 'Stop camera' : 'Start camera'}
                         </CameraToggleBtn>
-                    </div>
-
-                    <ScanArea $status={scanStatus}>
-                        {scanIcon}
-                        <ScanLineBar $active={scanStatus === 'idle'} />
-                    </ScanArea>
-
-                    <StatusText $status={scanStatus} theme={themeObj}>{statusMsg}</StatusText>
-                    <SubText theme={themeObj}>
-                        {faceAttendanceEnabled
-                            ? 'Look at the camera; attendance matches enrolled face templates (USB QR reader still works).'
-                            : scanStatus === 'idle'
-                                ? 'Show QR code to scanner (or scan via USB QR reader)'
-                                : scanStatus === 'success'
-                                    ? 'Attendance marked successfully'
-                                    : 'Scan failed \u2013 see feed for details'}
-                    </SubText>
-
-
-                    {/* Stats */}
-                    <StatsRow>
-                        <StatBox $color="#22c55e">
-                            <StatNum $color="#22c55e" theme={themeObj}>{presentCount}</StatNum>
-                            <StatLabel theme={themeObj}>Marked Present</StatLabel>
-                        </StatBox>
-                        <StatBox $color="#ef4444">
-                            <StatNum $color="#ef4444" theme={themeObj}>{unknownCount}</StatNum>
-                            <StatLabel theme={themeObj}>Unknown QRs</StatLabel>
-                        </StatBox>
-                        <StatBox $color="#eab308">
-                            <StatNum $color="#eab308" theme={themeObj}>{dupCount}</StatNum>
-                            <StatLabel theme={themeObj}>Duplicates</StatLabel>
-                        </StatBox>
-                        <StatBox $color="#3b82f6">
-                            <StatNum $color="#3b82f6" theme={themeObj}>{presentCount + unknownCount + dupCount}</StatNum>
-                            <StatLabel theme={themeObj}>Total Scans</StatLabel>
-                        </StatBox>
-                    </StatsRow>
-
-                    {/* Hidden input to capture USB reader output */}
+                        {scanStatus !== 'idle' ? (
+                            <StatusText $status={scanStatus} theme={themeObj}>
+                                {statusMsg}
+                            </StatusText>
+                        ) : cameraError ? null : isCameraScanning ? (
+                            <ScannerLiveLine theme={themeObj}>Aim QR in the frame</ScannerLiveLine>
+                        ) : cameraStatus === 'Camera stopped' && scanStatus === 'idle' ? null : (
+                            <ScannerCameraState theme={themeObj}>{cameraStatus}</ScannerCameraState>
+                        )}
+                        {scanStatus === 'idle' && isCameraScanning && !cameraError && (
+                            <ScannerMetaText theme={themeObj}>
+                                USB QR scanners type into the page automatically.
+                            </ScannerMetaText>
+                        )}
+                        {!!lastDetectedQr && (
+                            <CameraLastScan theme={themeObj}>
+                                Last:{' '}
+                                {lastDetectedQr.length > 80 ? `${lastDetectedQr.slice(0, 80)}…` : lastDetectedQr}
+                            </CameraLastScan>
+                        )}
+                    </ScannerUpper>
+                    <ScannerSummaryRow>
+                            <ScannerSummaryChip>
+                                <ScannerSummaryVal $color="#22c55e">{presentCount}</ScannerSummaryVal>
+                                <ScannerSummaryKey>Present</ScannerSummaryKey>
+                            </ScannerSummaryChip>
+                            <ScannerSummaryChip>
+                                <ScannerSummaryVal $color="#ef4444">{unknownCount}</ScannerSummaryVal>
+                                <ScannerSummaryKey>Unknown</ScannerSummaryKey>
+                            </ScannerSummaryChip>
+                            <ScannerSummaryChip>
+                                <ScannerSummaryVal $color="#eab308">{dupCount}</ScannerSummaryVal>
+                                <ScannerSummaryKey>Dupes</ScannerSummaryKey>
+                            </ScannerSummaryChip>
+                            <ScannerSummaryChip>
+                                <ScannerSummaryVal $color="#3b82f6">
+                                    {presentCount + unknownCount + dupCount}
+                                </ScannerSummaryVal>
+                                <ScannerSummaryKey>Total</ScannerSummaryKey>
+                            </ScannerSummaryChip>
+                        </ScannerSummaryRow>
                     <HiddenInput
                         ref={hiddenInputRef}
                         type="text"
@@ -3256,9 +3291,6 @@ const QRAttendancePage: React.FC = () => {
                         autoFocus
                         readOnly
                     />
-                    <CameraHintText theme={themeObj}>
-                        Use laptop/mobile camera for live QR scanning. USB keyboard-style QR scanners also work.
-                    </CameraHintText>
                 </ScannerCard>
 
                 {/* ── Right: Live Feed ── */}
@@ -3288,7 +3320,12 @@ const QRAttendancePage: React.FC = () => {
                         <FeedSection theme={themeObj}>
                             <SectionHeader theme={themeObj} $mode="employee">
                                 <span>Employees</span>
-                                <span style={{ opacity: 0.8 }}>{filteredEmployeeFeed.length}</span>
+                                <SectionHeaderStats>
+                                    <SectionHeaderBadge>{employeeFeedPresentCount} present</SectionHeaderBadge>
+                                    <SectionHeaderBadge $variant="late" $dimmed={employeeFeedLateCount === 0}>
+                                        {employeeFeedLateCount} late
+                                    </SectionHeaderBadge>
+                                </SectionHeaderStats>
                             </SectionHeader>
                             <SectionBody>
                                 <FeedList>
@@ -3340,7 +3377,12 @@ const QRAttendancePage: React.FC = () => {
                         <FeedSection theme={themeObj}>
                             <SectionHeader theme={themeObj} $mode="student">
                                 <span>Students</span>
-                                <span style={{ opacity: 0.6 }}>{filteredStudentFeed.length}</span>
+                                <SectionHeaderStats>
+                                    <SectionHeaderBadge>{studentFeedPresentCount} present</SectionHeaderBadge>
+                                    <SectionHeaderBadge $variant="late" $dimmed={studentFeedLateCount === 0}>
+                                        {studentFeedLateCount} late
+                                    </SectionHeaderBadge>
+                                </SectionHeaderStats>
                             </SectionHeader>
                             <SectionBody>
                                 <FeedList>
@@ -3468,6 +3510,7 @@ const QRAttendancePage: React.FC = () => {
                     <PopupProgressBar>
                         <PopupProgressFill $progress={popupProgress} />
                     </PopupProgressBar>
+                    <PopupDismiss>Auto-dismissing in a few seconds...</PopupDismiss>
                     <PopupContent>
                         <PopupImage
                             src={popupData.picture_url || 'https://placehold.co/400x400?text=No+Photo'}
@@ -3478,21 +3521,10 @@ const QRAttendancePage: React.FC = () => {
                             }}
                         />
                         <PopupInfoWrapper>
-                            {popupData.status === 'present' || popupData.status === 'late' ? (
-                                <PopupIconWrapper $status={popupData.status}>
-                                    <UserCheck />
-                                </PopupIconWrapper>
-                            ) : popupData.status === 'checked_out' ? (
-                                <PopupIconWrapper $status={popupData.status}>
-                                    <Clock />
-                                </PopupIconWrapper>
-                            ) : (
-                                <PopupIconWrapper $status={popupData.status}>
-                                    <AlertCircle />
-                                </PopupIconWrapper>
-                            )}
                             <PopupName $color={popupData.nameColor}>{popupData.name}</PopupName>
-                            <PopupSubInfo $color={popupData.subColor}>{popupData.subInfo}</PopupSubInfo>
+                            {popupData.subInfo?.trim() ? (
+                                <PopupSubInfo $color={popupData.subColor}>{popupData.subInfo}</PopupSubInfo>
+                            ) : null}
                             <PopupStatus $status={popupData.status} $bgColor={popupData.statusBgColor}>
                                 {popupData.status === 'late' ? 'LATE' :
                                     popupData.status === 'checked_out' ? 'CHECK OUT' :
@@ -3502,7 +3534,6 @@ const QRAttendancePage: React.FC = () => {
                             <PopupTime>{popupData.time}</PopupTime>
                         </PopupInfoWrapper>
                     </PopupContent>
-                    <PopupDismiss>Auto-dismissing in a few seconds...</PopupDismiss>
                 </FullScreenPopup>
             )}
         </Page>
@@ -3535,7 +3566,8 @@ const CameraToggleBtn = styled.button<{ $active: boolean }>`
 `;
 
 const CameraRegion = styled.div<{ theme: any }>`
-    margin-top: 0.8rem;
+    margin-top: 0;
+    position: relative;
     width: 100%;
     min-height: 250px;
     border-radius: 12px;
@@ -3551,17 +3583,58 @@ const CameraRegion = styled.div<{ theme: any }>`
     }
 `;
 
-const CameraHintText = styled.div<{ theme: any }>`
-    font-size: 0.72rem;
-    color: ${({ theme }) => theme.TEXT_SECONDARY};
-    text-align: center;
-    margin-top: 0.8rem;
-    padding: 0.4rem;
+const CameraStoppedOverlay = styled.div`
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    pointer-events: none;
     background: ${({ theme }) => theme.FIELD_BG};
-    border-radius: 8px;
-    opacity: 0.8;
+`;
 
-    b { color: ${({ theme }) => theme.ACCENT}; }
+const CameraStoppedWord = styled.span<{ $variant: 'blue' | 'red' }>`
+    font-size: clamp(1.45rem, 5.5vw, 2.05rem);
+    font-weight: 850;
+    line-height: 1.05;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: ${({ $variant }) => ($variant === 'blue' ? '#2563eb' : '#dc2626')};
+`;
+
+const ScannerUpper = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+  min-height: 0;
+`;
+
+const ScannerLiveLine = styled.div`
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: center;
+  color: ${({ theme }) => theme.ACCENT};
+  line-height: 1.3;
+`;
+
+const ScannerMetaText = styled.div`
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  text-align: center;
+`;
+
+const ScannerCameraState = styled.div`
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  line-height: 1.3;
 `;
 
 const CameraErrorText = styled.div<{ theme: any }>`
@@ -3571,19 +3644,16 @@ const CameraErrorText = styled.div<{ theme: any }>`
     text-align: center;
 `;
 
-const CameraLastScan = styled.div<{ theme: any }>`
-    margin-top: 0.45rem;
-    font-size: 0.76rem;
+const CameraLastScan = styled.div`
+    font-size: 0.68rem;
     color: ${({ theme }) => theme.TEXT_SECONDARY};
     text-align: center;
     word-break: break-word;
-`;
-
-const CameraStatusText = styled.div<{ theme: any }>`
-    margin-top: 0.35rem;
-    font-size: 0.76rem;
-    color: ${({ theme }) => theme.ACCENT};
-    text-align: center;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    padding: 0.35rem 0.25rem;
+    background: ${({ theme }) => theme.FIELD_BG};
+    border-radius: 8px;
+    border: 1px solid ${({ theme }) => theme.BORDER};
 `;
 
 const FeedListContainer = styled.div`

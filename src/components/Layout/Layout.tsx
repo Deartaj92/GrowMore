@@ -59,6 +59,7 @@ import { useNavigation } from '../../contexts/NavigationContext';
 import { NotificationProvider } from '../../contexts/NotificationContext';
 import { UpdateService } from '../../services/updateService';
 import { isWeb as checkIsWeb } from '../../utils/platformDetection';
+import { AppInputLockProvider } from '../../contexts/AppInputLockContext';
 import '../../utils/testNotifications';
 
 // Capacitor import for mobile back button handling
@@ -1058,6 +1059,7 @@ const Layout: React.FC = () => {
     <MuiThemeProvider theme={muiTheme}>
       <CssBaseline />
         <ThemeProvider theme={theme === 'dark' ? darkTheme : lightTheme}>
+          <AppInputLockProvider>
           <GlobalStyles />
         <AnnouncementHandler onOpenAnnouncement={handleOpenAnnouncement} />
         <AppContainer>
@@ -1110,7 +1112,15 @@ const Layout: React.FC = () => {
                         boxSizing: 'border-box'
                       }}
                     >
-                      {isOnline || location.pathname.includes('/attendance/rfid-scanner') || location.pathname.includes('/attendance/qr-scanner') || location.pathname.includes('/attendance/rfid-cards') || location.pathname.includes('/attendance/student-qr-labels') ? (
+                      {(() => {
+                        const pathKey = `${location.pathname}${location.hash || ''}`;
+                        const allowOfflineAttendance =
+                          pathKey.includes('attendance/rfid-scanner')
+                          || pathKey.includes('attendance/qr-scanner')
+                          || pathKey.includes('attendance/rfid-cards')
+                          || pathKey.includes('attendance/student-qr-labels');
+                        return isOnline || allowOfflineAttendance;
+                      })() ? (
                         <Outlet />
                       ) : (
                         <OfflineContainer>
@@ -1190,6 +1200,7 @@ const Layout: React.FC = () => {
           onClose={() => setAboutUsModalOpen(false)}
         />
 
+          </AppInputLockProvider>
       </ThemeProvider>
     </MuiThemeProvider>
   );

@@ -426,6 +426,8 @@ interface AttendanceTabProps {
   hasRightCards: boolean;
   showAbsentees: boolean;
   isMobile: boolean;
+  /** When false, the floating "A" manual absence automation control is hidden */
+  canUseManualAbsentAutomationTrigger: boolean;
 }
 
 const AttendanceTab: React.FC<AttendanceTabProps> = ({
@@ -482,7 +484,8 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
   schoolName,
   hasRightCards,
   showAbsentees,
-  isMobile
+  isMobile,
+  canUseManualAbsentAutomationTrigger
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -643,10 +646,11 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
 
   return (
     <Container>
-      {/* Floating FAB is rendered via portal to ensure it stays fixed to viewport */}
-      <FloatingFabPortal onClick={triggerManualAbsentMarkTab} ariaLabel="Mark Absents Now" title="Mark Absents Now" disabled={manualMarkInProgress}>
-        <span style={{ fontWeight: 900, fontSize: 20, color: '#fff' }}>A</span>
-      </FloatingFabPortal>
+      {canUseManualAbsentAutomationTrigger && (
+        <FloatingFabPortal onClick={triggerManualAbsentMarkTab} ariaLabel="Mark Absents Now" title="Mark Absents Now" disabled={manualMarkInProgress}>
+          <span style={{ fontWeight: 900, fontSize: 20, color: '#fff' }}>A</span>
+        </FloatingFabPortal>
+      )}
       {/* Attendance Stats Cards */}
       <StatsGrid>
         {/* Present */}

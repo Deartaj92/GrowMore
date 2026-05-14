@@ -5,7 +5,7 @@ import { useToast } from '../../components/useToast';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { getUserPermissions } from '../../services/permissionService';
-import { shouldShowMenuItem } from '../../utils/permissionMapping';
+import { shouldShowMenuItem, ATTENDANCE_MANUAL_ABSENCE_AUTOMATION_PERMISSION_KEY } from '../../utils/permissionMapping';
 import { useLoading } from '../../contexts/LoadingContext';
 import { useProgress } from '../../components/Layout';
 import { PageHeaderContext } from '../../components/Layout';
@@ -3530,6 +3530,12 @@ const Dashboard: React.FC = () => {
 
   const isMobile = window.innerWidth <= 700;
 
+  const canUseManualAbsentAutomationTrigger =
+    user?.role === 'owner' ||
+    user?.role === 'super_admin' ||
+    userPerms.size === 0 ||
+    userPerms.has(ATTENDANCE_MANUAL_ABSENCE_AUTOMATION_PERMISSION_KEY);
+
   // Helper function to check if a tab is currently loading
   const isTabLoading = (tab: DashboardTab): boolean => {
     switch (tab) {
@@ -3624,6 +3630,7 @@ const Dashboard: React.FC = () => {
               hasRightCards={hasRightCards}
               showAbsentees={showAbsentees}
               isMobile={isMobile}
+              canUseManualAbsentAutomationTrigger={canUseManualAbsentAutomationTrigger}
             />
           )}
 

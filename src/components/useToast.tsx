@@ -51,7 +51,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode, theme: 'dark' 
             position: 'fixed',
             top: 32,
             right: 32,
-            zIndex: 99999,
+            zIndex: 110000,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'flex-end',
