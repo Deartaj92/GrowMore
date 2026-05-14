@@ -685,15 +685,18 @@ const RemainingFine: React.FC = () => {
     
     for (const rec of studentAtt) {
       const classIdFromRecord = rec.class_id || student.class_id;
-      const classFines = fines.filter((f: any) => f.class_id === classIdFromRecord) || [];
-      let fine = classFines && classFines.length > 0 ? classFines[0] : null;
+      const classFines = fines.filter((f: any) => String(f.class_id) === String(classIdFromRecord)) || [];
+      
+      let applicableFine = null;
       for (const f of classFines) {
-        if (f.effective_from <= rec.date) fine = f;
+        if (f.effective_from <= rec.date) {
+          applicableFine = f;
+        }
       }
       
       let fineAmount = 0;
-      if (fine) {
-        fineAmount = rec.status === 'absent' ? Number(fine.absent_fine) : Number(fine.late_fine);
+      if (applicableFine) {
+        fineAmount = rec.status === 'absent' ? Number(applicableFine.absent_fine || 0) : Number(applicableFine.late_fine || 0);
       }
       total += fineAmount;
     }

@@ -454,8 +454,8 @@ const StudentAttendanceQrPrintPage: React.FC = () => {
             const inputs = sorted.map(s => ({
                 id: s.id,
                 name: s.name,
-                father_name: s.father_name,
-                qr_uid: s.qr_uid,
+                father_name: s.father_name ?? null,
+                qr_uid: s.qr_uid ?? null,
                 classFolderLabel: classLabel(s),
             }));
             const blob = await buildStudentQrJpegZip(inputs);

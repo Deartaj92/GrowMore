@@ -3485,15 +3485,17 @@ export const StudentProfile: React.FC<{ isMyProfile?: boolean }> = ({ isMyProfil
 
         const recordsWithFines = fineRecords.map(record => {
           const classIdFromRecord = record.class_id || student.class_id;
-          const classFines = fineData?.filter((f: any) => f.class_id === classIdFromRecord) || [];
+          const classFines = fineData?.filter((f: any) => String(f.class_id) === String(classIdFromRecord)) || [];
 
-          let fine = classFines && classFines.length > 0 ? classFines[0] : null;
+          let applicableFine = null;
           for (const f of classFines) {
-            if (f.effective_from <= record.date) fine = f;
+            if (f.effective_from <= record.date) {
+              applicableFine = f;
+            }
           }
           let fineAmount = 0;
-          if (fine) {
-            fineAmount = record.status === 'absent' ? Number(fine.absent_fine) : Number(fine.late_fine);
+          if (applicableFine) {
+            fineAmount = record.status === 'absent' ? Number(applicableFine.absent_fine || 0) : Number(applicableFine.late_fine || 0);
           }
           return {
             ...record,

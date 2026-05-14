@@ -164,6 +164,7 @@ const FineStatistics: React.FC = () => {
           return await supabase.from('students')
             .select('id, name, father_name, class_id, section_id')
             .eq('school_id', user.school_id)
+            .eq('status', 'active')
             .range(from, to);
         }),
         fetchAllRows(async (from, to) => {
@@ -182,6 +183,7 @@ const FineStatistics: React.FC = () => {
           return await supabase.from('fines')
             .select('*')
             .eq('school_id', user.school_id)
+            .order('effective_from', { ascending: true })
             .range(from, to);
         }),
         fetchAllRows(async (from, to) => {
@@ -194,6 +196,7 @@ const FineStatistics: React.FC = () => {
           return await supabase.from('attendance_records')
             .select('*')
             .eq('school_id', user.school_id)
+            .in('status', ['absent', 'late'])
             .range(from, to);
         }),
       ]);
@@ -227,6 +230,8 @@ const FineStatistics: React.FC = () => {
 
   // Calculate total fine for a student - uses class_id from attendance records for accurate fine calculation
   function calculateFine(student: any) {
+    if (!fines || fines.length === 0) return 0;
+
     const studentAtt = attendanceRecords.filter(
       (rec: any) => rec.student_id === student.id && (rec.status === 'absent' || rec.status === 'late')
     );
@@ -234,20 +239,21 @@ const FineStatistics: React.FC = () => {
     
     for (const rec of studentAtt) {
       // Use the class_id directly from the attendance record (this is the class the student was in when attendance was marked)
-      const classIdFromRecord = rec.class_id;
+      const classIdFromRecord = rec.class_id || student.class_id;
       
       // Find fines for that specific class
       const classFines = fines.filter((f: any) => String(f.class_id) === String(classIdFromRecord));
       
-      // Always pick the latest fine setting with effective_from <= rec.date
-      let fine = classFines && classFines.length > 0 ? classFines[0] : null;
+      let applicableFine = null;
       for (const f of classFines) {
-        if (f.effective_from <= rec.date) fine = f;
+        if (f.effective_from <= rec.date) {
+          applicableFine = f;
+        }
       }
       
-      if (fine) {
-        if (rec.status === 'absent') total += Number(fine.absent_fine);
-        else if (rec.status === 'late') total += Number(fine.late_fine);
+      if (applicableFine) {
+        if (rec.status === 'absent') total += Number(applicableFine.absent_fine || 0);
+        else if (rec.status === 'late') total += Number(applicableFine.late_fine || 0);
       }
     }
     return total;
@@ -301,20 +307,20 @@ const FineStatistics: React.FC = () => {
         const month = rec.date.slice(0, 7); // YYYY-MM
         if (!map[month]) map[month] = { fine: 0, paid: 0, remission: 0 };
         // Find fine amount using the class from the attendance record
-        const classIdFromRecord = rec.class_id;
+        const classIdFromRecord = rec.class_id || stu.class_id;
         const classFines = fines.filter((f: any) => String(f.class_id) === String(classIdFromRecord));
-        let fine = classFines && classFines.length > 0 ? classFines[0] : null;
+        let applicableFine = null;
         for (const f of classFines) {
-          if (f.effective_from <= rec.date) fine = f;
+          if (f.effective_from <= rec.date) applicableFine = f;
         }
-        if (fine) {
-          if (rec.status === 'absent') map[month].fine += Number(fine.absent_fine);
-          else if (rec.status === 'late') map[month].fine += Number(fine.late_fine);
+        if (applicableFine) {
+          if (rec.status === 'absent') map[month].fine += Number(applicableFine.absent_fine || 0);
+          else if (rec.status === 'late') map[month].fine += Number(applicableFine.late_fine || 0);
         }
       });
       // Payments by month
       payments.filter(p => p.student_id === stu.id).forEach(p => {
-        const month = p.date ? p.date.slice(0, 7) : 'Unknown';
+        const month = p.payment_date ? p.payment_date.slice(0, 7) : 'Unknown';
         if (!map[month]) map[month] = { fine: 0, paid: 0, remission: 0 };
         map[month].paid += Number(p.amount || 0);
         map[month].remission += Number(p.remission || 0);
@@ -322,6 +328,27 @@ const FineStatistics: React.FC = () => {
     });
     return Object.entries(map).map(([month, v]) => ({ month, ...v })).sort((a, b) => a.month.localeCompare(b.month));
   }, [students, payments, fines, attendanceRecords]);
+
+  // --- Daily Collection Trend ---
+  const dailyCollections = useMemo(() => {
+    const map: { [key: string]: { paid: number } } = {};
+    payments.forEach(p => {
+      const date = p.payment_date || 'Unknown';
+      if (!map[date]) map[date] = { paid: 0 };
+      map[date].paid += Number(p.amount || 0);
+    });
+    const sorted = Object.entries(map)
+      .filter(([date]) => date !== 'Unknown')
+      .map(([date, v]) => ({ date, ...v }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    
+    // Limit to last 30 active collection days to keep chart readable
+    return sorted.slice(-30);
+  }, [payments]);
+
+  const maxDailyCollected = useMemo(() => {
+    return Math.max(...dailyCollections.map(d => d.paid), 0);
+  }, [dailyCollections]);
 
   // --- Top Defaulters ---
   const topDefaulters = useMemo(() => {
@@ -337,17 +364,18 @@ const FineStatistics: React.FC = () => {
   const fineTypeStats = useMemo(() => {
     let absent = 0, late = 0;
     attendanceRecords.forEach(rec => {
+      if (rec.status !== 'absent' && rec.status !== 'late') return;
       const stu = students.find(s => s.id === rec.student_id);
       if (!stu) return;
-      const classIdFromRecord = rec.class_id;
+      const classIdFromRecord = rec.class_id || stu.class_id;
       const classFines = fines.filter((f: any) => String(f.class_id) === String(classIdFromRecord));
-      let fine = classFines && classFines.length > 0 ? classFines[0] : null;
+      let applicableFine = null;
       for (const f of classFines) {
-        if (f.effective_from <= rec.date) fine = f;
+        if (f.effective_from <= rec.date) applicableFine = f;
       }
-      if (fine) {
-        if (rec.status === 'absent') absent += Number(fine.absent_fine);
-        else if (rec.status === 'late') late += Number(fine.late_fine);
+      if (applicableFine) {
+        if (rec.status === 'absent') absent += Number(applicableFine.absent_fine || 0);
+        else if (rec.status === 'late') late += Number(applicableFine.late_fine || 0);
       }
     });
     return [
@@ -463,15 +491,15 @@ const FineStatistics: React.FC = () => {
       ).forEach(rec => {
         const month = rec.date.slice(0, 7);
         if (!map[month]) map[month] = { absent: 0, late: 0 };
-        const classIdFromRecord = rec.class_id;
+        const classIdFromRecord = rec.class_id || stu.class_id;
         const classFines = fines.filter((f: any) => String(f.class_id) === String(classIdFromRecord));
-        let fine = classFines && classFines.length > 0 ? classFines[0] : null;
+        let applicableFine = null;
         for (const f of classFines) {
-          if (f.effective_from <= rec.date) fine = f;
+          if (f.effective_from <= rec.date) applicableFine = f;
         }
-        if (fine) {
-          if (rec.status === 'absent') map[month].absent += Number(fine.absent_fine);
-          else if (rec.status === 'late') map[month].late += Number(fine.late_fine);
+        if (applicableFine) {
+          if (rec.status === 'absent') map[month].absent += Number(applicableFine.absent_fine || 0);
+          else if (rec.status === 'late') map[month].late += Number(applicableFine.late_fine || 0);
         }
       });
     });
@@ -487,15 +515,15 @@ const FineStatistics: React.FC = () => {
       ).forEach(rec => {
         const month = rec.date.slice(0, 7);
         if (!map[month]) map[month] = { fine: 0, remission: 0 };
-        const classIdFromRecord = rec.class_id;
+        const classIdFromRecord = rec.class_id || stu.class_id;
         const classFines = fines.filter((f: any) => String(f.class_id) === String(classIdFromRecord));
-        let fine = classFines && classFines.length > 0 ? classFines[0] : null;
+        let applicableFine = null;
         for (const f of classFines) {
-          if (f.effective_from <= rec.date) fine = f;
+          if (f.effective_from <= rec.date) applicableFine = f;
         }
-        if (fine) {
-          if (rec.status === 'absent') map[month].fine += Number(fine.absent_fine);
-          else if (rec.status === 'late') map[month].fine += Number(fine.late_fine);
+        if (applicableFine) {
+          if (rec.status === 'absent') map[month].fine += Number(applicableFine.absent_fine || 0);
+          else if (rec.status === 'late') map[month].fine += Number(applicableFine.late_fine || 0);
         }
       });
       payments.filter(p => p.student_id === stu.id).forEach(p => {
@@ -612,6 +640,18 @@ const FineStatistics: React.FC = () => {
               <Line type="monotone" dataKey="paid" stroke="#22c55e" name="Paid" />
               <Line type="monotone" dataKey="remission" stroke="#a78bfa" name="Remission" />
             </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+        <ChartCard>
+          <StatTitle>Daily Collection Trend</StatTitle>
+          <ResponsiveContainer width="100%" height={260}>
+            <ComposedChart data={dailyCollections} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+              <XAxis dataKey="date" stroke={(theme as any).TEXT_SECONDARY} />
+              <YAxis stroke={(theme as any).TEXT_SECONDARY} domain={[0, maxDailyCollected === 0 ? 'auto' : maxDailyCollected]} />
+              <Tooltip />
+              <Legend />
+              <Area type="monotone" dataKey="paid" stroke="#22c55e" fill="#22c55e" fillOpacity={0.2} name="Paid" />
+            </ComposedChart>
           </ResponsiveContainer>
         </ChartCard>
         <ChartCard>

@@ -1618,16 +1618,17 @@ const FineCollection: React.FC = () => {
           const classIdFromRecord = rec.class_id || selectedStudent.class_id;
           
           // Find fines for that specific class
-          const classFines = fineData?.filter((f: any) => f.class_id === classIdFromRecord) || [];
+          const classFines = fineData?.filter((f: any) => String(f.class_id) === String(classIdFromRecord)) || [];
           
-          // Find the latest fine setting with effective_from <= rec.date
-          let fine = classFines && classFines.length > 0 ? classFines[0] : null;
+          let applicableFine = null;
           for (const f of classFines) {
-            if (f.effective_from <= rec.date) fine = f;
+            if (f.effective_from <= rec.date) {
+              applicableFine = f;
+            }
           }
           let fineAmount = 0;
-          if (fine) {
-            fineAmount = rec.status === 'absent' ? Number(fine.absent_fine) : Number(fine.late_fine);
+          if (applicableFine) {
+            fineAmount = rec.status === 'absent' ? Number(applicableFine.absent_fine || 0) : Number(applicableFine.late_fine || 0);
           }
           
           return {

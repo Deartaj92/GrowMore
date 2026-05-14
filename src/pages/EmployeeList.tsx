@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import styled from 'styled-components';
 import { supabase } from '../supabaseClient';
-import { Edit as EditIcon, Add as AddIcon, Work as WorkIcon, Info, Person as PersonIcon, LocationOn as LocationIcon, WhatsApp as WhatsAppIcon, Sms as SmsIcon, ToggleOn as StatusIcon, Close as CloseIcon } from '@mui/icons-material';
+import { Edit as EditIcon, Add as AddIcon, Work as WorkIcon, Info, Person as PersonIcon, LocationOn as LocationIcon, WhatsApp as WhatsAppIcon, Sms as SmsIcon, ToggleOn as StatusIcon, Close as CloseIcon, Search as SearchIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoading } from '../contexts/LoadingContext';
@@ -67,6 +67,49 @@ const AddHeaderButton = styled.button`
   transition: background 0.18s, border 0.18s, transform 0.13s;
   &:hover { 
     transform: translateY(-1px); 
+    border-color: ${({ theme }) => theme.ACCENT};
+  }
+`;
+
+const ControlsContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+`;
+
+const SearchBar = styled.div`
+  display: flex;
+  align-items: center;
+  background: ${({ theme }) => theme.FIELD_BG};
+  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+  border-radius: 6px;
+  padding: 4px 8px;
+  min-width: 150px;
+  max-width: 200px;
+`;
+
+const SearchInput = styled.input`
+  border: none;
+  background: transparent;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.85rem;
+  outline: none;
+  width: 100%;
+  margin-left: 6px;
+`;
+
+const FilterSelect = styled.select`
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+  background: ${({ theme }) => theme.FIELD_BG};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+  
+  &:hover {
     border-color: ${({ theme }) => theme.ACCENT};
   }
 `;
@@ -445,6 +488,8 @@ const EmployeeList: React.FC = () => {
   const { setLoading, loading } = useLoading();
   const [statusModal, setStatusModal] = useState<{ employee: any; open: boolean }>({ employee: null, open: false });
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('active');
 
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -578,17 +623,54 @@ const EmployeeList: React.FC = () => {
     return <NoTeachersFound />;
   }
 
+  const filteredEmployees = employees.filter(emp => {
+    const matchesSearch = (emp.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (emp.mobile || '').includes(searchQuery) ||
+                          (emp.id?.toString() || '').includes(searchQuery);
+    
+    const matchesStatus = statusFilter === 'all' || (emp.status || 'active') === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <PageContainer>
       <Header>
-        <Title>All Employees <span style={{ fontWeight: 400, fontSize: '1rem', color: '#4a4a4a' }}>({employees.length})</span></Title>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <Title>All Employees <span style={{ fontWeight: 400, fontSize: '1rem', color: '#4a4a4a' }}>({filteredEmployees.length})</span></Title>
+          <ControlsContainer>
+            <SearchBar>
+              <SearchIcon style={{ fontSize: 18, color: '#888' }} />
+              <SearchInput 
+                placeholder="Search..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </SearchBar>
+            <FilterSelect 
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="suspended">Suspended</option>
+              <option value="terminated">Terminated</option>
+              <option value="left">Left / Absent</option>
+              <option value="contract_ended">Contract Ended</option>
+            </FilterSelect>
+          </ControlsContainer>
+        </div>
         <AddHeaderButton onClick={() => navigate('/employees/add')}>
           <AddIcon style={{ fontSize: 18 }} /> Add
         </AddHeaderButton>
       </Header>
       <MainContent>
-        <CardGrid>
-          {employees.map((employee) => (
+        {filteredEmployees.length === 0 ? (
+          <NoResults>No employees found matching the filters.</NoResults>
+        ) : (
+          <CardGrid>
+            {filteredEmployees.map((employee) => (
             <EmployeeCard
               key={employee.id}
               status={employee.status || 'active'}
@@ -703,6 +785,7 @@ const EmployeeList: React.FC = () => {
             </EmployeeCard>
           ))}
         </CardGrid>
+        )}
       </MainContent>
 
       {statusModal.open && statusModal.employee && ReactDOM.createPortal(
