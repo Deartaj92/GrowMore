@@ -335,7 +335,7 @@ const GeneralSettings: React.FC = () => {
       if (activeTab === 0) {
         // Save teacher score deduction settings
         const settingsToSave = Array.from(teacherSettings.values()).map((setting) => ({
-          school_id: user.school_id,
+          school_id: user!.school_id,
           teacher_id: setting.teacher_id,
           enable_attendance_deduction: setting.enable_attendance_deduction,
           enable_diary_deduction: setting.enable_diary_deduction,

@@ -2387,7 +2387,7 @@ const QRAttendancePage: React.FC = () => {
 
     useEffect(() => {
         qrCameraPageActiveRef.current = true;
-        let timer: ReturnType<typeof window.setTimeout> | undefined;
+        let timer: any;
         if (readQrCameraEnabled()) {
             setCameraStatus('Preparing camera...');
             timer = window.setTimeout(() => {

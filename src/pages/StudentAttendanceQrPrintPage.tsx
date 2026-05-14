@@ -13,7 +13,7 @@ import { formatAppDate } from '../utils/dateUtils';
 import { canonicalQrTokenForMatch, resolveQrAssignmentFromInput } from '../utils/rfidUtils';
 import { rfidOfflineService } from '../services/rfidOfflineService';
 import StudentAttendanceQrPdfDocument, { StudentQrPdfItem } from '../components/StudentAttendanceQrPdfDocument';
-import { buildStudentQrJpegZip } from '../utils/studentQrJpegZipExport';
+import { buildStudentQrJpegZip, QrZipStudentInput } from '../utils/studentQrJpegZipExport';
 import {
     clayButtonStyle,
     clayCardStyle,
@@ -451,7 +451,7 @@ const StudentAttendanceQrPrintPage: React.FC = () => {
 
         setZipBusy(true);
         try {
-            const inputs = sorted.map(s => ({
+            const inputs: QrZipStudentInput[] = sorted.map(s => ({
                 id: s.id,
                 name: s.name,
                 father_name: s.father_name ?? null,
