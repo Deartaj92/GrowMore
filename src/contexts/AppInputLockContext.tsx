@@ -8,7 +8,7 @@ import React, {
     useState,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { Lock, LockOpen, Nfc as NfcAttendanceIcon, QrCodeScanner as QrAttendanceIcon } from '@mui/icons-material';
 import { useToast } from '../components/useToast';
@@ -84,18 +84,18 @@ const Z_MODAL = 100020;
 const PATH_RFID_ATTENDANCE = '/attendance/rfid-scanner';
 const PATH_QR_ATTENDANCE = '/attendance/qr-scanner';
 
-const LockHintBackdrop = styled.div`
+const LockHintBackdrop = styled.div<{ $visible: boolean }>`
   position: absolute;
   inset: 0;
   z-index: 1;
   background: rgba(15, 23, 42, 0.48);
-  opacity: 0;
-  visibility: hidden;
+  opacity: ${({ $visible }) => ($visible ? 1 : 0)};
+  visibility: ${({ $visible }) => ($visible ? 'visible' : 'hidden')};
   transition: opacity 0.22s ease, visibility 0.22s ease;
   pointer-events: none;
 `;
 
-const LockHintPanel = styled.div`
+const LockHintPanel = styled.div<{ $visible: boolean }>`
   position: fixed;
   left: 50%;
   top: 50%;
@@ -115,9 +115,9 @@ const LockHintPanel = styled.div`
   align-items: center;
   text-align: center;
   gap: 0.65rem;
-  opacity: 0;
-  visibility: hidden;
-  transform: translate(-50%, calc(-50% + 10px));
+  opacity: ${({ $visible }) => ($visible ? 1 : 0)};
+  visibility: ${({ $visible }) => ($visible ? 'visible' : 'hidden')};
+  transform: translate(-50%, ${({ $visible }) => ($visible ? '-50%' : 'calc(-50% + 10px)')});
   transition:
     opacity 0.22s ease,
     visibility 0.22s ease,
@@ -131,29 +131,6 @@ const LockScreenRoot = styled.div`
   z-index: ${Z_OVERLAY};
   touch-action: none;
   cursor: default;
-
-  &:hover > ${LockHintBackdrop} {
-    opacity: 1;
-    visibility: visible;
-  }
-
-  &:hover > ${LockHintPanel} {
-    opacity: 1;
-    visibility: visible;
-    transform: translate(-50%, -50%);
-  }
-
-  @media (hover: none) {
-    & > ${LockHintBackdrop},
-    & > ${LockHintPanel} {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    & > ${LockHintPanel} {
-      transform: translate(-50%, -50%);
-    }
-  }
 `;
 
 const LockBaseTint = styled.div`
@@ -333,12 +310,16 @@ export const AppInputLockProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const { showToast } = useToast();
     const { user } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const isDesktop = useDesktopScreenLock();
     const [canAttendanceScannerShortcuts, setCanAttendanceScannerShortcuts] = useState(false);
+
+    const isAttendancePage = location.pathname === PATH_RFID_ATTENDANCE || location.pathname === PATH_QR_ATTENDANCE;
 
     const [isLocked, setIsLocked] = useState(readPersistedLock);
     const [showUnlockModal, setShowUnlockModal] = useState(false);
     const [unlockPassword, setUnlockPassword] = useState('');
+    const [showHint, setShowHint] = useState(false);
 
     const lockActive = isLocked && isDesktop;
     const unlockModalVisible = showUnlockModal && isDesktop;
@@ -346,6 +327,9 @@ export const AppInputLockProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const scannerBypassHolderRef = useRef<React.RefObject<HTMLInputElement | null> | null>(null);
     const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const idleActivityThrottleRef = useRef(0);
+    const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const hintPendingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const keyBurstRef = useRef(0);
 
     useEffect(() => {
         writePersistedLock(isLocked);
@@ -394,6 +378,38 @@ export const AppInputLockProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setUnlockPassword('');
     }, []);
 
+    const triggerHint = useCallback((options?: { isMoving?: boolean; isKeyboard?: boolean }) => {
+        if (!lockActive || unlockModalVisible) return;
+
+        // Skip incidental movement triggers on attendance pages to avoid interference with scanning
+        if (options?.isMoving && isAttendancePage) return;
+
+        const show = () => {
+            setShowHint(true);
+            if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+            hintTimerRef.current = setTimeout(() => {
+                setShowHint(false);
+                hintTimerRef.current = null;
+            }, 5000);
+        };
+
+        if (options?.isKeyboard && isAttendancePage) {
+            // For attendance pages, detect bursts (scanners) and suppress the hint
+            keyBurstRef.current++;
+            if (hintPendingRef.current) clearTimeout(hintPendingRef.current);
+            hintPendingRef.current = setTimeout(() => {
+                const count = keyBurstRef.current;
+                keyBurstRef.current = 0;
+                hintPendingRef.current = null;
+                // If more than 2 keys arrived in 100ms, it's likely a scanner
+                if (count < 3) show();
+            }, 100);
+            return;
+        }
+
+        show();
+    }, [lockActive, unlockModalVisible, isAttendancePage]);
+
     const tryUnlock = useCallback(() => {
         if (verifySettingsPassword(unlockPassword)) {
             setIsLocked(false);
@@ -404,6 +420,23 @@ export const AppInputLockProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setUnlockPassword('');
         }
     }, [unlockPassword, showToast]);
+
+    useEffect(() => {
+        return () => {
+            if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+            if (hintPendingRef.current) clearTimeout(hintPendingRef.current);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!lockActive || unlockModalVisible) {
+            setShowHint(false);
+            if (hintTimerRef.current) {
+                clearTimeout(hintTimerRef.current);
+                hintTimerRef.current = null;
+            }
+        }
+    }, [lockActive, unlockModalVisible]);
 
     useEffect(() => {
         if (!isDesktop && showUnlockModal) {
@@ -426,6 +459,9 @@ export const AppInputLockProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const blockKey = (e: KeyboardEvent) => {
             if (isBypass(e.target)) return;
             if (isLockControl(e.target)) return;
+
+            triggerHint({ isKeyboard: true });
+
             e.preventDefault();
             e.stopPropagation();
             const el = getBypassElement(scannerBypassHolderRef);
@@ -535,13 +571,23 @@ export const AppInputLockProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 {lockActive && !unlockModalVisible && (
                     <LockScreenRoot
                         role="presentation"
-                        title="Application locked. Hover the dimmed area for unlock options, or use the lock control in the header."
-                        onWheel={(e) => e.preventDefault()}
-                        onTouchMove={(e) => e.preventDefault()}
+                        title="Application locked. Hover or interact with the screen for unlock options."
+                        onWheel={(e) => {
+                            e.preventDefault();
+                            triggerHint({ isMoving: true });
+                        }}
+                        onTouchMove={(e) => {
+                            e.preventDefault();
+                            triggerHint({ isMoving: true });
+                        }}
+                        onMouseMove={() => triggerHint({ isMoving: true })}
+                        onPointerDown={() => triggerHint()}
+                        onTouchStart={() => triggerHint()}
                     >
                         <LockBaseTint aria-hidden />
-                        <LockHintBackdrop className="lock-hint-backdrop" aria-hidden />
+                        <LockHintBackdrop $visible={showHint} className="lock-hint-backdrop" aria-hidden />
                         <LockHintPanel
+                            $visible={showHint}
                             className="lock-hint-panel"
                             onClick={(e) => e.stopPropagation()}
                             role="region"
