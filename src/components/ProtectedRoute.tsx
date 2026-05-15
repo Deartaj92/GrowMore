@@ -84,26 +84,22 @@ export default function ProtectedRoute({
     }
   }, [requiredPermission, user, loading]);
 
-  // Show loading while auth is loading - just render children, let pages handle their own loading
-  if (loading) {
-    return <>{children}</>;
+  // Show loading while auth is loading or permission is being checked
+  if (loading || (requiredPermission && !permissionChecked)) {
+    return (
+      <LoadingContainer>
+        <LoadingSpinner />
+      </LoadingContainer>
+    );
   }
 
-  // Check for student or parent session if no user is logged in
-  // These use localStorage sessions and should check permissions via their role_id if they have a user account
+  // No user, student, or parent session, redirect to login
   if (!user) {
     const studentSession = localStorage.getItem('studentSession');
     if (studentSession) {
       try {
         const parsed = JSON.parse(studentSession);
         if (parsed?.id && requiredPermission) {
-          // Check permission for student
-          hasPermission(parsed.id, requiredPermission, parsed.school_id || 0)
-            .then(hasPerm => {
-              if (!hasPerm) {
-                // Will redirect below
-              }
-            });
           // For now, allow access if student session exists (permission check will happen in component)
           return <>{children}</>;
         }
@@ -117,13 +113,6 @@ export default function ProtectedRoute({
       try {
         const parsed = JSON.parse(parentSession);
         if (parsed?.id && requiredPermission) {
-          // Check permission for parent
-          hasPermission(parsed.id, requiredPermission, parsed.school_id || 0)
-            .then(hasPerm => {
-              if (!hasPerm) {
-                // Will redirect below
-              }
-            });
           // For now, allow access if parent session exists (permission check will happen in component)
           return <>{children}</>;
         }
@@ -132,18 +121,13 @@ export default function ProtectedRoute({
       }
     }
 
-    // No user, student, or parent session, redirect to login
+    // No valid user or session, redirect to login
     return <Navigate to="/login" replace />;
   }
 
-  // Wait for permission check to complete
-  if (requiredPermission && !permissionChecked) {
-    return <>{children}</>;
-  }
-
-  // Check permission-based access
+  // Check permission-based access for logged in users
   if (requiredPermission) {
-    if (!hasAccess) {
+    if (!hasAccess && !isSuperAdmin) {
       return <Navigate to={redirectTo} replace />;
     }
     return <>{children}</>;
@@ -151,4 +135,5 @@ export default function ProtectedRoute({
 
   // If no permission specified, deny access (permission is required)
   return <Navigate to={redirectTo} replace />;
-} 
+}
+ 

@@ -174,21 +174,24 @@ const Dashboard: React.FC = () => {
           }
         }
 
-        // If no tab permissions are set at all, show all tabs (backward compatibility)
+        // Strictly prohibit access if no dashboard tab permissions are found
         if (!hasAnyTabPermission) {
-          setAllowedTabs(new Set());
-        } else {
-          setAllowedTabs(allowed);
-          // Set active tab to first allowed tab if current is not allowed
-          if (allowed.size > 0 && !allowed.has(activeTab)) {
-            const firstAllowed = Array.from(allowed)[0];
-            setActiveTab(firstAllowed);
-          }
+          // If no tab permissions are set at all, and user is not super_admin/owner,
+          // they should not be allowed to see anything.
+          navigate('/unauthorized', { replace: true });
+          return;
+        }
+
+        setAllowedTabs(allowed);
+        // Set active tab to first allowed tab if current is not allowed
+        if (allowed.size > 0 && !allowed.has(activeTab)) {
+          const firstAllowed = Array.from(allowed)[0];
+          setActiveTab(firstAllowed);
         }
       } catch (error) {
         console.error('Error fetching dashboard tab permissions:', error);
-        setAllowedTabs(new Set()); // On error, show all tabs
-        setUserPerms(new Set());
+        // On error, redirect to unauthorized for safety
+        navigate('/unauthorized', { replace: true });
       }
     };
 
