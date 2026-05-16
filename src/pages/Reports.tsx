@@ -664,7 +664,7 @@ export const Reports = (): JSX.Element => {
     };
 
     useEffect(() => {
-        if (!user?.school_id || !activeSession) return;
+        if (!user?.school_id) return;
         
         let isMounted = true;
         const loadAll = async () => {
@@ -688,7 +688,7 @@ export const Reports = (): JSX.Element => {
         };
         loadAll();
         return () => { isMounted = false; };
-    }, [filters, user?.school_id]);
+    }, [filters, user?.school_id, activeSession]);
 
     const sortedReports = useMemo(() => {
         // Split reports into unresolved and resolved first
