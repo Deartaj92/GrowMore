@@ -567,83 +567,56 @@ export const Reports = (): JSX.Element => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // Check if there are any students in the system for the active session
+    // Check if there are any students in the system and get active session
     useEffect(() => {
-        const checkForAnyStudents = async () => {
+        const initializeReportsPage = async () => {
             if (!user?.school_id) return;
             
             try {
-                // Get active session
-                const { data: sessionsData, error: sessionsError } = await supabase
-                    .from('sessions')
-                    .select('id, is_active')
-                    .eq('school_id', user?.school_id);
-                
-                if (sessionsError) {
-                    setHasAnyStudents(false);
-                    setLoadingStudents(false);
-                    return;
-                }
-                
-                const activeSessionData = sessionsData?.find(s => s.is_active);
-                if (!activeSessionData) {
-                    setHasAnyStudents(false);
-                    setLoadingStudents(false);
-                    return;
-                }
-                
-                setActiveSession(activeSessionData);
-                
-                // Check if there are any students in student_class_history for the active session
-                const { data: schData, error: schError } = await supabase
-                    .from('student_class_history')
-                    .select('student_id')
-                    .eq('session_id', activeSessionData.id)
-                    .eq('school_id', user?.school_id)
-                    .limit(1);
-                
-                if (schError) {
-                    setHasAnyStudents(false);
-                    setLoadingStudents(false);
-                    return;
-                }
-                
-                if (!schData || schData.length === 0) {
-                    setHasAnyStudents(false);
-                    setLoadingStudents(false);
-                    return;
-                }
-                
-                // Now check if any of these students are active
-                const studentIds = schData.map(sch => sch.student_id);
-                const { data: studentsData, error: studentsError } = await supabase
+                setLoadingStudents(true);
+
+                // 1. Check if there are ANY students in the school
+                const { data: studentData, error: studentError } = await supabase
                     .from('students')
                     .select('id')
                     .eq('school_id', user?.school_id)
-                    .eq('status', 'active')
-                    .in('id', studentIds)
                     .limit(1);
                 
-                if (studentsError) {
+                if (studentError) {
+                    console.error('Error checking for students:', studentError);
                     setHasAnyStudents(false);
-                    setLoadingStudents(false);
-                    return;
+                } else {
+                    setHasAnyStudents(studentData && studentData.length > 0);
+                }
+
+                // 2. Get active session
+                const { data: sessionsData, error: sessionsError } = await supabase
+                    .from('sessions')
+                    .select('id, is_active')
+                    .eq('school_id', user?.school_id)
+                    .eq('is_active', true)
+                    .limit(1);
+                
+                if (sessionsError) {
+                    console.error('Error fetching active session:', sessionsError);
+                } else if (sessionsData && sessionsData.length > 0) {
+                    setActiveSession(sessionsData[0]);
                 }
                 
-                setHasAnyStudents(studentsData && studentsData.length > 0);
                 setLoadingStudents(false);
             } catch (err: any) {
+                console.error('Initialization error:', err);
                 setHasAnyStudents(false);
                 setLoadingStudents(false);
             }
         };
         
-        checkForAnyStudents();
+        initializeReportsPage();
     }, [user?.school_id]);
 
     // Define functions that will be used in useEffect
     const loadReports = async () => {
-        if (!activeSession) return;
+        if (!user?.school_id) return;
         
         try {
             const data = await reportService.getStudentReports({
@@ -715,7 +688,7 @@ export const Reports = (): JSX.Element => {
         };
         loadAll();
         return () => { isMounted = false; };
-    }, [filters, user?.school_id, activeSession]);
+    }, [filters, user?.school_id]);
 
     const sortedReports = useMemo(() => {
         // Split reports into unresolved and resolved first
