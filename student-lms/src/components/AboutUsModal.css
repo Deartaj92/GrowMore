@@ -1,0 +1,268 @@
+.about-us-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.about-us-content {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  max-width: 90vw;
+  max-height: min(90vh, calc(100dvh - 40px));
+  width: 900px;
+  height: 400px;
+  background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+  border-radius: 20px;
+  overflow: visible;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: row;
+}
+
+.about-us-close {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-size: 1.5rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.about-us-close:hover {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.about-us-pattern {
+  position: absolute;
+  bottom: -100px;
+  right: -50px;
+  width: 400px;
+  height: 400px;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.22;
+  background-image: url('/patternLogo.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  mix-blend-mode: overlay;
+}
+
+.about-us-image-section {
+  flex: 0 0 450px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  position: relative;
+  overflow: visible;
+  border-radius: 20px 0 0 20px;
+  z-index: 1;
+}
+
+.about-us-image {
+  width: 80%;
+  height: 120%;
+  object-fit: cover;
+  display: block;
+  margin-top: -25%;
+  margin-right: auto;
+  object-position: bottom;
+  border-radius: 0 0 0 20px;
+  filter: contrast(1.1) brightness(0.95) saturate(1.05);
+  transform: translateZ(0);
+}
+
+.about-us-text-section {
+  flex: 1;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  position: relative;
+  color: white;
+  z-index: 1;
+}
+
+.about-us-brand {
+  position: absolute;
+  top: 40px;
+  right: 40px;
+  z-index: 5;
+  text-align: right;
+}
+
+.about-us-brand-title {
+  font-size: 3.5rem;
+  font-weight: 900;
+  line-height: 1;
+  margin: 0 0 5px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(
+    90deg,
+    #ffffff 0%,
+    #ffffff 25%,
+    #ffc107 50%,
+    #ffffff 75%,
+    #ffffff 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: aboutTitleShine 3s ease-in-out infinite;
+}
+
+@keyframes aboutTitleShine {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.about-us-brand-subtitle {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #ffffff;
+  opacity: 0.8;
+  margin: 5px 0 0;
+}
+
+.about-us-contact {
+  position: absolute;
+  bottom: 40px;
+  right: 40px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.about-us-contact-name {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: 2px;
+  color: #ffc107;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.about-us-contact-title {
+  font-size: 1rem;
+  margin-bottom: 4px;
+  color: #ffffff;
+  opacity: 0.9;
+}
+
+.about-us-contact-phone {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .about-us-close {
+    display: none;
+  }
+
+  .about-us-overlay {
+    padding: 2.5rem 12px 12px;
+    padding-top: max(2.5rem, calc(12px + env(safe-area-inset-top)));
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    align-items: center;
+    overflow-y: auto;
+  }
+
+  .about-us-content {
+    width: min(95vw, 500px);
+    height: auto;
+    min-height: 220px;
+    max-height: none;
+    margin-top: 0.5rem;
+    border-radius: 16px;
+    overflow: visible;
+  }
+
+  .about-us-pattern {
+    width: 250px;
+    height: 250px;
+    bottom: -60px;
+    right: -30px;
+    opacity: 0.18;
+  }
+
+  .about-us-image-section {
+    flex: 0 0 200px;
+    min-height: 210px;
+    align-items: flex-end;
+    overflow: visible;
+    border-radius: 16px 0 0 16px;
+  }
+
+  .about-us-image {
+    width: 95%;
+    height: 145%;
+    margin-top: -30%;
+    object-fit: cover;
+    object-position: bottom;
+    border-radius: 0 0 0 16px;
+    transform: translateZ(0);
+  }
+
+  .about-us-text-section {
+    padding: 20px 15px;
+    min-height: 200px;
+  }
+
+  .about-us-brand {
+    top: 15px;
+    right: 15px;
+  }
+
+  .about-us-brand-title {
+    font-size: 1.8rem;
+    white-space: nowrap;
+  }
+
+  .about-us-brand-subtitle {
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+
+  .about-us-contact {
+    bottom: 15px;
+    right: 15px;
+  }
+
+  .about-us-contact-name {
+    font-size: 1rem;
+    white-space: nowrap;
+  }
+
+  .about-us-contact-title {
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .about-us-contact-phone {
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+}

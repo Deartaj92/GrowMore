@@ -1,0 +1,211 @@
+.feedback-page {
+  animation: fadeInUp 0.3s ease-out forwards;
+}
+
+.feedback-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.feedback-form-section,
+.feedback-history-section {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.form-header,
+.history-header {
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 0.6rem;
+}
+
+.form-header h3,
+.history-header h3 {
+  font-family: var(--font-title);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.2rem;
+}
+
+.form-header p {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.alert-message {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius-xs);
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.alert-message.success {
+  background-color: var(--status-present-bg);
+  border-color: var(--status-present-border);
+  color: var(--status-present);
+}
+
+.alert-message.danger {
+  background-color: var(--status-absent-bg);
+  border-color: var(--status-absent-border);
+  color: var(--status-absent);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.form-group label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.category-toggle-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.category-toggle-btn {
+  padding: 0.65rem 0.85rem;
+  font-weight: 600;
+  font-size: 12px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  border-radius: var(--radius-xs);
+  transition: all var(--transition-fast);
+}
+
+.category-toggle-btn.active.primary {
+  background-color: var(--primary-glow);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.category-toggle-btn.active.danger {
+  background-color: var(--status-absent-bg);
+  border-color: var(--status-absent);
+  color: var(--status-absent);
+}
+
+.input-field {
+  resize: vertical;
+  line-height: 1.5;
+  font-size: 12px;
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 0.75rem 0;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  max-height: 460px;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.history-card {
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  border: 1px solid var(--glass-border);
+  border-left-width: 4px;
+  border-radius: var(--radius-xs);
+}
+
+.history-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.type-badge {
+  font-family: var(--font-title);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-full);
+}
+
+.type-badge.complaint { background-color: var(--status-absent-bg); color: var(--status-absent); }
+.type-badge.suggestion { background-color: var(--primary-glow); color: var(--primary); }
+
+.history-date {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.history-subject {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.history-text-preview {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.history-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.status-indicator .text-green { color: var(--status-present); }
+.status-indicator .text-amber { color: var(--status-late); }
+
+.empty-history {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 2rem 0;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+@media (max-width: 992px) {
+  .feedback-grid { grid-template-columns: 1fr; gap: 1rem; }
+}

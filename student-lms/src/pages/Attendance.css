@@ -1,0 +1,595 @@
+.attendance-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Loading state */
+.attendance-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 350px;
+  gap: 1rem;
+}
+
+/* Session Selector Top Bar */
+.attendance-top-bar {
+  padding: 1rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.session-selector-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.session-selector-wrapper label {
+  font-weight: 600;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.session-select {
+  min-width: 220px;
+  height: 32px;
+}
+
+.attendance-top-bar .stat-block--inline {
+  flex-shrink: 0;
+}
+
+/* Analytics charts grid */
+.attendance-analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.att-chart-card {
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.att-chart-card--overview {
+  grid-column: span 1;
+}
+
+.att-chart-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.att-chart-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: -0.25rem 0 0.35rem;
+  font-weight: 500;
+}
+
+.att-overview-body {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.att-overview-side {
+  flex: 1;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.att-overview-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.85rem;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.att-overview-legend .dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+}
+
+.att-overview-legend .dot.present { background: var(--status-present); }
+.att-overview-legend .dot.absent { background: var(--status-absent); }
+.att-overview-legend .dot.late { background: var(--status-late); }
+.att-overview-legend .dot.leave { background: var(--status-leave); }
+
+.att-insight-warn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--status-absent);
+  background: var(--status-absent-bg);
+  border: 1px solid var(--status-absent-border);
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-xs);
+  margin: 0;
+}
+
+.att-insights-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.att-insights-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  color: var(--text-secondary);
+}
+
+.att-insights-list li svg {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  color: var(--primary);
+}
+
+.att-insight-lbl {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.att-insight-val {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 0.1rem;
+}
+
+.att-week-panel {
+  padding: 1rem 1.25rem;
+}
+
+.att-week-header {
+  margin-bottom: 0.75rem;
+}
+
+.att-week-header .att-chart-desc {
+  margin-bottom: 0;
+}
+
+/* Calendar and Log Layout */
+.attendance-layout-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+/* Calendar styling */
+.calendar-section {
+  padding: 1.25rem;
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 0.85rem;
+  gap: 1rem;
+}
+
+.calendar-header h3 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.calendar-month-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: var(--bg-secondary);
+  padding: 0.2rem 0.35rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--glass-border);
+}
+
+.month-toggle-btn {
+  background: transparent;
+  color: var(--text-secondary);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.month-toggle-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.month-toggle-btn:hover {
+  background-color: var(--bg-accent);
+  color: var(--text-primary);
+}
+
+.month-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  min-width: 110px;
+  text-align: center;
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.weekday-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.calendar-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+}
+
+.calendar-day {
+  aspect-ratio: 1.1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+  font-size: 12px;
+  font-weight: 600;
+  position: relative;
+  border: 1px solid transparent;
+}
+
+.calendar-day.blank {
+  background: transparent;
+  pointer-events: none;
+}
+
+.calendar-day.status-unmarked {
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  border-color: var(--glass-border);
+}
+
+.calendar-day.status-present {
+  background-color: var(--status-present-bg);
+  color: var(--status-present);
+  border-color: var(--status-present-border);
+}
+
+.calendar-day.status-absent {
+  background-color: var(--status-absent-bg);
+  color: var(--status-absent);
+  border-color: var(--status-absent-border);
+}
+
+.calendar-day.status-late {
+  background-color: var(--status-late-bg);
+  color: var(--status-late);
+  border-color: var(--status-late-border);
+}
+
+.calendar-day.status-leave {
+  background-color: var(--status-leave-bg);
+  color: var(--status-leave);
+  border-color: var(--status-leave-border);
+}
+
+.calendar-day.today {
+  box-shadow: 0 0 0 1.5px var(--primary);
+}
+
+.day-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background-color: currentColor;
+  position: absolute;
+  bottom: 4px;
+}
+
+.half-leave-indicator {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--status-absent);
+  border: 1px solid var(--card-bg);
+}
+
+.calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.legend-dot.status-present { background-color: var(--status-present); }
+.legend-dot.status-absent { background-color: var(--status-absent); }
+.legend-dot.status-late { background-color: var(--status-late); }
+.legend-dot.status-leave { background-color: var(--status-leave); }
+.legend-dot.status-unmarked { background-color: var(--bg-secondary); border: 1px solid var(--glass-border); }
+
+/* Detailed Logs Section */
+.logs-section {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: visible;
+}
+
+.logs-header {
+  flex-shrink: 0;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 0.85rem;
+}
+
+.logs-header h3 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.logs-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  padding: 0.25rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-highlight);
+}
+
+.filter-btn {
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-xs);
+  font-size: 11.5px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text-secondary);
+  height: 26px;
+}
+
+.filter-btn.active {
+  background: var(--glass-bg-elevated);
+  color: var(--primary);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-highlight);
+  border-radius: var(--radius-full);
+}
+
+.logs-limit-hint {
+  flex-shrink: 0;
+  margin: 0 0 0.65rem;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.logs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-height: 22rem;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 0.35rem;
+  padding-bottom: 0.15rem;
+}
+
+.logs-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.logs-list::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-full);
+}
+
+.logs-list::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: var(--radius-full);
+  opacity: 0.6;
+}
+
+.logs-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+@supports (scrollbar-width: thin) {
+  .logs-list {
+    scrollbar-width: thin;
+    scrollbar-color: var(--text-muted) var(--bg-secondary);
+  }
+}
+
+@media (min-width: 769px) {
+  .logs-section {
+    max-height: min(520px, calc(100vh - 12rem));
+    overflow: hidden;
+  }
+
+  .logs-list {
+    flex: 1 1 auto;
+    max-height: none;
+  }
+}
+
+.log-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem;
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--glass-border);
+  border-left-width: 3px;
+}
+
+.log-status-present { border-left-color: var(--status-present); }
+.log-status-absent { border-left-color: var(--status-absent); }
+.log-status-late { border-left-color: var(--status-late); }
+.log-status-leave { border-left-color: var(--status-leave); }
+
+.log-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.log-date {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.log-remarks {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.log-half-leave {
+  font-size: 11px;
+  color: var(--status-absent);
+  font-weight: 600;
+  background-color: var(--status-absent-bg);
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--radius-xs);
+  display: inline-block;
+  align-self: flex-start;
+  margin-top: 0.1rem;
+}
+
+.log-status-lbl {
+  font-family: var(--font-title);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-full);
+}
+
+.log-status-present .log-status-lbl { background-color: var(--status-present-bg); color: var(--status-present); border: 1px solid var(--status-present-border); }
+.log-status-absent .log-status-lbl { background-color: var(--status-absent-bg); color: var(--status-absent); border: 1px solid var(--status-absent-border); }
+.log-status-late .log-status-lbl { background-color: var(--status-late-bg); color: var(--status-late); border: 1px solid var(--status-late-border); }
+.log-status-leave .log-status-lbl { background-color: var(--status-leave-bg); color: var(--status-leave); border: 1px solid var(--status-leave-border); }
+
+.empty-logs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem 0;
+  color: var(--text-muted);
+}
+
+.empty-logs p {
+  font-size: 12px;
+}
+
+@media (max-width: 992px) {
+  .attendance-analytics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .attendance-layout-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .att-overview-body {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .att-donut {
+    align-self: center;
+  }
+}
+
+@media (max-width: 576px) {
+  .attendance-top-bar {
+    padding: 0.85rem 1rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

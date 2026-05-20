@@ -1,0 +1,96 @@
+/* iOS liquid glass UI patterns */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+}
+
+.empty-state-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), var(--glass-highlight);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.empty-state p {
+  color: var(--text-muted);
+  font-size: 15px;
+  font-weight: 500;
+  max-width: 300px;
+  line-height: 1.45;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 1.1rem;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-title);
+  letter-spacing: -0.02em;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.status-badge.present {
+  background: var(--status-present-bg);
+  color: var(--status-present);
+  border: 1px solid var(--status-present-border);
+}
+
+.status-badge.absent {
+  background: var(--status-absent-bg);
+  color: var(--status-absent);
+  border: 1px solid var(--status-absent-border);
+}
+
+.status-badge.late {
+  background: var(--status-late-bg);
+  color: var(--status-late);
+  border: 1px solid var(--status-late-border);
+}
+
+.status-badge.leave {
+  background: var(--status-leave-bg);
+  color: var(--status-leave);
+  border: 1px solid var(--status-leave-border);
+}
+
+.status-badge.unmarked {
+  background: var(--glass-bg);
+  color: var(--text-muted);
+  border: 1px solid var(--glass-border);
+}
+
+.badge-enterprise {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  color: var(--primary);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-highlight);
+}
+
+.primary-color { color: var(--primary); }
+.danger-color { color: var(--status-absent); }
+.secondary-color { color: #34c759; }

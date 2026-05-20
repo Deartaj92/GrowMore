@@ -1,0 +1,78 @@
+.student-photo {
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+  border: 3px solid var(--glass-border);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.student-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+
+.student-photo-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-gradient);
+  color: #fff;
+  font-family: var(--font-title);
+  font-weight: 700;
+}
+
+.student-photo--sm {
+  width: 36px;
+  height: 36px;
+  border-width: 2px;
+}
+
+.student-photo--sm .student-photo-fallback {
+  font-size: 0.95rem;
+}
+
+.student-photo--md {
+  width: 48px;
+  height: 48px;
+}
+
+.student-photo--md .student-photo-fallback {
+  font-size: 1.1rem;
+}
+
+.student-photo--lg {
+  width: 88px;
+  height: 88px;
+}
+
+.student-photo--lg .student-photo-fallback {
+  font-size: 2rem;
+}
+
+.student-photo--hero {
+  width: 112px;
+  height: 112px;
+  border-width: 4px;
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.12);
+}
+
+.student-photo--hero .student-photo-fallback {
+  font-size: 2.5rem;
+}
+
+@media (max-width: 768px) {
+  .student-photo--hero {
+    width: 96px;
+    height: 96px;
+  }
+}
