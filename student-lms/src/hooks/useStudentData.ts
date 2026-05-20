@@ -289,7 +289,7 @@ export const useStudentData = () => {
 
   // 4. Fetch Academics Data: Subjects, Timetable, Class Tests & Examination results
   const getAcademicsData = useCallback(async (studentId: number, schoolId: number, classId: number | null, sectionId: number | null) => {
-    const cacheKey = `academics_${studentId}_${schoolId}_${classId}_${sectionId}`;
+    const cacheKey = `academics_v2_${studentId}_${schoolId}_${classId}_${sectionId}`;
     const cached = getCache(cacheKey);
     if (cached) return cached;
     setLoading(true);
@@ -369,11 +369,52 @@ export const useStudentData = () => {
         .eq('school_id', schoolId)
         .order('examination_id', { ascending: false });
 
+      // Fetch Exam Results for detailed subjects
+      const { data: examResults, error: examResultsError } = await supabase
+        .from('exam_results')
+        .select(`
+          id,
+          exam_id,
+          subject_id,
+          total_marks,
+          obtained_marks,
+          percentage,
+          grade,
+          status,
+          subject:subjects(name)
+        `)
+        .eq('student_id', studentId)
+        .eq('school_id', schoolId);
+        
+      if (examResultsError) {
+        console.error("Error fetching exam results:", examResultsError);
+      }
+
+      // Attach subjects to their respective exam summaries
+      const summariesWithSubjects = (examSummaries || []).map((summary: any) => ({
+        ...summary,
+        subjects: (examResults || [])
+          .filter((res: any) => Number(res.exam_id) === Number(summary.examination_id))
+          .map((res: any) => ({
+            id: res.id,
+            name: Array.isArray(res.subject) ? res.subject[0]?.name : res.subject?.name || 'Subject',
+            total_marks: res.total_marks,
+            obtained_marks: res.obtained_marks,
+            percentage: res.percentage,
+            grade: res.grade,
+            status: res.status,
+          }))
+      }));
+
+      console.log("Fetched exam summaries:", examSummaries);
+      console.log("Fetched exam results:", examResults);
+      console.log("Combined summaries:", summariesWithSubjects);
+
       const result = {
         subjects,
         timetable,
         testResults: testResults || [],
-        examSummaries: examSummaries || [],
+        examSummaries: summariesWithSubjects,
       };
       setCache(cacheKey, result);
       return result;

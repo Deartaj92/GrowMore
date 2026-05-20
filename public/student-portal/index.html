@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="./patternLogo.png" />
+    <link rel="apple-touch-icon" href="./patternLogo.png" />
+    <link rel="preload" as="image" href="./patternLogo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="GrowMore Student Portal — attendance, fees, academics, and school communications in one place." />
+    <meta name="theme-color" content="#252525" />
+    <title>GrowMore Student Portal</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #252525;
+        min-height: 100%;
+        min-height: 100dvh;
+      }
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        background: #252525;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        transition: opacity 0.28s ease-out, visibility 0.28s ease-out;
+      }
+      #boot-splash.boot-splash--out {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      #boot-splash .boot-logo {
+        width: min(152px, 42vw);
+        height: min(152px, 42vw);
+        object-fit: contain;
+        display: block;
+        filter: drop-shadow(0 16px 30px rgba(0, 0, 0, 0.28));
+      }
+      .boot-progress-track {
+        width: min(220px, 72vw);
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.14);
+        overflow: hidden;
+      }
+      #boot-progress-fill {
+        height: 100%;
+        width: 4%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 55%, #d97706 100%);
+        box-shadow: 0 0 10px rgba(245, 158, 11, 0.28);
+        transition: width 0.22s ease-out;
+      }
+      #boot-progress-label {
+        color: #94a3b8;
+        font-size: 0.75rem;
+        letter-spacing: 0.02em;
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
+    <script type="module" crossorigin src="./assets/index-C6bM6k8h.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DzmqY7e8.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="boot-splash" aria-busy="true" aria-live="polite">
+      <img class="boot-logo" src="./patternLogo.png" alt="" width="152" height="152" decoding="async" fetchpriority="high" />
+      <div class="boot-progress-track">
+        <div id="boot-progress-fill"></div>
+      </div>
+      <span id="boot-progress-label">0%</span>
+    </div>
+    <script>
+      (function () {
+        var fill = document.getElementById('boot-progress-fill');
+        var label = document.getElementById('boot-progress-label');
+        var current = 0;
+
+        function clamp(x, a, b) {
+          return Math.max(a, Math.min(b, x));
+        }
+
+        function setProgress(n) {
+          var next = clamp(n, 0, 100);
+          current = Math.max(current, next);
+          if (fill) fill.style.width = current + '%';
+          if (label) label.textContent = Math.round(current) + '%';
+        }
+
+        setProgress(4);
+
+        var resourceDone = 0;
+        function bumpFromResources() {
+          resourceDone += 1;
+          var fromNet = 22 + Math.min(48, resourceDone * 5);
+          setProgress(fromNet);
+        }
+
+        var seenResourceIndex = 0;
+        function drainResourceEntries() {
+          try {
+            var entries = performance.getEntriesByType('resource');
+            while (seenResourceIndex < entries.length) {
+              seenResourceIndex += 1;
+              bumpFromResources();
+            }
+          } catch (e0) {}
+        }
+
+        try {
+          var po = new PerformanceObserver(function () {
+            drainResourceEntries();
+          });
+          try {
+            po.observe({ type: 'resource', buffered: true });
+          } catch (e1) {
+            po.observe({ entryTypes: ['resource'] });
+          }
+        } catch (e2) {}
+
+        drainResourceEntries();
+
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+          drainResourceEntries();
+          setProgress(14);
+        } else {
+          document.addEventListener('DOMContentLoaded', function () {
+            drainResourceEntries();
+            setProgress(16);
+          });
+        }
+
+        window.addEventListener('load', function () {
+          drainResourceEntries();
+          setProgress(Math.max(current, 68));
+        });
+
+        window.__growmoreBoot = {
+          setProgress: setProgress,
+          getProgress: function () {
+            return current;
+          },
+        };
+      })();
+    </script>
+  </body>
+</html>

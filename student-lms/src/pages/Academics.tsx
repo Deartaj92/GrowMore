@@ -5,7 +5,9 @@ import {
   Calendar,
   BookOpen,
   Award,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import { PageLoader } from '../components/GrowMoreLoader';
 import './Academics.css';
@@ -15,6 +17,14 @@ export const Academics: React.FC = () => {
   const { getAcademicsData, loading } = useStudentData();
   const [academics, setAcademics] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'schedule' | 'tests' | 'exams'>('schedule');
+  const [expandedExams, setExpandedExams] = useState<Record<number, boolean>>({});
+
+  const toggleExam = (examId: number) => {
+    setExpandedExams(prev => ({
+      ...prev,
+      [examId]: !prev[examId]
+    }));
+  };
 
   useEffect(() => {
     if (student) {
@@ -206,6 +216,7 @@ export const Academics: React.FC = () => {
               <table className="academics-table">
                 <thead>
                   <tr>
+                    <th style={{ width: '40px' }}></th>
                     <th>Exam Name</th>
                     <th>Exam Type</th>
                     <th>Total Marks</th>
@@ -218,26 +229,78 @@ export const Academics: React.FC = () => {
                 <tbody>
                   {examSummaries.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="empty-results-row">
+                      <td colSpan={8} className="empty-results-row">
                         <AlertCircle size={32} className="text-muted" />
                         <p>No final examination summaries available yet.</p>
                       </td>
                     </tr>
                   ) : (
                     examSummaries.map((ex: any) => (
-                      <tr key={ex.examination_id}>
-                        <td><strong>{ex.examinations?.name}</strong></td>
-                        <td>{ex.examinations?.exam_type}</td>
-                        <td>{ex.total_marks}</td>
-                        <td><strong>{ex.obtained_marks}</strong></td>
-                        <td>{ex.percentage}%</td>
-                        <td><strong>{ex.grade || 'N/A'}</strong></td>
-                        <td>
-                          <span className={`status-pill ${ex.status?.toLowerCase() === 'pass' ? 'paid' : 'unpaid'}`}>
-                            {ex.status || 'N/A'}
-                          </span>
-                        </td>
-                      </tr>
+                      <React.Fragment key={ex.examination_id}>
+                        <tr 
+                          className="clickable-row" 
+                          onClick={() => toggleExam(ex.examination_id)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <td className="expand-icon-cell">
+                            {expandedExams[ex.examination_id] ? (
+                              <ChevronDown size={18} className="text-muted" />
+                            ) : (
+                              <ChevronRight size={18} className="text-muted" />
+                            )}
+                          </td>
+                          <td><strong>{ex.examinations?.name}</strong></td>
+                          <td>{ex.examinations?.exam_type}</td>
+                          <td>{ex.total_marks}</td>
+                          <td><strong>{ex.obtained_marks}</strong></td>
+                          <td>{ex.percentage}%</td>
+                          <td><strong>{ex.grade || 'N/A'}</strong></td>
+                          <td>
+                            <span className={`status-pill ${ex.status?.toLowerCase() === 'pass' ? 'paid' : 'unpaid'}`}>
+                              {ex.status || 'N/A'}
+                            </span>
+                          </td>
+                        </tr>
+                        
+                        {/* Expanded Content for Subjects */}
+                        {expandedExams[ex.examination_id] && ex.subjects && ex.subjects.length > 0 && (
+                          <tr className="expanded-details-row">
+                            <td colSpan={8} style={{ padding: 0 }}>
+                              <div className="expanded-subjects-container" style={{ padding: '1rem', backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--glass-border)' }}>
+                                <h4 style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Subject-wise Results</h4>
+                                <table className="academics-table nested-table" style={{ margin: 0, boxShadow: 'none' }}>
+                                  <thead>
+                                    <tr>
+                                      <th>Subject</th>
+                                      <th>Total Marks</th>
+                                      <th>Obtained</th>
+                                      <th>Percentage</th>
+                                      <th>Grade</th>
+                                      <th>Status</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {ex.subjects.map((sub: any) => (
+                                      <tr key={sub.id}>
+                                        <td><strong>{sub.name}</strong></td>
+                                        <td>{sub.total_marks}</td>
+                                        <td><strong>{sub.obtained_marks}</strong></td>
+                                        <td>{sub.percentage}%</td>
+                                        <td>{sub.grade || '-'}</td>
+                                        <td>
+                                          <span className={`status-pill ${sub.status?.toLowerCase() === 'pass' ? 'paid' : 'unpaid'}`} style={{ transform: 'scale(0.85)', transformOrigin: 'left' }}>
+                                            {sub.status || 'N/A'}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     ))
                   )}
                 </tbody>

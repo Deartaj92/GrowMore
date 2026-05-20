@@ -347,6 +347,23 @@ const Login: React.FC = () => {
   // Handle mode switching with field clearing
   const handleModeSwitch = (mode: 'staff' | 'parent' | 'student') => {
     if (loading) return; // Prevent switching during submission
+    
+    if (mode === 'student') {
+      setLoginMode(mode);
+      // Short delay for UI to update before redirecting
+      setTimeout(() => {
+        if ((window as any).electronAPI) {
+          // In electron, find the root path and append
+          const currentUrl = window.location.href;
+          const rootPath = currentUrl.split('index.html')[0];
+          window.location.href = rootPath + 'student-portal/index.html';
+        } else {
+          window.location.href = '/student-portal/index.html';
+        }
+      }, 100);
+      return;
+    }
+
     setLoginMode(mode);
     setError('');
     // Clear form fields when switching modes
@@ -736,46 +753,10 @@ const Login: React.FC = () => {
             </>
           ) : (
             <>
-              <Title>Student Login</Title>
-              <Label htmlFor="studentId">Student ID</Label>
-              <InputGroup>
-                <Input
-                  id="studentId"
-                  type="text"
-                  value={studentId}
-                  onChange={e => {
-                    let value = e.target.value;
-                    // Convert lowercase 's' to uppercase 'S' at the start
-                    if (value.startsWith('s')) {
-                      value = 'S' + value.slice(1);
-                    }
-                    // Allow roll_number format (S1-1, S2-15, etc.) or numeric ID/sequence
-                    // Allow progressive typing: S, S1, S1-, S1-1, or just digits
-                    // Pattern: (S/s + digits + optional dash + optional digits) OR (just digits)
-                    if (value === '' || /^([Ss]\d*\-?\d*|\d+)$/.test(value)) {
-                      setStudentId(value);
-                    }
-                  }}
-                  autoFocus={!isMobile}
-                  autoComplete="off"
-                  required
-                  placeholder="Enter your Student ID (e.g., S1-1)"
-                />
-              </InputGroup>
-              <Label htmlFor="studentPassword">Password</Label>
-              <InputGroup>
-                <Input
-                  id="studentPassword"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  placeholder="Enter your password"
-                />
-                <ToggleButton type="button" onClick={() => setShowPassword(v => !v)}>
-                  {showPassword ? <VisibilityOff /> : <Visibility />}
-                </ToggleButton>
-              </InputGroup>
+              <Title>Student Portal</Title>
+              <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-secondary)' }}>
+                Redirecting to Student Portal...
+              </div>
             </>
           )}
           {error && <ErrorMsg>{error}</ErrorMsg>}
