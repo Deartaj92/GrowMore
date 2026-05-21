@@ -1253,6 +1253,7 @@ function writeQrCameraEnabled(enabled: boolean): void {
 
 interface ScanResult {
     id: string;
+    personId?: number | string;
     type: 'success' | 'error' | 'warn';
     name: string;
     sub: string;
@@ -1296,6 +1297,7 @@ const buildFeedItemFromHistory = (item: CachedAttendanceHistoryItem): ScanResult
     if (item.check_in_time) {
         results.push({
             id: `history-in-${item.key}`,
+            personId: item.person_id,
             type: 'success',
             name: item.name,
             sub: 'Checked In',
@@ -1310,6 +1312,7 @@ const buildFeedItemFromHistory = (item: CachedAttendanceHistoryItem): ScanResult
     if (item.check_out_time) {
         results.push({
             id: `history-out-${item.key}`,
+            personId: item.person_id,
             type: 'success',
             name: item.name,
             sub: 'Checked Out',
@@ -1543,7 +1546,14 @@ const QRAttendancePage: React.FC = () => {
     const [scannedPerson, setScannedPerson] = useState<{ name: string } | null>(null);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
 
-
+    const [selectedPersonStats, setSelectedPersonStats] = useState<{
+        isOpen: boolean;
+        personId: number | string;
+        personType: 'student' | 'employee';
+        name: string;
+        stats: { total: number; present: number; late: number; leave: number; absent: number; halfLeaves: number; } | null;
+        loading: boolean;
+    }>({ isOpen: false, personId: '', personType: 'student', name: '', stats: null, loading: false });
 
     useEffect(() => {
         localStorage.setItem('rfid_attendance_muted', String(isMuted));
@@ -1948,6 +1958,56 @@ const QRAttendancePage: React.FC = () => {
         }
     }, [fetchSession, selectedDate, user?.school_id]);
 
+    const fetchPersonMonthlyStats = useCallback(async (personId: number | string, personType: 'student' | 'employee', name: string) => {
+        if (!user?.school_id || !selectedDate) return;
+        
+        setSelectedPersonStats({
+            isOpen: true,
+            personId,
+            personType,
+            name,
+            stats: null,
+            loading: true
+        });
+
+        try {
+            const selected = new Date(`${selectedDate}T00:00:00`);
+            const monthStart = new Date(selected.getFullYear(), selected.getMonth(), 1).toISOString().slice(0, 10);
+            const monthEnd = new Date(selected.getFullYear(), selected.getMonth() + 1, 0).toISOString().slice(0, 10);
+            const tableName = personType === 'student' ? 'attendance_records' : 'staff_attendance_records';
+            const personColumn = personType === 'student' ? 'student_id' : 'staff_id';
+
+            const { data, error } = await supabase
+                .from(tableName)
+                .select('status')
+                .eq('school_id', user.school_id)
+                .eq(personColumn, personId)
+                .gte('date', monthStart)
+                .lte('date', monthEnd);
+
+            if (error) throw error;
+
+            const stats = { total: 0, present: 0, late: 0, leave: 0, absent: 0, halfLeaves: 0 };
+            if (data) {
+                stats.total = data.length;
+                data.forEach(record => {
+                    const status = (record.status || '').toLowerCase();
+                    if (status === 'present') stats.present++;
+                    else if (status === 'late') stats.late++;
+                    else if (status === 'leave') stats.leave++;
+                    else if (status === 'absent') stats.absent++;
+                    else if (status === 'half_leave') stats.halfLeaves++;
+                });
+            }
+
+            setSelectedPersonStats(prev => ({ ...prev, stats, loading: false }));
+        } catch (error) {
+            console.error('Failed to load person monthly stats:', error);
+            setSelectedPersonStats(prev => ({ ...prev, loading: false }));
+            showToast('Failed to load attendance stats', 'error');
+        }
+    }, [user?.school_id, selectedDate, showToast]);
+
     const handleSync = async () => {
         if (isSyncing || !isOnline) return;
         setIsSyncing(true);
@@ -2050,6 +2110,7 @@ const QRAttendancePage: React.FC = () => {
                         sub: `Check out disabled before allowed time`,
                         time,
                         personType: 'employee',
+                        personId: result.person.person_id,
                     });
                     showToast(`Too Early to Check Out!`, 'error');
                     return;
@@ -2066,6 +2127,7 @@ const QRAttendancePage: React.FC = () => {
                         sub: `Status: ${statusLabel} — Attendance rejected`,
                         time,
                         personType: result.person.type === 'student' ? 'student' : 'employee',
+                        personId: result.person.person_id,
                     });
                     return;
                 }
@@ -2080,6 +2142,7 @@ const QRAttendancePage: React.FC = () => {
                         sub: 'Manual-only attendance policy enabled',
                         time,
                         personType: result.person.type === 'student' ? 'student' : 'employee',
+                        personId: result.person.person_id,
                     });
                     showToast(`${result.person.name} is set to manual-only attendance`, 'error');
                     return;
@@ -2126,6 +2189,7 @@ const QRAttendancePage: React.FC = () => {
                     time,
                     personType,
                     isOffline,
+                    personId: p.person_id,
                     attendanceStatus: status
                 });
                 triggerPopup({
@@ -2155,6 +2219,7 @@ const QRAttendancePage: React.FC = () => {
                     time,
                     personType,
                     isOffline,
+                    personId: p.person_id,
                     attendanceStatus: result.attendance_status,
                     attendanceLateCount: lateCount,
                     fatherName: (p as any).father_name
@@ -3336,7 +3401,20 @@ const QRAttendancePage: React.FC = () => {
                                         </EmptyFeed>
                                     ) : (
                                         filteredEmployeeFeed.map(item => (
-                                            <FeedItem key={item.id} $type={item.type} $personType={item.personType} $new={item.isNew} $attendanceStatus={item.attendanceStatus} theme={themeObj}>
+                                            <FeedItem 
+                                                key={item.id} 
+                                                $type={item.type} 
+                                                $personType={item.personType} 
+                                                $new={item.isNew} 
+                                                $attendanceStatus={item.attendanceStatus} 
+                                                theme={themeObj}
+                                                onClick={() => {
+                                                    if (item.personId) {
+                                                        fetchPersonMonthlyStats(item.personId, item.personType, item.name);
+                                                    }
+                                                }}
+                                                style={{ cursor: item.personId ? 'pointer' : 'default' }}
+                                            >
                                                 <FeedIcon $type={item.type} $personType={item.personType}>
                                                     {item.type === 'success' ? <UserCheck style={{ fontSize: 16 }} /> :
                                                         item.type === 'warn' ? <AlertCircle style={{ fontSize: 16 }} /> :
@@ -3393,7 +3471,20 @@ const QRAttendancePage: React.FC = () => {
                                         </EmptyFeed>
                                     ) : (
                                         filteredStudentFeed.map(item => (
-                                            <FeedItem key={item.id} $type={item.type} $personType={item.personType} $new={item.isNew} $attendanceStatus={item.attendanceStatus} theme={themeObj}>
+                                            <FeedItem 
+                                                key={item.id} 
+                                                $type={item.type} 
+                                                $personType={item.personType} 
+                                                $new={item.isNew} 
+                                                $attendanceStatus={item.attendanceStatus} 
+                                                theme={themeObj}
+                                                onClick={() => {
+                                                    if (item.personId) {
+                                                        fetchPersonMonthlyStats(item.personId, item.personType, item.name);
+                                                    }
+                                                }}
+                                                style={{ cursor: item.personId ? 'pointer' : 'default' }}
+                                            >
                                                 <FeedIcon $type={item.type} $personType={item.personType}>
                                                     {item.type === 'success' ? <UserCheck style={{ fontSize: 16 }} /> :
                                                         item.type === 'warn' ? <AlertCircle style={{ fontSize: 16 }} /> :
@@ -3535,6 +3626,54 @@ const QRAttendancePage: React.FC = () => {
                         </PopupInfoWrapper>
                     </PopupContent>
                 </FullScreenPopup>
+            )}
+            {/* Person Monthly Stats Modal */}
+            {selectedPersonStats.isOpen && (
+                <ModalOverlay onClick={() => setSelectedPersonStats(prev => ({ ...prev, isOpen: false }))}>
+                    <ModalContent onClick={e => e.stopPropagation()} theme={themeObj} style={{ maxWidth: '400px' }}>
+                        <ModalHeader theme={themeObj}>
+                            <ModalTitleBlock theme={themeObj}>
+                                <h2>{selectedPersonStats.name}</h2>
+                                <p>Attendance for Current Month</p>
+                            </ModalTitleBlock>
+                            <HeaderBtn theme={themeObj} onClick={() => setSelectedPersonStats(prev => ({ ...prev, isOpen: false }))}>
+                                <XCircle />
+                            </HeaderBtn>
+                        </ModalHeader>
+                        {selectedPersonStats.loading ? (
+                            <div style={{ padding: '2rem', textAlign: 'center' }}>Loading stats...</div>
+                        ) : selectedPersonStats.stats ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', padding: '1rem 0' }}>
+                                <StatBox theme={themeObj} $color={themeObj.TEXT_PRIMARY}>
+                                    <StatNum $color={themeObj.TEXT_PRIMARY}>{selectedPersonStats.stats.total}</StatNum>
+                                    <StatLabel theme={themeObj}>Total Days</StatLabel>
+                                </StatBox>
+                                <StatBox theme={themeObj} $color="#22c55e">
+                                    <StatNum $color="#22c55e">{selectedPersonStats.stats.present}</StatNum>
+                                    <StatLabel theme={themeObj}>Present</StatLabel>
+                                </StatBox>
+                                <StatBox theme={themeObj} $color="#f59e0b">
+                                    <StatNum $color="#f59e0b">{selectedPersonStats.stats.late}</StatNum>
+                                    <StatLabel theme={themeObj}>Late</StatLabel>
+                                </StatBox>
+                                <StatBox theme={themeObj} $color="#ef4444">
+                                    <StatNum $color="#ef4444">{selectedPersonStats.stats.absent}</StatNum>
+                                    <StatLabel theme={themeObj}>Absent</StatLabel>
+                                </StatBox>
+                                <StatBox theme={themeObj} $color="#3b82f6">
+                                    <StatNum $color="#3b82f6">{selectedPersonStats.stats.leave}</StatNum>
+                                    <StatLabel theme={themeObj}>Leave</StatLabel>
+                                </StatBox>
+                                <StatBox theme={themeObj} $color="#a855f7">
+                                    <StatNum $color="#a855f7">{selectedPersonStats.stats.halfLeaves}</StatNum>
+                                    <StatLabel theme={themeObj}>Half Leave</StatLabel>
+                                </StatBox>
+                            </div>
+                        ) : (
+                            <div style={{ padding: '2rem', textAlign: 'center', color: '#ef4444' }}>Failed to load stats</div>
+                        )}
+                    </ModalContent>
+                </ModalOverlay>
             )}
         </Page>
     );
