@@ -20,6 +20,13 @@ export const darkTheme = {
   SIDEBAR_BG: '#1c1c1c', // Deep neutral
   CARD: '#2c2c2c', // Slightly lighter neutral
   ACCENT: '#6366f1', // Indigo accent
+  ACCENT_DARK: '#4f46e5',
+  ACCENT_DANGER: '#ef4444',
+  ACCENT_DANGER_DARK: '#c53030',
+  BUTTON_SECONDARY_BG: '#282828',
+  BUTTON_SECONDARY_BORDER: '#3c3c3c',
+  BUTTON_SECONDARY_HOVER_BG: 'rgba(99, 102, 241, 0.23)',
+  BUTTON_SECONDARY_HOVER_BORDER: '#6366f1',
   SHADOW: '0 4px 12px rgba(0, 0, 0, 0.45)',
   TEXT_PRIMARY: '#f8fafc',
   TEXT_SECONDARY: '#94a3b8',
@@ -38,6 +45,13 @@ export const lightTheme = {
   SIDEBAR_BG: '#ffffff',
   CARD: '#ffffff',
   ACCENT: '#4f46e5', // Indigo-600
+  ACCENT_DARK: '#4338ca',
+  ACCENT_DANGER: '#dc2626',
+  ACCENT_DANGER_DARK: '#b91c1c',
+  BUTTON_SECONDARY_BG: '#f8fafc',
+  BUTTON_SECONDARY_BORDER: '#cbd5e1',
+  BUTTON_SECONDARY_HOVER_BG: 'rgba(79, 70, 229, 0.18)',
+  BUTTON_SECONDARY_HOVER_BORDER: '#4f46e5',
   SHADOW: '0 4px 14px rgba(15, 23, 42, 0.03)',
   TEXT_PRIMARY: '#0f172a',
   TEXT_SECONDARY: '#64748b',
@@ -143,6 +157,7 @@ export const customHeaderTexts: Record<string, string> = {
   '/fines/assign': 'Assign Fine',
   '/fines/collect': 'Collect Fine',
   '/fines/remaining': 'Remaining Fine',
+  '/fines/special': 'Special Fines',
   '/fines/statistics': 'Fine Statistics',
   '/fee-structure-management': 'Fee Structure',
   '/fee-plans': 'Fee Plans',

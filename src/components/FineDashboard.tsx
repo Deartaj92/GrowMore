@@ -356,6 +356,13 @@ const fineItems = [
     icon: <PieChartIcon />,
     path: '/fines/statistics',
     color: '#8b5cf6' // Purple
+  },
+  {
+    title: 'Special Fines',
+    description: 'Assign one-time fines directly to students and track student-only penalties',
+    icon: <MoneyIcon />,
+    path: '/fines/special',
+    color: '#22c55e' // Green
   }
 ];
 
@@ -381,6 +388,7 @@ const FineDashboard: React.FC = () => {
       case 'Collect Fine': return 'fine_dash_collect';
       case 'Remaining Fine': return 'fine_dash_remaining';
       case 'Fine Statistics': return 'fine_dash_statistics';
+      case 'Special Fines': return 'fine_dash_special';
       default: return null;
     }
   };

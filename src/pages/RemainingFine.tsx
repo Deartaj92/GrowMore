@@ -486,6 +486,7 @@ const RemainingFine: React.FC = () => {
   const [classes, setClasses] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
   const [fines, setFines] = useState<any[]>([]);
+  const [specialFines, setSpecialFines] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
   const [search, setSearch] = useState('');
@@ -509,7 +510,7 @@ const RemainingFine: React.FC = () => {
     setProgress(10);
     
     try {
-      const [studentsData, classesData, sectionsData, finesData, attendanceData, paymentsData] = await Promise.all([
+      const [studentsData, classesData, sectionsData, finesData, attendanceData, paymentsData, specialFinesData] = await Promise.all([
         fetchAllRows(async (from, to) => {
           return await supabase.from('students')
             .select('id, name, father_name, class_id, section_id, picture_url, roll_number')
@@ -551,6 +552,13 @@ const RemainingFine: React.FC = () => {
             .eq('school_id', user?.school_id)
             .range(from, to);
         }),
+        fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('special_fines')
+            .select('id, student_id, amount, paid_amount, status')
+            .eq('school_id', user?.school_id)
+            .range(from, to);
+        }),
       ]);
       
       setStudents(studentsData);
@@ -558,6 +566,7 @@ const RemainingFine: React.FC = () => {
       setSections(sectionsData);
       setFines(finesData);
       setPayments(paymentsData);
+      setSpecialFines(specialFinesData || []);
       setAttendanceRecords(attendanceData);
       setProgress(100);
     } catch (err) {
@@ -710,6 +719,15 @@ const RemainingFine: React.FC = () => {
     return { paid, remission };
   }
 
+  function calculateSpecials(student: any) {
+    if (!specialFines || specialFines.length === 0) return { total: 0, paid: 0, remaining: 0 };
+    const studs = specialFines.filter((s: any) => String(s.student_id) === String(student.id));
+    const total = studs.reduce((sum: number, s: any) => sum + Number(s.amount || 0), 0);
+    const paid = studs.reduce((sum: number, s: any) => sum + Number(s.paid_amount || 0), 0);
+    const remaining = total - paid;
+    return { total, paid, remaining };
+  }
+
   const filteredStudents = useMemo(() => {
     return students.filter(stu => {
       const nameMatch = stu.name.toLowerCase().includes(search.toLowerCase());
@@ -720,8 +738,9 @@ const RemainingFine: React.FC = () => {
       
       const totalFine = calculateFine(stu);
       const { paid, remission } = calculatePayments(stu);
-      const remaining = totalFine - paid - remission;
-      return matchesSearch && matchesClass && matchesSection && remaining !== 0;
+      const { total: specialTotal, paid: specialPaid, remaining: specialRemaining } = calculateSpecials(stu);
+      const combinedRemaining = (totalFine + specialRemaining) - paid - remission;
+      return matchesSearch && matchesClass && matchesSection && combinedRemaining !== 0;
     });
   }, [students, search, selectedClass, selectedSection, payments, fines, attendanceRecords, sections]);
 
@@ -738,9 +757,12 @@ const RemainingFine: React.FC = () => {
     summaryStudents.forEach(stu => {
       const fine = calculateFine(stu);
       const { paid, remission } = calculatePayments(stu);
-      const remaining = fine - paid - remission;
-      totalFine += fine;
-      totalPaid += paid;
+      const { total: specialTotal, paid: specialPaid, remaining: specialRemaining } = calculateSpecials(stu);
+      const combinedTotal = fine + specialTotal;
+      const combinedPaid = paid + specialPaid;
+      const remaining = combinedTotal - combinedPaid - remission;
+      totalFine += combinedTotal;
+      totalPaid += combinedPaid;
       totalRemission += remission;
       totalRemaining += remaining;
     });
@@ -781,9 +803,12 @@ const RemainingFine: React.FC = () => {
         const body = studentsInList.map((stu, idx) => {
           const fine = calculateFine(stu);
           const { paid, remission } = calculatePayments(stu);
-          const remaining = fine - paid - remission;
-          tTotal += fine; tPaid += paid; tRem += remission; tRemains += remaining;
-          return [idx + 1, getStudentDisplayId(stu), stu.name, stu.father_name, fine, paid, remission, remaining, ''];
+          const { total: specialTotal, paid: specialPaid } = calculateSpecials(stu);
+          const combinedTotal = fine + specialTotal;
+          const combinedPaid = paid + specialPaid;
+          const remaining = combinedTotal - combinedPaid - remission;
+          tTotal += combinedTotal; tPaid += combinedPaid; tRem += remission; tRemains += remaining;
+          return [idx + 1, getStudentDisplayId(stu), stu.name, stu.father_name, combinedTotal, combinedPaid, remission, remaining, ''];
         });
         
         body.push([
@@ -933,7 +958,7 @@ const RemainingFine: React.FC = () => {
                 <thead>
                   <tr>
                     <CenterTh>S.No</CenterTh><CenterTh>ID</CenterTh><Th style={{ textAlign: 'left' }}>Name</Th>
-                    <CenterTh>Class</CenterTh><CenterTh>Total</CenterTh><CenterTh>Paid</CenterTh>
+                    <CenterTh>Class</CenterTh><CenterTh>Special</CenterTh><CenterTh>Total</CenterTh><CenterTh>Paid</CenterTh>
                     <CenterTh>Remission</CenterTh><CenterTh>Remaining</CenterTh><CenterTh>Action</CenterTh>
                   </tr>
                 </thead>
@@ -944,7 +969,10 @@ const RemainingFine: React.FC = () => {
                     filteredStudents.map((stu, idx) => {
                       const totalFine = calculateFine(stu);
                       const { paid, remission } = calculatePayments(stu);
-                      const remaining = totalFine - paid - remission;
+                      const { total: specialTotal, paid: specialPaid, remaining: specialRemaining } = calculateSpecials(stu);
+                      const combinedTotal = totalFine + specialTotal;
+                      const combinedPaid = paid + specialPaid;
+                      const remaining = combinedTotal - combinedPaid - remission;
                       return (
                         <AnimatedTableRow key={stu.id} $index={idx}>
                           <CenterTd>{idx + 1}</CenterTd>
@@ -956,8 +984,9 @@ const RemainingFine: React.FC = () => {
                             <div><div>{stu.name}</div><div style={{ fontSize: '0.8em', opacity: 0.7 }}>{stu.father_name}</div></div>
                           </LeftTd>
                           <CenterTd>{getClassName(stu.class_id)}</CenterTd>
-                          <CenterTd>Rs. {totalFine}</CenterTd>
-                          <CenterTd>Rs. {paid}</CenterTd>
+                          <CenterTd>Rs. {specialRemaining}</CenterTd>
+                          <CenterTd>Rs. {combinedTotal}</CenterTd>
+                          <CenterTd>Rs. {combinedPaid}</CenterTd>
                           <CenterTd>Rs. {remission}</CenterTd>
                           <CenterTd style={{ color: remaining < 0 ? '#ef4444' : (theme as any).ACCENT, fontWeight: 700 }}>Rs. {remaining}</CenterTd>
                           <CenterTd>

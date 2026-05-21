@@ -149,6 +149,7 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   border: none;
 
   ${({ variant, theme }) => {
+    const isDark = theme.BG === '#252525';
     switch (variant) {
       case 'primary':
         return `
@@ -161,11 +162,11 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
         `;
       case 'secondary':
         return `
-          background: ${theme === 'dark' ? '#252525' : '#f7faff'};
+          background: ${isDark ? '#252525' : '#f7faff'};
           color: #4a6cf7;
-          border: 1px solid ${theme === 'dark' ? '#3a3f4b' : '#b6c2d9'};
+          border: 1px solid ${isDark ? '#3a3f4b' : '#b6c2d9'};
           &:hover {
-            background: ${theme === 'dark' ? 'rgba(74, 108, 247, 0.18)' : 'rgba(74, 108, 247, 0.15)'};
+            background: ${isDark ? 'rgba(74, 108, 247, 0.18)' : 'rgba(74, 108, 247, 0.15)'};
             border-color: #4a6cf7;
           }
         `;
@@ -567,11 +568,11 @@ const CloseButton = styled.button`
 `;
 
 const AddSectionButton = styled(Button)`
-  background: ${({ theme }) => theme === 'dark' ? '#232a3b' : '#f7faff'};
-  color: ${({ theme }) => theme === 'dark' ? '#b0b8d1' : '#4a6cf7'};
-  border: 1px solid ${({ theme }) => theme === 'dark' ? '#3a3f4b' : '#b6c2d9'};
+  background: ${({ theme }) => theme.BG === '#252525' ? '#232a3b' : '#f7faff'};
+  color: ${({ theme }) => theme.BG === '#252525' ? '#b0b8d1' : '#4a6cf7'};
+  border: 1px solid ${({ theme }) => theme.BG === '#252525' ? '#3a3f4b' : '#b6c2d9'};
   &:hover {
-    background: ${({ theme }) => theme === 'dark' ? '#2d3650' : '#e6edfa'};
+    background: ${({ theme }) => theme.BG === '#252525' ? '#2d3650' : '#e6edfa'};
     color: #4a6cf7;
     border-color: #4a6cf7;
   }

@@ -30,6 +30,7 @@ import FineManager from './components/FineManager';
 import FineCollection from './pages/FineCollection';
 import RemainingFine from './pages/RemainingFine';
 import FineStatistics from './pages/FineStatistics';
+import SpecialFines from './pages/SpecialFines';
 import FamilyManagementPage from './pages/FamilyManagementPage';
 import InstituteProfile from './pages/InstituteProfile';
 import PageNotFound from './pages/PageNotFound';
@@ -653,6 +654,15 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute requiredPermission="fine-remaining">
                                 <RemainingFine />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="fines/special"
+                            element={
+                              <ProtectedRoute requiredPermission="fine-assign">
+                                <SpecialFines />
                               </ProtectedRoute>
                             }
                           />

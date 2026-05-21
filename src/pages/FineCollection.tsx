@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useContext } from 'react';
 import styled, { useTheme } from 'styled-components';
-import { Save, MonetizationOn, Calculate, Payment, History, Search, AccountCircle, CardGiftcard, Paid, ErrorOutline, DeleteOutline as DeleteIcon, Info } from '@mui/icons-material';
+import { Save, MonetizationOn, Calculate, Payment, History, Search, AccountCircle, CardGiftcard, Paid, ErrorOutline, DeleteOutline as DeleteIcon, Edit, Info } from '@mui/icons-material';
 import { supabase } from '../supabaseClient';
 import { useToast } from '../components/useToast';
 import { useLocation } from 'react-router-dom';
@@ -979,6 +979,75 @@ const TableWrapper = styled.div`
   }
 `;
 
+const SpecialFinesSection = styled.div`
+  margin-top: 1.2rem;
+  padding-top: 1rem;
+  border-top: 1px solid ${({ theme }) => theme.BORDER};
+`;
+
+const SpecialFineEntry = styled.div`
+  padding: 0.6rem 0.8rem;
+  background: ${({ theme }) => theme.FIELD_BG};
+  border-left: 3px solid #3b82f6;
+  border-radius: 4px;
+  margin-bottom: 0.6rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const SpecialFineInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+`;
+
+const SpecialFineDescription = styled.div`
+  font-size: 0.85rem;
+  color: #3b82f6;
+  font-weight: 500;
+`;
+
+const SpecialFineAmount = styled.div`
+  font-size: 0.95rem;
+  color: #3b82f6;
+  font-weight: 700;
+  white-space: nowrap;
+  margin-left: 1rem;
+`;
+
+const SpecialFineActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: 1rem;
+`;
+
+const SpecialFineIconButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0.35rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+  &:hover {
+    background: ${({ theme }) => theme.ACCENT}22;
+  }
+`;
+
+const ModalFormRow = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+  text-align: left;
+`;
+
 // Circle spinner loader for search suggestions
 const CircleLoader = styled.span`
   display: inline-block;
@@ -1165,9 +1234,18 @@ const FineCollection: React.FC = () => {
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
   const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false);
   const [paymentHistoryError, setPaymentHistoryError] = useState<string | null>(null);
+  const [specialFinesForStudent, setSpecialFinesForStudent] = useState<any[]>([]);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [itemToDeleteId, setItemToDeleteId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editingSpecialFineId, setEditingSpecialFineId] = useState<number | null>(null);
+  const [specialFineEditDescription, setSpecialFineEditDescription] = useState('');
+  const [specialFineEditAmount, setSpecialFineEditAmount] = useState('');
+  const [showSpecialFineEditModal, setShowSpecialFineEditModal] = useState(false);
+  const [showSpecialFineDeleteConfirmModal, setShowSpecialFineDeleteConfirmModal] = useState(false);
+  const [specialFineToDeleteId, setSpecialFineToDeleteId] = useState<number | null>(null);
+  const [isSavingSpecialFineEdit, setIsSavingSpecialFineEdit] = useState(false);
+  const [isDeletingSpecialFine, setIsDeletingSpecialFine] = useState(false);
   const [justSelectedStudent, setJustSelectedStudent] = useState(false);
   const location = useLocation();
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
@@ -1192,6 +1270,14 @@ const FineCollection: React.FC = () => {
     return attendanceRows.reduce((sum, row) => sum + Number(row.fine || 0), 0);
   }, [attendanceRows]);
 
+  const totalSpecialForStudent = useMemo(() => {
+    return specialFinesForStudent.reduce((sum, s) => sum + Number(s.amount || 0), 0);
+  }, [specialFinesForStudent]);
+
+  const totalSpecialPaidForStudent = useMemo(() => {
+    return specialFinesForStudent.reduce((sum, s) => sum + Number(s.paid_amount || 0), 0);
+  }, [specialFinesForStudent]);
+
   // Total actual cash collected
   const totalActualPaid = useMemo(() => {
     return paymentHistory.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
@@ -1209,15 +1295,116 @@ const FineCollection: React.FC = () => {
 
   // Remaining fine to be paid
   const remainingFineDisplay = useMemo(() => {
-    const remaining = totalFine - totalAccountedFor; // Uses totalAccountedFor
-    return remaining > 0 ? remaining : 0; 
-  }, [totalFine, totalAccountedFor]);
+    const combinedTotal = totalFine + totalSpecialForStudent;
+    const combinedAccounted = totalAccountedFor + totalSpecialPaidForStudent;
+    const remaining = combinedTotal - combinedAccounted; // Uses combined accounted
+    return remaining > 0 ? remaining : 0;
+  }, [totalFine, totalAccountedFor, totalSpecialForStudent, totalSpecialPaidForStudent]);
 
   // Flag to determine if collection form should be disabled
   const isCollectionDisabled = useMemo(() => {
     // Disable when no student selected or remaining fine is 0
     return !selectedStudent || remainingFineDisplay <= 0;
   }, [selectedStudent, remainingFineDisplay]);
+
+  const hasCollectionAfterSpecialFine = (fine: any) => {
+    if (!fine?.created_at) return false;
+    const fineCreatedAt = new Date(fine.created_at);
+    return paymentHistory.some((payment: any) => {
+      if (!payment?.payment_date) return false;
+      const paymentDate = new Date(payment.payment_date);
+      return paymentDate > fineCreatedAt;
+    });
+  };
+
+  const handleEditSpecialFine = (fine: any) => {
+    setEditingSpecialFineId(fine.id);
+    setSpecialFineEditDescription(fine.description || '');
+    setSpecialFineEditAmount(String(fine.amount || ''));
+    setShowSpecialFineEditModal(true);
+  };
+
+  const cancelEditSpecialFine = () => {
+    setShowSpecialFineEditModal(false);
+    setEditingSpecialFineId(null);
+    setSpecialFineEditDescription('');
+    setSpecialFineEditAmount('');
+  };
+
+  const saveSpecialFineEdit = async () => {
+    if (!editingSpecialFineId || !user?.school_id) return;
+    if (!specialFineEditDescription.trim()) {
+      showToast('Please enter a special fine description.', 'error');
+      return;
+    }
+    const amountValue = Number(parseFloat(specialFineEditAmount || '0').toFixed(2));
+    if (!amountValue || amountValue <= 0) {
+      showToast('Please enter a valid amount.', 'error');
+      return;
+    }
+
+    setIsSavingSpecialFineEdit(true);
+    try {
+      const { data, error } = await supabase
+        .from('special_fines')
+        .update({
+          description: specialFineEditDescription.trim(),
+          amount: amountValue,
+        })
+        .eq('id', editingSpecialFineId)
+        .eq('school_id', user.school_id)
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      if (data && data.length > 0) {
+        setSpecialFinesForStudent(prev => prev.map(fine => fine.id === editingSpecialFineId ? { ...fine, ...data[0] } : fine));
+        showToast('Special fine updated successfully.', 'success');
+      } else {
+        showToast('Special fine updated, but failed to refresh the row.', 'warning');
+      }
+      cancelEditSpecialFine();
+    } catch (err: any) {
+      showToast('Failed to update special fine: ' + (err.message || 'Unknown error'), 'error');
+    } finally {
+      setIsSavingSpecialFineEdit(false);
+    }
+  };
+
+  const handleDeleteSpecialFine = (fine: any) => {
+    setSpecialFineToDeleteId(fine.id);
+    setShowSpecialFineDeleteConfirmModal(true);
+  };
+
+  const cancelDeleteSpecialFine = () => {
+    setShowSpecialFineDeleteConfirmModal(false);
+    setSpecialFineToDeleteId(null);
+  };
+
+  const confirmDeleteSpecialFine = async () => {
+    if (!specialFineToDeleteId || !user?.school_id) return;
+    setIsDeletingSpecialFine(true);
+    try {
+      const { error } = await supabase
+        .from('special_fines')
+        .delete()
+        .eq('id', specialFineToDeleteId)
+        .eq('school_id', user.school_id);
+
+      if (error) {
+        throw error;
+      }
+      setSpecialFinesForStudent(prev => prev.filter(fine => fine.id !== specialFineToDeleteId));
+      showToast('Special fine deleted successfully.', 'success');
+    } catch (err: any) {
+      showToast('Failed to delete special fine: ' + (err.message || 'Unknown error'), 'error');
+    } finally {
+      setIsDeletingSpecialFine(false);
+      cancelDeleteSpecialFine();
+    }
+  };
 
   // Helper function to format currency
   const formatCurrency = (value: number): string => {
@@ -1690,6 +1877,17 @@ const FineCollection: React.FC = () => {
 
         const data = await fetchAllRows(paymentsQuery);
         setPaymentHistory(data || []);
+        // Also fetch special fines for selected student
+        try {
+          const { data: sdata, error: sError } = await supabase
+            .from('special_fines')
+            .select('id, amount, paid_amount, status, description, created_at')
+            .eq('student_id', selectedStudent.id)
+            .eq('school_id', user.school_id);
+          if (!sError) setSpecialFinesForStudent(sdata || []);
+        } catch (err) {
+          setSpecialFinesForStudent([]);
+        }
       } catch (err: any) {
         setPaymentHistoryError('Failed to fetch payment history. ' + (err.message || 'Unknown error'));
         setPaymentHistory([]);
@@ -1782,7 +1980,7 @@ const FineCollection: React.FC = () => {
       return;
     }
 
-    const actualRemainingFine = totalFine - totalAccountedFor;
+    const actualRemainingFine = (totalFine + totalSpecialForStudent) - (totalAccountedFor + totalSpecialPaidForStudent);
 
     // First check if there's any remaining fine at all
     if (actualRemainingFine <= 0) {
@@ -2084,6 +2282,13 @@ const FineCollection: React.FC = () => {
                       </FineSummaryValue>
                     </FineSummaryCard>
                     <FineSummaryCard>
+                      <FineSummaryLabel>Special Fine</FineSummaryLabel>
+                      <FineSummaryValue color="#a855f7">
+                        <CardGiftcard style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4 }} /> 
+                        Rs. {formatCurrency(totalSpecialForStudent - totalSpecialPaidForStudent)}
+                      </FineSummaryValue>
+                    </FineSummaryCard>
+                    <FineSummaryCard>
                       <FineSummaryLabel>Remaining</FineSummaryLabel>
                       <FineSummaryValue color="#f43f5e">
                         <ErrorOutline style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4 }} /> 
@@ -2306,6 +2511,46 @@ const FineCollection: React.FC = () => {
                     </tbody>
                   </AttendanceTable>
                   </TableWrapper>
+                  {specialFinesForStudent.length > 0 && (
+                    <SpecialFinesSection>
+                      <div style={{ fontSize: '0.95rem', fontWeight: 600, color: (theme as any).TEXT_PRIMARY, marginBottom: '0.8rem' }}>
+                        Special Fines
+                      </div>
+                          {specialFinesForStudent.map((fine, idx) => {
+                            const canDelete = !hasCollectionAfterSpecialFine(fine);
+                            return (
+                              <SpecialFineEntry key={fine.id || idx}>
+                                <SpecialFineInfo>
+                                  <SpecialFineDescription>
+                                    {fine.description?.trim() ? fine.description : 'Special fine'}
+                                  </SpecialFineDescription>
+                                </SpecialFineInfo>
+                                <SpecialFineActions>
+                                  <SpecialFineAmount>
+                                    Rs. {formatCurrency(fine.amount || 0)}
+                                  </SpecialFineAmount>
+                                  <SpecialFineIconButton
+                                    type="button"
+                                    title="Edit special fine"
+                                    onClick={() => handleEditSpecialFine(fine)}
+                                  >
+                                    <Edit style={{ fontSize: '1rem', color: (theme as any).ACCENT }} />
+                                  </SpecialFineIconButton>
+                                  {canDelete && (
+                                    <SpecialFineIconButton
+                                      type="button"
+                                      title="Delete special fine"
+                                      onClick={() => handleDeleteSpecialFine(fine)}
+                                    >
+                                      <DeleteIcon style={{ fontSize: '1rem', color: '#ef4444' }} />
+                                    </SpecialFineIconButton>
+                                  )}
+                                </SpecialFineActions>
+                              </SpecialFineEntry>
+                            );
+                          })}
+                    </SpecialFinesSection>
+                  )}
                 </FineDetailsContent>
               ) : (
                 <CardPlaceholder>
@@ -2537,6 +2782,39 @@ const FineCollection: React.FC = () => {
       </PageGrid>
 
       {/* Delete Confirmation Modal */}
+      {showSpecialFineEditModal && ReactDOM.createPortal(
+        <ModalOverlay onClick={cancelEditSpecialFine}>
+          <ModalDialog onClick={(e) => e.stopPropagation()}>
+            <ModalTitle>Edit Special Fine</ModalTitle>
+            <ModalFormRow>
+              <CollectLabel>Description</CollectLabel>
+              <CollectInput
+                value={specialFineEditDescription}
+                onChange={e => setSpecialFineEditDescription(e.target.value)}
+              />
+            </ModalFormRow>
+            <ModalFormRow>
+              <CollectLabel>Amount</CollectLabel>
+              <CollectInput
+                value={specialFineEditAmount}
+                onChange={e => setSpecialFineEditAmount(e.target.value)}
+                inputMode="decimal"
+              />
+            </ModalFormRow>
+            <ModalButtonRow>
+              <ModalButton onClick={cancelEditSpecialFine} disabled={isSavingSpecialFineEdit}>Cancel</ModalButton>
+              <ModalButton
+                primary
+                onClick={saveSpecialFineEdit}
+                disabled={isSavingSpecialFineEdit}
+              >
+                {isSavingSpecialFineEdit ? 'Saving...' : 'Save'}
+              </ModalButton>
+            </ModalButtonRow>
+          </ModalDialog>
+        </ModalOverlay>,
+        document.body
+      )}
       {showDeleteConfirmModal && ReactDOM.createPortal(
         <ModalOverlay onClick={cancelDelete}> {/* Optional: close on overlay click */}
           <ModalDialog onClick={(e) => e.stopPropagation()}> {/* Prevents closing when clicking inside dialog */}
@@ -2552,6 +2830,27 @@ const FineCollection: React.FC = () => {
                 disabled={isDeleting}
               >
                 {isDeleting ? 'Deleting...' : 'Delete Payment'}
+              </ModalButton>
+            </ModalButtonRow>
+          </ModalDialog>
+        </ModalOverlay>,
+        document.body
+      )}
+      {showSpecialFineDeleteConfirmModal && ReactDOM.createPortal(
+        <ModalOverlay onClick={cancelDeleteSpecialFine}>
+          <ModalDialog onClick={(e) => e.stopPropagation()}>
+            <ModalTitle>Confirm Delete Special Fine</ModalTitle>
+            <ModalMessage>
+              Are you sure you want to delete this special fine? This action cannot be undone.
+            </ModalMessage>
+            <ModalButtonRow>
+              <ModalButton onClick={cancelDeleteSpecialFine} disabled={isDeletingSpecialFine}>Cancel</ModalButton>
+              <ModalButton
+                primary
+                onClick={confirmDeleteSpecialFine}
+                disabled={isDeletingSpecialFine}
+              >
+                {isDeletingSpecialFine ? 'Deleting...' : 'Delete'}
               </ModalButton>
             </ModalButtonRow>
           </ModalDialog>

@@ -567,6 +567,13 @@ export const fineMenuItems: MenuItem[] = [
     color: '#f59e0b'
   },
   {
+    title: 'Special Fines',
+    description: 'Assign student-only one-time fines and monitor pending penalties',
+    icon: React.createElement(AttachMoneyIcon),
+    path: '/fines/special',
+    color: '#22c55e'
+  },
+  {
     title: 'Fine Statistics',
     description: 'Analyze fine trends and generate reports',
     icon: React.createElement(PieChartIcon),

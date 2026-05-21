@@ -89,6 +89,7 @@ export const pathToPermissionKey: Record<string, string> = {
   '/fines/assign': 'fine-assign',
   '/fines/collect': 'fine-collect',
   '/fines/remaining': 'fine-remaining',
+  '/fines/special': 'fine-assign',
   '/fines/statistics': 'fine-statistics',
 
   // Communication
