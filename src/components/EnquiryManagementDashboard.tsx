@@ -358,7 +358,7 @@ const EnquiryManagementDashboard: React.FC = () => {
   };
 
   return (
-    <PageContainer theme={theme}>
+    <PageContainer>
       <Header>
         <Title>
           <QuestionAnswerIcon style={{ fontSize: 40 }} />

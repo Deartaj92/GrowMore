@@ -249,7 +249,7 @@ const EnquiryForm: React.FC<EnquiryFormProps> = ({ enquiryId, onSuccess, onCance
   // Check if user has school_id
   if (!user?.school_id) {
     return (
-      <FormContainer theme={theme}>
+      <FormContainer>
         <div style={{ textAlign: 'center', padding: '3rem', color: '#ef4444' }}>
           No school context found. Please contact your administrator.
         </div>
@@ -421,7 +421,7 @@ const EnquiryForm: React.FC<EnquiryFormProps> = ({ enquiryId, onSuccess, onCance
   const selectedType = enquiryTypes.find(type => type.id === formData.enquiry_type_id);
 
   return (
-    <FormContainer theme={theme}>
+    <FormContainer>
       <FormHeader>
         <FormTitle>
           {enquiryId ? 'Edit Enquiry' : 'Submit New Enquiry'}

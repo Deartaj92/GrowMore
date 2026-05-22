@@ -342,7 +342,7 @@ const EnquiryDetail: React.FC = () => {
   // Check if user has school_id
   if (!user?.school_id) {
     return (
-      <PageContainer theme={theme}>
+      <PageContainer>
         <ErrorContainer>
           No school context found. Please contact your administrator.
         </ErrorContainer>
@@ -418,7 +418,7 @@ const EnquiryDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <PageContainer theme={theme}>
+      <PageContainer>
         <LoadingContainer>
           <CircularProgress style={{ marginRight: '1rem' }} />
           Loading enquiry details...
@@ -429,7 +429,7 @@ const EnquiryDetail: React.FC = () => {
 
   if (error || !enquiry) {
     return (
-      <PageContainer theme={theme}>
+      <PageContainer>
         <ErrorContainer>
           <WarningIcon style={{ marginRight: '0.5rem' }} />
           {error || 'Enquiry not found'}
@@ -439,7 +439,7 @@ const EnquiryDetail: React.FC = () => {
   }
 
   return (
-    <PageContainer theme={theme}>
+    <PageContainer>
       {/* Header */}
       <Header>
         <HeaderLeft>

@@ -2244,9 +2244,9 @@ const HomeworkDiaryManager: React.FC = () => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <PageContainer theme={theme}>
-        <Header theme={theme}>
-          <Title theme={theme}>
+      <PageContainer>
+        <Header >
+          <Title >
             <Assignment /> Daily Homework Diary
           </Title>
 
@@ -2264,11 +2264,11 @@ const HomeworkDiaryManager: React.FC = () => {
               {isBulkMode ? 'Exit Bulk Mode' : 'Bulk Mode'}
             </Button>
 
-            <SegmentedGroup theme={theme}>
+            <SegmentedGroup >
               {!isBulkMode && (
                 <>
                   <SegmentedSelect
-                    theme={theme}
+                    
                     value={selectedClass}
                     onChange={(e) => {
                       setSelectedClass(e.target.value ? Number(e.target.value) : '');
@@ -2288,7 +2288,7 @@ const HomeworkDiaryManager: React.FC = () => {
 
                   {selectedClassHasSections && (
                     <SegmentedSelect
-                      theme={theme}
+                      
                       value={selectedSection}
                       onChange={(e) => {
                         setSelectedSection(e.target.value ? Number(e.target.value) : '');
@@ -2312,7 +2312,7 @@ const HomeworkDiaryManager: React.FC = () => {
                 </>
               )}
 
-              <SegmentedDatePicker theme={theme} first={isBulkMode} last>
+              <SegmentedDatePicker  first={isBulkMode} last>
                 <DatePicker
                   value={selectedDate}
                   onChange={(newValue) => setSelectedDate(newValue)}
@@ -2365,7 +2365,7 @@ const HomeworkDiaryManager: React.FC = () => {
           </div>
         </Header>
 
-        <MainContent theme={theme}>
+        <MainContent >
           {isBulkMode ? (
             <div style={{ padding: '0 0.5rem' }}>
               <div style={{ marginBottom: '1rem' }}>
@@ -2382,7 +2382,7 @@ const HomeworkDiaryManager: React.FC = () => {
                       return (
                         <ToggleChip
                           key={groupId}
-                          theme={theme}
+                          
                           active={isVisible}
                           onClick={() => toggleGroupVisibility(groupId)}
                         >
@@ -2393,7 +2393,7 @@ const HomeworkDiaryManager: React.FC = () => {
 
                     })}
                     <ToggleChip
-                      theme={theme}
+                      
                       active={hiddenGroups.size < bulkGroups.length}
                       onClick={() => {
                         if (hiddenGroups.size === bulkGroups.length) {
@@ -2423,12 +2423,12 @@ const HomeworkDiaryManager: React.FC = () => {
 
               {loading ? (
                 <LoadingContainer>
-                  <Spinner theme={theme} />
+                  <Spinner  />
                 </LoadingContainer>
               ) : (
                 <>
                   {bulkGroups.length === 0 && (
-                    <EmptyState theme={theme}>
+                    <EmptyState >
                       <EmptyStateText>No classes found for bulk assignment</EmptyStateText>
                     </EmptyState>
                   )}
@@ -2438,14 +2438,14 @@ const HomeworkDiaryManager: React.FC = () => {
                     if (hiddenGroups.has(groupId)) return null;
 
                     return (
-                      <FormSection key={groupId} theme={theme} style={{ marginBottom: '2rem' }}>
-                        <FormTitle theme={theme} style={{ borderBottom: `1px solid ${theme.BORDER}`, paddingBottom: '0.5rem' }}>
+                      <FormSection key={groupId}  style={{ marginBottom: '2rem' }}>
+                        <FormTitle  style={{ borderBottom: `1px solid ${theme.BORDER}`, paddingBottom: '0.5rem' }}>
                           <Class /> {group.class_name} {group.section_name ? `- ${group.section_name}` : ''}
                         </FormTitle>
                         <SubjectsGrid>
                           {group.assignments.map((assignment, assignIndex) => (
-                            <SubjectCard key={assignment.subject_id} theme={theme}>
-                              <SubjectCardHeader theme={theme} style={{ justifyContent: 'space-between' }}>
+                            <SubjectCard key={assignment.subject_id} >
+                              <SubjectCardHeader  style={{ justifyContent: 'space-between' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                   📚 {assignment.subject_name}
                                 </div>
@@ -2454,7 +2454,7 @@ const HomeworkDiaryManager: React.FC = () => {
                                 </span>
                               </SubjectCardHeader>
                               <TextArea
-                                theme={theme}
+                                
                                 placeholder={`Homework for ${assignment.subject_name}...`}
                                 value={assignment.homework_text}
                                 onChange={(e) => {
@@ -2476,15 +2476,15 @@ const HomeworkDiaryManager: React.FC = () => {
           ) : selectedClass && selectedDate ? (
             <>
               {!isEditing && (
-                <FormSection theme={theme}>
-                  <FormTitle theme={theme}>
+                <FormSection >
+                  <FormTitle >
                     <Add /> Add New Homework
                   </FormTitle>
                   <FormGrid>
                     <FilterGroup>
-                      <FilterLabel theme={theme}>Subject</FilterLabel>
+                      <FilterLabel >Subject</FilterLabel>
                       <Select
-                        theme={theme}
+                        
                         value={selectedSubjectForEdit || ''}
                         onChange={(e) => setSelectedSubjectForEdit(e.target.value ? Number(e.target.value) : '')}
                       >
@@ -2498,7 +2498,7 @@ const HomeworkDiaryManager: React.FC = () => {
                     </FilterGroup>
                   </FormGrid>
                   <TextArea
-                    theme={theme}
+                    
                     placeholder="Enter homework text..."
                     value={homeworkText}
                     onChange={(e) => setHomeworkText(e.target.value)}
@@ -2507,15 +2507,15 @@ const HomeworkDiaryManager: React.FC = () => {
               )}
 
               {isEditing && (
-                <FormSection ref={editFormRef} theme={theme}>
-                  <FormTitle theme={theme}>
+                <FormSection ref={editFormRef} >
+                  <FormTitle >
                     <Edit /> Edit Homework
                   </FormTitle>
                   <FormGrid>
                     <FilterGroup>
-                      <FilterLabel theme={theme}>Subject</FilterLabel>
+                      <FilterLabel >Subject</FilterLabel>
                       <Select
-                        theme={theme}
+                        
                         value={selectedSubjectForEdit || ''}
                         onChange={(e) => setSelectedSubjectForEdit(e.target.value ? Number(e.target.value) : '')}
                       >
@@ -2529,7 +2529,7 @@ const HomeworkDiaryManager: React.FC = () => {
                     </FilterGroup>
                   </FormGrid>
                   <TextArea
-                    theme={theme}
+                    
                     placeholder="Enter homework text..."
                     value={homeworkText}
                     onChange={(e) => setHomeworkText(e.target.value)}
@@ -2538,11 +2538,11 @@ const HomeworkDiaryManager: React.FC = () => {
               )}
 
               {homeworkEntries.filter(entry => entry.subject_id !== null).length > 0 ? (
-                <HomeworkCardsGrid theme={theme}>
+                <HomeworkCardsGrid >
                   {homeworkEntries.filter(entry => entry.subject_id !== null).map(entry => (
-                    <HomeworkCard key={entry.id} theme={theme}>
-                      <HomeworkHeader theme={theme}>
-                        <SubjectName theme={theme}>
+                    <HomeworkCard key={entry.id} >
+                      <HomeworkHeader >
+                        <SubjectName >
                           <Book /> {entry.subject_name || 'Unknown Subject'}
                         </SubjectName>
                         <ActionButtons>
@@ -2554,8 +2554,8 @@ const HomeworkDiaryManager: React.FC = () => {
                           </Button>
                         </ActionButtons>
                       </HomeworkHeader>
-                      <HomeworkText theme={theme}>{entry.homework_text}</HomeworkText>
-                      <HomeworkMeta theme={theme}>
+                      <HomeworkText >{entry.homework_text}</HomeworkText>
+                      <HomeworkMeta >
                         <span>📅 {format(parseISO(entry.homework_date), 'dd-MM-yyyy')}</span>
                         {entry.assigned_by_name && <span>👤 {entry.assigned_by_name}</span>}
                       </HomeworkMeta>
@@ -2564,7 +2564,7 @@ const HomeworkDiaryManager: React.FC = () => {
                 </HomeworkCardsGrid>
               ) : (
                 !loading && (
-                  <EmptyState theme={theme}>
+                  <EmptyState >
                     <EmptyStateIcon>📝</EmptyStateIcon>
                     <EmptyStateText>No homework assigned for this date</EmptyStateText>
                     <EmptyStateSubtext>Add homework using the form above</EmptyStateSubtext>
@@ -2573,7 +2573,7 @@ const HomeworkDiaryManager: React.FC = () => {
               )}
             </>
           ) : (
-            <EmptyState theme={theme}>
+            <EmptyState >
               <EmptyStateIcon>📚</EmptyStateIcon>
               <EmptyStateText>Select class and date to view or assign homework</EmptyStateText>
             </EmptyState>
@@ -2583,16 +2583,16 @@ const HomeworkDiaryManager: React.FC = () => {
         {/* Delete Confirmation Modal */}
         {deleteModalOpen && (
           <DeleteModalOverlay onClick={handleDeleteCancel}>
-            <DeleteModalBox theme={theme} onClick={(e) => e.stopPropagation()}>
-              <DeleteModalHeader theme={theme}>
+            <DeleteModalBox  onClick={(e) => e.stopPropagation()}>
+              <DeleteModalHeader >
                 <Delete />
                 <h3>Delete Homework</h3>
               </DeleteModalHeader>
-              <DeleteModalContent theme={theme}>
+              <DeleteModalContent >
                 Are you sure you want to delete this homework entry? This action cannot be undone.
               </DeleteModalContent>
               <DeleteModalActions>
-                <DeleteModalButton variant="cancel" theme={theme} onClick={handleDeleteCancel}>
+                <DeleteModalButton variant="cancel"  onClick={handleDeleteCancel}>
                   Cancel
                 </DeleteModalButton>
                 <DeleteModalButton variant="delete" onClick={handleDeleteConfirm}>

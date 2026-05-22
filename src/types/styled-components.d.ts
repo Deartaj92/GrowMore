@@ -24,6 +24,9 @@ declare module 'styled-components' {
     ACCENT_INPUT: string;
     CANCEL_BG: string;
     CANCEL_COLOR: string;
+    name?: string;
+    CARD_BG?: string;
+    BG_SECONDARY?: string;
   }
 
   export interface ExecutionContext {

@@ -1528,7 +1528,7 @@ const FamilyManagement: React.FC = () => {
   };
 
   return (
-    <ThemeProvider theme={themeObj}>
+    <>
       {/* Toasts */}
       {toasts.length > 0 && (
         <ToastContainer>
@@ -2288,7 +2288,7 @@ const FamilyManagement: React.FC = () => {
           </StudentAvatarPreview>
         )}
       </PageContainer>
-    </ThemeProvider>
+    </>
   );
 };
 

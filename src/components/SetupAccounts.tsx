@@ -963,31 +963,31 @@ const SetupAccounts: React.FC<SetupAccountsProps> = ({ className }) => {
   }
 
   return (
-    <PageContainer theme={theme} className={className}>
-      <Header theme={theme}>
-        <HeaderTitle theme={theme}>
+    <PageContainer  className={className}>
+      <Header >
+        <HeaderTitle >
           <AccountBalanceWallet />
           Setup Accounts
         </HeaderTitle>
-        <HeaderActions theme={theme}>
-          <ActionButton theme={theme} onClick={handleManageAccountTypes}>
+        <HeaderActions >
+          <ActionButton  onClick={handleManageAccountTypes}>
             <SettingsIcon style={{ fontSize: '1rem' }} />
             Manage Types
           </ActionButton>
-          <ActionButton theme={theme} onClick={handleCreate}>
+          <ActionButton  onClick={handleCreate}>
             <Add style={{ fontSize: '1rem' }} />
             Add Account
           </ActionButton>
-          <ActionButton theme={theme} onClick={fetchAccounts}>
+          <ActionButton  onClick={fetchAccounts}>
             <RefreshIcon style={{ fontSize: '1rem' }} />
             Refresh
           </ActionButton>
         </HeaderActions>
       </Header>
 
-      <ContentCard theme={theme}>
+      <ContentCard >
         {accounts.length === 0 ? (
-          <EmptyState theme={theme}>
+          <EmptyState >
             <AccountBalanceWallet style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }} />
             <div style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>No accounts found</div>
             <div style={{ fontSize: '0.85rem', color: theme.TEXT_SECONDARY }}>
@@ -996,25 +996,25 @@ const SetupAccounts: React.FC<SetupAccountsProps> = ({ className }) => {
           </EmptyState>
         ) : (
           <Table>
-            <TableHead theme={theme}>
-              <TableRow theme={theme}>
-                <TableHeaderCell theme={theme}>Type</TableHeaderCell>
-                <TableHeaderCell theme={theme}>Title</TableHeaderCell>
-                <TableHeaderCell theme={theme}>Account Details</TableHeaderCell>
-                <TableHeaderCell theme={theme}>Status</TableHeaderCell>
-                <TableHeaderCell theme={theme}>Actions</TableHeaderCell>
+            <TableHead >
+              <TableRow >
+                <TableHeaderCell >Type</TableHeaderCell>
+                <TableHeaderCell >Title</TableHeaderCell>
+                <TableHeaderCell >Account Details</TableHeaderCell>
+                <TableHeaderCell >Status</TableHeaderCell>
+                <TableHeaderCell >Actions</TableHeaderCell>
               </TableRow>
             </TableHead>
             <tbody>
               {accounts.map((account) => (
-                <TableRow key={account.id} theme={theme}>
-                  <TableCell theme={theme}>
+                <TableRow key={account.id} >
+                  <TableCell >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       {getAccountTypeIcon(account.type)}
                       <span style={{ fontWeight: 500 }}>{getAccountTypeLabel(account.type)}</span>
                     </div>
                   </TableCell>
-                  <TableCell theme={theme}>
+                  <TableCell >
                     <div style={{ fontWeight: 600 }}>{account.name}</div>
                     {account.description && (
                       <div style={{ fontSize: '0.75rem', color: theme.TEXT_SECONDARY, marginTop: '0.25rem' }}>
@@ -1022,7 +1022,7 @@ const SetupAccounts: React.FC<SetupAccountsProps> = ({ className }) => {
                       </div>
                     )}
                   </TableCell>
-                  <TableCell theme={theme}>
+                  <TableCell >
                     <div style={{ fontSize: '0.85rem' }}>
                       {account.type === 'bank' && (
                         <>
@@ -1053,7 +1053,7 @@ const SetupAccounts: React.FC<SetupAccountsProps> = ({ className }) => {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell theme={theme}>
+                  <TableCell >
                     <span style={{
                       padding: '0.25rem 0.75rem',
                       borderRadius: '12px',
@@ -1067,12 +1067,12 @@ const SetupAccounts: React.FC<SetupAccountsProps> = ({ className }) => {
                       {account.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </TableCell>
-                  <TableCell theme={theme}>
+                  <TableCell >
                     <ButtonGroup>
-                      <StyledIconButton theme={theme} onClick={() => handleEdit(account)} title="Edit">
+                      <StyledIconButton  onClick={() => handleEdit(account)} title="Edit">
                         <Edit />
                       </StyledIconButton>
-                      <StyledIconButton theme={theme} onClick={() => handleDelete(account)} title="Delete">
+                      <StyledIconButton  onClick={() => handleDelete(account)} title="Delete">
                         <Delete />
                       </StyledIconButton>
                     </ButtonGroup>
@@ -1478,26 +1478,26 @@ const SetupAccounts: React.FC<SetupAccountsProps> = ({ className }) => {
 
       {/* Account Types List Modal */}
       <ModalOverlay $isOpen={isAccountTypeModalOpen} onClick={() => setIsAccountTypeModalOpen(false)}>
-        <Modal theme={theme} onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-          <ModalHeader theme={theme}>
-            <ModalTitle theme={theme}>
+        <Modal  onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+          <ModalHeader >
+            <ModalTitle >
               <SettingsIcon />
               Manage Account Types
             </ModalTitle>
-            <ModalCloseButton theme={theme} onClick={() => setIsAccountTypeModalOpen(false)}>
+            <ModalCloseButton  onClick={() => setIsAccountTypeModalOpen(false)}>
               ×
             </ModalCloseButton>
           </ModalHeader>
 
           <div style={{ marginBottom: '1rem' }}>
-            <ActionButton theme={theme} onClick={handleCreateAccountType} style={{ width: '100%', justifyContent: 'center' }}>
+            <ActionButton  onClick={handleCreateAccountType} style={{ width: '100%', justifyContent: 'center' }}>
               <Add style={{ fontSize: '1rem' }} />
               Add New Account Type
             </ActionButton>
           </div>
 
           {accountTypes.length === 0 ? (
-            <EmptyState theme={theme}>
+            <EmptyState >
               <AccountCircle style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }} />
               <div style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>No account types found</div>
               <div style={{ fontSize: '0.85rem', color: theme.TEXT_SECONDARY }}>
@@ -1506,18 +1506,18 @@ const SetupAccounts: React.FC<SetupAccountsProps> = ({ className }) => {
             </EmptyState>
           ) : (
             <Table>
-              <TableHead theme={theme}>
-                <TableRow theme={theme}>
-                  <TableHeaderCell theme={theme}>Type</TableHeaderCell>
-                  <TableHeaderCell theme={theme}>Display Name</TableHeaderCell>
-                  <TableHeaderCell theme={theme}>Status</TableHeaderCell>
-                  <TableHeaderCell theme={theme}>Actions</TableHeaderCell>
+              <TableHead >
+                <TableRow >
+                  <TableHeaderCell >Type</TableHeaderCell>
+                  <TableHeaderCell >Display Name</TableHeaderCell>
+                  <TableHeaderCell >Status</TableHeaderCell>
+                  <TableHeaderCell >Actions</TableHeaderCell>
                 </TableRow>
               </TableHead>
               <tbody>
                 {accountTypes.map((accountType) => (
-                  <TableRow key={accountType.id} theme={theme}>
-                    <TableCell theme={theme}>
+                  <TableRow key={accountType.id} >
+                    <TableCell >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         {getIconComponent(accountType.icon_name)}
                         <span style={{ fontWeight: 500 }}>{accountType.name}</span>
@@ -1526,10 +1526,10 @@ const SetupAccounts: React.FC<SetupAccountsProps> = ({ className }) => {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell theme={theme}>
+                    <TableCell >
                       <div style={{ fontWeight: 600 }}>{accountType.display_name}</div>
                     </TableCell>
-                    <TableCell theme={theme}>
+                    <TableCell >
                       <span style={{
                         padding: '0.25rem 0.75rem',
                         borderRadius: '12px',
@@ -1543,14 +1543,14 @@ const SetupAccounts: React.FC<SetupAccountsProps> = ({ className }) => {
                         {accountType.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </TableCell>
-                    <TableCell theme={theme}>
+                    <TableCell >
                       <ButtonGroup>
                         {!accountType.is_system_type && (
                           <>
-                            <StyledIconButton theme={theme} onClick={() => handleEditAccountType(accountType)} title="Edit">
+                            <StyledIconButton  onClick={() => handleEditAccountType(accountType)} title="Edit">
                               <Edit />
                             </StyledIconButton>
-                            <StyledIconButton theme={theme} onClick={() => handleDeleteAccountType(accountType)} title="Delete">
+                            <StyledIconButton  onClick={() => handleDeleteAccountType(accountType)} title="Delete">
                               <Delete />
                             </StyledIconButton>
                           </>
@@ -1567,22 +1567,22 @@ const SetupAccounts: React.FC<SetupAccountsProps> = ({ className }) => {
 
       {/* Account Type Form Modal (Create/Edit) */}
       <ModalOverlay $isOpen={isAccountTypeFormModalOpen} onClick={() => setIsAccountTypeFormModalOpen(false)}>
-        <Modal theme={theme} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-          <ModalHeader theme={theme}>
-            <ModalTitle theme={theme}>
+        <Modal  onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+          <ModalHeader >
+            <ModalTitle >
               {editingAccountType ? <Edit /> : <Add />}
               {editingAccountType ? 'Edit Account Type' : 'Add New Account Type'}
             </ModalTitle>
-            <ModalCloseButton theme={theme} onClick={() => setIsAccountTypeFormModalOpen(false)}>
+            <ModalCloseButton  onClick={() => setIsAccountTypeFormModalOpen(false)}>
               ×
             </ModalCloseButton>
           </ModalHeader>
 
           <form onSubmit={handleSubmitAccountType}>
             <FormGroup>
-              <Label theme={theme}>Display Name *</Label>
+              <Label >Display Name *</Label>
               <Input
-                theme={theme}
+                
                 type="text"
                 value={accountTypeFormData.display_name}
                 onChange={(e) => setAccountTypeFormData({ ...accountTypeFormData, display_name: e.target.value })}
@@ -1592,7 +1592,7 @@ const SetupAccounts: React.FC<SetupAccountsProps> = ({ className }) => {
             </FormGroup>
 
             <FormGroup>
-              <Label theme={theme}>Icon *</Label>
+              <Label >Icon *</Label>
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
@@ -1677,7 +1677,7 @@ const SetupAccounts: React.FC<SetupAccountsProps> = ({ className }) => {
             </FormGroup>
 
             <FormGroup>
-              <Label theme={theme} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Label  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <input
                   type="checkbox"
                   checked={accountTypeFormData.is_active}
@@ -1689,10 +1689,10 @@ const SetupAccounts: React.FC<SetupAccountsProps> = ({ className }) => {
             </FormGroup>
 
             <ModalActions>
-              <SecondaryButton theme={theme} type="button" onClick={() => setIsAccountTypeFormModalOpen(false)}>
+              <SecondaryButton  type="button" onClick={() => setIsAccountTypeFormModalOpen(false)}>
                 Cancel
               </SecondaryButton>
-              <PrimaryButton theme={theme} type="submit">
+              <PrimaryButton  type="submit">
                 {editingAccountType ? 'Update' : 'Create'}
               </PrimaryButton>
             </ModalActions>

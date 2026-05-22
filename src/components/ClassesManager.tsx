@@ -1486,9 +1486,9 @@ const ClassesManager: React.FC = () => {
   const sortedClasses = sortClasses(filteredClasses);
 
   if (loading) return (
-      <ThemeProvider theme={themeObj}>
+      <>
       <Loader />
-      </ThemeProvider>
+      </>
     );
 
   // Show NoSessionsFound if there are no sessions
@@ -1497,7 +1497,7 @@ const ClassesManager: React.FC = () => {
   }
 
   return (
-    <ThemeProvider theme={themeObj}>
+    <>
     <PageContainer>
         <Header>
           <HeaderRow>
@@ -2340,7 +2340,7 @@ const ClassesManager: React.FC = () => {
         )}
 
     </PageContainer>
-    </ThemeProvider>
+    </>
   );
 };
 

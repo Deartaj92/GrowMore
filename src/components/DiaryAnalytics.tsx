@@ -1493,7 +1493,7 @@ const DiaryAnalytics: React.FC = () => {
   };
 
   return (
-    <PageContainer theme={theme}>
+    <PageContainer>
       <Header>
         <Title>
           <BarChartIcon style={{ fontSize: '1.2rem' }} />

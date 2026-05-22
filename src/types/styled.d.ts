@@ -26,6 +26,13 @@ declare module 'styled-components' {
     CANCEL_COLOR: string;
     BACKGROUND?: string;
     TEXT?: string;
+  palette?: {
+    mode?: string;
+    background?: { paper?: string };
+    primary?: { main?: string; light?: string; dark?: string };
+    error?: { main?: string };
+    success?: { main?: string };
+  };
   }
 
   export interface ExecutionContext {

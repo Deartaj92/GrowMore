@@ -1076,7 +1076,7 @@ const Layout: React.FC = () => {
             setProfileMenuOpen={setProfileMenuOpen}
             profileIconRef={profileIconRef}
             profileDropdownRef={profileDropdownRef}
-            theme={theme}
+            
             onToggleTheme={toggleTheme}
             onOpenChangePassword={openChangePasswordModal}
             isWeb={isWeb}
@@ -1146,7 +1146,7 @@ const Layout: React.FC = () => {
         <ChangePasswordModal
           isOpen={showChangePassword}
           onClose={closeChangePasswordModal}
-          theme={theme}
+          
           currentPassword={currentPassword}
           newPassword={newPassword}
           confirmPassword={confirmPassword}

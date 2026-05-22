@@ -1791,7 +1791,7 @@ const TestRecordManager: React.FC = () => {
   }
 
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <PageContainer>
         <Header>
           <HeaderTopRow>
@@ -2687,7 +2687,7 @@ const TestRecordManager: React.FC = () => {
           </div>
         )}
       </PageContainer>
-    </ThemeProvider>
+    </>
   );
 };
 

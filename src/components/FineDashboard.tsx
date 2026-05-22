@@ -408,7 +408,7 @@ const FineDashboard: React.FC = () => {
   };
 
   return (
-    <PageContainer theme={theme}>
+    <PageContainer>
       <Header>
         <Title>
           <MoneyIcon style={{ fontSize: 40 }} />

@@ -766,20 +766,20 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
 
   if (!analyticsData) {
     return (
-      <PageContainer theme={theme} className={className}>
-        <Header theme={theme}>
-          <HeaderTitle theme={theme}>
+      <PageContainer  className={className}>
+        <Header >
+          <HeaderTitle >
             <Assessment />
             Fee Analytics
           </HeaderTitle>
-          <HeaderActions theme={theme}>
-            <ActionButton theme={theme} onClick={fetchAnalyticsData}>
+          <HeaderActions >
+            <ActionButton  onClick={fetchAnalyticsData}>
               <RefreshIcon style={{ fontSize: '1rem' }} />
               Refresh
             </ActionButton>
           </HeaderActions>
         </Header>
-        <EmptyState theme={theme}>
+        <EmptyState >
           <Assessment style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }} />
           No analytics data available
         </EmptyState>
@@ -788,15 +788,15 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
   }
 
   return (
-    <PageContainer theme={theme} className={className}>
-      <Header theme={theme}>
-        <HeaderTitle theme={theme}>
+    <PageContainer  className={className}>
+      <Header >
+        <HeaderTitle >
           <Assessment />
           Fee Analytics
         </HeaderTitle>
-        <HeaderActions theme={theme}>
+        <HeaderActions >
           <StyledSelect
-            theme={theme}
+            
             value={selectedSession}
             onChange={(e) => setSelectedSession(e.target.value)}
             >
@@ -807,61 +807,61 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
               </option>
             ))}
           </StyledSelect>
-          <ActionButton theme={theme} onClick={fetchAnalyticsData}>
+          <ActionButton  onClick={fetchAnalyticsData}>
             <RefreshIcon style={{ fontSize: '1rem' }} />
             Refresh
           </ActionButton>
         </HeaderActions>
       </Header>
 
-      <StatsGrid theme={theme}>
-        <StatCard theme={theme}>
-          <StatLabel theme={theme}>Total Collected</StatLabel>
-          <StatValue theme={theme}>{formatCurrency(analyticsData.totalPaidAmount)}</StatValue>
-          <StatChange $positive={true} theme={theme}>
+      <StatsGrid >
+        <StatCard >
+          <StatLabel >Total Collected</StatLabel>
+          <StatValue >{formatCurrency(analyticsData.totalPaidAmount)}</StatValue>
+          <StatChange $positive={true} >
             <TrendingUp style={{ fontSize: '0.75rem' }} />
               {analyticsData.collectionRate.toFixed(1)}% of total fees
           </StatChange>
         </StatCard>
 
-        <StatCard theme={theme}>
-          <StatLabel theme={theme}>Outstanding Amount</StatLabel>
-          <StatValue theme={theme}>{formatCurrency(analyticsData.totalRemaining)}</StatValue>
-          <StatChange $positive={false} theme={theme}>
+        <StatCard >
+          <StatLabel >Outstanding Amount</StatLabel>
+          <StatValue >{formatCurrency(analyticsData.totalRemaining)}</StatValue>
+          <StatChange $positive={false} >
             <TrendingDown style={{ fontSize: '0.75rem' }} />
               {(100 - analyticsData.collectionRate).toFixed(1)}% pending
           </StatChange>
         </StatCard>
 
-        <StatCard theme={theme}>
-          <StatLabel theme={theme}>Total Received</StatLabel>
-          <StatValue theme={theme}>{formatCurrency(analyticsData.totalReceived)}</StatValue>
-          <StatChange $positive={true} theme={theme}>
+        <StatCard >
+          <StatLabel >Total Received</StatLabel>
+          <StatValue >{formatCurrency(analyticsData.totalReceived)}</StatValue>
+          <StatChange $positive={true} >
             <CheckCircle style={{ fontSize: '0.75rem' }} />
               Without discounts
           </StatChange>
         </StatCard>
 
-        <StatCard theme={theme}>
-          <StatLabel theme={theme}>Total Discount</StatLabel>
-          <StatValue theme={theme}>{formatCurrency(analyticsData.totalDiscount)}</StatValue>
-          <StatChange $positive={true} theme={theme}>
+        <StatCard >
+          <StatLabel >Total Discount</StatLabel>
+          <StatValue >{formatCurrency(analyticsData.totalDiscount)}</StatValue>
+          <StatChange $positive={true} >
             <TrendingDown style={{ fontSize: '0.75rem' }} />
             {analyticsData.totalReceived > 0 ? ((analyticsData.totalDiscount / analyticsData.totalReceived) * 100).toFixed(1) : 0}% of received
           </StatChange>
         </StatCard>
       </StatsGrid>
 
-      <ContentGrid theme={theme}>
+      <ContentGrid >
         {/* Monthly Trends */}
-        <ContentCard theme={theme} style={{ padding: '1rem' }}>
-          <CardTitle theme={theme} style={{ marginBottom: '0.75rem' }}>
+        <ContentCard  style={{ padding: '1rem' }}>
+          <CardTitle  style={{ marginBottom: '0.75rem' }}>
             <TrendingUp />
               Monthly Collection Trends
           </CardTitle>
           <div style={{ height: '450px', position: 'relative' }}>
             {analyticsData.monthlyTrends.length === 0 ? (
-              <EmptyState theme={theme}>
+              <EmptyState >
                 <div style={{ fontSize: '0.9rem' }}>No monthly data available</div>
               </EmptyState>
             ) : (
@@ -933,8 +933,8 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
         </ContentCard>
 
         {/* Collection Rate by Class */}
-        <ContentCard theme={theme} style={{ padding: '1rem' }}>
-          <CardTitle theme={theme} style={{ marginBottom: '0.75rem' }}>
+        <ContentCard  style={{ padding: '1rem' }}>
+          <CardTitle  style={{ marginBottom: '0.75rem' }}>
             <PieChartIcon />
               Collection Rate by Class
           </CardTitle>
@@ -1183,42 +1183,42 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
               </div>
             </div>
           ) : (
-            <EmptyState theme={theme}>
+            <EmptyState >
               <div style={{ fontSize: '0.9rem' }}>No class data available</div>
             </EmptyState>
           )}
         </ContentCard>
       </ContentGrid>
 
-      <ContentGrid theme={theme}>
+      <ContentGrid >
         {/* Top Defaulters */}
-        <ContentCard theme={theme}>
-          <CardTitle theme={theme}>
+        <ContentCard >
+          <CardTitle >
             <Warning />
               Top Fee Defaulters
           </CardTitle>
           {analyticsData.topDefaulters.length > 0 ? (
             <Table>
-              <TableHead theme={theme}>
-                <TableRow theme={theme}>
-                  <TableHeaderCell theme={theme}>Student</TableHeaderCell>
-                  <TableHeaderCell theme={theme}>Class</TableHeaderCell>
-                  <TableHeaderCell theme={theme}>Outstanding</TableHeaderCell>
+              <TableHead >
+                <TableRow >
+                  <TableHeaderCell >Student</TableHeaderCell>
+                  <TableHeaderCell >Class</TableHeaderCell>
+                  <TableHeaderCell >Outstanding</TableHeaderCell>
                 </TableRow>
               </TableHead>
               <tbody>
                 {analyticsData.topDefaulters.map((defaulter) => (
-                  <TableRow key={defaulter.id} theme={theme}>
-                    <TableCell theme={theme}>
+                  <TableRow key={defaulter.id} >
+                    <TableCell >
                       <div style={{ fontWeight: '600' }}>{defaulter.name}</div>
                       <div style={{ fontSize: '0.75rem', color: theme.TEXT_SECONDARY }}>
                         ID: {getStudentDisplayId(defaulter)}
                       </div>
                     </TableCell>
-                    <TableCell theme={theme}>
+                    <TableCell >
                       {defaulter.className} {defaulter.sectionName}
                     </TableCell>
-                    <TableCell theme={theme} style={{ fontWeight: '600', color: '#ef4444' }}>
+                    <TableCell  style={{ fontWeight: '600', color: '#ef4444' }}>
                       {formatCurrency(defaulter.remaining)}
                     </TableCell>
                   </TableRow>
@@ -1226,7 +1226,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
               </tbody>
             </Table>
           ) : (
-            <EmptyState theme={theme}>
+            <EmptyState >
               <CheckCircle style={{ fontSize: '2rem', marginBottom: '0.5rem', color: '#22c55e' }} />
               No fee defaulters found
             </EmptyState>
@@ -1234,33 +1234,33 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
         </ContentCard>
 
         {/* Recent Payments */}
-        <ContentCard theme={theme}>
-          <CardTitle theme={theme}>
+        <ContentCard >
+          <CardTitle >
             <Receipt />
               Recent Payments
           </CardTitle>
           {analyticsData.recentPayments.length > 0 ? (
             <Table>
-              <TableHead theme={theme}>
-                <TableRow theme={theme}>
-                  <TableHeaderCell theme={theme}>Student</TableHeaderCell>
-                  <TableHeaderCell theme={theme}>Amount</TableHeaderCell>
-                  <TableHeaderCell theme={theme}>Date</TableHeaderCell>
+              <TableHead >
+                <TableRow >
+                  <TableHeaderCell >Student</TableHeaderCell>
+                  <TableHeaderCell >Amount</TableHeaderCell>
+                  <TableHeaderCell >Date</TableHeaderCell>
                 </TableRow>
               </TableHead>
               <tbody>
                 {analyticsData.recentPayments.map((payment) => (
-                  <TableRow key={payment.id} theme={theme}>
-                    <TableCell theme={theme}>
+                  <TableRow key={payment.id} >
+                    <TableCell >
                       <div style={{ fontWeight: '600' }}>{payment.studentName}</div>
                       <div style={{ fontSize: '0.75rem', color: theme.TEXT_SECONDARY }}>
                         {payment.className}
                       </div>
                     </TableCell>
-                    <TableCell theme={theme} style={{ fontWeight: '600', color: '#22c55e' }}>
+                    <TableCell  style={{ fontWeight: '600', color: '#22c55e' }}>
                       {formatCurrency(Number(payment.net_amount || payment.amount || 0))}
                     </TableCell>
-                    <TableCell theme={theme}>
+                    <TableCell >
                       {format(new Date(payment.payment_date), 'dd MMM yyyy')}
                     </TableCell>
                   </TableRow>
@@ -1268,7 +1268,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
               </tbody>
             </Table>
           ) : (
-            <EmptyState theme={theme}>
+            <EmptyState >
               <Payment style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.5 }} />
               No recent payments found
             </EmptyState>
@@ -1277,8 +1277,8 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
       </ContentGrid>
 
       {/* Payment Methods Analysis */}
-      <ContentCard theme={theme} style={{ marginBottom: '0.25rem' }}>
-        <CardTitle theme={theme}>
+      <ContentCard  style={{ marginBottom: '0.25rem' }}>
+        <CardTitle >
           <PieChartIcon />
           Payment Methods Analysis
         </CardTitle>
@@ -1311,7 +1311,7 @@ const FeeAnalytics: React.FC<FeeAnalyticsProps> = ({ className }) => {
                     {method.percentage.toFixed(1)}%
                   </span>
       </div>
-                <ProgressBar theme={theme}>
+                <ProgressBar >
                   <ProgressFill 
                     $percentage={method.percentage} 
                     $color={['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444'][index % 5]}

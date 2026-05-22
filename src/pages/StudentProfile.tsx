@@ -851,7 +851,7 @@ const InfoItem = muiStyled(Box)(({ theme }) => ({
   }
 }));
 
-const StatusChip = styled('span')<{ status: string }>(({ theme, status }) => ({
+const StatusChip = muiStyled('span')<{ status: string }>(({ theme, status }) => ({
   display: 'inline-flex',
   alignItems: 'center',
   padding: '6px 12px',
@@ -896,7 +896,7 @@ const StatusChip = styled('span')<{ status: string }>(({ theme, status }) => ({
   }
 }));
 
-const StyledTable = styled('table')(({ theme }) => ({
+const StyledTable = muiStyled('table')(({ theme }) => ({
   width: '100%',
   borderCollapse: 'separate',
   borderSpacing: 0,

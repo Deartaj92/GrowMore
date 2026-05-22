@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import styled, { useTheme } from 'styled-components';
-import { Search, AddCircle, InfoOutlined, CalendarToday, Edit, DeleteOutline as DeleteIcon } from '@mui/icons-material';
+import { Search, AddCircle, InfoOutlined, CalendarToday, Edit, DeleteOutline as DeleteIcon, Add } from '@mui/icons-material';
 import { supabase } from '../supabaseClient';
 import { clayCardStyle } from '../styles/DesignSystem';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,6 +12,7 @@ import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils
 import { useToast } from '../components/useToast';
 import { formatAppDate } from '../utils/dateUtils';
 import Loader from '../components/Loader';
+import DescriptionModal from '../components/DescriptionModal';
 
 const Container = styled.div`
   width: 100%;
@@ -411,6 +412,16 @@ const TableWrapper = styled.div`
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 `;
 
+const StyledSelect = styled.select`
+  flex: 1;
+  padding: 0.5rem;
+  background: ${({ theme }) => theme.FIELD_BG};
+  border: 1px solid ${({ theme }) => theme.FIELD_BORDER};
+  border-radius: 8px;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.9rem;
+`;
+
 const ActionButton = styled.button`
   display: inline-flex;
   align-items: center;
@@ -426,6 +437,7 @@ const ActionButton = styled.button`
     background: ${({ theme }) => theme.HOVER_BG};
   }
 `;
+
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -573,7 +585,8 @@ const SpecialFines: React.FC = () => {
   const [showStudentSuggestions, setShowStudentSuggestions] = useState(false);
   const [activeStudentSuggestion, setActiveStudentSuggestion] = useState(0);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [description, setDescription] = useState('Special Fine');
+  const [description, setDescription] = useState('');
+  const [isCustomDescription, setIsCustomDescription] = useState(false);
   const [amount, setAmount] = useState('');
   const [saving, setSaving] = useState(false);
   const [tableSearch, setTableSearch] = useState('');
@@ -584,6 +597,16 @@ const SpecialFines: React.FC = () => {
   const [deleteFineId, setDeleteFineId] = useState<number | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isProcessingFine, setIsProcessingFine] = useState(false);
+  const [descriptions, setDescriptions] = useState<Array<{id:number, name:string}>>([]);
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false);
+  
+  // Set first description as default when loaded
+  useEffect(() => {
+    if (descriptions.length > 0 && !description) {
+      setDescription(descriptions[0].name);
+    }
+  }, [descriptions, description]);
+
   const studentSearchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -593,7 +616,7 @@ const SpecialFines: React.FC = () => {
       startProgress(false);
       setProgress(15);
       try {
-        const [studentRows, fineRows, classRows, sectionRows] = await Promise.all([
+        const [studentRows, fineRows, classRows, sectionRows, descriptionRows] = await Promise.all([
           fetchAllRows<any>(async (from, to) => {
             return await supabase
               .from('students')
@@ -625,12 +648,21 @@ const SpecialFines: React.FC = () => {
               .eq('school_id', user.school_id)
               .range(from, to);
           }),
+          fetchAllRows<any>(async (from, to) => {
+            return await supabase
+              .from('specialfines_descriptions')
+              .select('id, name')
+              .eq('school_id', user.school_id)
+              .order('name', { ascending: true })
+              .range(from, to);
+          }),
         ]);
 
         setStudents(studentRows || []);
         setSpecialFines(fineRows || []);
         setClasses(classRows || []);
         setSections(sectionRows || []);
+        setDescriptions(descriptionRows || []);
         setProgress(100);
       } catch (error) {
         console.error('Failed to load special fines data:', error);
@@ -764,7 +796,7 @@ const SpecialFines: React.FC = () => {
       }
 
       toast.showToast('Special fine added successfully');
-      setDescription('Special Fine');
+      setDescription(descriptions.length > 0 ? descriptions[0].name : 'Special Fine');
       setAmount('');
       setSelectedStudent(null);
       setStudentSearch('');
@@ -987,13 +1019,39 @@ const SpecialFines: React.FC = () => {
               )}
             </CompactField>
 
-            <CompactField>
+            <CompactField style={{ position: 'relative', flex: '2 1 280px' }}>
               <Label>Description</Label>
-              <Input
-                placeholder="Library damage"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <StyledSelect
+                  value={isCustomDescription ? '__custom__' : description}
+                  onChange={e => {
+                    if (e.target.value === '__custom__') {
+                      setIsCustomDescription(true);
+                      setDescription('');
+                    } else {
+                      setIsCustomDescription(false);
+                      setDescription(e.target.value);
+                    }
+                  }}
+                >
+                  <option value="" disabled>Select description</option>
+                  {descriptions.map(d => (
+                    <option key={d.id} value={d.name}>{d.name}</option>
+                  ))}
+                  <option value="__custom__">Custom...</option>
+                </StyledSelect>
+                {isCustomDescription && (
+                  <Input
+                    placeholder="Custom description"
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    style={{ flex: 1, marginLeft: '0.5rem' }}
+                  />
+                )}
+                <ActionButton onClick={() => setShowDescriptionModal(true)} title="Manage descriptions">
+                  <AddCircle />
+                </ActionButton>
+              </div>
             </CompactField>
 
             <CompactField>
@@ -1138,6 +1196,21 @@ const SpecialFines: React.FC = () => {
         </ModalOverlay>,
         document.body
       )}
+{showDescriptionModal && (
+  <DescriptionModal
+    open={showDescriptionModal}
+    onClose={() => setShowDescriptionModal(false)}
+    onRefresh={async () => {
+      const { data, error } = await supabase
+        .from('specialfines_descriptions')
+        .select('id, name')
+        .eq('school_id', user?.school_id)
+        .order('name', { ascending: true });
+      if (!error) setDescriptions(data as any);
+    }}
+  />
+)}
+
     </Container>
   );
 };

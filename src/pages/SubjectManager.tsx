@@ -130,11 +130,11 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
         `;
       case 'secondary':
         return `
-          background: ${theme === 'dark' ? '#252525' : '#f7faff'};
+          background: ${theme.name === 'dark' ? '#252525' : '#f7faff'};
           color: #4a6cf7;
-          border: 1px solid ${theme === 'dark' ? '#3a3f4b' : '#b6c2d9'};
+          border: 1px solid ${theme.name === 'dark' ? '#3a3f4b' : '#b6c2d9'};
           &:hover {
-            background: ${theme === 'dark' ? 'rgba(74, 108, 247, 0.18)' : 'rgba(74, 108, 247, 0.15)'};
+            background: ${theme.name === 'dark' ? 'rgba(74, 108, 247, 0.18)' : 'rgba(74, 108, 247, 0.15)'};
             border-color: #4a6cf7;
           }
         `;

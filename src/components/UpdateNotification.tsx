@@ -830,7 +830,7 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
   return (
     <>
       {shouldShowUpdateModal && ReactDOM.createPortal(
-        <ThemeProvider theme={theme}>
+        <>
           <ModalOverlay>
             <UpdateContainer onClick={(e) => e.stopPropagation()}>
               <CloseButton onClick={handleCancel}>
@@ -870,7 +870,7 @@ const UpdateNotification = forwardRef<UpdateNotificationRef>((props, ref) => {
               </ButtonContainer>
             </UpdateContainer>
           </ModalOverlay>
-        </ThemeProvider>,
+        </>,
         document.body
       )}
       <DownloadProgressModal

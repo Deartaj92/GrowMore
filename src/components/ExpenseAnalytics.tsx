@@ -493,9 +493,9 @@ const ExpenseAnalytics: React.FC<ExpenseAnalyticsProps> = ({ className }) => {
   };
 
   return (
-    <PageContainer theme={theme} className={className}>
-      <Header theme={theme}>
-        <HeaderTitle theme={theme}>
+    <PageContainer  className={className}>
+      <Header >
+        <HeaderTitle >
           <Assessment style={{ fontSize: 28 }} />
           Expense Analytics
         </HeaderTitle>
@@ -514,7 +514,7 @@ const ExpenseAnalytics: React.FC<ExpenseAnalyticsProps> = ({ className }) => {
             theme={theme}
           />
           <RefreshButton
-            theme={theme}
+            
             onClick={fetchAnalyticsData}
             disabled={isLoadingData}
           >
@@ -527,15 +527,15 @@ const ExpenseAnalytics: React.FC<ExpenseAnalyticsProps> = ({ className }) => {
       {isLoadingData ? (
         <Loader />
       ) : !analyticsData ? (
-        <ContentCard theme={theme}>
-          <EmptyState theme={theme}>No expense data available for the selected period</EmptyState>
+        <ContentCard >
+          <EmptyState >No expense data available for the selected period</EmptyState>
         </ContentCard>
       ) : (
         <>
           <StatsGrid>
-            <StatCard theme={theme}>
-              <StatLabel theme={theme}>Total Expenses</StatLabel>
-              <StatValue theme={theme}>
+            <StatCard >
+              <StatLabel >Total Expenses</StatLabel>
+              <StatValue >
                 <StatIcon $color="#3b82f6">
                   <AttachMoney style={{ fontSize: 20 }} />
                 </StatIcon>
@@ -543,9 +543,9 @@ const ExpenseAnalytics: React.FC<ExpenseAnalyticsProps> = ({ className }) => {
               </StatValue>
             </StatCard>
 
-            <StatCard theme={theme}>
-              <StatLabel theme={theme}>Total Transactions</StatLabel>
-              <StatValue theme={theme}>
+            <StatCard >
+              <StatLabel >Total Transactions</StatLabel>
+              <StatValue >
                 <StatIcon $color="#10b981">
                   <Receipt style={{ fontSize: 20 }} />
                 </StatIcon>
@@ -553,9 +553,9 @@ const ExpenseAnalytics: React.FC<ExpenseAnalyticsProps> = ({ className }) => {
               </StatValue>
             </StatCard>
 
-            <StatCard theme={theme}>
-              <StatLabel theme={theme}>Average Expense</StatLabel>
-              <StatValue theme={theme}>
+            <StatCard >
+              <StatLabel >Average Expense</StatLabel>
+              <StatValue >
                 <StatIcon $color="#f59e0b">
                   <BarChart style={{ fontSize: 20 }} />
                 </StatIcon>
@@ -563,9 +563,9 @@ const ExpenseAnalytics: React.FC<ExpenseAnalyticsProps> = ({ className }) => {
               </StatValue>
             </StatCard>
 
-            <StatCard theme={theme}>
-              <StatLabel theme={theme}>Approved Expenses</StatLabel>
-              <StatValue theme={theme}>
+            <StatCard >
+              <StatLabel >Approved Expenses</StatLabel>
+              <StatValue >
                 <StatIcon $color="#10b981">
                   <CheckCircle style={{ fontSize: 20 }} />
                 </StatIcon>
@@ -573,9 +573,9 @@ const ExpenseAnalytics: React.FC<ExpenseAnalyticsProps> = ({ className }) => {
               </StatValue>
             </StatCard>
 
-            <StatCard theme={theme}>
-              <StatLabel theme={theme}>Pending Expenses</StatLabel>
-              <StatValue theme={theme}>
+            <StatCard >
+              <StatLabel >Pending Expenses</StatLabel>
+              <StatValue >
                 <StatIcon $color="#f59e0b">
                   <Warning style={{ fontSize: 20 }} />
                 </StatIcon>
@@ -583,9 +583,9 @@ const ExpenseAnalytics: React.FC<ExpenseAnalyticsProps> = ({ className }) => {
               </StatValue>
             </StatCard>
 
-            <StatCard theme={theme}>
-              <StatLabel theme={theme}>Paid Expenses</StatLabel>
-              <StatValue theme={theme}>
+            <StatCard >
+              <StatLabel >Paid Expenses</StatLabel>
+              <StatValue >
                 <StatIcon $color="#3b82f6">
                   <Payment style={{ fontSize: 20 }} />
                 </StatIcon>
@@ -594,11 +594,11 @@ const ExpenseAnalytics: React.FC<ExpenseAnalyticsProps> = ({ className }) => {
             </StatCard>
           </StatsGrid>
 
-          <ContentCard theme={theme}>
+          <ContentCard >
             <ChartSection>
               {/* Monthly Trends Chart */}
-              <ChartCard theme={theme}>
-                <ChartTitle theme={theme}>
+              <ChartCard >
+                <ChartTitle >
                   <TrendingUp style={{ fontSize: 20 }} />
                   Monthly Expense Trends
                 </ChartTitle>
@@ -656,14 +656,14 @@ const ExpenseAnalytics: React.FC<ExpenseAnalyticsProps> = ({ className }) => {
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
-                    <EmptyState theme={theme}>No monthly data available</EmptyState>
+                    <EmptyState >No monthly data available</EmptyState>
                   )}
                 </ChartContainer>
               </ChartCard>
 
               {/* Top Categories */}
-              <ChartCard theme={theme}>
-                <ChartTitle theme={theme}>
+              <ChartCard >
+                <ChartTitle >
                   <CategoryIcon style={{ fontSize: 20 }} />
                   Top Expense Categories
                 </ChartTitle>
@@ -772,7 +772,7 @@ const ExpenseAnalytics: React.FC<ExpenseAnalyticsProps> = ({ className }) => {
                         </PieChart>
                       </ResponsiveContainer>
                     ) : (
-                      <EmptyState theme={theme}>No category data available</EmptyState>
+                      <EmptyState >No category data available</EmptyState>
                     )}
                   </div>
                   {analyticsData.topCategories.length > 0 && (
@@ -902,7 +902,7 @@ const ExpenseAnalytics: React.FC<ExpenseAnalyticsProps> = ({ className }) => {
 
             {/* Status Breakdown */}
             <div>
-              <ChartTitle theme={theme} style={{ marginBottom: '1rem' }}>
+              <ChartTitle  style={{ marginBottom: '1rem' }}>
                 <PieChart style={{ fontSize: 20 }} />
                 Expense Status Breakdown
               </ChartTitle>
@@ -911,15 +911,15 @@ const ExpenseAnalytics: React.FC<ExpenseAnalyticsProps> = ({ className }) => {
                   <StatusItem
                     key={status.status}
                     $color={getStatusColor(status.status)}
-                    theme={theme}
+                    
                   >
-                    <StatusLabel theme={theme}>
+                    <StatusLabel >
                       {getStatusLabel(status.status)}
                     </StatusLabel>
-                    <StatusValue theme={theme}>
+                    <StatusValue >
                       {formatCurrency(status.total)}
                     </StatusValue>
-                    <StatusCount theme={theme}>
+                    <StatusCount >
                       {status.count} {status.count === 1 ? 'expense' : 'expenses'}
                     </StatusCount>
                   </StatusItem>
@@ -929,7 +929,7 @@ const ExpenseAnalytics: React.FC<ExpenseAnalyticsProps> = ({ className }) => {
 
             {/* Payment Method Breakdown */}
             <div>
-              <ChartTitle theme={theme} style={{ marginBottom: '1rem' }}>
+              <ChartTitle  style={{ marginBottom: '1rem' }}>
                 <Payment style={{ fontSize: 20 }} />
                 Payment Method Breakdown
               </ChartTitle>
@@ -938,15 +938,15 @@ const ExpenseAnalytics: React.FC<ExpenseAnalyticsProps> = ({ className }) => {
                   <StatusItem
                     key={method.method}
                     $color="#8b5cf6"
-                    theme={theme}
+                    
                   >
-                    <StatusLabel theme={theme}>
+                    <StatusLabel >
                       {getPaymentMethodLabel(method.method)}
                     </StatusLabel>
-                    <StatusValue theme={theme}>
+                    <StatusValue >
                       {formatCurrency(method.total)}
                     </StatusValue>
-                    <StatusCount theme={theme}>
+                    <StatusCount >
                       {method.count} {method.count === 1 ? 'transaction' : 'transactions'}
                     </StatusCount>
                   </StatusItem>

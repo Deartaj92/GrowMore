@@ -2562,7 +2562,7 @@ const MarksEntryManager: React.FC = () => {
   }
 
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <PageContainer>
         <Header>
           <HeaderTopRow>
@@ -3003,7 +3003,7 @@ const MarksEntryManager: React.FC = () => {
           </ModalOverlay>
         )}
       </PageContainer>
-    </ThemeProvider>
+    </>
   );
 };
 

@@ -464,7 +464,7 @@ const EnquiryDashboard: React.FC = () => {
   // Check if user has school_id
   if (!user?.school_id) {
     return (
-      <PageContainer theme={theme}>
+      <PageContainer>
         <ErrorContainer>
           <WarningIcon style={{ marginRight: '0.5rem' }} />
           No school context found. Please contact your administrator.
@@ -526,7 +526,7 @@ const EnquiryDashboard: React.FC = () => {
 
   if (error) {
     return (
-      <PageContainer theme={theme}>
+      <PageContainer>
         <ErrorContainer>
           <WarningIcon style={{ marginRight: '0.5rem' }} />
           {error}
@@ -537,7 +537,7 @@ const EnquiryDashboard: React.FC = () => {
 
   if (!dashboardData) {
     return (
-      <PageContainer theme={theme}>
+      <PageContainer>
         <EmptyState>
           <QuestionAnswerIcon style={{ fontSize: '4rem', marginBottom: '1rem', color: (theme as any).TEXT_SECONDARY }} />
           No enquiry data available
@@ -548,7 +548,7 @@ const EnquiryDashboard: React.FC = () => {
 
   return (
     <ResponsiveStyles>
-      <PageContainer theme={theme}>
+      <PageContainer>
       {/* Header */}
       <Header>
         <div>

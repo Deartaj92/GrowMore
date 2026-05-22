@@ -367,7 +367,7 @@ const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
   const { speed, timeRemaining } = calculateSpeedAndTime();
 
   const modalContent = (
-    <ThemeProvider theme={theme}>
+    <>
       <ModalOverlay 
         isMinimized={isMinimized} 
         onClick={(e) => {
@@ -476,7 +476,7 @@ const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
           )}
         </ModalContainer>
       </ModalOverlay>
-    </ThemeProvider>
+    </>
   );
 
   return ReactDOM.createPortal(modalContent, document.body);

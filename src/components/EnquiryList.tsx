@@ -477,7 +477,7 @@ const EnquiryList: React.FC = () => {
   // Check if user has school_id
   if (!user?.school_id) {
     return (
-      <PageContainer theme={theme}>
+      <PageContainer>
         <ErrorContainer>
           No school context found. Please contact your administrator.
         </ErrorContainer>
@@ -602,7 +602,7 @@ const EnquiryList: React.FC = () => {
 
   if (error) {
     return (
-      <PageContainer theme={theme}>
+      <PageContainer>
         <ErrorContainer>
           {error}
         </ErrorContainer>
@@ -612,7 +612,7 @@ const EnquiryList: React.FC = () => {
 
   return (
     <ResponsiveStyles>
-      <PageContainer theme={theme}>
+      <PageContainer>
       {/* Header */}
       <Header>
         <Title>
@@ -861,7 +861,7 @@ const EnquiryList: React.FC = () => {
             {/* Mobile Cards */}
             <div style={{ display: 'none' }} className="mobile-cards">
               {enquiries.map((enquiry) => (
-                <MobileCard key={enquiry.id} theme={theme}>
+                <MobileCard key={enquiry.id}>
                   <MobileCardHeader>
                     <div>
                       <MobileCardTitle>{enquiry.name}</MobileCardTitle>

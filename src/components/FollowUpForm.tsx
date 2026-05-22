@@ -288,7 +288,7 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({
       </DialogTitle>
       
       <DialogContent>
-        <FormContainer theme={theme}>
+        <FormContainer>
           <form onSubmit={handleSubmit}>
             {/* Follow-up Details */}
             <SectionTitle>

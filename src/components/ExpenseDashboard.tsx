@@ -261,7 +261,7 @@ const ExpenseDashboard: React.FC = () => {
   };
 
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <PageContainer>
       <Header>
         <Title>
@@ -299,7 +299,7 @@ const ExpenseDashboard: React.FC = () => {
         ))}
       </CardsGrid>
       </PageContainer>
-    </ThemeProvider>
+    </>
   );
 };
 

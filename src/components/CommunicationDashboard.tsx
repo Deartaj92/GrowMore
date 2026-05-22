@@ -392,7 +392,7 @@ const CommunicationDashboard: React.FC = () => {
   };
 
   return (
-    <ThemeProvider theme={themeObj}>
+    <>
       <PageContainer>
         <Header>
           <Title>
@@ -427,7 +427,7 @@ const CommunicationDashboard: React.FC = () => {
           ))}
         </CardsGrid>
       </PageContainer>
-    </ThemeProvider>
+    </>
   );
 };
 

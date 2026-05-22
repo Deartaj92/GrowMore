@@ -1930,7 +1930,7 @@ const DetailedMarksCertificate: React.FC = () => {
   };
 
   return (
-    <PageContainer theme={theme}>
+    <PageContainer>
       <Header>
         <HeaderRow>
           <Title>

@@ -1199,7 +1199,7 @@ const SessionsManager: React.FC = () => {
 
   if (!currentSchoolId) {
     return (
-      <ThemeProvider theme={themeObj}>
+      <>
         <PageContainer>
           <Header>
             <Title>Sessions Manager</Title>
@@ -1208,14 +1208,14 @@ const SessionsManager: React.FC = () => {
             <WarningIcon style={{ fontSize: '1rem' }} /> No school context found. Please contact your administrator.
           </ErrorMessage>
         </PageContainer>
-      </ThemeProvider>
+      </>
     );
   }
 
   if (loading) return (
-      <ThemeProvider theme={themeObj}>
+      <>
       <Loader />
-      </ThemeProvider>
+      </>
     );
 
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -1226,7 +1226,7 @@ const SessionsManager: React.FC = () => {
   );
 
   return (
-    <ThemeProvider theme={themeObj}>
+    <>
     <PageContainer>
         <Header>
           <HeaderRow>
@@ -1558,7 +1558,7 @@ const SessionsManager: React.FC = () => {
         {loadingClasses ? <div style={{ textAlign: 'center', padding: '2rem' }}>Loading classes...</div> : null}
         {loadingSections ? <div style={{ textAlign: 'center', padding: '2rem' }}>Loading sections...</div> : null}
       </PageContainer>
-    </ThemeProvider>
+    </>
   );
 };
 

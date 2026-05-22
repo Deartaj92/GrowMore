@@ -293,7 +293,7 @@ const StyledDialog = styled.div<{ open: boolean }>`
   left: 0;
   right: 0;
   bottom: 0;
-  background: ${({ theme }) => theme.palette?.mode === 'dark'
+  background: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(0, 0, 0, 0.5)'
     : 'rgba(255, 255, 255, 0.5)'};
   display: ${props => props.open ? 'flex' : 'none'};
@@ -311,18 +311,18 @@ const StyledDialog = styled.div<{ open: boolean }>`
 `;
 
 const DialogPaper = styled.div`
-  background: ${({ theme }) => theme.palette?.mode === 'dark'
-    ? theme.palette.background.paper
-    : theme.palette.background.paper};
+  background: ${({ theme }) => theme.BG === '#252525'
+    ? theme.CARD
+    : theme.CARD};
   border-radius: 16px;
   max-width: 500px;
   width: 100%;
   margin: 0;
   overflow: hidden;
-  box-shadow: ${({ theme }) => theme.palette?.mode === 'dark'
+  box-shadow: ${({ theme }) => theme.BG === '#252525'
     ? '0 0 40px rgba(0, 0, 0, 0.5), 0 8px 32px rgba(0, 0, 0, 0.4)'
     : '0 0 40px rgba(0, 0, 0, 0.1), 0 8px 32px rgba(0, 0, 0, 0.1)'};
-  border: ${({ theme }) => theme.palette?.mode === 'dark'
+  border: ${({ theme }) => theme.BG === '#252525'
     ? '1px solid rgba(255, 255, 255, 0.05)'
     : '1px solid rgba(0, 0, 0, 0.05)'};
   transform: translateY(0);
@@ -345,10 +345,10 @@ const DialogHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: ${({ theme }) => theme.palette?.mode === 'dark'
+  border-bottom: ${({ theme }) => theme.BG === '#252525'
     ? '1px solid rgba(255, 255, 255, 0.05)'
     : '1px solid rgba(0, 0, 0, 0.05)'};
-  background: ${({ theme }) => theme.palette?.mode === 'dark'
+  background: ${({ theme }) => theme.BG === '#252525'
     ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
     : 'linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)'};
   backdrop-filter: blur(8px);
@@ -360,10 +360,10 @@ const DialogHeader = styled.div`
 const DialogTitle = styled.h2`
   font-size: 1.25rem;
   font-weight: 600;
-  color: ${({ theme }) => theme.palette?.mode === 'dark'
-    ? theme.palette.primary.light
-    : theme.palette.primary.main};
-  text-shadow: ${({ theme }) => theme.palette?.mode === 'dark'
+  color: ${({ theme }) => theme.BG === '#252525'
+    ? theme.ACCENT_DARK
+    : theme.ACCENT};
+  text-shadow: ${({ theme }) => theme.BG === '#252525'
     ? '0 2px 4px rgba(0, 0, 0, 0.5)'
     : 'none'};
   margin: 0;
@@ -377,7 +377,7 @@ const StyledDialogContent = styled.div`
   flex: 1;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: ${({ theme }) => theme.palette?.mode === 'dark'
+  scrollbar-color: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.2) transparent'
     : 'rgba(0, 0, 0, 0.2) transparent'};
   
@@ -393,22 +393,22 @@ const StyledDialogContent = styled.div`
   }
   
   &::-webkit-scrollbar-thumb {
-    background-color: ${({ theme }) => theme.palette?.mode === 'dark'
+    background-color: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.2)'
     : 'rgba(0, 0, 0, 0.2)'};
     border-radius: 3px;
-    border: ${({ theme }) => theme.palette?.mode === 'dark'
-    ? `1px solid ${theme.palette.background.paper}`
-    : `1px solid ${theme.palette.background.paper}`};
+    border: ${({ theme }) => theme.BG === '#252525'
+    ? `1px solid ${theme.CARD}`
+    : `1px solid ${theme.CARD}`};
     
     &:hover {
-      background-color: ${({ theme }) => theme.palette?.mode === 'dark'
+      background-color: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.3)'
     : 'rgba(0, 0, 0, 0.3)'};
     }
   }
   
-  background: ${({ theme }) => theme.palette?.mode === 'dark'
+  background: ${({ theme }) => theme.BG === '#252525'
     ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%)'
     : 'linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 100%)'};
   
@@ -441,7 +441,7 @@ const FormGroup = styled.div`
 const Label = styled.label`
   display: block;
   margin-bottom: 0.25rem;
-  color: ${({ theme }) => theme.palette?.mode === 'dark'
+  color: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.7)'
     : 'rgba(0, 0, 0, 0.6)'};
   font-weight: 500;
@@ -723,14 +723,14 @@ const SessionsGrid = styled.div`
 const Input = styled.input`
   width: 100%;
   padding: 10px 12px;
-  border: ${({ theme }) => theme.palette?.mode === 'dark'
+  border: ${({ theme }) => theme.BG === '#252525'
     ? '1px solid rgba(255, 255, 255, 0.05)'
     : '1px solid rgba(0, 0, 0, 0.05)'};
   border-radius: 8px;
-  background: ${({ theme }) => theme.palette?.mode === 'dark'
+  background: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.03)'
     : 'rgba(255, 255, 255, 0.8)'};
-  color: ${({ theme }) => theme.palette?.mode === 'dark'
+  color: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.9)'
     : 'rgba(0, 0, 0, 0.9)'};
   font-size: 0.95rem;
@@ -739,14 +739,14 @@ const Input = styled.input`
   backdrop-filter: blur(8px);
 
   &:hover, &:focus {
-    background: ${({ theme }) => theme.palette?.mode === 'dark'
+    background: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.05)'
     : 'rgba(255, 255, 255, 0.9)'};
-    border-color: ${({ theme }) => theme.palette?.primary?.main || '#1976d2'};
+    border-color: ${({ theme }) => theme.ACCENT || '#1976d2'};
   }
 
   &::placeholder {
-    color: ${({ theme }) => theme.palette?.mode === 'dark'
+    color: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.3)'
     : 'rgba(0, 0, 0, 0.3)'};
     opacity: 1;
@@ -756,14 +756,14 @@ const Input = styled.input`
 const TextArea = styled.textarea`
   width: 100%;
   padding: 10px 12px;
-  border: ${({ theme }) => theme.palette?.mode === 'dark'
+  border: ${({ theme }) => theme.BG === '#252525'
     ? '1px solid rgba(255, 255, 255, 0.05)'
     : '1px solid rgba(0, 0, 0, 0.05)'};
   border-radius: 8px;
-  background: ${({ theme }) => theme.palette?.mode === 'dark'
+  background: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.03)'
     : 'rgba(255, 255, 255, 0.8)'};
-  color: ${({ theme }) => theme.palette?.mode === 'dark'
+  color: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.9)'
     : 'rgba(0, 0, 0, 0.9)'};
   font-size: 0.95rem;
@@ -774,14 +774,14 @@ const TextArea = styled.textarea`
   backdrop-filter: blur(8px);
 
   &:hover, &:focus {
-    background: ${({ theme }) => theme.palette?.mode === 'dark'
+    background: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.05)'
     : 'rgba(255, 255, 255, 0.9)'};
-    border-color: ${({ theme }) => theme.palette?.primary?.main || '#1976d2'};
+    border-color: ${({ theme }) => theme.ACCENT || '#1976d2'};
   }
 
   &::placeholder {
-    color: ${({ theme }) => theme.palette?.mode === 'dark'
+    color: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.3)'
     : 'rgba(0, 0, 0, 0.3)'};
     opacity: 1;
@@ -791,14 +791,14 @@ const TextArea = styled.textarea`
 const Select = styled.select`
   width: 100%;
   padding: 10px 12px;
-  border: ${({ theme }) => theme.palette?.mode === 'dark'
+  border: ${({ theme }) => theme.BG === '#252525'
     ? '1px solid rgba(255, 255, 255, 0.05)'
     : '1px solid rgba(0, 0, 0, 0.05)'};
   border-radius: 8px;
-  background: ${({ theme }) => theme.palette?.mode === 'dark'
+  background: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.03)'
     : 'rgba(255, 255, 255, 0.8)'};
-  color: ${({ theme }) => theme.palette?.mode === 'dark'
+  color: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.9)'
     : 'rgba(0, 0, 0, 0.9)'};
   font-size: 0.95rem;
@@ -807,18 +807,18 @@ const Select = styled.select`
   backdrop-filter: blur(8px);
 
   &:hover, &:focus {
-    background: ${({ theme }) => theme.palette?.mode === 'dark'
+    background: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.05)'
     : 'rgba(255, 255, 255, 0.9)'};
-    border-color: ${({ theme }) => theme.palette?.primary?.main || '#1976d2'};
+    border-color: ${({ theme }) => theme.ACCENT || '#1976d2'};
   }
 
   /* Style the dropdown options */
   option {
-    background: ${({ theme }) => theme.palette?.mode === 'dark'
+    background: ${({ theme }) => theme.BG === '#252525'
     ? '#1a1a1a'
     : '#ffffff'};
-    color: ${({ theme }) => theme.palette?.mode === 'dark'
+    color: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.9)'
     : 'rgba(0, 0, 0, 0.9)'};
     padding: 8px 12px;
@@ -827,7 +827,7 @@ const Select = styled.select`
 
   /* Style the dropdown arrow */
   appearance: none;
-  background-image: ${({ theme }) => theme.palette?.mode === 'dark'
+  background-image: ${({ theme }) => theme.BG === '#252525'
     ? `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`
     : `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23000000' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`};
   background-repeat: no-repeat;
@@ -841,10 +841,10 @@ const FormActions = styled.div`
   justify-content: flex-end;
   gap: 12px;
   padding: 12px 20px;
-  border-top: ${({ theme }) => theme.palette?.mode === 'dark'
+  border-top: ${({ theme }) => theme.BG === '#252525'
     ? '1px solid rgba(255, 255, 255, 0.05)'
     : '1px solid rgba(0, 0, 0, 0.05)'};
-  background: ${({ theme }) => theme.palette?.mode === 'dark'
+  background: ${({ theme }) => theme.BG === '#252525'
     ? 'linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)'
     : 'linear-gradient(0deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%)'};
   flex-shrink: 0;
@@ -877,19 +877,19 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   ${({ variant, theme }) => {
     if (variant === 'primary') {
       return `
-        background: ${theme.palette?.mode === 'dark'
+        background: ${theme.BG === '#252525'
           ? 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)'
           : 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)'};
         color: white;
-        box-shadow: ${theme.palette?.mode === 'dark'
+        box-shadow: ${theme.BG === '#252525'
           ? '0 2px 8px rgba(25, 118, 210, 0.3)'
           : '0 2px 8px rgba(25, 118, 210, 0.2)'};
         
         &:hover {
-          background: ${theme.palette?.mode === 'dark'
+          background: ${theme.BG === '#252525'
           ? 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)'
           : 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)'};
-          box-shadow: ${theme.palette?.mode === 'dark'
+          box-shadow: ${theme.BG === '#252525'
           ? '0 4px 12px rgba(25, 118, 210, 0.4)'
           : '0 4px 12px rgba(25, 118, 210, 0.3)'};
           transform: translateY(-1px);
@@ -897,26 +897,26 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
         
         &:active {
           transform: translateY(0);
-          box-shadow: ${theme.palette?.mode === 'dark'
+          box-shadow: ${theme.BG === '#252525'
           ? '0 2px 6px rgba(25, 118, 210, 0.3)'
           : '0 2px 6px rgba(25, 118, 210, 0.2)'};
         }
       `;
     } else if (variant === 'danger') {
       return `
-        background: ${theme.palette?.mode === 'dark'
+        background: ${theme.BG === '#252525'
           ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
           : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'};
         color: white;
-        box-shadow: ${theme.palette?.mode === 'dark'
+        box-shadow: ${theme.BG === '#252525'
           ? '0 2px 8px rgba(239, 68, 68, 0.3)'
           : '0 2px 8px rgba(239, 68, 68, 0.2)'};
         
         &:hover {
-          background: ${theme.palette?.mode === 'dark'
+          background: ${theme.BG === '#252525'
           ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'
           : 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'};
-          box-shadow: ${theme.palette?.mode === 'dark'
+          box-shadow: ${theme.BG === '#252525'
           ? '0 4px 12px rgba(239, 68, 68, 0.4)'
           : '0 4px 12px rgba(239, 68, 68, 0.3)'};
           transform: translateY(-1px);
@@ -924,28 +924,28 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
         
         &:active {
           transform: translateY(0);
-          box-shadow: ${theme.palette?.mode === 'dark'
+          box-shadow: ${theme.BG === '#252525'
           ? '0 2px 6px rgba(239, 68, 68, 0.3)'
           : '0 2px 6px rgba(239, 68, 68, 0.2)'};
         }
       `;
     } else {
       return `
-        background: ${theme.palette?.mode === 'dark'
+        background: ${theme.BG === '#252525'
           ? 'rgba(255, 255, 255, 0.05)'
           : 'rgba(0, 0, 0, 0.05)'};
-        color: ${theme.palette?.mode === 'dark'
+        color: ${theme.BG === '#252525'
           ? 'rgba(255, 255, 255, 0.8)'
           : 'rgba(0, 0, 0, 0.8)'};
-        border: 1px solid ${theme.palette?.mode === 'dark'
+        border: 1px solid ${theme.BG === '#252525'
           ? 'rgba(255, 255, 255, 0.1)'
           : 'rgba(0, 0, 0, 0.1)'};
         
         &:hover {
-          background: ${theme.palette?.mode === 'dark'
+          background: ${theme.BG === '#252525'
           ? 'rgba(255, 255, 255, 0.08)'
           : 'rgba(0, 0, 0, 0.08)'};
-          border-color: ${theme.palette?.mode === 'dark'
+          border-color: ${theme.BG === '#252525'
           ? 'rgba(255, 255, 255, 0.2)'
           : 'rgba(0, 0, 0, 0.2)'};
           transform: translateY(-1px);
@@ -971,7 +971,7 @@ const CloseButton = styled.button`
   right: 1rem;
   background: none;
   border: none;
-  color: ${({ theme }) => theme.palette?.mode === 'dark'
+  color: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.7)'
     : 'rgba(0, 0, 0, 0.6)'};
   cursor: pointer;
@@ -983,10 +983,10 @@ const CloseButton = styled.button`
   transition: all 0.2s ease;
 
   &:hover {
-    background: ${({ theme }) => theme.palette?.mode === 'dark'
+    background: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.1)'
     : 'rgba(0, 0, 0, 0.1)'};
-    color: ${({ theme }) => theme.palette?.mode === 'dark'
+    color: ${({ theme }) => theme.BG === '#252525'
     ? 'rgba(255, 255, 255, 0.9)'
     : 'rgba(0, 0, 0, 0.9)'};
   }
@@ -1591,7 +1591,7 @@ const ExaminationManager: React.FC = () => {
   // Check if user has school_id - moved after all hooks
   if (!user?.school_id) {
     return (
-      <ThemeProvider theme={theme}>
+      <>
         <PageContainer>
           <div style={{
             display: 'flex',
@@ -1607,18 +1607,18 @@ const ExaminationManager: React.FC = () => {
             No school context found. Please contact your administrator.
           </div>
         </PageContainer>
-      </ThemeProvider>
+      </>
     );
   }
 
   if (loading) return (
-    <ThemeProvider theme={theme}>
+    <>
       <Loader />
-    </ThemeProvider>
+    </>
   );
 
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <PageContainer>
         <Header>
           <HeaderRow>
@@ -1989,7 +1989,7 @@ const ExaminationManager: React.FC = () => {
           </FormActions>
         </DialogPaper>
       </StyledDialog>
-    </ThemeProvider>
+    </>
   );
 };
 

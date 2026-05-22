@@ -984,14 +984,14 @@ const StaffHalfLeaves: React.FC = () => {
             </div>
           )}
           <SegmentedGroup
-            theme={theme}
+            
             style={isMobile
               ? { marginTop: 8, width: '100%', justifyContent: 'center', overflowX: 'auto' }
               : { marginTop: 8, justifyContent: 'flex-end' }
             }
           >
             <SegmentedButton
-              theme={theme}
+              
               first
               onClick={() => {
                 setSearchTerm('');
@@ -1003,7 +1003,7 @@ const StaffHalfLeaves: React.FC = () => {
               Refresh
             </SegmentedButton>
             <SegmentedButton
-              theme={theme}
+              
               onClick={() => setShowDeleteConfirm(true)}
               disabled={
                 persons.length === 0 || 
@@ -1035,7 +1035,7 @@ const StaffHalfLeaves: React.FC = () => {
               {deleting ? 'Deleting...' : 'Delete'}
             </SegmentedButton>
             <SegmentedButton
-              theme={theme}
+              
               last
               onClick={handleSave}
               disabled={saving || loadingPersons}
@@ -1096,7 +1096,7 @@ const StaffHalfLeaves: React.FC = () => {
 
   if (!hasActiveSession) {
     return (
-      <PageContainer theme={theme}>
+      <PageContainer>
         <Header>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <AccessTime style={{ fontSize: 20 }} />
@@ -1113,7 +1113,7 @@ const StaffHalfLeaves: React.FC = () => {
   }
 
   return (
-    <PageContainer theme={theme}>
+    <PageContainer>
       <Header>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {!isMobile && (
@@ -1124,16 +1124,16 @@ const StaffHalfLeaves: React.FC = () => {
         </div>
         {isMobile ? (
           <>
-            <SegmentedGroup theme={theme}>
+            <SegmentedGroup >
               <SegmentedInput
-                theme={theme}
+                
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 first
               />
               <SegmentedInput
-                theme={theme}
+                
                 type="text"
                 placeholder="Search staff..."
                 value={searchTerm}
@@ -1159,15 +1159,15 @@ const StaffHalfLeaves: React.FC = () => {
             </div>
           </>
         ) : (
-          <SegmentedGroup theme={theme}>
+          <SegmentedGroup >
             <SegmentedInput
-              theme={theme}
+              
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
             />
             <SegmentedInput
-              theme={theme}
+              
               type="text"
               placeholder="Search staff..."
               value={searchTerm}
@@ -1236,18 +1236,18 @@ const StaffHalfLeaves: React.FC = () => {
           // Show persons list
           return (
             <>
-              <StatsBar theme={theme}>
+              <StatsBar >
                 <StatItem>
-                  <StatLabel theme={theme}>Total Staff</StatLabel>
-                  <StatValue theme={theme}>{totalPersons}</StatValue>
+                  <StatLabel >Total Staff</StatLabel>
+                  <StatValue >{totalPersons}</StatValue>
                 </StatItem>
                 <StatItem>
-                  <StatLabel theme={theme}>First Half</StatLabel>
-                  <StatValue theme={theme} style={{ color: '#f59e0b' }}>{firstHalfCount}</StatValue>
+                  <StatLabel >First Half</StatLabel>
+                  <StatValue  style={{ color: '#f59e0b' }}>{firstHalfCount}</StatValue>
                 </StatItem>
                 <StatItem>
-                  <StatLabel theme={theme}>Second Half</StatLabel>
-                  <StatValue theme={theme} style={{ color: '#8b5cf6' }}>{secondHalfCount}</StatValue>
+                  <StatLabel >Second Half</StatLabel>
+                  <StatValue  style={{ color: '#8b5cf6' }}>{secondHalfCount}</StatValue>
                 </StatItem>
               </StatsBar>
 
@@ -1256,24 +1256,24 @@ const StaffHalfLeaves: React.FC = () => {
                   if (isMobile) {
                     // Mobile layout matching MarkAttendance style
                     return (
-                      <MobilePersonCard key={person.id} theme={theme}>
+                      <MobilePersonCard key={person.id} >
                         <MobileCardTopRow>
-                          <MobileAvatar theme={theme}>
+                          <MobileAvatar >
                             {person.picture_url ? (
                               <img src={person.picture_url} alt={person.name} />
                             ) : (
                               person.name.charAt(0).toUpperCase()
                             )}
                           </MobileAvatar>
-                          <MobilePersonInfo theme={theme}>
-                            <MobilePersonName theme={theme}>{person.name}</MobilePersonName>
-                            <MobilePersonDetails theme={theme}>
+                          <MobilePersonInfo >
+                            <MobilePersonName >{person.name}</MobilePersonName>
+                            <MobilePersonDetails >
                               {person.role}
                             </MobilePersonDetails>
                           </MobilePersonInfo>
                           <MobileLeaveTypeButtons>
                             <MobileLeaveTypeButton
-                              theme={theme}
+                              
                               $active={person.leave_type === 'first_half'}
                               $color="#f59e0b"
                               onClick={() => handleLeaveTypeChange(
@@ -1284,7 +1284,7 @@ const StaffHalfLeaves: React.FC = () => {
                               First Half
                             </MobileLeaveTypeButton>
                             <MobileLeaveTypeButton
-                              theme={theme}
+                              
                               $active={person.leave_type === 'second_half'}
                               $color="#8b5cf6"
                               onClick={() => handleLeaveTypeChange(
@@ -1297,12 +1297,12 @@ const StaffHalfLeaves: React.FC = () => {
                           </MobileLeaveTypeButtons>
                         </MobileCardTopRow>
                         {person.leave_type && (
-                          <MobileTimeInputContainer theme={theme}>
+                          <MobileTimeInputContainer >
                             {person.leave_type === 'first_half' && (
                               <MobileTimeInputGroup>
-                                <MobileTimeLabel theme={theme}>Arrival Time:</MobileTimeLabel>
+                                <MobileTimeLabel >Arrival Time:</MobileTimeLabel>
                                 <MobileTimeInput
-                                  theme={theme}
+                                  
                                   type="time"
                                   value={person.arrival_time || ''}
                                   onChange={(e) => handleTimeChange(person.id, 'arrival_time', e.target.value)}
@@ -1311,9 +1311,9 @@ const StaffHalfLeaves: React.FC = () => {
                             )}
                             {person.leave_type === 'second_half' && (
                               <MobileTimeInputGroup>
-                                <MobileTimeLabel theme={theme}>Departure Time:</MobileTimeLabel>
+                                <MobileTimeLabel >Departure Time:</MobileTimeLabel>
                                 <MobileTimeInput
-                                  theme={theme}
+                                  
                                   type="time"
                                   value={person.departure_time || ''}
                                   onChange={(e) => handleTimeChange(person.id, 'departure_time', e.target.value)}
@@ -1328,17 +1328,17 @@ const StaffHalfLeaves: React.FC = () => {
                   
                   // Desktop layout
                   return (
-                    <PersonCard key={person.id} theme={theme}>
-                      <Avatar theme={theme}>
+                    <PersonCard key={person.id} >
+                      <Avatar >
                         {person.picture_url ? (
                           <img src={person.picture_url} alt={person.name} />
                         ) : (
                           person.name.charAt(0).toUpperCase()
                         )}
                       </Avatar>
-                      <PersonInfo theme={theme}>
-                        <PersonName theme={theme}>{person.name}</PersonName>
-                        <PersonDetails theme={theme}>
+                      <PersonInfo >
+                        <PersonName >{person.name}</PersonName>
+                        <PersonDetails >
                           {person.role}
                         </PersonDetails>
                       </PersonInfo>
@@ -1347,9 +1347,9 @@ const StaffHalfLeaves: React.FC = () => {
                           <DesktopTimeInputGroup>
                             {person.leave_type === 'first_half' && (
                               <>
-                                <TimeLabel theme={theme}>Arrival Time:</TimeLabel>
+                                <TimeLabel >Arrival Time:</TimeLabel>
                                 <TimeInput
-                                  theme={theme}
+                                  
                                   type="time"
                                   value={person.arrival_time || ''}
                                   onChange={(e) => handleTimeChange(person.id, 'arrival_time', e.target.value)}
@@ -1358,9 +1358,9 @@ const StaffHalfLeaves: React.FC = () => {
                             )}
                             {person.leave_type === 'second_half' && (
                               <>
-                                <TimeLabel theme={theme}>Departure Time:</TimeLabel>
+                                <TimeLabel >Departure Time:</TimeLabel>
                                 <TimeInput
-                                  theme={theme}
+                                  
                                   type="time"
                                   value={person.departure_time || ''}
                                   onChange={(e) => handleTimeChange(person.id, 'departure_time', e.target.value)}
@@ -1371,7 +1371,7 @@ const StaffHalfLeaves: React.FC = () => {
                         )}
                         <LeaveTypeButtons>
                           <LeaveTypeButton
-                            theme={theme}
+                            
                             $active={person.leave_type === 'first_half'}
                             $color="#f59e0b"
                             onClick={() => handleLeaveTypeChange(
@@ -1382,7 +1382,7 @@ const StaffHalfLeaves: React.FC = () => {
                             First Half
                           </LeaveTypeButton>
                           <LeaveTypeButton
-                            theme={theme}
+                            
                             $active={person.leave_type === 'second_half'}
                             $color="#8b5cf6"
                             onClick={() => handleLeaveTypeChange(
@@ -1395,12 +1395,12 @@ const StaffHalfLeaves: React.FC = () => {
                         </LeaveTypeButtons>
                       </DesktopButtonRow>
                       {person.leave_type && (
-                        <TimeInputContainer theme={theme}>
+                        <TimeInputContainer >
                           {person.leave_type === 'first_half' && (
                             <TimeInputGroup>
-                              <TimeLabel theme={theme}>Arrival Time:</TimeLabel>
+                              <TimeLabel >Arrival Time:</TimeLabel>
                               <TimeInput
-                                theme={theme}
+                                
                                 type="time"
                                 value={person.arrival_time || ''}
                                 onChange={(e) => handleTimeChange(person.id, 'arrival_time', e.target.value)}
@@ -1409,9 +1409,9 @@ const StaffHalfLeaves: React.FC = () => {
                           )}
                           {person.leave_type === 'second_half' && (
                             <TimeInputGroup>
-                              <TimeLabel theme={theme}>Departure Time:</TimeLabel>
+                              <TimeLabel >Departure Time:</TimeLabel>
                               <TimeInput
-                                theme={theme}
+                                
                                 type="time"
                                 value={person.departure_time || ''}
                                 onChange={(e) => handleTimeChange(person.id, 'departure_time', e.target.value)}
@@ -1433,16 +1433,16 @@ const StaffHalfLeaves: React.FC = () => {
       {showDeleteConfirm && (
         <>
           <Overlay onClick={() => setShowDeleteConfirm(false)} />
-          <ConfirmationDialog theme={theme}>
-            <DialogTitle theme={theme}>Delete Half Leaves</DialogTitle>
-            <DialogContent theme={theme}>
+          <ConfirmationDialog >
+            <DialogTitle >Delete Half Leaves</DialogTitle>
+            <DialogContent >
               Are you sure you want to delete all half leave records for the selected date? This action cannot be undone.
             </DialogContent>
             <DialogButtons>
-              <DialogButton theme={theme} onClick={() => setShowDeleteConfirm(false)}>
+              <DialogButton  onClick={() => setShowDeleteConfirm(false)}>
                 Cancel
               </DialogButton>
-              <DialogButton theme={theme} $variant="danger" onClick={handleDelete}>
+              <DialogButton  $variant="danger" onClick={handleDelete}>
                 Delete
               </DialogButton>
             </DialogButtons>

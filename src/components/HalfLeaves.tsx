@@ -1281,14 +1281,14 @@ const HalfLeaves: React.FC = () => {
             </div>
           )}
           <SegmentedGroup
-            theme={theme}
+            
             style={isMobile
               ? { marginTop: 2, width: '100%', justifyContent: 'center', overflow: 'hidden' }
               : { marginTop: 0, justifyContent: 'flex-end' }
             }
           >
             <SegmentedButton
-              theme={theme}
+              
               first
               onClick={handleRefresh}
               disabled={loadingPersons}
@@ -1297,7 +1297,7 @@ const HalfLeaves: React.FC = () => {
               Refresh
             </SegmentedButton>
             <SegmentedButton
-              theme={theme}
+              
               onClick={handleDeleteClick}
               disabled={!canDelete}
               style={{ 
@@ -1323,7 +1323,7 @@ const HalfLeaves: React.FC = () => {
               {deleting ? 'Deleting...' : 'Delete'}
             </SegmentedButton>
             <SegmentedButton
-              theme={theme}
+              
               last
               onClick={handleSave}
               disabled={saving || loadingPersons}
@@ -1385,7 +1385,7 @@ const HalfLeaves: React.FC = () => {
 
   if (!hasActiveSession) {
     return (
-      <PageContainer theme={theme}>
+      <PageContainer>
         <Header>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <AccessTime style={{ fontSize: 20 }} />
@@ -1402,7 +1402,7 @@ const HalfLeaves: React.FC = () => {
   }
 
   return (
-    <PageContainer theme={theme}>
+    <PageContainer>
       <Header>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {!isMobile && (
@@ -1413,16 +1413,16 @@ const HalfLeaves: React.FC = () => {
         </div>
         {isMobile ? (
           <>
-            <SegmentedGroup theme={theme}>
+            <SegmentedGroup >
               <SegmentedInput
-                theme={theme}
+                
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 first
               />
               <SegmentedSelect
-                theme={theme}
+                
                 value={selectedClass}
                 onChange={(e) => {
                   setSelectedClass(e.target.value);
@@ -1437,7 +1437,7 @@ const HalfLeaves: React.FC = () => {
               </SegmentedSelect>
               {sections.length > 0 && (
                 <SegmentedSelect
-                  theme={theme}
+                  
                   value={selectedSection}
                   onChange={(e) => setSelectedSection(e.target.value)}
                   disabled={!selectedClass ? true : (user?.role === 'Teacher' ? selectedClassHasSingleSection : false)}
@@ -1449,7 +1449,7 @@ const HalfLeaves: React.FC = () => {
                 </SegmentedSelect>
               )}
               <SegmentedInput
-                theme={theme}
+                
                 type="text"
                 placeholder="Search..."
                 value={searchTerm}
@@ -1474,15 +1474,15 @@ const HalfLeaves: React.FC = () => {
             </div>
           </>
         ) : (
-          <SegmentedGroup theme={theme}>
+          <SegmentedGroup >
             <SegmentedInput
-              theme={theme}
+              
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
             />
             <SegmentedSelect
-              theme={theme}
+              
               value={selectedClass}
               onChange={(e) => {
                 setSelectedClass(e.target.value);
@@ -1497,7 +1497,7 @@ const HalfLeaves: React.FC = () => {
             </SegmentedSelect>
             {sections.length > 0 && (
               <SegmentedSelect
-                theme={theme}
+                
                 value={selectedSection}
                 onChange={(e) => setSelectedSection(e.target.value)}
                 disabled={!selectedClass ? true : (user?.role === 'Teacher' ? selectedClassHasSingleSection : false)}
@@ -1509,7 +1509,7 @@ const HalfLeaves: React.FC = () => {
               </SegmentedSelect>
             )}
             <SegmentedInput
-              theme={theme}
+              
               type="text"
               placeholder="Search students..."
               value={searchTerm}
@@ -1658,14 +1658,14 @@ const HalfLeaves: React.FC = () => {
           // Show persons list
           return (
             <>
-              <StatsBar theme={theme}>
+              <StatsBar >
                 <StatItem>
-                  <StatLabel theme={theme}>Total Students</StatLabel>
-                  <StatValue theme={theme}>{totalPersons}</StatValue>
+                  <StatLabel >Total Students</StatLabel>
+                  <StatValue >{totalPersons}</StatValue>
                 </StatItem>
                 <StatItem>
-                  <StatLabel theme={theme}>Half Leave</StatLabel>
-                  <StatValue theme={theme} style={{ color: '#8b5cf6' }}>{secondHalfCount}</StatValue>
+                  <StatLabel >Half Leave</StatLabel>
+                  <StatValue  style={{ color: '#8b5cf6' }}>{secondHalfCount}</StatValue>
                 </StatItem>
               </StatsBar>
 
@@ -1674,24 +1674,24 @@ const HalfLeaves: React.FC = () => {
                   if (isMobile) {
                     // Mobile layout matching MarkAttendance style
                     return (
-                      <MobilePersonCard key={person.id} theme={theme}>
+                      <MobilePersonCard key={person.id} >
                         <MobileCardTopRow>
-                          <MobileAvatar theme={theme}>
+                          <MobileAvatar >
                             {person.picture_url ? (
                               <img src={person.picture_url} alt={person.name} />
                             ) : (
                               person.name.charAt(0).toUpperCase()
                             )}
                           </MobileAvatar>
-                          <MobilePersonInfo theme={theme}>
-                            <MobilePersonName theme={theme}>{person.name}</MobilePersonName>
-                            <MobilePersonDetails theme={theme}>
+                          <MobilePersonInfo >
+                            <MobilePersonName >{person.name}</MobilePersonName>
+                            <MobilePersonDetails >
                               {person.father_name}
                             </MobilePersonDetails>
                           </MobilePersonInfo>
                           <MobileLeaveTypeButtons>
                             <MobileLeaveTypeButton
-                              theme={theme}
+                              
                               $active={person.leave_type === 'second_half'}
                               $color="#8b5cf6"
                               onClick={() => handleLeaveTypeChange(
@@ -1704,12 +1704,12 @@ const HalfLeaves: React.FC = () => {
                           </MobileLeaveTypeButtons>
                         </MobileCardTopRow>
                         {person.leave_type && (
-                          <MobileTimeInputContainer theme={theme}>
+                          <MobileTimeInputContainer >
                             {person.leave_type === 'second_half' && (
                               <MobileTimeInputGroup>
-                                <MobileTimeLabel theme={theme}>Departure Time:</MobileTimeLabel>
+                                <MobileTimeLabel >Departure Time:</MobileTimeLabel>
                                 <MobileTimeInput
-                                  theme={theme}
+                                  
                                   type="time"
                                   value={person.departure_time || ''}
                                   onChange={(e) => handleTimeChange(person.id, 'departure_time', e.target.value)}
@@ -1724,17 +1724,17 @@ const HalfLeaves: React.FC = () => {
                   
                   // Desktop layout
                   return (
-                    <PersonCard key={person.id} theme={theme}>
-                      <Avatar theme={theme}>
+                    <PersonCard key={person.id} >
+                      <Avatar >
                         {person.picture_url ? (
                           <img src={person.picture_url} alt={person.name} />
                         ) : (
                           person.name.charAt(0).toUpperCase()
                         )}
                       </Avatar>
-                      <PersonInfo theme={theme}>
-                        <PersonName theme={theme}>{person.name}</PersonName>
-                        <PersonDetails theme={theme}>
+                      <PersonInfo >
+                        <PersonName >{person.name}</PersonName>
+                        <PersonDetails >
                           {person.father_name}
                         </PersonDetails>
                       </PersonInfo>
@@ -1743,9 +1743,9 @@ const HalfLeaves: React.FC = () => {
                           <DesktopTimeInputGroup>
                             {person.leave_type === 'second_half' && (
                               <>
-                                <TimeLabel theme={theme}>Departure Time:</TimeLabel>
+                                <TimeLabel >Departure Time:</TimeLabel>
                                 <TimeInput
-                                  theme={theme}
+                                  
                                   type="time"
                                   value={person.departure_time || ''}
                                   onChange={(e) => handleTimeChange(person.id, 'departure_time', e.target.value)}
@@ -1756,7 +1756,7 @@ const HalfLeaves: React.FC = () => {
                         )}
                         <LeaveTypeButtons>
                           <LeaveTypeButton
-                            theme={theme}
+                            
                             $active={person.leave_type === 'second_half'}
                             $color="#8b5cf6"
                             onClick={() => handleLeaveTypeChange(
@@ -1769,12 +1769,12 @@ const HalfLeaves: React.FC = () => {
                         </LeaveTypeButtons>
                       </DesktopButtonRow>
                       {person.leave_type && (
-                        <TimeInputContainer theme={theme}>
+                        <TimeInputContainer >
                           {person.leave_type === 'second_half' && (
                             <TimeInputGroup>
-                              <TimeLabel theme={theme}>Departure Time:</TimeLabel>
+                              <TimeLabel >Departure Time:</TimeLabel>
                               <TimeInput
-                                theme={theme}
+                                
                                 type="time"
                                 value={person.departure_time || ''}
                                 onChange={(e) => handleTimeChange(person.id, 'departure_time', e.target.value)}
@@ -1796,16 +1796,16 @@ const HalfLeaves: React.FC = () => {
       {showDeleteConfirm && (
         <>
           <Overlay onClick={() => setShowDeleteConfirm(false)} />
-          <ConfirmationDialog theme={theme}>
-            <DialogTitle theme={theme}>Delete Half Leaves</DialogTitle>
-            <DialogContent theme={theme}>
+          <ConfirmationDialog >
+            <DialogTitle >Delete Half Leaves</DialogTitle>
+            <DialogContent >
               Are you sure you want to delete all half leave records for the selected class, section, and the selected date? This action cannot be undone.
             </DialogContent>
             <DialogButtons>
-              <DialogButton theme={theme} onClick={() => setShowDeleteConfirm(false)}>
+              <DialogButton  onClick={() => setShowDeleteConfirm(false)}>
                 Cancel
               </DialogButton>
-              <DialogButton theme={theme} $variant="danger" onClick={handleDelete}>
+              <DialogButton  $variant="danger" onClick={handleDelete}>
                 Delete
               </DialogButton>
             </DialogButtons>

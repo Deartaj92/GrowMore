@@ -385,7 +385,7 @@ const FinanceDashboard: React.FC = () => {
   };
 
   return (
-    <ThemeProvider theme={themeObj}>
+    <>
       <PageContainer>
         <Header>
           <Title>
@@ -420,7 +420,7 @@ const FinanceDashboard: React.FC = () => {
           ))}
         </CardsGrid>
       </PageContainer>
-    </ThemeProvider>
+    </>
   );
 };
 
