@@ -2524,6 +2524,7 @@ const FineCollection: React.FC = () => {
                                   <SpecialFineDescription>
                                     {fine.description?.trim() ? fine.description : 'Special fine'}
                                   </SpecialFineDescription>
+                                  <span style={{ fontSize: '0.75rem', color: '#7c8597', marginTop: '0.2rem' }}>{formatAppDate(fine.created_at)}</span>
                                 </SpecialFineInfo>
                                 <SpecialFineActions>
                                   <SpecialFineAmount>

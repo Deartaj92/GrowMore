@@ -797,22 +797,23 @@ const RemainingFine: React.FC = () => {
         const hasSections = getClassHasSections(classId);
         const studentsInList = studentsByClassSection[key].sort((a, b) => a.id - b.id);
         
-        const headers = [['#', 'ID', 'Student Name', 'Father Name', 'Total', 'Paid', 'Remission', 'Remaining', 'Received']];
-        let tTotal = 0, tPaid = 0, tRem = 0, tRemains = 0;
+        const headers = [['#', 'ID', 'Student Name', 'Father Name', 'Special', 'Total', 'Paid', 'Remission', 'Remaining', 'Received']];
+        let tTotal = 0, tPaid = 0, tRem = 0, tRemains = 0, tSpecial = 0;
         
         const body = studentsInList.map((stu, idx) => {
           const fine = calculateFine(stu);
           const { paid, remission } = calculatePayments(stu);
-          const { total: specialTotal, paid: specialPaid } = calculateSpecials(stu);
+          const { total: specialTotal, paid: specialPaid, remaining: specialRemaining } = calculateSpecials(stu);
           const combinedTotal = fine + specialTotal;
           const combinedPaid = paid + specialPaid;
           const remaining = combinedTotal - combinedPaid - remission;
-          tTotal += combinedTotal; tPaid += combinedPaid; tRem += remission; tRemains += remaining;
-          return [idx + 1, getStudentDisplayId(stu), stu.name, stu.father_name, combinedTotal, combinedPaid, remission, remaining, ''];
+          tTotal += combinedTotal; tPaid += combinedPaid; tRem += remission; tRemains += remaining; tSpecial += specialRemaining;
+          return [idx + 1, getStudentDisplayId(stu), stu.name, stu.father_name, specialRemaining, combinedTotal, combinedPaid, remission, remaining, ''];
         });
         
         body.push([
           { content: 'Total', colSpan: 4, styles: { fontStyle: 'bold', halign: 'right', fillColor: [240,240,240] } },
+          { content: tSpecial, styles: { fontStyle: 'bold', fillColor: [240,240,240] } },
           { content: tTotal, styles: { fontStyle: 'bold', fillColor: [240,240,240] } },
           { content: tPaid, styles: { fontStyle: 'bold', fillColor: [240,240,240] } },
           { content: tRem, styles: { fontStyle: 'bold', fillColor: [240,240,240] } },
