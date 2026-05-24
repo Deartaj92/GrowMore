@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useMemo, useContext } from 'react';
 import styled, { useTheme } from 'styled-components';
 import { supabase } from '../supabaseClient';
-import { Card, CardContent, CardHeader } from '@mui/material';
+import { Card, CardContent, CardHeader, TextField, InputAdornment, IconButton } from '@mui/material';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend, AreaChart, Area, ComposedChart } from 'recharts';
-import { MonetizationOn, TrendingUp, TrendingDown, PieChart as PieChartIcon, Leaderboard, CalendarToday, Info } from '@mui/icons-material';
+import { MonetizationOn, TrendingUp, TrendingDown, PieChart as PieChartIcon, Leaderboard, CalendarToday, Info, Search as SearchIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchAllRows } from '../utils/paginationHelper';
 import { useLoading } from '../contexts/LoadingContext';
@@ -109,6 +109,18 @@ const LargeCardGrid = styled.div`
   }
 `;
 
+const HalfCardGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  align-items: stretch;
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+    gap: 0.7rem;
+  }
+`;
+
 
 const FineStatistics: React.FC = () => {
   const theme = useTheme();
@@ -143,6 +155,8 @@ const FineStatistics: React.FC = () => {
   const [fines, setFines] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
+  const [paymentSearch, setPaymentSearch] = useState('');
+  const [paymentDate, setPaymentDate] = useState('');
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -827,6 +841,8 @@ const FineStatistics: React.FC = () => {
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
+        </LargeCardGrid>
+      <HalfCardGrid>
         <ChartCard>
           <StatTitle>Top Remissions</StatTitle>
           <TableWrapper>
@@ -854,38 +870,7 @@ const FineStatistics: React.FC = () => {
             </Table>
           </TableWrapper>
         </ChartCard>
-        <ChartCard>
-          <StatTitle>Recent Fine Payments</StatTitle>
-          <TableWrapper>
-            <Table>
-              <thead>
-                <tr>
-                  <Th>#</Th>
-                  <Th>Name</Th>
-                  <Th>Class</Th>
-                  <Th>Date</Th>
-                  <Th>Amount</Th>
-                  <Th>Remission</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentPayments.map((p, idx) => {
-                  const stu = students.find(s => s.id === p.student_id);
-                  return (
-                    <tr key={p.id || idx}>
-                      <Td>{idx + 1}</Td>
-                      <Td>{stu?.name || '-'}</Td>
-                      <Td>{stu ? getClassName(stu.class_id) : '-'}</Td>
-                      <Td>{formatAppDate(p.payment_date)}</Td>
-                      <Td>Rs. {p.amount}</Td>
-                      <Td>Rs. {p.remission}</Td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </Table>
-          </TableWrapper>
-        </ChartCard>
+        
         <ChartCard>
           <StatTitle>Recent Largest Payments</StatTitle>
           <TableWrapper>
@@ -914,7 +899,98 @@ const FineStatistics: React.FC = () => {
             </Table>
           </TableWrapper>
         </ChartCard>
-      </LargeCardGrid>
+      </HalfCardGrid>
+        <ChartCard>
+          <StatTitle>Fine Payment History</StatTitle>
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+            <TextField
+              label="Search"
+              variant="outlined"
+              size="small"
+              value={paymentSearch}
+              onChange={e => setPaymentSearch(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <TextField
+              label="Date"
+              type="date"
+              variant="outlined"
+              size="small"
+              value={paymentDate}
+              onChange={e => setPaymentDate(e.target.value)}
+            />
+          </div>
+          <TableWrapper>
+            <Table>
+              <thead>
+                <tr>
+                  <Th>#</Th>
+                  <Th>Name</Th>
+                  <Th>Class</Th>
+                  <Th>Date</Th>
+                  <Th>Amount</Th>
+                  <Th>Remission</Th>
+                  <Th>Action</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  const filteredPayments = payments
+                    .filter(p => {
+                      const matchesDate = paymentDate ? p.payment_date?.startsWith(paymentDate) : true;
+                      const stu = students.find(s => s.id === p.student_id);
+                      const nameMatch = paymentSearch
+                        ? (stu?.name?.toLowerCase().includes(paymentSearch.toLowerCase()) ||
+                           String(p.amount).includes(paymentSearch) ||
+                           String(p.remission).includes(paymentSearch))
+                        : true;
+                      return matchesDate && nameMatch;
+                    })
+                    .sort((a, b) => (b.payment_date || '').localeCompare(a.payment_date || ''));
+                  
+                  const totalAmount = filteredPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+                  const totalRemission = filteredPayments.reduce((sum, p) => sum + Number(p.remission || 0), 0);
+
+                  return (
+                    <>
+                      {filteredPayments.map((p, idx) => {
+                        const stu = students.find(s => s.id === p.student_id);
+                        return (
+                          <tr key={p.id || idx}>
+                            <Td>{idx + 1}</Td>
+                            <Td>{stu?.name || '-'}</Td>
+                            <Td>{stu ? getClassName(stu.class_id) : '-'}</Td>
+                            <Td>{formatAppDate(p.payment_date)}</Td>
+                            <Td>Rs. {p.amount}</Td>
+                            <Td>Rs. {p.remission}</Td>
+                            <Td>
+                              <IconButton size="small" color="error" onClick={() => {/* Handle delete */}}>
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Td>
+                          </tr>
+                        );
+                      })}
+                      {filteredPayments.length > 0 && (
+                        <tr>
+                          <Td colSpan={4} style={{ textAlign: 'right', fontWeight: 'bold' }}>Total:</Td>
+                          <Td style={{ fontWeight: 'bold' }}>Rs. {totalAmount}</Td>
+                          <Td colSpan={2} style={{ fontWeight: 'bold' }}>Rs. {totalRemission}</Td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })()}
+              </tbody>
+            </Table>
+          </TableWrapper>
+        </ChartCard>
     </Container>
   );
 };
