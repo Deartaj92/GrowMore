@@ -101,8 +101,8 @@ const InitialRouteHandler: React.FC = () => {
             // If parsing fails, fall through to login redirect
           }
         }
-        // No user, student, or parent session, redirect to landing page
-        navigate('/landing', { replace: true });
+        // No user, student, or parent session, redirect to login page
+        navigate('/login', { replace: true });
         return;
       }
 
