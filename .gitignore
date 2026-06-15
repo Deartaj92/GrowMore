@@ -1,3 +1,6 @@
+# Separate repos - not tracked here
+platform-admin/
+
 # Dependencies
 node_modules/
 npm-debug.log*
