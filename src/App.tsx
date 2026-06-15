@@ -121,6 +121,7 @@ import AssetsLiabilitiesManager from './pages/AssetsLiabilities/AssetsLiabilitie
 import StudentAttendanceAnalyticsPage from './pages/StudentAttendanceAnalyticsPage';
 // Staff Attendance Analytics
 import StaffAttendanceAnalyticsPage from './pages/StaffAttendanceAnalyticsPage';
+import StaffCheckInOutGridPage from './pages/StaffCheckInOutGrid';
 // RFID Attendance Scanner
 import RFIDAttendancePage from './pages/RFIDAttendancePage';
 import QRAttendancePage from './pages/QRAttendancePage';
@@ -1004,6 +1005,15 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute requiredPermission="attendance-staff-report">
                                 <StaffAttendanceReport />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="attendance/staff-checkinout-grid"
+                            element={
+                              <ProtectedRoute requiredPermission="attendance-staff-report">
+                                <StaffCheckInOutGridPage />
                               </ProtectedRoute>
                             }
                           />

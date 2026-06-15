@@ -53,8 +53,8 @@ export default function ProtectedRoute({
         return;
       }
 
-      // 1. Check if user is Super Admin (using cached flag or role)
-      if (user.is_super_admin || user.role === 'Super Admin') {
+      // 1. Check if user is Super Admin, Owner, or School Admin (full access)
+      if (user.is_super_admin || user.role === 'Super Admin' || user.role === 'super_admin' || user.role === 'owner' || user.role === 'school_admin') {
         setIsSuperAdmin(true);
         setHasAccess(true);
         setPermissionChecked(true);

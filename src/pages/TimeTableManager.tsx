@@ -1212,7 +1212,7 @@ const TimeTableManager: React.FC = () => {
         // Add break column
         if (rowIndex === 0) {
           row.push({
-            content: 'Break\n11:00-\n11:15',
+            content: `Break\n${breakSettings.start}-\n${breakSettings.end}`,
             rowSpan: filteredClasses.length,
             styles: {
               valign: 'middle',
@@ -1640,11 +1640,15 @@ const TimeTableManager: React.FC = () => {
 
         // Get all periods including break
         const allPeriods: PeriodInfo[] = [];
-        for (let i = 1; i <= periods.length; i++) {
-          if (i === breakIdx + 1) {
+        for (let idx = 0; idx <= periods.length; idx++) {
+          if (idx === breakIdx + 1) {
             allPeriods.push({ period: 'Break', time: `${breakSettings.start}-${breakSettings.end}` });
+          } else {
+            const periodIdx = idx > breakIdx + 1 ? idx - 1 : idx;
+            if (periodIdx < periods.length) {
+              allPeriods.push({ period: periods[periodIdx].num, time: periods[periodIdx].time });
+            }
           }
-          allPeriods.push({ period: i, time: periods[i - 1].time });
         }
 
         // Draw teacher name
@@ -1662,11 +1666,11 @@ const TimeTableManager: React.FC = () => {
         // Draw table
         const tableData = allPeriods.map(p => {
           if (p.period === 'Break') {
-            return [{ content: 'BREAK', colSpan: 3 }];
+            return [{ content: `BREAK (${p.time})`, colSpan: 3 }];
           }
           const scheduleItem = scheduleMap.get(p.period);
           return [
-            p.period.toString(),
+            `${p.period}\n(${p.time})`,
             scheduleItem ? scheduleItem.class : 'Free Period',
             scheduleItem ? scheduleItem.subject : '-'
           ];
@@ -1700,7 +1704,7 @@ const TimeTableManager: React.FC = () => {
             if (rowData) {
               // Highlight break row
               const firstCell = rowData[0];
-              if (firstCell && typeof firstCell === 'object' && 'content' in firstCell && firstCell.content === 'BREAK') {
+              if (firstCell && typeof firstCell === 'object' && 'content' in firstCell && firstCell.content.startsWith('BREAK')) {
                 data.cell.styles.fillColor = [245, 245, 245] as Color;
                 data.cell.styles.fontStyle = 'bold';
                 data.cell.styles.fontSize = 11;

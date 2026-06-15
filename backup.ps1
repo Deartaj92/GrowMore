@@ -21,16 +21,15 @@ $excludes = @(
 
 # Build the 7z command
 $excludeString = $excludes -join " "
-$7zPath = "C:\Program Files\7-Zip\7z.exe"
-$arguments = "a -t7z -mx=9 `"$archive`" `"$source\*`" $excludeString"
+$cmd = "7z a -t7z -mx=9 `"$archive`" `"$source\*`" $excludeString"
 
 Write-Host "[INFO] Starting backup of $source to $archive..."
-Write-Host "[DEBUG] Running: $7zPath $arguments"
+Write-Host "[DEBUG] Running: $cmd"
 
 $startTime = Get-Date
 
 try {
-    $process = Start-Process -FilePath $7zPath -ArgumentList $arguments -NoNewWindow -Wait -PassThru
+    $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $cmd" -NoNewWindow -Wait -PassThru
     $endTime = Get-Date
     $elapsed = $endTime - $startTime
     if ($process.ExitCode -eq 0) {

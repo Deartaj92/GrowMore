@@ -1267,15 +1267,10 @@ const StudentAdmissionForm: React.FC = () => {
   // Helper function to generate next available student ID (school-specific)
   const generateNextStudentId = async (): Promise<number> => {
     try {
-      if (!user?.school_id) {
-        throw new Error('School ID not found');
-      }
-
-      // Get the highest student ID for this school
+      // Get the highest student ID globally across all schools to satisfy the global primary key constraint
       const { data: existingStudents, error } = await supabase
         .from('students')
         .select('id')
-        .eq('school_id', user.school_id)
         .order('id', { ascending: false })
         .limit(1);
 
@@ -1283,7 +1278,7 @@ const StudentAdmissionForm: React.FC = () => {
         throw new Error('Failed to generate student ID: ' + error.message);
       }
 
-      // Calculate the next student ID (school-specific sequential)
+      // Calculate the next student ID
       const nextStudentId = existingStudents && existingStudents.length > 0 
         ? existingStudents[0].id + 1 
         : 1;

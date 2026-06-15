@@ -1426,7 +1426,7 @@ const Header: React.FC<HeaderProps> = ({
           const perms = await getUserPermissions(user.id, user.school_id);
           setUserPermissions(perms);
           // Cache dashboard path based on permissions
-          if (perms.has('dashboard')) {
+          if (user.role === 'school_admin' || perms.has('dashboard')) {
             setCachedDashboardPath('/dashboard');
           } else {
             setCachedDashboardPath('/user');
@@ -1434,11 +1434,19 @@ const Header: React.FC<HeaderProps> = ({
           setPermissionsLoaded(true);
         } catch (error) {
           console.error('Error loading permissions:', error);
-          setCachedDashboardPath('/user');
+          if (user.role === 'school_admin') {
+            setCachedDashboardPath('/dashboard');
+          } else {
+            setCachedDashboardPath('/user');
+          }
           setPermissionsLoaded(true);
         }
       } else {
-        setCachedDashboardPath('/user');
+        if (user?.role === 'school_admin') {
+          setCachedDashboardPath('/dashboard');
+        } else {
+          setCachedDashboardPath('/user');
+        }
         setPermissionsLoaded(true);
       }
     }, [user?.id, user?.school_id, user?.username]);
@@ -1949,6 +1957,13 @@ const Header: React.FC<HeaderProps> = ({
       icon: <BarChartIcon />,
       path: '/attendance/staff-report',
       color: '#8b5cf6'
+    },
+    {
+      title: 'Staff Check In-Out Grid',
+      description: 'Daily check-in and check-out matrix for the selected month',
+      icon: <CalendarMonthIcon />,
+      path: '/attendance/staff-checkinout-grid',
+      color: '#3b82f6'
     },
     {
       title: 'Staff Half Leaves',
@@ -2537,8 +2552,8 @@ const Header: React.FC<HeaderProps> = ({
       return cachedDashboardPath;
     }
 
-    // Super Admin always has dashboard access
-    if (isSuperAdmin) {
+    // Super Admin / School Admin always has dashboard access
+    if (isSuperAdmin || user?.role === 'school_admin') {
       return '/dashboard';
     }
 
@@ -2553,12 +2568,17 @@ const Header: React.FC<HeaderProps> = ({
     // While permissions are loading, return null to indicate we need async check
     // This prevents incorrect navigation during the loading phase
     return null;
-  }, [permissionsLoaded, userPermissions, isSuperAdmin, cachedDashboardPath]);
+  }, [permissionsLoaded, userPermissions, isSuperAdmin, cachedDashboardPath, user?.role]);
 
   // Async handler for logo click that checks permissions if needed
   const handleLogoClick = useCallback(async () => {
     if (isRestrictedRole) {
       navigate('/home');
+      return;
+    }
+
+    if (user?.role === 'school_admin') {
+      navigate('/dashboard');
       return;
     }
 

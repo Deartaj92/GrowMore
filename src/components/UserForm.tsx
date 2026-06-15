@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { useToast } from './useToast';
 import { useAuth } from '../contexts/AuthContext';
 import { crypt, gen_salt } from '../utils/crypto';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 
 interface User {
   id?: number;
@@ -116,10 +117,35 @@ const Input = styled.input`
   background: ${({ theme }) => theme.FIELD_BG};
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   transition: border 0.18s;
+  width: 100%;
+  box-sizing: border-box;
   &:focus {
     outline: none;
     border-color: ${({ theme }) => theme.ACCENT};
     box-shadow: 0 0 0 2px ${({ theme }) => theme.ACCENT}33;
+  }
+`;
+
+const PasswordWrapper = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+`;
+
+const PasswordToggleButton = styled.button`
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  &:hover {
+    color: ${({ theme }) => theme.ACCENT};
   }
 `;
 
@@ -177,6 +203,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
   const [roles, setRoles] = useState<Role[]>([]);
   const [rolesLoading, setRolesLoading] = useState(true);
   const [usernameStatus, setUsernameStatus] = useState<'checking' | 'available' | 'taken' | 'idle'>('idle');
+  const [showPassword, setShowPassword] = useState(false);
   const toast = useToast();
   const { user: currentUser } = useAuth();
 
@@ -249,11 +276,13 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
   }, [form.role, staff, staffLoading, toast]);
 
   const fetchRoles = async () => {
+    if (!currentUser?.school_id) return;
     setRolesLoading(true);
     try {
       const { data, error } = await supabase
         .from('roles')
         .select('id, name')
+        .eq('school_id', currentUser.school_id)
         .order('name');
 
       if (error) throw error;
@@ -266,11 +295,13 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
   };
 
   const fetchStaff = async () => {
+    if (!currentUser?.school_id) return;
     setStaffLoading(true);
     try {
       const { data, error } = await supabase
         .from('staff')
         .select('id, name, role, mobile, father_name')
+        .eq('school_id', currentUser.school_id)
         .order('name');
 
       if (error) throw error;
@@ -611,18 +642,26 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
           {!user && (
             <FormGroup>
               <Label>Password*</Label>
-              <Input
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                required
-                disabled={usernameStatus !== 'available'}
-                style={{
-                  opacity: usernameStatus === 'available' ? 1 : 0.6,
-                  cursor: usernameStatus === 'available' ? 'text' : 'not-allowed'
-                }}
-              />
+              <PasswordWrapper>
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  required
+                  disabled={usernameStatus !== 'available'}
+                  style={{
+                    opacity: usernameStatus === 'available' ? 1 : 0.6,
+                    cursor: usernameStatus === 'available' ? 'text' : 'not-allowed',
+                    paddingRight: '35px'
+                  }}
+                />
+                {usernameStatus === 'available' && (
+                  <PasswordToggleButton type="button" onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                  </PasswordToggleButton>
+                )}
+              </PasswordWrapper>
               {usernameStatus !== 'available' && (
                 <div style={{
                   fontSize: '0.8rem',
@@ -642,17 +681,23 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose, onSuccess }) => {
           {user && (
             <FormGroup>
               <Label>Password</Label>
-              <Input
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                placeholder="Leave blank to keep current password"
-                style={{
-                  opacity: 0.8,
-                  fontStyle: 'italic'
-                }}
-              />
+              <PasswordWrapper>
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="Leave blank to keep current password"
+                  style={{
+                    opacity: 0.8,
+                    fontStyle: 'italic',
+                    paddingRight: '35px'
+                  }}
+                />
+                <PasswordToggleButton type="button" onClick={() => setShowPassword(!showPassword)}>
+                  {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                </PasswordToggleButton>
+              </PasswordWrapper>
               <div style={{
                 fontSize: '0.8rem',
                 marginTop: '0.25rem',

@@ -37,6 +37,7 @@ export const pathToPermissionKey: Record<string, string> = {
   '/attendance/analytics': 'attendance-analytics',
   '/attendance/staff': 'attendance-staff',
   '/attendance/staff-report': 'attendance-staff-report',
+  '/attendance/staff-checkinout-grid': 'attendance-staff-report',
   '/attendance/staff-analytics': 'attendance-staff-analytics',
   '/attendance/half-leaves': 'half-leaves',
   '/attendance/staff-half-leaves': 'staff-half-leaves',

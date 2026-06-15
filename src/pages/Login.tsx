@@ -436,6 +436,10 @@ const Login: React.FC = () => {
           // Super Admin always goes to welcome page
           navigate('/welcome', { replace: true });
           return;
+        } else if ((staffUser?.role === 'School Admin' || staffUser?.role === 'school_admin') && staffUser?.school_id) {
+          // School Admin redirects to their dashboard
+          navigate('/dashboard', { replace: true });
+          return;
         } else if (staffUser?.id && staffUser?.school_id) {
           // Check if user has dashboard permission
           const hasDashboardPermission = await hasPermission(staffUser.id, 'dashboard', staffUser.school_id);

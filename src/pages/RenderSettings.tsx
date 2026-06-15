@@ -303,12 +303,15 @@ const RenderSettings: React.FC = () => {
     }
   };
 
-  if (!user || user.role !== 'Principal') {
+  const allowedRoles = ['Principal', 'school_admin', 'School Admin', 'super_admin', 'Super Admin'];
+  const hasAccess = user && (user.is_super_admin || allowedRoles.includes(user.role));
+
+  if (!hasAccess) {
     return (
       <ThemeProvider theme={theme}>
         <Container $theme={theme}>
           <ContentCard $theme={theme}>
-            <Typography>Access denied. Only Principal can configure render settings.</Typography>
+            <Typography>Access denied. You do not have permission to configure render settings.</Typography>
           </ContentCard>
         </Container>
       </ThemeProvider>

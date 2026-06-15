@@ -23,8 +23,8 @@ const InitialRouteHandler: React.FC = () => {
       }
 
       // 2. Trust the user object from AuthContext first (most efficient)
-      if (user.is_super_admin || user.role === 'Super Admin') {
-        setIsSuperAdmin(true);
+      if (user.is_super_admin || user.role === 'Super Admin' || user.role === 'school_admin' || user.role === 'School Admin') {
+        setIsSuperAdmin(user.is_super_admin || user.role === 'Super Admin');
         setHasDashboardPerm(true);
         setPermissionChecked(true);
         return;

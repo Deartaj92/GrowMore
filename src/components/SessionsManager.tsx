@@ -36,7 +36,7 @@ const PageContainer = styled.div`
   max-width: 100vw;
   overflow-x: hidden;
   height: 100%;
-  min-height: 0;
+  min-height: calc(100vh - 56px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -548,17 +548,20 @@ const PaginationContainer = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-top: 0;
-  padding: 0.15rem 0;
+  padding: 0.3rem 0.75rem;
   border-top: 1px solid ${({ theme }) => theme.FIELD_BORDER};
   background: ${({ theme }) => theme.BG};
   box-shadow: 0 -1px 6px #0001;
   flex: 0 0 auto;
   width: 100%;
+  max-height: 36px;
+  overflow: hidden;
   @media (max-width: 700px) {
     flex-direction: row;
     align-items: center;
     gap: 0;
-    padding: 0.15rem 0.1rem 0.05rem 0.1rem;
+    padding: 0.2rem 0.5rem;
+    max-height: 32px;
   }
 `;
 

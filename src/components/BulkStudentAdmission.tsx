@@ -1283,14 +1283,9 @@ const BulkStudentAdmission: React.FC = () => {
   }, [families]);
 
   const generateNextStudentId = useCallback(async (): Promise<number> => {
-    if (!user?.school_id) {
-      throw new Error('School ID not found');
-    }
-
     const { data: existingStudents, error } = await supabase
       .from('students')
       .select('id')
-      .eq('school_id', user.school_id)
       .order('id', { ascending: false })
       .limit(1);
 
@@ -1299,7 +1294,7 @@ const BulkStudentAdmission: React.FC = () => {
     }
 
     return existingStudents && existingStudents.length > 0 ? existingStudents[0].id + 1 : 1;
-  }, [user?.school_id]);
+  }, []);
 
   const insertStudentWithRetry = useCallback(async (studentData: any, maxRetries: number = 5): Promise<any> => {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {

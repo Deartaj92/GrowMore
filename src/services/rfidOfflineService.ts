@@ -1118,7 +1118,7 @@ class RFIDOfflineService {
 
         const { data: existing, error: existingError } = await supabase
             .from(table)
-            .select('id, status, source, check_in_time, check_out_time')
+            .select('id, status, source, check_in_time, check_out_time, expected_arrival_time, expected_departure_time')
             .eq(idCol, person.person_id)
             .eq('date', date)
             .eq('school_id', schoolId)
@@ -1142,9 +1142,19 @@ class RFIDOfflineService {
                     return { success: false, type: 'error_checkout_early', attendance_status: existing.status || computedStatus, recorded_time: existing.check_in_time || timestamp, actionTaken: 'ignored' };
                 }
 
+                const updatePayload: any = { check_out_time: timestamp };
+                if (person.type === 'employee' && settings) {
+                    if (!existing.expected_arrival_time && settings.staff_start_time) {
+                        updatePayload.expected_arrival_time = settings.staff_start_time;
+                    }
+                    if (!existing.expected_departure_time && settings.staff_end_time) {
+                        updatePayload.expected_departure_time = settings.staff_end_time;
+                    }
+                }
+
                 const { error: outError } = await supabase
                     .from(table)
-                    .update({ check_out_time: timestamp })
+                    .update(updatePayload)
                     .eq('id', existing.id)
                     .is('check_out_time', null);
 
@@ -1194,6 +1204,12 @@ class RFIDOfflineService {
                     check_in_time: timestamp,
                     check_out_time: null,
                 };
+
+                // Store expected arrival/departure times from settings for staff
+                if (person.type === 'employee' && settings) {
+                    if (settings.staff_start_time) updatePayload.expected_arrival_time = settings.staff_start_time;
+                    if (settings.staff_end_time) updatePayload.expected_departure_time = settings.staff_end_time;
+                }
 
                 if (person.type === 'student') {
                     if (person.class_id) updatePayload.class_id = person.class_id;
@@ -1252,6 +1268,12 @@ class RFIDOfflineService {
             source: recordSource,
             check_in_time: timestamp,
         };
+
+        // Store expected arrival/departure times from settings for staff
+        if (person.type === 'employee' && settings) {
+            if (settings.staff_start_time) payload.expected_arrival_time = settings.staff_start_time;
+            if (settings.staff_end_time) payload.expected_departure_time = settings.staff_end_time;
+        }
 
         if (person.type === 'student') {
             if (person.class_id) payload.class_id = person.class_id;

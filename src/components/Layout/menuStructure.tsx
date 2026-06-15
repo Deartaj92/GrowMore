@@ -221,6 +221,13 @@ export const employeeAttendanceMenuItems: MenuItem[] = [
     color: '#8b5cf6'
   },
   {
+    title: 'Staff Check In-Out Grid',
+    description: 'Daily check-in and check-out matrix for the selected month',
+    icon: React.createElement(CalendarMonthIcon),
+    path: '/attendance/staff-checkinout-grid',
+    color: '#3b82f6'
+  },
+  {
     title: 'Staff Half Leaves',
     description: 'Record and manage staff half-day leaves',
     icon: React.createElement(AccessTimeIcon),

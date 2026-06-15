@@ -70,11 +70,20 @@ export async function hasPermission(
     // If no user permissions saved, check role default permissions using role_id from users table
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('role_id')
+      .select('role_id, role')
       .eq('id', userId)
       .maybeSingle();
 
-    if (userError || !user || !user.role_id) {
+    if (userError || !user) {
+      return false;
+    }
+
+    // Direct bypass for school admin
+    if (user.role === 'school_admin' || user.role === 'School Admin') {
+      return true;
+    }
+
+    if (!user.role_id) {
       return false;
     }
 
@@ -136,11 +145,26 @@ export async function getUserPermissions(
     // If no user permissions saved, use role default permissions using role_id from users table
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('role_id')
+      .select('role_id, role')
       .eq('id', userId)
       .maybeSingle();
 
-    if (userError || !user || !user.role_id) {
+    if (userError || !user) {
+      return permissionKeys;
+    }
+
+    // Direct bypass for school admin
+    if (user.role === 'school_admin' || user.role === 'School Admin') {
+      const { data: allPerms } = await supabase
+        .from('permissions')
+        .select('key');
+      if (allPerms) {
+        allPerms.forEach(p => permissionKeys.add(p.key));
+      }
+      return permissionKeys;
+    }
+
+    if (!user.role_id) {
       return permissionKeys;
     }
 

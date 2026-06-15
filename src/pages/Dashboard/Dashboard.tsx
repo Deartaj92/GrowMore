@@ -142,8 +142,8 @@ const Dashboard: React.FC = () => {
     const fetchTabPermissions = async () => {
       if (!user?.id || !user?.school_id) return;
 
-      // Super admin / owner sees all tabs
-      if (user.role === 'owner' || user.role === 'super_admin') {
+      // Super admin / owner / school_admin sees all tabs
+      if (user.role === 'owner' || user.role === 'super_admin' || user.role === 'school_admin') {
         setAllowedTabs(new Set()); // Empty means show all
         setUserPerms(new Set()); // Empty means allow all
         return;

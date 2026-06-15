@@ -628,6 +628,7 @@ const MarkStaffAttendance: React.FC = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [saveButtonBounce, setSaveButtonBounce] = useState(false);
+  const [attendanceSettings, setAttendanceSettings] = useState<any>(null);
   const compactDateFieldProps = {
     InputLabelProps: { shrink: true },
     sx: {
@@ -844,6 +845,14 @@ const MarkStaffAttendance: React.FC = () => {
       if (staffError) {
         throw staffError;
       }
+      
+      // Fetch attendance settings
+      const { data: settingsData } = await supabase
+        .from('attendance_settings')
+        .select('staff_start_time, staff_end_time')
+        .eq('school_id', user.school_id)
+        .maybeSingle();
+      if (settingsData) setAttendanceSettings(settingsData);
 
       const attendanceEligibleStaff = (staffData || []).filter((staff: any) => staff.attendance_enabled !== false);
 
@@ -1232,6 +1241,8 @@ const MarkStaffAttendance: React.FC = () => {
           ? getManualAttendanceTimestamp(date, staff.check_in_time)
           : null,
         check_out_time: toDbTimestamp(date, staff.check_out_time),
+        expected_arrival_time: attendanceSettings?.staff_start_time || null,
+        expected_departure_time: attendanceSettings?.staff_end_time || null,
         source: staff.source || 'manual',
         created_at: new Date().toISOString(),
         session_id: sessionId,
