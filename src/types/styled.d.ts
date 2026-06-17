@@ -26,6 +26,10 @@ declare module 'styled-components' {
     CANCEL_COLOR: string;
     BACKGROUND?: string;
     TEXT?: string;
+    PRIMARY?: string;
+    WARNING?: string;
+    ERROR?: string;
+    TEXT_DISABLED?: string;
   palette?: {
     mode?: string;
     background?: { paper?: string };
@@ -39,3 +43,4 @@ declare module 'styled-components' {
     theme: any;
   }
 }
+

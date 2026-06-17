@@ -27,9 +27,14 @@ declare module 'styled-components' {
     name?: string;
     CARD_BG?: string;
     BG_SECONDARY?: string;
+    PRIMARY?: string;
+    WARNING?: string;
+    ERROR?: string;
+    TEXT_DISABLED?: string;
   }
 
   export interface ExecutionContext {
     theme: any;
   }
 }
+

@@ -36,6 +36,13 @@ module.exports = {
             };
 
             applyNetlifyLowMemoryWebpack(webpackConfig);
+            
+            // Ignore source map loader warnings from third-party packages (e.g. html5-qrcode)
+            webpackConfig.ignoreWarnings = [
+                ...(webpackConfig.ignoreWarnings || []),
+                /Failed to parse source map/,
+            ];
+            
             return webpackConfig;
         },
     },

@@ -35,6 +35,10 @@ export const darkTheme = {
   ACCENT_INPUT: '#3b82f6',
   CANCEL_BG: '#252525',
   CANCEL_COLOR: '#e0e0e0',
+  PRIMARY: '#3b82f6',
+  WARNING: '#f59e0b',
+  ERROR: '#ef4444',
+  TEXT_DISABLED: '#718096',
 };
 
 export const lightTheme = {
@@ -60,4 +64,8 @@ export const lightTheme = {
   ACCENT_INPUT: '#3b82f6',
   CANCEL_BG: '#ededed',
   CANCEL_COLOR: '#232323',
+  PRIMARY: '#3b82f6',
+  WARNING: '#f59e0b',
+  ERROR: '#dc2626',
+  TEXT_DISABLED: '#a0aec0',
 }; 

@@ -239,19 +239,19 @@ const FeeSettings: React.FC = () => {
   }
 
   return (
-    <PageContainer theme={theme}>
+    <PageContainer>
       <Header>
-        <Title theme={theme}>
+        <Title>
           <SettingsIcon style={{ fontSize: 32 }} />
           Fee Settings
         </Title>
-        <Subtitle theme={theme}>
+        <Subtitle>
           Configure fee collection preferences and default settings
         </Subtitle>
       </Header>
 
-      <SettingsCard theme={theme}>
-        <SectionTitle theme={theme}>
+      <SettingsCard>
+        <SectionTitle>
           <PrintIcon style={{ fontSize: 20 }} />
           Print Preferences
         </SectionTitle>
@@ -260,7 +260,7 @@ const FeeSettings: React.FC = () => {
           <FormLabel component="legend" style={{ color: themeObj.TEXT_PRIMARY, fontWeight: 600, marginBottom: 8 }}>
             Default Print Type
           </FormLabel>
-          <SettingDescription theme={theme}>
+          <SettingDescription>
             Choose the default document type that will be generated automatically after collecting a payment.
             You can still generate the other type manually from the payment history.
           </SettingDescription>
@@ -270,7 +270,7 @@ const FeeSettings: React.FC = () => {
               value={defaultPrintType}
               onChange={(e) => setDefaultPrintType(e.target.value as 'invoice' | 'thermal')}
             >
-              <RadioOptionWrapper theme={theme} $checked={defaultPrintType === 'invoice'}>
+              <RadioOptionWrapper $checked={defaultPrintType === 'invoice'}>
                 <FormControlLabel
                   value="invoice"
                   control={<Radio />}
@@ -287,7 +287,7 @@ const FeeSettings: React.FC = () => {
                   }
                 />
               </RadioOptionWrapper>
-              <RadioOptionWrapper theme={theme} $checked={defaultPrintType === 'thermal'}>
+              <RadioOptionWrapper $checked={defaultPrintType === 'thermal'}>
                 <FormControlLabel
                   value="thermal"
                   control={<Radio />}

@@ -38,6 +38,10 @@ export const darkTheme = {
   ACCENT_INPUT: '#6366f1',
   CANCEL_BG: '#2c2c2c',
   CANCEL_COLOR: '#f8fafc',
+  PRIMARY: '#6366f1',
+  WARNING: '#f59e0b',
+  ERROR: '#ef4444',
+  TEXT_DISABLED: '#718096',
 };
 
 export const lightTheme = {
@@ -63,6 +67,10 @@ export const lightTheme = {
   ACCENT_INPUT: '#4f46e5',
   CANCEL_BG: '#f1f5f9',
   CANCEL_COLOR: '#0f172a',
+  PRIMARY: '#4f46e5',
+  WARNING: '#f59e0b',
+  ERROR: '#dc2626',
+  TEXT_DISABLED: '#a0aec0',
 };
 
 export const menuItems: MenuItem[] = [

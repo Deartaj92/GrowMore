@@ -3842,7 +3842,7 @@ const Header: React.FC<HeaderProps> = ({
                 parentInfo={parentInfo}
                 staffName={staffName}
                 user={user}
-                
+                theme={theme}
                 onToggleTheme={onToggleTheme}
                 onOpenChangePassword={onOpenChangePassword}
                 isWeb={isWeb}

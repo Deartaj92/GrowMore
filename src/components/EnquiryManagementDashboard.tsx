@@ -374,7 +374,6 @@ const EnquiryManagementDashboard: React.FC = () => {
           <Card 
             key={index}
             onClick={() => handleCardClick(item.path)}
-            theme={theme}
             $color={item.color}
           >
             <CardHeader $color={item.color}>

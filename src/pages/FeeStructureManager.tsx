@@ -393,9 +393,7 @@ const StyledDialog = styled.div<{ open: boolean }>`
 `;
 
 const DialogPaper = styled.div`
-  background: ${({ theme }) => theme.palette?.mode === 'dark' 
-      ? theme.palette.background.paper
-    : theme.palette.background.paper};
+  background: ${({ theme }) => theme.palette?.background?.paper || theme.CARD};
   border-radius: 16px;
   max-width: 800px;
   width: 100%;
@@ -446,8 +444,8 @@ const DialogTitle = styled.h2`
   font-size: 1.25rem;
   font-weight: 600;
   color: ${({ theme }) => theme.palette?.mode === 'dark'
-    ? theme.palette.primary.light
-    : theme.palette.primary.main};
+    ? theme.palette?.primary?.light || theme.ACCENT
+    : theme.palette?.primary?.main || theme.ACCENT};
   text-shadow: ${({ theme }) => theme.palette?.mode === 'dark'
     ? '0 2px 4px rgba(0, 0, 0, 0.5)'
     : 'none'};

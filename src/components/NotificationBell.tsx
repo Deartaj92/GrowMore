@@ -128,7 +128,7 @@ const UnreadBadge = styled.div<{ $isNew?: boolean }>`
     if (props.$isNew) {
       return 'newBadgePulse 0.6s ease-out';
     }
-    return props.theme === 'dark' ? 'pulse-red' : 'pulse-red-light';
+    return isDark(props.theme) ? 'pulse-red' : 'pulse-red-light';
   }} ${props => props.$isNew ? '1' : 'infinite'};
 
   @keyframes newBadgePulse {

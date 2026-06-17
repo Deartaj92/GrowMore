@@ -304,7 +304,7 @@ const RenderSettings: React.FC = () => {
   };
 
   const allowedRoles = ['Principal', 'school_admin', 'School Admin', 'super_admin', 'Super Admin'];
-  const hasAccess = user && (user.is_super_admin || allowedRoles.includes(user.role));
+  const hasAccess = user && (user.is_super_admin || allowedRoles.includes(user.role || ''));
 
   if (!hasAccess) {
     return (

@@ -4,7 +4,8 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/useToast';
 import Loader from '../components/Loader';
-import { ThemeContext } from '../components/Layout';
+import { ThemeContext } from '../components/Layout/contexts/ThemeContext';
+import { darkTheme, lightTheme } from '../components/Layout/constants';
 const isDark = (themeObj: any) => themeObj?.BG === '#252525' || themeObj?.BG === '#181c2a';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -1059,9 +1060,10 @@ const StaffCheckInOutGrid: React.FC = () => {
 
 // Main Export wrapping with ThemeContext logic
 export default function StaffCheckInOutGridPage() {
-  const theme = useContext(ThemeContext);
+  const { theme } = useContext(ThemeContext);
+  const themeObj = theme === 'dark' ? darkTheme : lightTheme;
   return (
-    <ThemeProvider theme={theme || darkTheme}>
+    <ThemeProvider theme={themeObj}>
       <StaffCheckInOutGrid />
     </ThemeProvider>
   );
