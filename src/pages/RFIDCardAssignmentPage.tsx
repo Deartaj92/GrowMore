@@ -1,4 +1,13 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import ReactDOM from 'react-dom';
+import * as faceapi from '@vladmandic/face-api';
+import {
+    loadFaceRecognitionModels,
+    float32ArrayToHex,
+    getIRCameraDevice,
+    parseFaceEmbedding,
+    calculateEuclideanDistance,
+} from '../services/faceRecognitionService';
 import styled, { keyframes, css } from 'styled-components';
 
 // Add NDEFReader types for TypeScript
@@ -37,6 +46,7 @@ import {
     Delete,
     Sensors as NfcIcon,
     QrCodeScanner as QrCodeScannerIcon,
+    Face as FaceIcon,
 } from '@mui/icons-material';
 import { CircularProgress } from '@mui/material';
 
@@ -388,6 +398,7 @@ interface PersonRow {
     name: string;
     rfid_uid: string | null;
     qr_uid: string | null;
+    face_embedding?: string | null;
     attendance_mode?: 'rfid_required' | 'manual_only' | 'hybrid' | null;
     roll_number?: string;
     class_id?: number;
@@ -412,6 +423,71 @@ interface ClassRow { id: number; name: string; }
 interface SectionRow { id: number; name: string; class_id: number; }
 interface SessionRow { id: number; name: string; is_active?: boolean | null; }
 
+
+// ─── Face Enrollment Modal Styled Components ───────────────────────────────────
+
+const ModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+`;
+
+const ModalBox = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  border-radius: 18px;
+  padding: 1.5rem;
+  width: 96vw;
+  max-width: 680px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+`;
+
+const ModalTitle = styled.h2`
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  svg { color: #22c55e; }
+`;
+
+const EnrollSearchInput = styled.input`
+  width: 100%;
+  padding: 0.55rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  background: ${({ theme }) => theme.BG};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.88rem;
+  outline: none;
+  box-sizing: border-box;
+  &:focus { border-color: #22c55e; }
+  &::placeholder { color: ${({ theme }) => theme.TEXT_SECONDARY}; }
+`;
+
+const EnrollCloseBtn = styled.button`
+  background: ${({ theme }) => theme.BG};
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  border-radius: 8px;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  &:hover { border-color: #a855f7; color: #a855f7; }
+`;
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 25;
@@ -441,6 +517,28 @@ const RFIDCardAssignmentPage: React.FC = () => {
     const [editValue, setEditValue] = useState('');
     const [editAttendanceMode, setEditAttendanceMode] = useState<'rfid_required' | 'manual_only' | 'hybrid'>('hybrid');
     const [saving, setSaving] = useState(false);
+
+    // ─── Face Enrollment States ──────────────────────────────────────────────────
+    const [showFaceEnroll, setShowFaceEnroll] = useState(false);
+    const [enrollPersonType, setEnrollPersonType] = useState<'student' | 'employee'>('student');
+    const [enrollSearchQuery, setEnrollSearchQuery] = useState('');
+    const [enrollSearchResults, setEnrollSearchResults] = useState<any[]>([]);
+    const [enrollSearchLoading, setEnrollSearchLoading] = useState(false);
+    const [enrollSearchError, setEnrollSearchError] = useState<string | null>(null);
+    const [selectedEnrollPerson, setSelectedEnrollPerson] = useState<any | null>(null);
+    const [isEnrollCameraActive, setIsEnrollCameraActive] = useState(false);
+    const [enrollModelsLoading, setEnrollModelsLoading] = useState(false);
+    const [enrollCameraError, setEnrollCameraError] = useState('');
+    const [isEnrollingFace, setIsEnrollingFace] = useState(false);
+    const [detectedEnrollDescriptor, setDetectedEnrollDescriptor] = useState<Float32Array | null>(null);
+    const [enrollFaceBox, setEnrollFaceBox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+    const [selectedEnrollCameraId, setSelectedEnrollCameraId] = useState<string>('');
+    const [enrollCameras, setEnrollCameras] = useState<MediaDeviceInfo[]>([]);
+    const enrollVideoRef = useRef<HTMLVideoElement | null>(null);
+    const enrollStreamRef = useRef<MediaStream | null>(null);
+    const enrollLoopRef = useRef<any>(null);
+    const allEnrolledCacheRef = useRef<{ id: number; name: string; table: 'students' | 'staff'; descriptor: Float32Array }[]>([]);
+    const [dupMatchName, setDupMatchName] = useState<string | null>(null);
 
     const [isNfcSupported, setIsNfcSupported] = useState(false);
     const [isNfcScanning, setIsNfcScanning] = useState(false);
@@ -472,6 +570,153 @@ const RFIDCardAssignmentPage: React.FC = () => {
     const classesMap = useMemo(() => new Map(classes.map(c => [c.id, c.name])), [classes]);
     const sectionsMap = useMemo(() => new Map(sections.map(s => [s.id, s.name])), [sections]);
 
+    // ─── Face Enrollment Helpers ─────────────────────────────────────────────────
+    const startEnrollLoop = useCallback((currentPersonId: number, currentPersonType: 'student' | 'employee') => {
+        if (enrollLoopRef.current) clearTimeout(enrollLoopRef.current);
+        const DUPE_THRESHOLD = 0.50;
+        const runDetection = async () => {
+            if (!enrollVideoRef.current || !enrollStreamRef.current || !enrollVideoRef.current.srcObject) return;
+            const startTime = Date.now();
+            try {
+                const detection = await faceapi.detectSingleFace(
+                    enrollVideoRef.current,
+                    new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.65 })
+                ).withFaceLandmarks().withFaceDescriptor();
+                if (detection) {
+                    const descriptor = detection.descriptor;
+                    setDetectedEnrollDescriptor(descriptor);
+                    const box = detection.detection.box;
+                    const vW = enrollVideoRef.current.videoWidth || 640;
+                    const vH = enrollVideoRef.current.videoHeight || 480;
+                    const dW = enrollVideoRef.current.clientWidth || 320;
+                    const dH = enrollVideoRef.current.clientHeight || 240;
+                    const scaleX = dW / vW; const scaleY = dH / vH;
+                    setEnrollFaceBox({
+                        x: dW - (box.x + box.width) * scaleX,
+                        y: box.y * scaleY,
+                        width: box.width * scaleX,
+                        height: box.height * scaleY,
+                    });
+                    // ── Live duplicate check ──
+                    let foundDupe: string | null = null;
+                    for (const enrolled of allEnrolledCacheRef.current) {
+                        const isSelf =
+                            (currentPersonType === 'student' && enrolled.table === 'students' && enrolled.id === currentPersonId) ||
+                            (currentPersonType !== 'student' && enrolled.table === 'staff' && enrolled.id === currentPersonId);
+                        if (isSelf) continue;
+                        const dist = calculateEuclideanDistance(descriptor, enrolled.descriptor);
+                        if (dist < DUPE_THRESHOLD) { foundDupe = enrolled.name; break; }
+                    }
+                    setDupMatchName(foundDupe);
+                } else {
+                    setDetectedEnrollDescriptor(null);
+                    setEnrollFaceBox(null);
+                    setDupMatchName(null);
+                }
+            } catch { /* ignore */ }
+            const elapsed = Date.now() - startTime;
+            if (enrollStreamRef.current && enrollStreamRef.current.active) {
+                enrollLoopRef.current = setTimeout(runDetection, Math.max(300 - elapsed, 0));
+            }
+        };
+        enrollLoopRef.current = setTimeout(runDetection, 300);
+    }, []);
+
+    const stopEnrollCamera = useCallback(() => {
+        setIsEnrollCameraActive(false);
+        setDetectedEnrollDescriptor(null);
+        setEnrollFaceBox(null);
+        setDupMatchName(null);
+        if (enrollLoopRef.current) { clearTimeout(enrollLoopRef.current); enrollLoopRef.current = null; }
+        if (enrollStreamRef.current) { enrollStreamRef.current.getTracks().forEach(t => t.stop()); enrollStreamRef.current = null; }
+        if (enrollVideoRef.current) { enrollVideoRef.current.srcObject = null; }
+    }, []);
+
+    const startEnrollCamera = useCallback(async (deviceId?: string, personId?: number, personType?: 'student' | 'employee') => {
+        setEnrollCameraError('');
+        setEnrollModelsLoading(true);
+        setDupMatchName(null);
+        try { await loadFaceRecognitionModels(); } catch { setEnrollCameraError('Failed to load AI models'); setEnrollModelsLoading(false); return; }
+        setEnrollModelsLoading(false);
+        try {
+            if (enrollStreamRef.current) enrollStreamRef.current.getTracks().forEach(t => t.stop());
+            const irDevice = await getIRCameraDevice();
+            const targetId = deviceId || selectedEnrollCameraId || irDevice?.deviceId;
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: targetId ? { deviceId: { exact: targetId }, width: { ideal: 640 }, height: { ideal: 480 } } : { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+            });
+            enrollStreamRef.current = stream;
+            if (enrollVideoRef.current) enrollVideoRef.current.srcObject = stream;
+            setIsEnrollCameraActive(true);
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(d => d.kind === 'videoinput');
+            setEnrollCameras(videoDevices);
+            if (targetId) setSelectedEnrollCameraId(targetId);
+
+            // Pre-load all enrolled embeddings into cache for live duplicate check
+            if (user?.school_id) {
+                const [studRes, staffRes] = await Promise.all([
+                    supabase.from('students').select('id, name, face_embedding').eq('school_id', user.school_id).not('face_embedding', 'is', null),
+                    supabase.from('staff').select('id, name, face_embedding').eq('school_id', user.school_id).not('face_embedding', 'is', null),
+                ]);
+                allEnrolledCacheRef.current = [
+                    ...(studRes.data || []).flatMap(r => {
+                        const d = parseFaceEmbedding(r.face_embedding);
+                        return d ? [{ id: r.id, name: r.name, table: 'students' as const, descriptor: d }] : [];
+                    }),
+                    ...(staffRes.data || []).flatMap(r => {
+                        const d = parseFaceEmbedding(r.face_embedding);
+                        return d ? [{ id: r.id, name: r.name, table: 'staff' as const, descriptor: d }] : [];
+                    }),
+                ];
+            }
+
+            startEnrollLoop(personId ?? 0, personType ?? 'student');
+        } catch { setEnrollCameraError('Could not access camera device.'); }
+    }, [startEnrollLoop, selectedEnrollCameraId, user?.school_id]);
+
+    const saveEnrolledFace = useCallback(async () => {
+        if (!selectedEnrollPerson || !detectedEnrollDescriptor || !user?.school_id || dupMatchName) return;
+        setIsEnrollingFace(true);
+        try {
+            const hexEmbedding = float32ArrayToHex(detectedEnrollDescriptor);
+            const table = selectedEnrollPerson.type === 'student' ? 'students' : 'staff';
+            const { error } = await supabase
+                .from(table)
+                .update({ face_embedding: hexEmbedding, face_embedding_dim: 128 })
+                .eq('id', selectedEnrollPerson.person_id)
+                .eq('school_id', user.school_id);
+            if (error) throw error;
+            toast.showToast(`✅ Face registered for ${selectedEnrollPerson.name}!`, 'success');
+            stopEnrollCamera();
+            setSelectedEnrollPerson(null);
+        } catch (e: any) {
+            toast.showToast('Failed to save face: ' + e.message, 'error');
+        } finally {
+            setIsEnrollingFace(false);
+        }
+    }, [selectedEnrollPerson, detectedEnrollDescriptor, dupMatchName, user?.school_id, stopEnrollCamera]);
+
+    const handleEnrollSearch = useCallback(async (query: string, type: 'student' | 'employee') => {
+        setEnrollSearchQuery(query);
+        setEnrollSearchError(null);
+        if (!query.trim()) { setEnrollSearchResults([]); return; }
+        setEnrollSearchLoading(true);
+        try {
+            if (!user?.school_id) { setEnrollSearchLoading(false); return; }
+            if (type === 'student') {
+                const { data, error } = await supabase.from('students').select('id,name,roll_number,rfid_uid,qr_uid,face_embedding,picture_url').eq('school_id', user.school_id).ilike('name', `%${query}%`).limit(15);
+                if (error) throw error;
+                setEnrollSearchResults((data || []).map(s => ({ rfid_uid: s.rfid_uid || s.qr_uid || `face_${s.id}`, person_id: s.id, name: s.name, type: 'student', roll_number: s.roll_number, picture_url: s.picture_url, face_embedding: s.face_embedding })));
+            } else {
+                const { data, error } = await supabase.from('staff').select('id,name,role,rfid_uid,qr_uid,face_embedding,picture_url').eq('school_id', user.school_id).ilike('name', `%${query}%`).limit(15);
+                if (error) throw error;
+                setEnrollSearchResults((data || []).map(s => ({ rfid_uid: s.rfid_uid || s.qr_uid || `face_${s.id}`, person_id: s.id, name: s.name, type: 'employee', role: s.role, picture_url: s.picture_url, face_embedding: s.face_embedding })));
+            }
+        } catch (err: any) { setEnrollSearchError(err.message || 'Search error'); }
+        setEnrollSearchLoading(false);
+    }, [user?.school_id]);
+
     const fetchData = useCallback(async () => {
         if (!user?.school_id) return;
         setLoading(true);
@@ -489,8 +734,8 @@ const RFIDCardAssignmentPage: React.FC = () => {
             // Fetch people
             const table = mode === 'students' ? 'students' : 'staff';
             const selectFields = mode === 'students'
-                ? 'id,name,rfid_uid,qr_uid,attendance_mode,roll_number,class_id,section_id,status,session_id'
-                : 'id,name,rfid_uid,qr_uid,attendance_mode,role,status';
+                ? 'id,name,rfid_uid,qr_uid,face_embedding,attendance_mode,roll_number,class_id,section_id,status,session_id'
+                : 'id,name,rfid_uid,qr_uid,face_embedding,attendance_mode,role,status';
 
             let data = await fetchAllRows<PersonRow>(async (from, to) => {
                 return await supabase
@@ -1072,6 +1317,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
     const sortedClasses = useMemo(() => sortClasses(classes as any[]), [classes]);
 
     return (
+        <>
         <Page theme={themeObj}>
             <TopBar>
                 <Title theme={themeObj}>
@@ -1187,6 +1433,7 @@ const RFIDCardAssignmentPage: React.FC = () => {
                                         <TH theme={themeObj}>Attendance Mode</TH>
                                         <TH theme={themeObj}>RFID card</TH>
                                         <TH theme={themeObj}>QR code</TH>
+                                        <TH theme={themeObj}>Face</TH>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1355,6 +1602,50 @@ const RFIDCardAssignmentPage: React.FC = () => {
                                                         </>
                                                     )}
                                                 </TD>
+                                                {/* ── Face Column ── */}
+                                                <TD theme={themeObj}>
+                                                    <RfidBadge $assigned={!!person.face_embedding} style={{ borderColor: person.face_embedding ? 'rgba(34,197,94,0.35)' : 'rgba(148,163,184,0.2)' }}>
+                                                        <FaceIcon style={{ fontSize: 14 }} />
+                                                        {person.face_embedding ? 'Enrolled' : 'No Face'}
+                                                    </RfidBadge>
+                                                    <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                                                        <ActionBtn
+                                                            $color="#22c55e"
+                                                            onClick={() => {
+                                                                const enrollPerson = {
+                                                                    person_id: person.id,
+                                                                    name: person.name,
+                                                                    type: mode === 'students' ? 'student' : 'employee',
+                                                                    roll_number: person.roll_number,
+                                                                    role: person.role,
+                                                                    face_embedding: person.face_embedding,
+                                                                };
+                                                                setSelectedEnrollPerson(enrollPerson);
+                                                                setShowFaceEnroll(true);
+                                                                void startEnrollCamera(undefined, person.id, mode === 'students' ? 'student' : 'employee');
+                                                            }}
+                                                        >
+                                                            <FaceIcon style={{ fontSize: 14 }} />
+                                                            {person.face_embedding ? 'Re-enroll' : 'Enroll Face'}
+                                                        </ActionBtn>
+                                                        {person.face_embedding && (
+                                                            <ActionBtn
+                                                                $color="#ef4444"
+                                                                onClick={async () => {
+                                                                    if (!window.confirm('Remove face enrollment for ' + person.name + '?')) return;
+                                                                    const tbl = mode === 'students' ? 'students' : 'staff';
+                                                                    const { error } = await supabase.from(tbl).update({ face_embedding: null, face_embedding_dim: null }).eq('id', person.id).eq('school_id', user!.school_id);
+                                                                    if (error) { toast.showToast('Failed to remove face: ' + error.message, 'error'); return; }
+                                                                    setPeople(prev => prev.map(p => p.id === person.id ? { ...p, face_embedding: null } : p));
+                                                                    toast.showToast('Face enrollment removed', 'success');
+                                                                }}
+                                                            >
+                                                                <Delete style={{ fontSize: 14 }} />
+                                                                Clear Face
+                                                            </ActionBtn>
+                                                        )}
+                                                    </div>
+                                                </TD>
                                             </Row>
                                         );
                                     })}
@@ -1378,6 +1669,93 @@ const RFIDCardAssignmentPage: React.FC = () => {
             </TableCard>
 
         </Page>
+
+        {/* ─── Face Enrollment Modal (per-row, camera-first) ─────────────── */}
+        {showFaceEnroll && selectedEnrollPerson && ReactDOM.createPortal(
+            <ModalOverlay theme={themeObj} onClick={() => { stopEnrollCamera(); setShowFaceEnroll(false); setSelectedEnrollPerson(null); }}>
+                <ModalBox theme={themeObj} onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
+
+                    {/* Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${themeObj.BORDER}`, paddingBottom: '0.75rem' }}>
+                        <ModalTitle theme={themeObj}><FaceIcon /> Face Enrollment</ModalTitle>
+                        <EnrollCloseBtn theme={themeObj} onClick={() => { stopEnrollCamera(); setShowFaceEnroll(false); setSelectedEnrollPerson(null); }}>✕ Close</EnrollCloseBtn>
+                    </div>
+
+                    {/* Person info banner */}
+                    <div style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 10, padding: '0.65rem 1rem', fontSize: '0.88rem' }}>
+                        <span style={{ color: themeObj.TEXT_SECONDARY, fontWeight: 600 }}>Enrolling face for: </span>
+                        <span style={{ fontWeight: 800, color: '#22c55e' }}>{selectedEnrollPerson.name}</span>
+                        {selectedEnrollPerson.roll_number && <span style={{ color: themeObj.TEXT_SECONDARY }}> · {selectedEnrollPerson.roll_number}</span>}
+                        {selectedEnrollPerson.role && <span style={{ color: themeObj.TEXT_SECONDARY }}> · {selectedEnrollPerson.role}</span>}
+                        <span style={{ marginLeft: 8, fontSize: '0.72rem', fontWeight: 800, background: selectedEnrollPerson.face_embedding ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)', color: selectedEnrollPerson.face_embedding ? '#22c55e' : '#ef4444', padding: '2px 8px', borderRadius: 999 }}>
+                            {selectedEnrollPerson.face_embedding ? 'RE-ENROLLING' : 'NEW ENROLLMENT'}
+                        </span>
+                    </div>
+
+                    {/* Camera selector */}
+                    {enrollCameras.length > 1 && (
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.8rem', background: themeObj.BG, padding: '0.4rem 0.8rem', borderRadius: 8, border: `1px solid ${themeObj.BORDER}` }}>
+                            <FaceIcon style={{ fontSize: 16, color: themeObj.TEXT_SECONDARY }} />
+                            <span style={{ color: themeObj.TEXT_SECONDARY, fontWeight: 650, whiteSpace: 'nowrap' }}>Camera:</span>
+                            <select value={selectedEnrollCameraId} onChange={e => { setSelectedEnrollCameraId(e.target.value); void startEnrollCamera(e.target.value); }} style={{ flex: 1, padding: '0.3rem 0.5rem', borderRadius: 6, background: themeObj.CARD, color: themeObj.TEXT_PRIMARY, border: `1px solid ${themeObj.BORDER}`, fontSize: '0.8rem' }}>
+                                {enrollCameras.map(c => (<option key={c.deviceId} value={c.deviceId}>{c.label || `Camera ${c.deviceId.slice(0, 5)}`}</option>))}
+                            </select>
+                        </div>
+                    )}
+
+                    {/* Camera viewport */}
+                    <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', borderRadius: 12, overflow: 'hidden', background: '#000', border: `2px solid ${themeObj.BORDER}` }}>
+                        {enrollModelsLoading && (
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.7)', zIndex: 6 }}>
+                                <FaceIcon style={{ fontSize: 36, color: '#22c55e', opacity: 0.7 }} />
+                                <span style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 700 }}>Loading AI models...</span>
+                            </div>
+                        )}
+                        {enrollCameraError && (
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', fontSize: '0.85rem', fontWeight: 700, padding: '1rem', textAlign: 'center', zIndex: 6 }}>{enrollCameraError}</div>
+                        )}
+                        <video ref={enrollVideoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+                        {/* Circular FaceID Guideline Overlay */}
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 4 }}>
+                            <div style={{ width: '60%', height: '80%', borderRadius: '50%', border: `3px dashed ${dupMatchName ? '#ef4444' : (detectedEnrollDescriptor ? '#22c55e' : 'rgba(255,255,255,0.45)')}`, boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)', transition: 'all 0.2s ease-out', transform: detectedEnrollDescriptor ? 'scale(1.02)' : 'scale(1)' }} />
+                        </div>
+                        {/* Face detection box */}
+                        {isEnrollCameraActive && enrollFaceBox && (
+                            <div style={{ position: 'absolute', border: `3px solid ${dupMatchName ? '#ef4444' : '#22c55e'}`, borderRadius: 8, left: `${enrollFaceBox.x}px`, top: `${enrollFaceBox.y}px`, width: `${enrollFaceBox.width}px`, height: `${enrollFaceBox.height}px`, boxShadow: `0 0 16px ${dupMatchName ? 'rgba(239,68,68,0.7)' : 'rgba(34,197,94,0.7)'}`, pointerEvents: 'none', transition: 'all 0.1s ease-out', zIndex: 5 }} />
+                        )}
+                        {/* Status indicator overlay */}
+                        <div style={{ position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)', background: dupMatchName ? 'rgba(239,68,68,0.85)' : 'rgba(0,0,0,0.6)', color: dupMatchName ? '#fff' : (detectedEnrollDescriptor ? '#22c55e' : '#f59e0b'), padding: '4px 14px', borderRadius: 999, fontSize: '0.72rem', fontWeight: 800, whiteSpace: 'nowrap', backdropFilter: 'blur(4px)', maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {dupMatchName
+                                ? `⚠️ Face already enrolled to: ${dupMatchName}`
+                                : detectedEnrollDescriptor
+                                    ? '✓ Face Detected — Ready to Register'
+                                    : 'Align your face in the frame'
+                            }
+                        </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div style={{ display: 'flex' }}>
+                        <button
+                            onClick={async () => {
+                                await saveEnrolledFace();
+                                if (selectedEnrollPerson && detectedEnrollDescriptor && !dupMatchName) {
+                                    setPeople(prev => prev.map(p => p.id === selectedEnrollPerson.person_id ? { ...p, face_embedding: 'enrolled' } : p));
+                                    setShowFaceEnroll(false);
+                                    setSelectedEnrollPerson(null);
+                                }
+                            }}
+                            disabled={!detectedEnrollDescriptor || isEnrollingFace || !!dupMatchName}
+                            style={{ flex: 1, padding: '0.75rem', borderRadius: 10, border: 'none', background: dupMatchName ? '#ef4444' : (detectedEnrollDescriptor ? '#22c55e' : '#6b7280'), color: '#fff', fontWeight: 800, cursor: (!detectedEnrollDescriptor || !!dupMatchName) ? 'not-allowed' : 'pointer', fontSize: '0.85rem', boxShadow: dupMatchName ? '0 4px 16px rgba(239,68,68,0.35)' : (detectedEnrollDescriptor ? '0 4px 16px rgba(34,197,94,0.35)' : 'none'), transition: 'all 0.2s', opacity: dupMatchName ? 0.8 : 1 }}
+                        >
+                            {isEnrollingFace ? '⏳ Registering...' : dupMatchName ? '⚠️ Already Enrolled to Another Person' : (detectedEnrollDescriptor ? '✓ Register & Save Face' : 'Align Face to Register')}
+                        </button>
+                    </div>
+
+                </ModalBox>
+            </ModalOverlay>
+        , document.body)}
+        </>
     );
 };
 

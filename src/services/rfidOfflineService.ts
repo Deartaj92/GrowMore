@@ -37,6 +37,8 @@ export interface RFIDMapping {
     picture_url?: string;
     father_name?: string;
     status?: string;
+    face_embedding?: string | number[] | Float32Array | null;
+    face_embedding_dim?: number;
 }
 
 export interface QueuedScan {
@@ -600,16 +602,14 @@ class RFIDOfflineService {
             // Fetch students
             const { data: students } = await supabase
                 .from('students')
-                .select('id, name, father_name, rfid_uid, qr_uid, attendance_mode, roll_number, picture_url, status, class_id, section_id, classes:class_id(name), sections:section_id(name)')
-                .eq('school_id', schoolId)
-                .or('rfid_uid.not.is.null,qr_uid.not.is.null');
+                .select('id, name, father_name, rfid_uid, qr_uid, attendance_mode, roll_number, picture_url, status, class_id, section_id, classes:class_id(name), sections:section_id(name), face_embedding, face_embedding_dim')
+                .eq('school_id', schoolId);
 
             // Fetch staff
             const { data: staff } = await supabase
                 .from('staff')
-                .select('id, name, rfid_uid, qr_uid, attendance_mode, role, picture_url, status')
-                .eq('school_id', schoolId)
-                .or('rfid_uid.not.is.null,qr_uid.not.is.null');
+                .select('id, name, rfid_uid, qr_uid, attendance_mode, role, picture_url, status, face_embedding, face_embedding_dim')
+                .eq('school_id', schoolId);
 
             const db = await this.getDB();
             const tx = db.transaction(STORE_MAPPINGS, 'readwrite');
@@ -627,12 +627,16 @@ class RFIDOfflineService {
 
             students?.forEach(s => {
                 const hasCard = !!(s.rfid_uid || (s as any).qr_uid);
+                let rfidUid = (s.rfid_uid || (s as any).qr_uid || '') as string;
+                if (!rfidUid || rfidUid.trim().length < 4) {
+                    rfidUid = this.buildSyntheticFaceQueueUid(s.id);
+                }
                 const mapping: RFIDMapping = {
-                    rfid_uid: (s.rfid_uid || (s as any).qr_uid || '') as string,
+                    rfid_uid: rfidUid,
                     person_id: s.id,
                     name: s.name,
                     type: 'student',
-                    attendance_mode: this.normalizeAttendanceMode((s as any).attendance_mode, hasCard),
+                    attendance_mode: this.normalizeAttendanceMode((s as any).attendance_mode, hasCard || !!(s as any).face_embedding),
                     class_name: (s.classes as any)?.name,
                     section_name: (s.sections as any)?.name,
                     class_id: s.class_id,
@@ -641,6 +645,8 @@ class RFIDOfflineService {
                     picture_url: s.picture_url,
                     father_name: s.father_name,
                     status: (s as any).status || 'active',
+                    face_embedding: (s as any).face_embedding,
+                    face_embedding_dim: (s as any).face_embedding_dim,
                 };
                 const uidKeys = new Set<string>();
                 if (s.rfid_uid) {
@@ -653,6 +659,10 @@ class RFIDOfflineService {
                         if (canon.length >= 4) uidKeys.add(canon);
                         buildRfidUidCandidates(qRaw).forEach(uid => uidKeys.add(uid));
                     }
+                }
+                if (rfidUid) {
+                    uidKeys.add(rfidUid);
+                    buildRfidUidCandidates(rfidUid).forEach(uid => uidKeys.add(uid));
                 }
                 uidKeys.forEach(uid => store.put({ ...mapping, rfid_uid: uid }));
                 serializedMappings.push(mapping);
@@ -665,15 +675,21 @@ class RFIDOfflineService {
 
             staff?.forEach(s => {
                 const hasCard = !!(s.rfid_uid || (s as any).qr_uid);
+                let rfidUid = (s.rfid_uid || (s as any).qr_uid || '') as string;
+                if (!rfidUid || rfidUid.trim().length < 4) {
+                    rfidUid = this.buildSyntheticFaceQueueUid(s.id);
+                }
                 const mapping: RFIDMapping = {
-                    rfid_uid: (s.rfid_uid || (s as any).qr_uid || '') as string,
+                    rfid_uid: rfidUid,
                     person_id: s.id,
                     name: s.name,
                     type: 'employee',
-                    attendance_mode: this.normalizeAttendanceMode((s as any).attendance_mode, hasCard),
+                    attendance_mode: this.normalizeAttendanceMode((s as any).attendance_mode, hasCard || !!(s as any).face_embedding),
                     role: s.role,
                     picture_url: s.picture_url,
                     status: (s as any).status || 'active',
+                    face_embedding: (s as any).face_embedding,
+                    face_embedding_dim: (s as any).face_embedding_dim,
                 };
                 const uidKeys = new Set<string>();
                 if (s.rfid_uid) {
@@ -686,6 +702,10 @@ class RFIDOfflineService {
                         if (canon.length >= 4) uidKeys.add(canon);
                         buildRfidUidCandidates(qRaw).forEach(uid => uidKeys.add(uid));
                     }
+                }
+                if (rfidUid) {
+                    uidKeys.add(rfidUid);
+                    buildRfidUidCandidates(rfidUid).forEach(uid => uidKeys.add(uid));
                 }
                 uidKeys.forEach(uid => store.put({ ...mapping, rfid_uid: uid }));
                 serializedMappings.push(mapping);
@@ -954,6 +974,32 @@ class RFIDOfflineService {
 
         const history = await this.getCachedDailyAttendanceHistory(item.school_id, item.date);
         await this.persistNativeDailyHistory(item.school_id, item.date, history);
+    }
+
+    /**
+     * Get all unique cached mappings
+     */
+    async getAllMappings(): Promise<RFIDMapping[]> {
+        const db = await this.getDB();
+        return new Promise((resolve) => {
+            const tx = db.transaction(STORE_MAPPINGS, 'readonly');
+            const store = tx.objectStore(STORE_MAPPINGS);
+            const request = store.getAll();
+            request.onsuccess = () => {
+                const list = (request.result || []) as RFIDMapping[];
+                const seen = new Set<string>();
+                const unique: RFIDMapping[] = [];
+                for (const item of list) {
+                    const key = `${item.type}_${item.person_id}`;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        unique.push(item);
+                    }
+                }
+                resolve(unique);
+            };
+            request.onerror = () => resolve([]);
+        });
     }
 
     /**
@@ -1646,20 +1692,7 @@ class RFIDOfflineService {
         }
     }
 
-    /**
-     * Retrieve all locally cached mappings.
-     * Useful for testing and debugging.
-     */
-    async getAllMappings(): Promise<RFIDMapping[]> {
-        const db = await this.getDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(STORE_MAPPINGS, 'readonly');
-            const store = transaction.objectStore(STORE_MAPPINGS);
-            const request = store.getAll();
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
-    }
+
 
     /**
      * Explicitly cache attendance settings to local IndexedDB.

@@ -54,11 +54,14 @@ self.addEventListener('fetch', (event) => {
     const { request } = event;
     const url = new URL(request.url);
 
+    // Exclude ML face models from service worker processing
+    if (url.pathname.includes('/models/')) return;
+
     // 1. Only handle GET requests and exclude Supabase Realtime/Auth calls (unless specifically needed)
     if (request.method !== 'GET') return;
     if (url.hostname.includes('supabase.co')) return; // Let Supabase handle its own offline logic or return errors
 
-// 2. Navigation Request (index.html) - Network First
+    // 2. Navigation Request (index.html) - Network First
     if (request.mode === 'navigate') {
         event.respondWith(
             fetch(request)

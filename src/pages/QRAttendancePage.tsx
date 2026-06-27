@@ -13,6 +13,15 @@ declare global {
 }
 import { useTheme } from '../components/Layout/contexts/ThemeContext';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import * as faceapi from '@vladmandic/face-api';
+import { RFIDMapping } from '../services/rfidOfflineService';
+import {
+    loadFaceRecognitionModels,
+    parseFaceEmbedding,
+    float32ArrayToHex,
+    matchFace,
+    getIRCameraDevice
+} from '../services/faceRecognitionService';
 import { darkTheme, lightTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/useToast';
@@ -1530,6 +1539,28 @@ const QRAttendancePage: React.FC = () => {
     const [lastDetectedQr, setLastDetectedQr] = useState('');
     const lastCameraScanRef = useRef<{ value: string; time: number } | null>(null);
 
+    // ─── Face Recognition States ────────────────────────────────────────────────
+    const [scannerMode, setScannerMode] = useState<'qr' | 'face'>('qr');
+    const [isFaceScanning, setIsFaceScanning] = useState(false);
+    const [faceCameraError, setFaceCameraError] = useState('');
+    const [selectedFaceCameraId, setSelectedFaceCameraId] = useState<string>('');
+    const [faceCameras, setFaceCameras] = useState<MediaDeviceInfo[]>([]);
+    const [modelsLoading, setModelsLoading] = useState(false);
+    const [modelsLoadedState, setModelsLoadedState] = useState(false);
+    const [modelsStatus, setModelsStatus] = useState('');
+    const [faceMatchRects, setFaceMatchRects] = useState<Array<{ x: number; y: number; width: number; height: number; name?: string; status?: 'new' | 'already' }>>([]);
+    const [faceMatchThreshold, setFaceMatchThreshold] = useState<number>(0.45);
+
+    const faceVideoRef = useRef<HTMLVideoElement | null>(null);
+    const faceStreamRef = useRef<MediaStream | null>(null);
+    const faceLoopRef = useRef<any>(null);
+    const faceCooldownRef = useRef<Map<number | string, number>>(new Map());
+    const markedPersonsRef = useRef<Set<number>>(new Set());
+    const faceLastSeenRef = useRef<Map<number, number>>(new Map());
+    const mappingsRef = useRef<RFIDMapping[]>([]);
+
+
+
     const [showLatePasswordModal, setShowLatePasswordModal] = useState(false);
     const [latePassword, setLatePassword] = useState('');
     const [verifyingLatePassword, setVerifyingLatePassword] = useState(false);
@@ -1739,6 +1770,7 @@ const QRAttendancePage: React.FC = () => {
                 });
                 setMappingSyncing(false);
                 isCacheReadyRef.current = true;
+                void loadMappingsInMemory();
                 
                 rfidOfflineService.cacheDailyAttendanceHistory(schoolId, selectedDate).catch(error => {
                     console.warn('Failed to prime cached RFID attendance history:', error);
@@ -1763,6 +1795,7 @@ const QRAttendancePage: React.FC = () => {
                     setMappingProgress({ current: curr, total: tot, status });
                 });
                 setMappingSyncing(false);
+                void loadMappingsInMemory();
                 await rfidOfflineService.cacheDailyAttendanceHistory(user.school_id, selectedDate);
                 await loadHistoryFeed(selectedDate);
                 const q = await rfidOfflineService.getQueue();
@@ -1816,6 +1849,9 @@ const QRAttendancePage: React.FC = () => {
                     staff_cutoff_time: toInputTime(data.staff_cutoff_time, '08:15'),
                     timezone: data.timezone || 'Asia/Karachi'
                 });
+                if (typeof (data as any).face_match_threshold === 'number') {
+                    setFaceMatchThreshold((data as any).face_match_threshold);
+                }
             }
             else {
                 setAttnSettings({
@@ -2246,7 +2282,7 @@ const QRAttendancePage: React.FC = () => {
                 setScannedPerson(null);
             }, 4000);
         }
-    }, [user?.school_id, addFeedItem, selectedDate, fetchPersonMonthlyLateCount, triggerPopup, showToast]);
+    }, [user?.school_id, addFeedItem, selectedDate, fetchPersonMonthlyLateCount, triggerPopup, showToast, speak]);
 
     executeUIDProcessRef.current = executeUIDProcess;
 
@@ -2328,6 +2364,380 @@ const QRAttendancePage: React.FC = () => {
             }, 100);
         }
     }, [processUID]);
+
+    // ─── Face Recognition Loops and Callbacks ───────────────────────────────────
+    const loadMappingsInMemory = useCallback(async () => {
+        try {
+            const list = await rfidOfflineService.getAllMappings();
+            mappingsRef.current = list;
+        } catch (e) {
+            console.error('Failed to load mappings into memory:', e);
+        }
+    }, []);
+
+    const executeFaceProcess = useCallback(async (person: RFIDMapping) => {
+        if (!person || !user?.school_id) return;
+
+        const now = Date.now();
+        const lastScanTime = faceCooldownRef.current.get(person.person_id);
+        if (lastScanTime && now - lastScanTime < 5000) { // 5 seconds cooldown per person
+            return;
+        }
+        faceCooldownRef.current.set(person.person_id, now);
+
+        setScanStatus('idle');
+        setStatusMsg('Face detected. Matching...');
+
+        try {
+            const result = await rfidOfflineService.markAttendanceWithPerson(person, user.school_id!, selectedDate);
+            const time = result.recorded_time
+                ? new Date(result.recorded_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                : formatTime();
+
+            if (!result.success || !result.person) {
+                if (result.type === 'error_checkout_early' && result.person) {
+                    markedPersonsRef.current.add(result.person.person_id);
+                    faceLastSeenRef.current.set(result.person.person_id, Date.now());
+                    setScanStatus('error');
+                    setStatusMsg(`Too Early to Check Out`);
+                    addFeedItem({
+                        type: 'warn',
+                        name: result.person.name,
+                        sub: `Check out disabled before allowed time`,
+                        time,
+                        personType: 'employee',
+                        personId: result.person.person_id,
+                    });
+                    showToast(`Too Early to Check Out!`, 'error');
+                    return;
+                }
+
+                if (result.type === 'error_inactive' && result.person) {
+                    markedPersonsRef.current.add(result.person.person_id);
+                    faceLastSeenRef.current.set(result.person.person_id, Date.now());
+                    const statusLabel = (result.person.status || 'inactive').replace('_', ' ');
+                    setScanStatus('error');
+                    setStatusMsg(`Not Active: ${result.person.name}`);
+                    setScannedPerson({ name: result.person.name });
+                    addFeedItem({
+                        type: 'error',
+                        name: result.person.name,
+                        sub: `Status: ${statusLabel} — Attendance rejected`,
+                        time,
+                        personType: result.person.type === 'student' ? 'student' : 'employee',
+                        personId: result.person.person_id,
+                    });
+                    return;
+                }
+
+                if (result.type === 'error_manual_only' && result.person) {
+                    markedPersonsRef.current.add(result.person.person_id);
+                    faceLastSeenRef.current.set(result.person.person_id, Date.now());
+                    setScanStatus('error');
+                    setStatusMsg(`Manual Only: ${result.person.name}`);
+                    setScannedPerson({ name: result.person.name });
+                    addFeedItem({
+                        type: 'warn',
+                        name: result.person.name,
+                        sub: 'Manual-only attendance policy enabled',
+                        time,
+                        personType: result.person.type === 'student' ? 'student' : 'employee',
+                        personId: result.person.person_id,
+                    });
+                    showToast(`${result.person.name} is set to manual-only attendance`, 'error');
+                    return;
+                }
+
+                setScanStatus('error');
+                setStatusMsg('Face Match: Verification Failed');
+                return;
+            }
+
+            const p = result.person;
+            markedPersonsRef.current.add(p.person_id);
+            faceLastSeenRef.current.set(p.person_id, Date.now());
+            const personType = p.type === 'student' ? 'student' : 'employee';
+
+            setScannedPerson({ name: p.name });
+
+            if (result.type === 'already' || result.type === 'already_out' || result.type === 'offline_already' || result.type === 'offline_already_out') {
+                const isAlreadyOut = result.type === 'already_out' || result.type === 'offline_already_out';
+                const isOffline = result.type === 'offline_already' || result.type === 'offline_already_out';
+                const status = isAlreadyOut ? 'checked_out' : (result.attendance_status === 'late' ? 'late' : 'present');
+                
+                setScanStatus('success');
+                setStatusMsg(isAlreadyOut ? `✓ Already Left: ${p.name}` : `✓ Already Marked: ${p.name}`);
+                speak(`${p.name}, Already Marked`);
+                setDupCount(c => c + 1);
+                addFeedItem({
+                    type: 'warn',
+                    name: p.name,
+                    sub: isAlreadyOut ? `Already checked out for today` : `Already marked ${status.toUpperCase()}`,
+                    time,
+                    personType,
+                    isOffline,
+                    personId: p.person_id,
+                    attendanceStatus: status
+                });
+                triggerPopup({
+                    name: p.name,
+                    subInfo: isAlreadyOut ? `Already checked out` : `Already marked ${status.toUpperCase()}`,
+                    status: status,
+                    time,
+                    picture_url: p.picture_url
+                });
+            } else {
+                const isOffline = result.type === 'offline_present' || result.type === 'offline_late' || result.type === 'offline_checkout';
+                const isLate = result.attendance_status === 'late';
+                const isCheckout = result.type === 'out' || result.type === 'offline_checkout';
+                
+                setScanStatus('success');
+                setStatusMsg(`✓ ${isCheckout ? 'Goodbye' : 'Welcome'}: ${p.name}${isOffline ? ' (Offline)' : ''}`);
+                const statusText = isCheckout ? 'Checked Out' : (isLate ? 'Marked Late' : 'Marked Present');
+                speak(`${p.name}, ${statusText}`);
+                setPresentCount(c => c + 1);
+
+                const lateCount = isLate ? await fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: true }) : 0;
+
+                addFeedItem({
+                    type: 'success',
+                    name: p.name,
+                    sub: isCheckout ? 'Checked Out' : (isLate ? 'Attendance marked Late' : 'Attendance marked Present'),
+                    time,
+                    personType,
+                    isOffline,
+                    personId: p.person_id,
+                    attendanceStatus: result.attendance_status,
+                    attendanceLateCount: lateCount,
+                    fatherName: (p as any).father_name
+                });
+
+                triggerPopup({
+                    name: p.name,
+                    subInfo: '',
+                    status: isCheckout ? 'checked_out' : result.attendance_status as any,
+                    time,
+                    picture_url: p.picture_url
+                });
+            }
+        } catch (error) {
+            console.error('Face scan mark attendance failed:', error);
+            setScanStatus('error');
+            setStatusMsg('Processing Error');
+        } finally {
+            if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+            resetTimerRef.current = setTimeout(() => {
+                setScanStatus('idle');
+                setStatusMsg('Waiting for face scanning...');
+                setScannedPerson(null);
+            }, 4000);
+        }
+    }, [user?.school_id, selectedDate, addFeedItem, fetchPersonMonthlyLateCount, triggerPopup, speak]);
+
+    const startFaceLoop = useCallback(() => {
+        if (faceLoopRef.current) {
+            clearTimeout(faceLoopRef.current);
+        }
+
+        const runDetection = async () => {
+            if (!faceVideoRef.current || !faceStreamRef.current || !faceVideoRef.current.srcObject) {
+                return;
+            }
+
+            const startTime = Date.now();
+            try {
+                const detections = await faceapi.detectAllFaces(
+                    faceVideoRef.current,
+                    new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 })
+                )
+                .withFaceLandmarks()
+                .withFaceDescriptors();
+
+                // Clear marked persons who haven't been seen in the last 1.5 seconds (walked away) to allow scanning again later
+                const now = Date.now();
+                for (const pid of Array.from(markedPersonsRef.current)) {
+                    const lastSeen = faceLastSeenRef.current.get(pid);
+                    if (!lastSeen) {
+                        faceLastSeenRef.current.set(pid, now);
+                        continue;
+                    }
+                    if (now - lastSeen > 1500) {
+                        markedPersonsRef.current.delete(pid);
+                        faceLastSeenRef.current.delete(pid);
+                    }
+                }
+
+                const rects = [];
+
+                if (detections && detections.length > 0) {
+                    const vWidth = faceVideoRef.current.videoWidth || 640;
+                    const vHeight = faceVideoRef.current.videoHeight || 480;
+                    const dWidth = faceVideoRef.current.clientWidth || 320;
+                    const dHeight = faceVideoRef.current.clientHeight || 240;
+
+                    const scaleX = dWidth / vWidth;
+                    const scaleY = dHeight / vHeight;
+
+                    for (const det of detections) {
+                        const box = det.detection.box;
+                        const matched = matchFace(det.descriptor, mappingsRef.current, faceMatchThreshold);
+                        
+                        // Mirrored X coordinate computation
+                        const mirroredX = dWidth - (box.x + box.width) * scaleX;
+
+                        if (matched) {
+                            const personId = matched.person.person_id;
+                            faceLastSeenRef.current.set(personId, now);
+                            const isAlreadyMarked = markedPersonsRef.current.has(personId);
+
+                            rects.push({
+                                x: mirroredX,
+                                y: box.y * scaleY,
+                                width: box.width * scaleX,
+                                height: box.height * scaleY,
+                                name: matched.person.name,
+                                status: (isAlreadyMarked ? 'already' : 'new') as 'new' | 'already'
+                            });
+
+                            if (!isAlreadyMarked) {
+                                void executeFaceProcess(matched.person);
+                            }
+                        } else {
+                            rects.push({
+                                x: mirroredX,
+                                y: box.y * scaleY,
+                                width: box.width * scaleX,
+                                height: box.height * scaleY,
+                                name: undefined
+                            });
+                        }
+                    }
+                }
+                setFaceMatchRects(rects);
+            } catch (e) {
+                // Ignore detection errors in loop
+            }
+
+            const elapsed = Date.now() - startTime;
+            const delay = Math.max(300 - elapsed, 0);
+
+            if (faceStreamRef.current && faceStreamRef.current.active) {
+                faceLoopRef.current = setTimeout(runDetection, delay);
+            }
+        };
+
+        faceLoopRef.current = setTimeout(runDetection, 300);
+    }, [executeFaceProcess, faceMatchThreshold]);
+
+    const startFaceRecognition = useCallback(async (deviceId?: string) => {
+        setFaceCameraError('');
+        setModelsLoading(true);
+        try {
+            await loadFaceRecognitionModels((status) => {
+                setModelsStatus(status);
+            });
+            setModelsLoadedState(true);
+            setModelsLoading(false);
+        } catch (err: any) {
+            setFaceCameraError(err.message || 'Failed to load face models');
+            setModelsLoading(false);
+            return;
+        }
+
+        try {
+            if (faceStreamRef.current) {
+                faceStreamRef.current.getTracks().forEach(t => t.stop());
+            }
+
+            let constraints: MediaStreamConstraints = {
+                video: {
+                    facingMode: 'user',
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                }
+            };
+
+            const irDevice = await getIRCameraDevice();
+            const targetDeviceId = deviceId || irDevice?.deviceId;
+
+            if (targetDeviceId) {
+                constraints = {
+                    video: {
+                        deviceId: { exact: targetDeviceId },
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    }
+                };
+            }
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            faceStreamRef.current = stream;
+            if (faceVideoRef.current) {
+                faceVideoRef.current.srcObject = stream;
+            }
+            setIsFaceScanning(true);
+
+            // Re-check devices now that permission is granted and labels are visible
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(d => d.kind === 'videoinput');
+            setFaceCameras(videoDevices);
+
+            const irKeywords = [/ir\s/i, /infrared/i, /hello/i, /rgbir/i];
+            let foundIRDevice: MediaDeviceInfo | null = null;
+            for (const kw of irKeywords) {
+                const match = videoDevices.find(d => kw.test(d.label));
+                if (match) {
+                    foundIRDevice = match;
+                    break;
+                }
+            }
+
+            if (foundIRDevice && !deviceId) {
+                const activeTrack = stream.getVideoTracks()[0];
+                const settings = activeTrack?.getSettings();
+                if (settings && settings.deviceId !== foundIRDevice.deviceId) {
+                    console.log('Permission granted. Switching stream to IR camera:', foundIRDevice.label);
+                    stream.getTracks().forEach(t => t.stop());
+                    
+                    const irStream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            deviceId: { exact: foundIRDevice.deviceId },
+                            width: { ideal: 640 },
+                            height: { ideal: 480 }
+                        }
+                    });
+                    faceStreamRef.current = irStream;
+                    if (faceVideoRef.current) {
+                        faceVideoRef.current.srcObject = irStream;
+                    }
+                }
+            }
+
+            // Start detection loop
+            startFaceLoop();
+        } catch (err: any) {
+            console.error('Error starting face camera:', err);
+            setFaceCameraError('Could not access camera device.');
+        }
+    }, [startFaceLoop]);
+
+    const stopFaceRecognition = useCallback(() => {
+        setIsFaceScanning(false);
+        setFaceMatchRects([]);
+        markedPersonsRef.current.clear();
+        faceLastSeenRef.current.clear();
+        if (faceLoopRef.current) {
+            clearTimeout(faceLoopRef.current);
+            faceLoopRef.current = null;
+        }
+        if (faceStreamRef.current) {
+            faceStreamRef.current.getTracks().forEach(t => t.stop());
+            faceStreamRef.current = null;
+        }
+        if (faceVideoRef.current) {
+            faceVideoRef.current.srcObject = null;
+        }
+    }, []);
 
     const stopCameraScanner = useCallback(async (opts?: { persistUserPreferenceOff?: boolean }) => {
         const scanner = cameraScannerRef.current;
@@ -2451,22 +2861,55 @@ const QRAttendancePage: React.FC = () => {
     }, [processUID, showToast, stopCameraScanner]);
 
     useEffect(() => {
+        void loadMappingsInMemory();
+    }, [loadMappingsInMemory]);
+
+    const startFaceRecognitionRef = useRef(startFaceRecognition);
+    const stopFaceRecognitionRef = useRef(stopFaceRecognition);
+    const startCameraScannerRef = useRef(startCameraScanner);
+    const stopCameraScannerRef = useRef(stopCameraScanner);
+
+    useEffect(() => {
+        startFaceRecognitionRef.current = startFaceRecognition;
+        stopFaceRecognitionRef.current = stopFaceRecognition;
+        startCameraScannerRef.current = startCameraScanner;
+        stopCameraScannerRef.current = stopCameraScanner;
+    });
+
+    useEffect(() => {
+        let timer: any;
+        if (scannerMode === 'face' && !isCameraScanning) {
+            setModelsStatus('Initializing face models...');
+            timer = window.setTimeout(() => {
+                void startFaceRecognitionRef.current(selectedFaceCameraId);
+            }, 300);
+        } else {
+            stopFaceRecognitionRef.current();
+        }
+        return () => {
+            if (timer) window.clearTimeout(timer);
+            stopFaceRecognitionRef.current();
+        };
+    }, [scannerMode, selectedFaceCameraId, isCameraScanning]);
+
+    useEffect(() => {
         qrCameraPageActiveRef.current = true;
         let timer: any;
-        if (readQrCameraEnabled()) {
+        if (readQrCameraEnabled() && scannerMode === 'qr' && !isFaceScanning) {
             setCameraStatus('Preparing camera...');
             timer = window.setTimeout(() => {
-                void startCameraScanner();
+                void startCameraScannerRef.current();
             }, 150);
         } else {
             setCameraStatus('Camera stopped');
+            void stopCameraScannerRef.current();
         }
         return () => {
             qrCameraPageActiveRef.current = false;
             if (timer) window.clearTimeout(timer);
-            void stopCameraScanner();
+            void stopCameraScannerRef.current();
         };
-    }, [startCameraScanner, stopCameraScanner]);
+    }, [scannerMode, isFaceScanning]);
 
     useEffect(() => {
         document.addEventListener('keydown', handleKeyDown);
@@ -2872,10 +3315,31 @@ const QRAttendancePage: React.FC = () => {
         <Page theme={themeObj}>
             <TopBar theme={themeObj}>
                 <Title theme={themeObj}>
-                    <Scan /> QR Attendance
+                    <Scan /> {scannerMode === 'qr' ? 'QR Attendance' : 'IR Face Attendance'}
                 </Title>
 
                 <TopBarActions>
+                    <ModeToggle theme={themeObj}>
+                        <ModeBtn
+                            $active={scannerMode === 'qr'}
+                            onClick={() => {
+                                stopFaceRecognition();
+                                setScannerMode('qr');
+                            }}
+                        >
+                            QR Mode
+                        </ModeBtn>
+                        <ModeBtn
+                            $active={scannerMode === 'face'}
+                            onClick={() => {
+                                void stopCameraScanner({ persistUserPreferenceOff: true });
+                                setScannerMode('face');
+                            }}
+                        >
+                            Face Mode
+                        </ModeBtn>
+                    </ModeToggle>
+
                     <StatusBadgeRow>
                         {!isOnline && (
                             <OfflineBadge>
@@ -2891,7 +3355,6 @@ const QRAttendancePage: React.FC = () => {
                     </StatusBadgeRow>
 
                     <DateAndSettingsRow>
-
                         <HeaderBtn theme={themeObj} onClick={() => setIsMuted(!isMuted)} title={isMuted ? 'Unmute' : 'Mute'}>
                             {isMuted ? <VolumeX style={{ fontSize: 18 }} /> : <Volume2 style={{ fontSize: 18 }} />}
                         </HeaderBtn>
@@ -3156,48 +3619,72 @@ const QRAttendancePage: React.FC = () => {
                             </WideFormGroup>
 
                             <WideFormGroup>
-                                <Label theme={themeObj}>Auto-Mark Missing Attendance</Label>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem' }}>
-                                    <ToggleCard theme={themeObj}>
-                                        <input
-                                            type="checkbox"
-                                            checked={!!attnSettings.student_auto_mark_absent_enabled}
-                                            onChange={e => setAttnSettings({
-                                                ...attnSettings,
-                                                student_auto_mark_absent_enabled: e.target.checked,
-                                                auto_mark_absent_enabled: e.target.checked || !!attnSettings.staff_auto_mark_absent_enabled
-                                            })}
-                                            style={{ marginTop: 4 }}
-                                        />
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                                            <span style={{ fontWeight: 700 }}>Students</span>
-                                            <span style={{ fontSize: '0.78rem', lineHeight: 1.35, color: themeObj.TEXT_SECONDARY }}>
-                                                Backend auto-absent for students.
-                                            </span>
-                                        </div>
-                                    </ToggleCard>
-                                    <ToggleCard theme={themeObj}>
-                                        <input
-                                            type="checkbox"
-                                            checked={!!attnSettings.staff_auto_mark_absent_enabled}
-                                            onChange={e => setAttnSettings({
-                                                ...attnSettings,
-                                                staff_auto_mark_absent_enabled: e.target.checked,
-                                                auto_mark_absent_enabled: !!attnSettings.student_auto_mark_absent_enabled || e.target.checked
-                                            })}
-                                            style={{ marginTop: 4 }}
-                                        />
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                                            <span style={{ fontWeight: 700 }}>Staff</span>
-                                            <span style={{ fontSize: '0.78rem', lineHeight: 1.35, color: themeObj.TEXT_SECONDARY }}>
-                                                Backend auto-absent for staff.
-                                            </span>
-                                        </div>
-                                    </ToggleCard>
-                                </div>
-                                <InputHint theme={themeObj}>Runs in backend and skips Sundays and holidays.</InputHint>
-                            </WideFormGroup>
-                        </SettingsGrid>
+                                 <Label theme={themeObj}>Auto-Mark Missing Attendance</Label>
+                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem' }}>
+                                     <ToggleCard theme={themeObj}>
+                                         <input
+                                             type="checkbox"
+                                             checked={!!attnSettings.student_auto_mark_absent_enabled}
+                                             onChange={e => setAttnSettings({
+                                                 ...attnSettings,
+                                                 student_auto_mark_absent_enabled: e.target.checked,
+                                                 auto_mark_absent_enabled: e.target.checked || !!attnSettings.staff_auto_mark_absent_enabled
+                                             })}
+                                             style={{ marginTop: 4 }}
+                                         />
+                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                             <span style={{ fontWeight: 700 }}>Students</span>
+                                             <span style={{ fontSize: '0.78rem', lineHeight: 1.35, color: themeObj.TEXT_SECONDARY }}>
+                                                 Backend auto-absent for students.
+                                             </span>
+                                         </div>
+                                     </ToggleCard>
+                                     <ToggleCard theme={themeObj}>
+                                         <input
+                                             type="checkbox"
+                                             checked={!!attnSettings.staff_auto_mark_absent_enabled}
+                                             onChange={e => setAttnSettings({
+                                                 ...attnSettings,
+                                                 staff_auto_mark_absent_enabled: e.target.checked,
+                                                 auto_mark_absent_enabled: !!attnSettings.student_auto_mark_absent_enabled || e.target.checked
+                                             })}
+                                             style={{ marginTop: 4 }}
+                                         />
+                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                             <span style={{ fontWeight: 700 }}>Staff</span>
+                                             <span style={{ fontSize: '0.78rem', lineHeight: 1.35, color: themeObj.TEXT_SECONDARY }}>
+                                                 Backend auto-absent for staff.
+                                             </span>
+                                         </div>
+                                     </ToggleCard>
+                                 </div>
+                                 <InputHint theme={themeObj}>Runs in backend and skips Sundays and holidays.</InputHint>
+                             </WideFormGroup>
+
+                             <WideFormGroup>
+                                 <Label theme={themeObj}>Face Recognition Strictness (Similarity Threshold)</Label>
+                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: themeObj.FIELD_BG, padding: '0.65rem 1rem', borderRadius: '8px', border: '1px solid ' + themeObj.BORDER }}>
+                                     <input
+                                         type="range"
+                                         min="0.30"
+                                         max="0.70"
+                                         step="0.01"
+                                         value={faceMatchThreshold}
+                                         onChange={e => {
+                                             const val = parseFloat(e.target.value);
+                                             setFaceMatchThreshold(val);
+                                         }}
+                                         style={{ flex: 1, cursor: 'pointer' }}
+                                     />
+                                     <span style={{ fontSize: '0.85rem', fontWeight: 800, width: 45, textAlign: 'right', color: themeObj.ACCENT }}>
+                                         {faceMatchThreshold.toFixed(2)}
+                                     </span>
+                                 </div>
+                                 <InputHint theme={themeObj}>
+                                     Lower values are **stricter** (fewer false matches, recommended: 0.40 - 0.48). Higher values are **more lenient** (easier matching, but increases misidentification risks).
+                                 </InputHint>
+                             </WideFormGroup>
+                         </SettingsGrid>
 
                         <SettingsActions>
                             <SecondaryBtn theme={themeObj} style={{ minWidth: 140 }} onClick={() => setShowSettings(false)}>
@@ -3226,6 +3713,7 @@ const QRAttendancePage: React.FC = () => {
                                             .upsert({
                                                 school_id: user?.school_id,
                                                 ...normalizedSettings,
+                                                face_match_threshold: faceMatchThreshold,
                                                 updated_at: new Date().toISOString()
                                             }, { onConflict: 'school_id' });
                                         if (error) throw error;
@@ -3253,6 +3741,7 @@ const QRAttendancePage: React.FC = () => {
                     </ModalContent>
                 </ModalOverlay>
             , document.body)}
+
 
             {/* Mapping Sync Progress Indicator (Inline) */}
             {mappingSyncing && (
@@ -3282,47 +3771,172 @@ const QRAttendancePage: React.FC = () => {
                 <ScannerCard theme={themeObj}>
                     <ScannerUpper>
                         <CameraRegion theme={themeObj}>
-                            {!isCameraScanning &&
-                                !cameraError &&
-                                scanStatus === 'idle' &&
-                                cameraStatus === 'Camera stopped' && (
-                                    <CameraStoppedOverlay theme={themeObj}>
-                                        <CameraStoppedWord $variant="blue">Camera</CameraStoppedWord>
-                                        <CameraStoppedWord $variant="red">Stopped</CameraStoppedWord>
-                                    </CameraStoppedOverlay>
-                                )}
-                            <div id={cameraRegionId} style={{ width: '100%', minHeight: 250 }} />
+                            {scannerMode === 'qr' ? (
+                                <>
+                                    {!isCameraScanning &&
+                                        !cameraError &&
+                                        scanStatus === 'idle' &&
+                                        cameraStatus === 'Camera stopped' && (
+                                            <CameraStoppedOverlay theme={themeObj}>
+                                                <CameraStoppedWord $variant="blue">Camera</CameraStoppedWord>
+                                                <CameraStoppedWord $variant="red">Stopped</CameraStoppedWord>
+                                            </CameraStoppedOverlay>
+                                        )}
+                                    <div id={cameraRegionId} style={{ width: '100%', minHeight: 250 }} />
+                                </>
+                            ) : (
+                                <div style={{ position: 'relative', width: '100%', minHeight: 250, borderRadius: 12, overflow: 'hidden', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    {!isFaceScanning && !faceCameraError && (
+                                        <CameraStoppedOverlay theme={themeObj}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center' }}>
+                                                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: themeObj.TEXT_SECONDARY }}>
+                                                    {modelsLoading ? modelsStatus : 'Face recognition offline'}
+                                                </span>
+                                            </div>
+                                        </CameraStoppedOverlay>
+                                    )}
+                                    <video
+                                         ref={faceVideoRef}
+                                         autoPlay
+                                         playsInline
+                                         muted
+                                         style={{ width: '100%', height: '100%', minHeight: 250, objectFit: 'cover', transform: 'scaleX(-1)' }}
+                                     />
+                                    {isFaceScanning && faceMatchRects && faceMatchRects.map((rect, idx) => (
+                                         <div
+                                             key={idx}
+                                             style={{
+                                                 position: 'absolute',
+                                                 border: rect.status === 'already' ? '3px solid #f59e0b' : '3px solid #22c55e',
+                                                 borderRadius: '8px',
+                                                 left: `${rect.x}px`,
+                                                 top: `${rect.y}px`,
+                                                 width: `${rect.width}px`,
+                                                 height: `${rect.height}px`,
+                                                 boxShadow: rect.status === 'already' ? '0 0 12px rgba(245,158,11,0.6)' : '0 0 12px rgba(34,197,94,0.6)',
+                                                 pointerEvents: 'none',
+                                                 transition: 'all 0.1s ease-out',
+                                                 zIndex: 5
+                                             }}
+                                         >
+                                             {rect.name && (
+                                                 <div
+                                                     style={{
+                                                         position: 'absolute',
+                                                         bottom: '100%',
+                                                         left: '50%',
+                                                         transform: 'translateX(-50%)',
+                                                         background: rect.status === 'already' ? '#f59e0b' : '#22c55e',
+                                                         color: '#fff',
+                                                         fontSize: '0.72rem',
+                                                         fontWeight: 800,
+                                                         padding: '2px 8px',
+                                                         borderRadius: '4px',
+                                                         whiteSpace: 'nowrap',
+                                                         marginBottom: '4px',
+                                                     }}
+                                                 >
+                                                     {rect.status === 'already' ? `${rect.name} - Already Marked` : rect.name}
+                                                 </div>
+                                             )}
+                                         </div>
+                                     ))}
+                                </div>
+                            )}
                         </CameraRegion>
-                        {cameraError && <CameraErrorText theme={themeObj}>{cameraError}</CameraErrorText>}
-                        <CameraToggleBtn
-                            type="button"
-                            $active={isCameraScanning}
-                            onClick={() => {
-                                if (isCameraScanning) {
-                                    void stopCameraScanner({ persistUserPreferenceOff: true });
-                                } else {
-                                    void startCameraScanner();
-                                }
-                            }}
-                        >
-                            <QrCodeScannerIcon style={{ fontSize: 20 }} />
-                            {isCameraScanning ? 'Stop camera' : 'Start camera'}
-                        </CameraToggleBtn>
+                        {cameraError || faceCameraError ? (
+                            <CameraErrorText theme={themeObj}>{cameraError || faceCameraError}</CameraErrorText>
+                        ) : null}
+                        
+                        {scannerMode === 'qr' ? (
+                            <CameraToggleBtn
+                                type="button"
+                                $active={isCameraScanning}
+                                onClick={() => {
+                                    if (isCameraScanning) {
+                                        void stopCameraScanner({ persistUserPreferenceOff: true });
+                                    } else {
+                                        void startCameraScanner();
+                                    }
+                                }}
+                            >
+                                <QrCodeScannerIcon style={{ fontSize: 20 }} />
+                                {isCameraScanning ? 'Stop camera' : 'Start camera'}
+                            </CameraToggleBtn>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', width: '100%' }}>
+                                <CameraToggleBtn
+                                    type="button"
+                                    $active={isFaceScanning}
+                                    onClick={() => {
+                                        if (isFaceScanning) {
+                                            stopFaceRecognition();
+                                        } else {
+                                            void startFaceRecognition(selectedFaceCameraId);
+                                        }
+                                    }}
+                                >
+                                    <UserCheck style={{ fontSize: 20 }} />
+                                    {isFaceScanning ? 'Stop face scan' : 'Start face scan'}
+                                </CameraToggleBtn>
+                                
+                                {faceCameras.length > 0 && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', width: '100%' }}>
+                                        <Label theme={themeObj} style={{ alignSelf: 'flex-start' }}>Active Camera Input</Label>
+                                        <select
+                                            style={{
+                                                padding: '0.45rem 0.8rem',
+                                                borderRadius: '8px',
+                                                border: `1px solid ${themeObj.BORDER}`,
+                                                background: themeObj.FIELD_BG,
+                                                color: themeObj.TEXT_PRIMARY,
+                                                fontSize: '0.8rem',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                width: '100%',
+                                            }}
+                                            value={selectedFaceCameraId}
+                                            onChange={(e) => {
+                                                setSelectedFaceCameraId(e.target.value);
+                                                if (isFaceScanning) {
+                                                    void startFaceRecognition(e.target.value);
+                                                }
+                                            }}
+                                        >
+                                            {faceCameras.map((cam) => (
+                                                <option key={cam.deviceId} value={cam.deviceId}>
+                                                    {cam.label || `Camera ${cam.deviceId.slice(0, 5)}`}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <div style={{ fontSize: '0.68rem', color: themeObj.TEXT_SECONDARY, padding: '0 0.2rem' }}>
+                                            Detected Cameras: {faceCameras.map(c => c.label || 'Unnamed Camera').join(', ')}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {scanStatus !== 'idle' ? (
                             <StatusText $status={scanStatus} theme={themeObj}>
                                 {statusMsg}
                             </StatusText>
-                        ) : cameraError ? null : isCameraScanning ? (
-                            <ScannerLiveLine theme={themeObj}>Aim QR in the frame</ScannerLiveLine>
-                        ) : cameraStatus === 'Camera stopped' && scanStatus === 'idle' ? null : (
-                            <ScannerCameraState theme={themeObj}>{cameraStatus}</ScannerCameraState>
+                        ) : cameraError || faceCameraError ? null : scannerMode === 'qr' ? (
+                            isCameraScanning ? (
+                                <ScannerLiveLine theme={themeObj}>Aim QR in the frame</ScannerLiveLine>
+                            ) : null
+                        ) : (
+                            isFaceScanning ? (
+                                <ScannerLiveLine theme={themeObj} style={{ color: '#22c55e' }}>Scanning faces...</ScannerLiveLine>
+                            ) : null
                         )}
-                        {scanStatus === 'idle' && isCameraScanning && !cameraError && (
+
+                        {scanStatus === 'idle' && scannerMode === 'qr' && isCameraScanning && !cameraError && (
                             <ScannerMetaText theme={themeObj}>
                                 USB QR scanners type into the page automatically.
                             </ScannerMetaText>
                         )}
-                        {!!lastDetectedQr && (
+                        {!!lastDetectedQr && scannerMode === 'qr' && (
                             <CameraLastScan theme={themeObj}>
                                 Last:{' '}
                                 {lastDetectedQr.length > 80 ? `${lastDetectedQr.slice(0, 80)}…` : lastDetectedQr}
