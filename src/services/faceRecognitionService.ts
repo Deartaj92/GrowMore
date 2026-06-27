@@ -33,7 +33,7 @@ async function withFetchOverride<T>(fn: () => Promise<T>, forceReload = false): 
 
         const isModelFile = url.includes('/models/') || url.includes('cdn.jsdelivr.net');
         const finalUrl = isModelFile
-            ? (url.includes('?') ? `${url}&bypass-sw=1` : `${url}?bypass-sw=1`)
+            ? (url.includes('?') ? `${url}&cb=${Date.now()}` : `${url}?cb=${Date.now()}`)
             : url;
 
         const finalInput = typeof input === 'string' ? finalUrl

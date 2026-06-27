@@ -55,7 +55,7 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(request.url);
 
     // Exclude ML face models from service worker processing
-    if (url.pathname.includes('/models/')) return;
+    if (url.pathname.includes('/models/') || url.search.includes('cb=')) return;
 
     // 1. Only handle GET requests and exclude Supabase Realtime/Auth calls (unless specifically needed)
     if (request.method !== 'GET') return;
