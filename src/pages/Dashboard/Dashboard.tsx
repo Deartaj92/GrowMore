@@ -3570,6 +3570,7 @@ const Dashboard: React.FC = () => {
         setFineDate={setFineDate}
         allowedTabs={allowedTabs}
         birthdaysTabVisible={birthdaysTabVisible}
+        birthdaysCount={birthdaysToday.length}
       />
 
       {/* Show loader if tab is loading */}

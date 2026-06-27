@@ -276,7 +276,7 @@ export const DropdownMenu = styled.div`
   overflow: hidden;
 `;
 
-export const DropdownMenuItem = styled.button<{ $active?: boolean }>`
+export const DropdownMenuItem = styled.button<{ $active?: boolean; $isAttention?: boolean }>`
   display: flex;
   align-items: center;
   width: 100%;
@@ -285,9 +285,9 @@ export const DropdownMenuItem = styled.button<{ $active?: boolean }>`
   background: ${({ $active, theme }) => $active
     ? getDashboardPalette(theme).accentTint
     : 'transparent'};
-  color: ${({ $active, theme }) => $active ? theme.ACCENT : theme.TEXT_PRIMARY};
+  color: ${({ $active, $isAttention, theme }) => $active ? theme.ACCENT : $isAttention ? '#ec4899' : theme.TEXT_PRIMARY};
   font-size: 0.85rem;
-  font-weight: ${({ $active }) => $active ? '600' : '500'};
+  font-weight: ${({ $active, $isAttention }) => ($active || $isAttention) ? '600' : '500'};
   text-align: left;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -296,13 +296,17 @@ export const DropdownMenuItem = styled.button<{ $active?: boolean }>`
     font-size: 18px;
     margin-right: 0.5rem;
     flex-shrink: 0;
+    ${({ $isAttention, $active }) => $isAttention && !$active && css`
+      animation: ${wiggle} 1s ease-in-out infinite;
+      color: #ec4899;
+    `}
   }
   
   &:hover {
     background: ${({ $active, theme }) => $active
       ? getDashboardPalette(theme).accentTintSoft
       : getLayoutPalette(theme).navHoverBg};
-    color: ${({ theme }) => theme.ACCENT};
+    color: ${({ theme, $isAttention }) => $isAttention ? '#ec4899' : theme.ACCENT};
   }
   
   &:active {
@@ -312,9 +316,104 @@ export const DropdownMenuItem = styled.button<{ $active?: boolean }>`
   }
 `;
 
-export const TabButton = styled.button.attrs<{ active: boolean }>(props => ({
+const premiumPulse = keyframes`
+  0% {
+    box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(244, 63, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(244, 63, 94, 0);
+  }
+`;
+
+const wiggle = keyframes`
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(3deg); }
+  75% { transform: rotate(-3deg); }
+`;
+
+const floatingIcon = keyframes`
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+`;
+
+const tabAttentionPulse = keyframes`
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(236, 72, 153, 0.15), inset 0 0 2px rgba(236, 72, 153, 0.05);
+    border-color: rgba(236, 72, 153, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(236, 72, 153, 0.35), inset 0 0 4px rgba(236, 72, 153, 0.1);
+    border-color: rgba(236, 72, 153, 0.45);
+  }
+`;
+
+export const BirthdayBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ec4899 0%, #f43f5e 50%, #d946ef 100%);
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  height: 16px;
+  min-width: 16px;
+  padding: 0 5px;
+  border-radius: 10px;
+  margin-left: 6px;
+  box-shadow: 0 0 8px rgba(236, 72, 153, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  line-height: 1;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%; width: 100%; height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.4),
+      transparent
+    );
+    animation: shineBadge 3s infinite ease-in-out;
+  }
+
+  @keyframes shineBadge {
+    0% { left: -100%; }
+    15% { left: 100%; }
+    100% { left: 100%; }
+  }
+`;
+
+export const NotificationDot = styled.span`
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  background: linear-gradient(135deg, #ec4899 0%, #f43f5e 100%);
+  border-radius: 50%;
+  z-index: 2;
+  display: block;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    border-radius: 50%;
+    background: rgba(244, 63, 94, 0.4);
+    animation: ${premiumPulse} 2.5s infinite ease-out;
+  }
+`;
+
+export const TabButton = styled.button.attrs<{ active: boolean; $isAttention?: boolean }>(props => ({
   $active: props.active,
-}))<{ active: boolean }>`
+  $isAttention: props.$isAttention,
+}))<{ active: boolean; $isAttention?: boolean }>`
   ${clayButtonStyle}
   padding: 0.35rem 0.72rem;
   border-radius: ${CARD_RADIUS_LG};
@@ -326,6 +425,7 @@ export const TabButton = styled.button.attrs<{ active: boolean }>(props => ({
   background: ${({ active, theme }) => active ? undefined : getLayoutPalette(theme).surfaceBg};
   border: 1px solid ${({ active, theme }) => active ? 'transparent' : getLayoutPalette(theme).surfaceBorder};
   box-shadow: ${({ active, theme }) => active ? undefined : getLayoutPalette(theme).surfaceShadow};
+  position: relative;
 
   svg {
     font-size: 17px;
@@ -345,6 +445,25 @@ export const TabButton = styled.button.attrs<{ active: boolean }>(props => ({
   ${({ active }) => active && css`
     pointer-events: none;
     transform: none;
+  `}
+
+  ${({ $isAttention, active, theme }) => $isAttention && !active && css`
+    border-color: ${isDark(theme) ? 'rgba(236, 72, 153, 0.35)' : 'rgba(236, 72, 153, 0.25)'};
+    background: ${isDark(theme) ? 'rgba(236, 72, 153, 0.05)' : 'rgba(236, 72, 153, 0.03)'};
+    animation: ${tabAttentionPulse} 2.5s infinite ease-in-out;
+    color: #ec4899;
+    
+    svg {
+      animation: ${floatingIcon} 2s infinite ease-in-out;
+      color: #ec4899;
+    }
+    
+    &:hover {
+      background: ${isDark(theme) ? 'rgba(236, 72, 153, 0.1)' : 'rgba(236, 72, 153, 0.06)'};
+      border-color: rgba(236, 72, 153, 0.6);
+      color: #ec4899;
+      box-shadow: 0 0 12px rgba(236, 72, 153, 0.25);
+    }
   `}
   
   @media (max-width: 768px) {

@@ -11,7 +11,7 @@ import {
   Lightbulb,
   Cake
 } from '@mui/icons-material';
-import { TabContainer, TabsWrapper, TabButton, OverflowButton, TabsContainer, DropdownMenu, DropdownMenuItem } from '../../styles';
+import { TabContainer, TabsWrapper, TabButton, OverflowButton, TabsContainer, DropdownMenu, DropdownMenuItem, BirthdayBadge } from '../../styles';
 import { DashboardTab } from '../../types';
 import AppDateField from '../../../../components/shared/AppDateField';
 
@@ -25,6 +25,7 @@ interface TabNavigationProps {
   allowedTabs?: Set<DashboardTab>;
   /** When false, the Birthdays tab is hidden (e.g. no birthdays today). Default true. */
   birthdaysTabVisible?: boolean;
+  birthdaysCount?: number;
 }
 
 interface TabInfo {
@@ -41,7 +42,8 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
   setAbsentDate,
   setFineDate,
   allowedTabs,
-  birthdaysTabVisible = true
+  birthdaysTabVisible = true,
+  birthdaysCount = 0
 }) => {
   const tabsWrapperRef = useRef<HTMLDivElement>(null);
   const tabsContainerRef = useRef<HTMLDivElement>(null);
@@ -224,9 +226,13 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
               data-tab-id={tab.id}
               active={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
+              $isAttention={tab.id === 'birthdays' && activeTab !== 'birthdays'}
             >
               {tab.icon}
               {tab.label}
+              {tab.id === 'birthdays' && birthdaysCount > 0 && (
+                <BirthdayBadge>{birthdaysCount}</BirthdayBadge>
+              )}
             </TabButton>
           ))}
         </TabsWrapper>
@@ -253,9 +259,13 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
                     key={tab.id}
                     onClick={() => handleTabSelect(tab.id)}
                     $active={activeTab === tab.id}
+                    $isAttention={tab.id === 'birthdays' && activeTab !== 'birthdays'}
                   >
                     {tab.icon && <span style={{ marginRight: '0.5rem', display: 'flex', alignItems: 'center' }}>{tab.icon}</span>}
                     {tab.label}
+                    {tab.id === 'birthdays' && birthdaysCount > 0 && (
+                      <BirthdayBadge style={{ marginLeft: 'auto' }}>{birthdaysCount}</BirthdayBadge>
+                    )}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenu>
