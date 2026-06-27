@@ -38,9 +38,11 @@ module.exports = {
             applyNetlifyLowMemoryWebpack(webpackConfig);
             
             // Ignore source map loader warnings from third-party packages (e.g. html5-qrcode)
+            // Ignore "Critical dependency: require function" warnings from face-api.js / tfjs
             webpackConfig.ignoreWarnings = [
                 ...(webpackConfig.ignoreWarnings || []),
                 /Failed to parse source map/,
+                /Critical dependency: require function is used in a way in which dependencies cannot be statically extracted/,
             ];
             
             return webpackConfig;
