@@ -2,59 +2,134 @@ import * as faceapi from '@vladmandic/face-api';
 import { RFIDMapping } from './rfidOfflineService';
 
 let modelsLoaded = false;
+let modelsLoadPromise: Promise<void> | null = null;
+let fetchPatched = false;
 
 /**
- * Loads face-api.js models from jsDelivr CDN
+ * Patches face-api's internal fetch to use standard caching,
+ * falling back to no-cache only if needed. This allows instant loading
+ * from the browser's disk cache instead of downloading 12MB on every reload.
+ */
+function patchFaceApiFetch(forceBypass: boolean = false) {
+    if (fetchPatched && !forceBypass) return;
+    fetchPatched = true;
+    try {
+        const env = (faceapi.env as any).getEnv?.() || faceapi.env;
+        if (env) {
+            env.fetch = (url: string, init?: RequestInit) => {
+                const hasModel = url.includes('/models/') || url.includes('cdn.jsdelivr.net');
+                const finalUrl = hasModel 
+                    ? (url.includes('?') ? `${url}&bypass-sw=1` : `${url}?bypass-sw=1`)
+                    : url;
+                return fetch(finalUrl, { 
+                    ...(init || {}), 
+                    cache: forceBypass ? 'reload' : 'default' 
+                });
+            };
+        }
+    } catch (e) {
+        console.warn('Could not patch faceapi fetch:', e);
+    }
+}
+
+/** Wraps a promise with a hard timeout so a hanging fetch surfaces as an error instead of freezing the UI */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        const id = setTimeout(() => reject(new Error(`Timeout loading ${label} after ${ms / 1000}s`)), ms);
+        promise.then(v => { clearTimeout(id); resolve(v); }, e => { clearTimeout(id); reject(e); });
+    });
+}
+
+/**
+ * Loads face-api.js models from local /models/ with CDN fallback.
+ * Deduplicates concurrent calls. Bypasses browser cache to prevent hangs.
  */
 export async function loadFaceRecognitionModels(
     onProgress?: (status: string) => void
 ): Promise<void> {
     if (modelsLoaded) return;
+    if (modelsLoadPromise) return modelsLoadPromise;
 
-    try {
+    modelsLoadPromise = (async () => {
+        // 1. Patch fetch with browser caching enabled (default)
+        patchFaceApiFetch(false);
+
+        // ── TF backend initialization ──────────────────────────────────────────────
+        // face_recognition_model.bin is 6MB and triggers tf.ready() internally during
+        // loadFromUri. In non-incognito Chrome with many open tabs, the WebGL context
+        // pool is exhausted and tf.ready() blocks forever → page appears frozen.
+        // Fix: explicitly init the backend with a timeout and fall back to CPU.
+        if (onProgress) onProgress('Initializing face engine...');
         if (faceapi.tf) {
-            if (onProgress) onProgress('Initializing face engine...');
-            (faceapi.tf as any).enableProdMode();
+            try {
+                (faceapi.tf as any).enableProdMode();
+            } catch (_) {}
+            try {
+                // Give WebGL 5 seconds to acquire a context; if unavailable, use CPU
+                await withTimeout(
+                    (faceapi.tf as any).ready(),
+                    5000,
+                    'WebGL backend'
+                );
+            } catch (webglErr) {
+                console.warn('WebGL context unavailable, switching to CPU backend:', webglErr);
+                try {
+                    await (faceapi.tf as any).setBackend('cpu');
+                    await (faceapi.tf as any).ready();
+                } catch (cpuErr) {
+                    console.warn('TF backend init failed (non-fatal):', cpuErr);
+                }
+            }
         }
-    } catch (e) {
-        console.warn('Failed to configure faceapi engine:', e);
-    }
 
-    // Determine local model URL based on page protocol to support both Electron and web hosts
-    const localUrl = window.location.protocol === 'file:' ? './models/' : '/models/';
-    const cdnUrl = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model/';
+        const localUrl = window.location.protocol === 'file:' ? './models/' : '/models/';
+        const cdnUrl = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model/';
+        const MODEL_TIMEOUT_MS = 15000;
 
-    try {
-        if (onProgress) onProgress('Loading face detection model...');
-        await faceapi.nets.tinyFaceDetector.loadFromUri(localUrl);
+        const loadFrom = async (baseUrl: string) => {
+            if (onProgress) onProgress('Loading face detection model...');
+            await withTimeout(faceapi.nets.tinyFaceDetector.loadFromUri(baseUrl), MODEL_TIMEOUT_MS, 'tinyFaceDetector');
 
-        if (onProgress) onProgress('Loading face landmarks model...');
-        await faceapi.nets.faceLandmark68Net.loadFromUri(localUrl);
+            if (onProgress) onProgress('Loading face landmarks model...');
+            await withTimeout(faceapi.nets.faceLandmark68Net.loadFromUri(baseUrl), MODEL_TIMEOUT_MS, 'faceLandmark68Net');
 
-        if (onProgress) onProgress('Loading face recognition model...');
-        await faceapi.nets.faceRecognitionNet.loadFromUri(localUrl);
+            if (onProgress) onProgress('Loading face recognition model...');
+            await withTimeout(faceapi.nets.faceRecognitionNet.loadFromUri(baseUrl), MODEL_TIMEOUT_MS, 'faceRecognitionNet');
+        };
 
-        modelsLoaded = true;
-        if (onProgress) onProgress('Face models loaded successfully');
-    } catch (localError) {
-        console.warn('Failed to load local face recognition models, trying CDN fallback...', localError);
         try {
-            if (onProgress) onProgress('Downloading face detection model (CDN)...');
-            await faceapi.nets.tinyFaceDetector.loadFromUri(cdnUrl);
-
-            if (onProgress) onProgress('Downloading face landmarks model (CDN)...');
-            await faceapi.nets.faceLandmark68Net.loadFromUri(cdnUrl);
-
-            if (onProgress) onProgress('Downloading face recognition model (CDN)...');
-            await faceapi.nets.faceRecognitionNet.loadFromUri(cdnUrl);
-
+            // Try loading from standard local cache first
+            await loadFrom(localUrl);
             modelsLoaded = true;
-            if (onProgress) onProgress('Face models loaded from CDN');
-        } catch (cdnError) {
-            console.error('All model loading attempts failed:', cdnError);
-            throw new Error('Could not load face recognition models.');
+            if (onProgress) onProgress('Face models loaded successfully');
+        } catch (localError) {
+            console.warn('Local cached load failed, forcing cache bypass...', localError);
+            // 2. Retry local files while forcing cache bypass (fetch fresh)
+            patchFaceApiFetch(true);
+            try {
+                await loadFrom(localUrl);
+                modelsLoaded = true;
+                if (onProgress) onProgress('Face models re-loaded successfully');
+            } catch (retryLocalError) {
+                console.warn('Local model reload failed, trying CDN...', retryLocalError);
+                // Reset loaded nets so face-api re-fetches cleanly from CDN
+                try { (faceapi.nets.tinyFaceDetector as any).params = undefined; } catch (_) {}
+                try { (faceapi.nets.faceLandmark68Net as any).params = undefined; } catch (_) {}
+                try { (faceapi.nets.faceRecognitionNet as any).params = undefined; } catch (_) {}
+                try {
+                    await loadFrom(cdnUrl);
+                    modelsLoaded = true;
+                    if (onProgress) onProgress('Face models loaded from CDN');
+                } catch (cdnError) {
+                    modelsLoadPromise = null;
+                    console.error('All model loading attempts failed:', cdnError);
+                    throw new Error('Could not load face recognition models. Please refresh the page.');
+                }
+            }
         }
-    }
+    })();
+
+    return modelsLoadPromise;
 }
 
 /**

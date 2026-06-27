@@ -2544,6 +2544,14 @@ const QRAttendancePage: React.FC = () => {
                 return;
             }
 
+            // Ensure video has loaded current frame data before passing to faceapi
+            if (faceVideoRef.current.readyState < 2) {
+                if (faceStreamRef.current && faceStreamRef.current.active) {
+                    faceLoopRef.current = setTimeout(runDetection, 200);
+                }
+                return;
+            }
+
             const startTime = Date.now();
             try {
                 const detections = await faceapi.detectAllFaces(
@@ -2876,40 +2884,57 @@ const QRAttendancePage: React.FC = () => {
         stopCameraScannerRef.current = stopCameraScanner;
     });
 
+    // Single unified camera mode switcher — avoids getUserMedia race conditions
+    // in non-incognito / production where extensions delay hardware camera release.
     useEffect(() => {
+        let cancelled = false;
         let timer: any;
-        if (scannerMode === 'face' && !isCameraScanning) {
-            setModelsStatus('Initializing face models...');
-            timer = window.setTimeout(() => {
-                void startFaceRecognitionRef.current(selectedFaceCameraId);
-            }, 300);
-        } else {
-            stopFaceRecognitionRef.current();
-        }
-        return () => {
-            if (timer) window.clearTimeout(timer);
-            stopFaceRecognitionRef.current();
-        };
-    }, [scannerMode, selectedFaceCameraId, isCameraScanning]);
 
-    useEffect(() => {
-        qrCameraPageActiveRef.current = true;
-        let timer: any;
-        if (readQrCameraEnabled() && scannerMode === 'qr' && !isFaceScanning) {
-            setCameraStatus('Preparing camera...');
-            timer = window.setTimeout(() => {
-                void startCameraScannerRef.current();
-            }, 150);
-        } else {
-            setCameraStatus('Camera stopped');
-            void stopCameraScannerRef.current();
-        }
+        const run = async () => {
+            if (scannerMode === 'face') {
+                // 1. Stop QR scanner and WAIT for it to fully release the camera hardware
+                stopFaceRecognitionRef.current();
+                await stopCameraScannerRef.current();
+                qrCameraPageActiveRef.current = false;
+                setCameraStatus('Camera stopped');
+
+                // 2. Give the OS/browser time to fully release the camera device.
+                //    In non-incognito Chrome, extensions hook the media pipeline and
+                //    delay hardware unlock by 500–1500ms. Without this wait,
+                //    getUserMedia either hangs or returns the still-locked device.
+                await new Promise<void>(resolve => { timer = setTimeout(resolve, 600); });
+                if (cancelled) return;
+
+                // 3. Now safe to acquire the camera for face recognition
+                setModelsStatus('Initializing face models...');
+                await startFaceRecognitionRef.current(selectedFaceCameraId);
+            } else {
+                // Switching away from face — stop face, start QR scanner
+                stopFaceRecognitionRef.current();
+
+                qrCameraPageActiveRef.current = true;
+                if (readQrCameraEnabled() && scannerMode === 'qr') {
+                    setCameraStatus('Preparing camera...');
+                    await new Promise<void>(resolve => { timer = setTimeout(resolve, 150); });
+                    if (cancelled) return;
+                    void startCameraScannerRef.current();
+                } else {
+                    setCameraStatus('Camera stopped');
+                    void stopCameraScannerRef.current();
+                }
+            }
+        };
+
+        void run();
+
         return () => {
+            cancelled = true;
+            if (timer) clearTimeout(timer);
+            stopFaceRecognitionRef.current();
             qrCameraPageActiveRef.current = false;
-            if (timer) window.clearTimeout(timer);
             void stopCameraScannerRef.current();
         };
-    }, [scannerMode, isFaceScanning]);
+    }, [scannerMode, selectedFaceCameraId]);
 
     useEffect(() => {
         document.addEventListener('keydown', handleKeyDown);

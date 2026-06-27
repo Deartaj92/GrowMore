@@ -534,9 +534,12 @@ const RFIDCardAssignmentPage: React.FC = () => {
     const [enrollFaceBox, setEnrollFaceBox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
     const [selectedEnrollCameraId, setSelectedEnrollCameraId] = useState<string>('');
     const [enrollCameras, setEnrollCameras] = useState<MediaDeviceInfo[]>([]);
+    const [stableFrameCount, setStableFrameCount] = useState(0);
     const enrollVideoRef = useRef<HTMLVideoElement | null>(null);
     const enrollStreamRef = useRef<MediaStream | null>(null);
     const enrollLoopRef = useRef<any>(null);
+    const stableFrameCountRef = useRef(0);
+    const accumulatedDescriptorsRef = useRef<Float32Array[]>([]);
     const allEnrolledCacheRef = useRef<{ id: number; name: string; table: 'students' | 'staff'; descriptor: Float32Array }[]>([]);
     const [dupMatchName, setDupMatchName] = useState<string | null>(null);
 
@@ -571,11 +574,25 @@ const RFIDCardAssignmentPage: React.FC = () => {
     const sectionsMap = useMemo(() => new Map(sections.map(s => [s.id, s.name])), [sections]);
 
     // ─── Face Enrollment Helpers ─────────────────────────────────────────────────
+    const ENROLL_REQUIRED_FRAMES = 5;
+
     const startEnrollLoop = useCallback((currentPersonId: number, currentPersonType: 'student' | 'employee') => {
         if (enrollLoopRef.current) clearTimeout(enrollLoopRef.current);
+        stableFrameCountRef.current = 0;
+        accumulatedDescriptorsRef.current = [];
+        setStableFrameCount(0);
+        setDetectedEnrollDescriptor(null);
         const DUPE_THRESHOLD = 0.50;
+        const STABILITY_THRESHOLD = 0.12; // max distance between consecutive descriptors to count as 'stable'
+
         const runDetection = async () => {
             if (!enrollVideoRef.current || !enrollStreamRef.current || !enrollVideoRef.current.srcObject) return;
+            if (enrollVideoRef.current.readyState < 2) {
+                if (enrollStreamRef.current && enrollStreamRef.current.active) {
+                    enrollLoopRef.current = setTimeout(runDetection, 200);
+                }
+                return;
+            }
             const startTime = Date.now();
             try {
                 const detection = await faceapi.detectSingleFace(
@@ -584,7 +601,6 @@ const RFIDCardAssignmentPage: React.FC = () => {
                 ).withFaceLandmarks().withFaceDescriptor();
                 if (detection) {
                     const descriptor = detection.descriptor;
-                    setDetectedEnrollDescriptor(descriptor);
                     const box = detection.detection.box;
                     const vW = enrollVideoRef.current.videoWidth || 640;
                     const vH = enrollVideoRef.current.videoHeight || 480;
@@ -597,18 +613,59 @@ const RFIDCardAssignmentPage: React.FC = () => {
                         width: box.width * scaleX,
                         height: box.height * scaleY,
                     });
-                    // ── Live duplicate check ──
-                    let foundDupe: string | null = null;
-                    for (const enrolled of allEnrolledCacheRef.current) {
-                        const isSelf =
-                            (currentPersonType === 'student' && enrolled.table === 'students' && enrolled.id === currentPersonId) ||
-                            (currentPersonType !== 'student' && enrolled.table === 'staff' && enrolled.id === currentPersonId);
-                        if (isSelf) continue;
-                        const dist = calculateEuclideanDistance(descriptor, enrolled.descriptor);
-                        if (dist < DUPE_THRESHOLD) { foundDupe = enrolled.name; break; }
+
+                    // ── Multi-frame stability check ──
+                    const prev = accumulatedDescriptorsRef.current;
+                    let isStable = true;
+                    if (prev.length > 0) {
+                        const lastDesc = prev[prev.length - 1];
+                        const dist = calculateEuclideanDistance(descriptor, lastDesc);
+                        if (dist > STABILITY_THRESHOLD) {
+                            // Face moved too much — reset
+                            isStable = false;
+                            stableFrameCountRef.current = 0;
+                            accumulatedDescriptorsRef.current = [];
+                            setStableFrameCount(0);
+                            setDetectedEnrollDescriptor(null);
+                        }
                     }
-                    setDupMatchName(foundDupe);
+
+                    if (isStable) {
+                        accumulatedDescriptorsRef.current = [...prev, descriptor];
+                        stableFrameCountRef.current += 1;
+                        setStableFrameCount(stableFrameCountRef.current);
+
+                        if (stableFrameCountRef.current >= ENROLL_REQUIRED_FRAMES) {
+                            // Average all accumulated descriptors for best quality
+                            const all = accumulatedDescriptorsRef.current;
+                            const averaged = new Float32Array(descriptor.length);
+                            for (let i = 0; i < descriptor.length; i++) {
+                                averaged[i] = all.reduce((sum, d) => sum + d[i], 0) / all.length;
+                            }
+                            setDetectedEnrollDescriptor(averaged);
+                        }
+                    }
+
+                    // ── Live duplicate check ──
+                    if (stableFrameCountRef.current >= ENROLL_REQUIRED_FRAMES) {
+                        let foundDupe: string | null = null;
+                        for (const enrolled of allEnrolledCacheRef.current) {
+                            const isSelf =
+                                (currentPersonType === 'student' && enrolled.table === 'students' && enrolled.id === currentPersonId) ||
+                                (currentPersonType !== 'student' && enrolled.table === 'staff' && enrolled.id === currentPersonId);
+                            if (isSelf) continue;
+                            const dist = calculateEuclideanDistance(descriptor, enrolled.descriptor);
+                            if (dist < DUPE_THRESHOLD) { foundDupe = enrolled.name; break; }
+                        }
+                        setDupMatchName(foundDupe);
+                    } else {
+                        setDupMatchName(null);
+                    }
                 } else {
+                    // No face — reset stability
+                    stableFrameCountRef.current = 0;
+                    accumulatedDescriptorsRef.current = [];
+                    setStableFrameCount(0);
                     setDetectedEnrollDescriptor(null);
                     setEnrollFaceBox(null);
                     setDupMatchName(null);
@@ -627,6 +684,9 @@ const RFIDCardAssignmentPage: React.FC = () => {
         setDetectedEnrollDescriptor(null);
         setEnrollFaceBox(null);
         setDupMatchName(null);
+        setStableFrameCount(0);
+        stableFrameCountRef.current = 0;
+        accumulatedDescriptorsRef.current = [];
         if (enrollLoopRef.current) { clearTimeout(enrollLoopRef.current); enrollLoopRef.current = null; }
         if (enrollStreamRef.current) { enrollStreamRef.current.getTracks().forEach(t => t.stop()); enrollStreamRef.current = null; }
         if (enrollVideoRef.current) { enrollVideoRef.current.srcObject = null; }
@@ -1717,19 +1777,27 @@ const RFIDCardAssignmentPage: React.FC = () => {
                         <video ref={enrollVideoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
                         {/* Circular FaceID Guideline Overlay */}
                         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 4 }}>
-                            <div style={{ width: '60%', height: '80%', borderRadius: '50%', border: `3px dashed ${dupMatchName ? '#ef4444' : (detectedEnrollDescriptor ? '#22c55e' : 'rgba(255,255,255,0.45)')}`, boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)', transition: 'all 0.2s ease-out', transform: detectedEnrollDescriptor ? 'scale(1.02)' : 'scale(1)' }} />
+                            <div style={{
+                                width: '60%', height: '80%', borderRadius: '50%',
+                                border: `3px dashed ${dupMatchName ? '#ef4444' : (detectedEnrollDescriptor ? '#22c55e' : (stableFrameCount > 0 ? '#f59e0b' : 'rgba(255,255,255,0.45)'))}`,
+                                boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)',
+                                transition: 'all 0.2s ease-out',
+                                transform: detectedEnrollDescriptor ? 'scale(1.04)' : 'scale(1)'
+                            }} />
                         </div>
                         {/* Face detection box */}
                         {isEnrollCameraActive && enrollFaceBox && (
                             <div style={{ position: 'absolute', border: `3px solid ${dupMatchName ? '#ef4444' : '#22c55e'}`, borderRadius: 8, left: `${enrollFaceBox.x}px`, top: `${enrollFaceBox.y}px`, width: `${enrollFaceBox.width}px`, height: `${enrollFaceBox.height}px`, boxShadow: `0 0 16px ${dupMatchName ? 'rgba(239,68,68,0.7)' : 'rgba(34,197,94,0.7)'}`, pointerEvents: 'none', transition: 'all 0.1s ease-out', zIndex: 5 }} />
                         )}
                         {/* Status indicator overlay */}
-                        <div style={{ position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)', background: dupMatchName ? 'rgba(239,68,68,0.85)' : 'rgba(0,0,0,0.6)', color: dupMatchName ? '#fff' : (detectedEnrollDescriptor ? '#22c55e' : '#f59e0b'), padding: '4px 14px', borderRadius: 999, fontSize: '0.72rem', fontWeight: 800, whiteSpace: 'nowrap', backdropFilter: 'blur(4px)', maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)', background: dupMatchName ? 'rgba(239,68,68,0.85)' : 'rgba(0,0,0,0.65)', color: dupMatchName ? '#fff' : (detectedEnrollDescriptor ? '#22c55e' : (stableFrameCount > 0 ? '#f59e0b' : '#94a3b8')), padding: '4px 14px', borderRadius: 999, fontSize: '0.72rem', fontWeight: 800, whiteSpace: 'nowrap', backdropFilter: 'blur(4px)', maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {dupMatchName
-                                ? `⚠️ Face already enrolled to: ${dupMatchName}`
+                                ? `⚠️ Already enrolled: ${dupMatchName}`
                                 : detectedEnrollDescriptor
-                                    ? '✓ Face Detected — Ready to Register'
-                                    : 'Align your face in the frame'
+                                    ? '✅ Face locked — Ready to Register'
+                                    : stableFrameCount > 0
+                                        ? `🔍 Scanning… ${stableFrameCount}/5 — Hold still`
+                                        : '👤 Center your face in the oval'
                             }
                         </div>
                     </div>
