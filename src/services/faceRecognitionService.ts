@@ -24,9 +24,38 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
  * appending ?bypass-sw=1 so the SW skips it and fetches from the network.
  * window.fetch is restored immediately after, with no side effects.
  */
-async function withFetchOverride<T>(fn: () => Promise<T>, forceReload = false): Promise<T> {
+async function withFetchOverride<T>(
+    fn: () => Promise<T>,
+    forceReload = false,
+    onProgress?: (status: string) => void
+): Promise<T> {
     const nativeFetch = window.fetch;
-    window.fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+
+    // Track total bytes loaded across all models during this load session.
+    // The three files sizes are approximately:
+    // tiny_face_detector_model: 3 KB (json) + 193 KB (bin) = ~196 KB
+    // face_landmark_68_model: 8 KB (json) + 357 KB (bin) = ~365 KB
+    // face_recognition_model: 20 KB (json) + 6.44 MB (bin) = ~6.46 MB
+    // Total aggregate bytes is roughly ~7,020,000 bytes.
+    let loadedBytesMap = new Map<string, number>();
+
+    const updateCombinedProgress = () => {
+        if (!onProgress) return;
+        let totalLoaded = 0;
+        loadedBytesMap.forEach((bytes) => {
+            totalLoaded += bytes;
+        });
+        
+        // Approximate total expected size for the 3 models (weights + manifests)
+        const EXPECTED_TOTAL_BYTES = 7_020_000;
+        const percent = Math.min(Math.round((totalLoaded / EXPECTED_TOTAL_BYTES) * 100), 99);
+        const mbLoaded = (totalLoaded / (1024 * 1024)).toFixed(2);
+        const mbTotal = (EXPECTED_TOTAL_BYTES / (1024 * 1024)).toFixed(2);
+        
+        onProgress(`Loading models: ${percent}% (${mbLoaded} MB / ${mbTotal} MB)`);
+    };
+
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
         const url = typeof input === 'string' ? input
             : input instanceof URL ? input.href
             : (input as Request).url;
@@ -40,9 +69,48 @@ async function withFetchOverride<T>(fn: () => Promise<T>, forceReload = false): 
             : input instanceof URL ? new URL(finalUrl)
             : new Request(finalUrl, input as Request);
 
-        return nativeFetch(finalInput, {
+        const response = await nativeFetch(finalInput, {
             ...(init || {}),
             cache: forceReload ? 'reload' : 'default',
+        });
+
+        if (!isModelFile || !response.body || !response.ok) {
+            return response;
+        }
+
+        // Intercept response stream to monitor progress
+        const reader = response.body.getReader();
+        const contentLength = +(response.headers.get('content-length') || '0');
+        let receivedLength = 0;
+        const chunks: Uint8Array[] = [];
+
+        // Identify file name to track bytes in map uniquely
+        const fileName = url.substring(url.lastIndexOf('/') + 1);
+
+        const stream = new ReadableStream({
+            async start(controller) {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                        break;
+                    }
+                    if (value) {
+                        chunks.push(value);
+                        receivedLength += value.length;
+                        loadedBytesMap.set(fileName, receivedLength);
+                        updateCombinedProgress();
+                        controller.enqueue(value);
+                    }
+                }
+                controller.close();
+            }
+        });
+
+        // Construct new response with monitored stream
+        return new Response(stream, {
+            headers: response.headers,
+            status: response.status,
+            statusText: response.statusText,
         });
     };
 
@@ -87,30 +155,25 @@ export async function loadFaceRecognitionModels(
         const TIMEOUT = 15_000;
 
         const loadFrom = async (baseUrl: string) => {
-            if (onProgress) onProgress('Loading face detection model...');
             await withTimeout(faceapi.nets.tinyFaceDetector.loadFromUri(baseUrl), TIMEOUT, 'tinyFaceDetector');
-
-            if (onProgress) onProgress('Loading face landmarks model...');
             await withTimeout(faceapi.nets.faceLandmark68Net.loadFromUri(baseUrl), TIMEOUT, 'faceLandmark68Net');
-
-            if (onProgress) onProgress('Loading face recognition model...');
             await withTimeout(faceapi.nets.faceRecognitionNet.loadFromUri(baseUrl), TIMEOUT, 'faceRecognitionNet');
         };
 
         // ── Load: try local (cached) → local (force-reload) → CDN ────────────────
         try {
-            await withFetchOverride(() => loadFrom(localUrl), false);
+            await withFetchOverride(() => loadFrom(localUrl), false, onProgress);
             modelsLoaded = true;
-            if (onProgress) onProgress('Face models loaded');
+            if (onProgress) onProgress('Face models loaded ✓');
             return;
         } catch (e1) {
             console.warn('[faceapi] Cached local load failed, retrying with force-reload:', e1);
         }
 
         try {
-            await withFetchOverride(() => loadFrom(localUrl), true);
+            await withFetchOverride(() => loadFrom(localUrl), true, onProgress);
             modelsLoaded = true;
-            if (onProgress) onProgress('Face models loaded');
+            if (onProgress) onProgress('Face models loaded ✓');
             return;
         } catch (e2) {
             console.warn('[faceapi] Force-reload local load failed, falling back to CDN:', e2);
@@ -122,9 +185,9 @@ export async function loadFaceRecognitionModels(
         try { (faceapi.nets.faceRecognitionNet as any).params = undefined; } catch (_) {}
 
         try {
-            await withFetchOverride(() => loadFrom(cdnUrl), false);
+            await withFetchOverride(() => loadFrom(cdnUrl), false, onProgress);
             modelsLoaded = true;
-            if (onProgress) onProgress('Face models loaded (CDN)');
+            if (onProgress) onProgress('Face models loaded ✓ (CDN)');
         } catch (e3) {
             modelsLoadPromise = null;
             throw new Error('Could not load face recognition models. Please check your connection and refresh.');
