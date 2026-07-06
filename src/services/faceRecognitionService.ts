@@ -61,9 +61,7 @@ async function withFetchOverride<T>(
             : (input as Request).url;
 
         const isModelFile = url.includes('/models/') || url.includes('cdn.jsdelivr.net');
-        const finalUrl = isModelFile
-            ? (url.includes('?') ? `${url}&cb=${Date.now()}` : `${url}?cb=${Date.now()}`)
-            : url;
+        const finalUrl = url;
 
         const finalInput = typeof input === 'string' ? finalUrl
             : input instanceof URL ? new URL(finalUrl)
@@ -74,40 +72,18 @@ async function withFetchOverride<T>(
             cache: forceReload ? 'reload' : 'default',
         });
 
-        if (!isModelFile || !response.body || !response.ok) {
+        if (!isModelFile || !response.ok) {
             return response;
         }
 
-        // Intercept response stream to monitor progress
-        const reader = response.body.getReader();
-        const contentLength = +(response.headers.get('content-length') || '0');
-        let receivedLength = 0;
-        const chunks: Uint8Array[] = [];
-
-        // Identify file name to track bytes in map uniquely
+        // Fetch the body once as a Blob to read size instantly, updating progress,
+        // and reconstruct a clean, fast native Response object.
+        const blob = await response.blob();
         const fileName = url.substring(url.lastIndexOf('/') + 1);
+        loadedBytesMap.set(fileName, blob.size);
+        updateCombinedProgress();
 
-        const stream = new ReadableStream({
-            async start(controller) {
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) {
-                        break;
-                    }
-                    if (value) {
-                        chunks.push(value);
-                        receivedLength += value.length;
-                        loadedBytesMap.set(fileName, receivedLength);
-                        updateCombinedProgress();
-                        controller.enqueue(value);
-                    }
-                }
-                controller.close();
-            }
-        });
-
-        // Construct new response with monitored stream
-        return new Response(stream, {
+        return new Response(blob, {
             headers: response.headers,
             status: response.status,
             statusText: response.statusText,
@@ -134,20 +110,16 @@ export async function loadFaceRecognitionModels(
     if (modelsLoadPromise) return modelsLoadPromise;
 
     modelsLoadPromise = (async () => {
-        // ── TF backend init ───────────────────────────────────────────────────────
-        // In non-incognito Chrome with many open tabs, WebGL context pool is
-        // exhausted and tf.ready() blocks forever → page appears frozen.
+        // Enforce CPU backend instantly. In non-incognito Chrome,
+        // compiling WebGL shaders on the GPU context blocks/stalls the main thread
+        // for several minutes. Running on CPU bypasses this bottleneck entirely.
         if (onProgress) onProgress('Initializing face engine...');
         if (faceapi.tf) {
             try { (faceapi.tf as any).enableProdMode(); } catch (_) {}
             try {
-                await withTimeout((faceapi.tf as any).ready(), 5000, 'WebGL backend');
-            } catch {
-                try {
-                    await (faceapi.tf as any).setBackend('cpu');
-                    await (faceapi.tf as any).ready();
-                } catch (_) {}
-            }
+                await (faceapi.tf as any).setBackend('cpu');
+                await (faceapi.tf as any).ready();
+            } catch (_) {}
         }
 
         const localUrl = window.location.protocol === 'file:' ? './models/' : '/models/';

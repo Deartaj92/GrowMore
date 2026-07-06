@@ -8,17 +8,26 @@ const STATIC_ASSETS = [
     '/icon-192.png',
     '/icon-512.png',
     '/patternLogo.png',
-    '/notification-icon.png'
+    '/notification-icon.png',
+    // Pre-cache face-api.js models so they are available offline and load instantly
+    '/models/tiny_face_detector_model-weights_manifest.json',
+    '/models/tiny_face_detector_model.bin',
+    '/models/face_landmark_68_model-weights_manifest.json',
+    '/models/face_landmark_68_model.bin',
+    '/models/face_recognition_model-weights_manifest.json',
+    '/models/face_recognition_model.bin'
 ];
 
 const canCacheResponse = (response) => {
-    return !!response && response.status === 200 && response.type === 'basic';
+    return !!response && response.status === 200;
 };
 
 // Helper to determine if an asset is a static file (JS, CSS, Font, etc.)
 const isStaticAsset = (url) => {
-    return url.match(/\.(js|css|png|jpg|jpeg|svg|woff|woff2|json)$/) ||
-        url.includes('/static/');
+    const cleanUrl = url.split('?')[0];
+    return cleanUrl.match(/\.(js|css|png|jpg|jpeg|svg|woff|woff2|json|bin)$/) ||
+        url.includes('/static/') ||
+        url.includes('/models/');
 };
 
 // Install Event - Pre-cache essential files
@@ -54,9 +63,6 @@ self.addEventListener('fetch', (event) => {
     const { request } = event;
     const url = new URL(request.url);
 
-    // Exclude ML face models from service worker processing
-    if (url.pathname.includes('/models/') || url.search.includes('cb=')) return;
-
     // 1. Only handle GET requests and exclude Supabase Realtime/Auth calls (unless specifically needed)
     if (request.method !== 'GET') return;
     if (url.hostname.includes('supabase.co')) return; // Let Supabase handle its own offline logic or return errors
@@ -89,21 +95,20 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 3. Static Assets - Stale While Revalidate
+    // 3. Static Assets - Cache First, falling back to network
     if (isStaticAsset(request.url)) {
         event.respondWith(
-            caches.match(request).then((cachedResponse) => {
-                const networkFetch = fetch(request)
-                    .then((networkResponse) => {
-                        if (canCacheResponse(networkResponse)) {
-                            const copy = networkResponse.clone();
-                            caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-                        }
-                        return networkResponse;
-                    })
-                    .catch(() => cachedResponse || null);
-
-                return cachedResponse || networkFetch;
+            caches.match(request, { ignoreSearch: true }).then((cachedResponse) => {
+                if (cachedResponse) {
+                    return cachedResponse;
+                }
+                return fetch(request).then((networkResponse) => {
+                    if (canCacheResponse(networkResponse)) {
+                        const copy = networkResponse.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+                    }
+                    return networkResponse;
+                });
             })
         );
         return;
@@ -119,6 +124,6 @@ self.addEventListener('fetch', (event) => {
                 }
                 return response;
             })
-            .catch(() => caches.match(request))
+            .catch(() => caches.match(request, { ignoreSearch: true }))
     );
 });

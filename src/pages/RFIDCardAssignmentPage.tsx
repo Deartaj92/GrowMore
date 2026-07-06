@@ -1378,451 +1378,451 @@ const RFIDCardAssignmentPage: React.FC = () => {
 
     return (
         <>
-        <Page theme={themeObj}>
-            <TopBar>
-                <Title theme={themeObj}>
-                    <CreditCard style={{ fontSize: 22 }} />
-                    RFID / QR Card Assignment
-                </Title>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <FilterBadge>{assignedCount}/{totalCount} assigned</FilterBadge>
-                    <ModeToggle theme={themeObj}>
-                        <ModeBtn $active={mode === 'students'} theme={themeObj} onClick={() => setMode('students')}>
-                            <School style={{ fontSize: 16 }} />
-                            Students
-                        </ModeBtn>
-                        <ModeBtn $active={mode === 'employees'} theme={themeObj} onClick={() => setMode('employees')}>
-                            <Work style={{ fontSize: 16 }} />
-                            Employees
-                        </ModeBtn>
-                    </ModeToggle>
-                </div>
-            </TopBar>
-
-            <FiltersBar theme={themeObj}>
-                <SearchWrap theme={themeObj}>
-                    <SearchIcon theme={themeObj}><Search /></SearchIcon>
-                    <SearchInput
-                        theme={themeObj}
-                        placeholder={mode === 'students' ? 'Search by name, roll number, or card UID...' : 'Search by name, role, or card UID...'}
-                        value={search}
-                        onChange={e => { setSearch(e.target.value); setPage(0); }}
-                    />
-                </SearchWrap>
-
-                {mode === 'students' && (
-                    <Select theme={themeObj} value={filterClass} onChange={e => { setFilterClass(e.target.value); setFilterSection('all'); setPage(0); }}>
-                        <option value="all">All Classes</option>
-                        {sortedClasses.map((c: any) => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
-                    </Select>
-                )}
-
-                {mode === 'students' && (
-                    <Select theme={themeObj} value={filterSection} onChange={e => { setFilterSection(e.target.value); setPage(0); }}>
-                        <option value="all">All Sections</option>
-                        {filteredSections.map((section) => (
-                            <option key={section.id} value={String(section.id)}>
-                                {section.name}
-                            </option>
-                        ))}
-                    </Select>
-                )}
-
-                {mode === 'students' && (
-                    <Select
-                        theme={themeObj}
-                        value={filterSession}
-                        onChange={e => { setFilterSession(e.target.value); setPage(0); }}
-                        aria-label="Session"
-                    >
-                        {sessions.length === 0 ? (
-                            <option value="">Loading…</option>
-                        ) : (
-                            sessions.map(s => (
-                                <option key={s.id} value={String(s.id)}>{s.name}</option>
-                            ))
-                        )}
-                    </Select>
-                )}
-
-                <Select
-                    theme={themeObj}
-                    value={filterPersonStatus}
-                    onChange={e => {
-                        setFilterPersonStatus(e.target.value as PersonStatusFilter);
-                        setPage(0);
-                    }}
-                    aria-label="Enrollment status"
-                >
-                    {PERSON_STATUS_FILTER_OPTIONS.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                </Select>
-
-                <Select theme={themeObj} value={filterStatus} onChange={e => { setFilterStatus(e.target.value as any); setPage(0); }}>
-                    <option value="all">All Cards</option>
-                    <option value="assigned">Assigned</option>
-                    <option value="unassigned">Unassigned</option>
-                </Select>
-
-                <ActionBtn $color="#a855f7" onClick={fetchData} disabled={loading}>
-                    <Refresh style={{ fontSize: 14 }} />
-                    Refresh
-                </ActionBtn>
-            </FiltersBar>
-
-            <TableCard theme={themeObj}>
-                {loading ? (
-                    <CenterLoading><CircularProgress size={28} /></CenterLoading>
-                ) : filtered.length === 0 ? (
-                    <EmptyState theme={themeObj}>
-                        <PersonSearch style={{ fontSize: 48, opacity: 0.3, display: 'block', margin: '0 auto 0.75rem' }} />
-                        No {mode} found matching your filters.
-                    </EmptyState>
-                ) : (
-                    <>
-                        <TableWrap>
-                            <Table>
-                                <thead>
-                                    <tr>
-                                        <TH theme={themeObj}>#</TH>
-                                        <TH theme={themeObj}>Name</TH>
-                                        {mode === 'students' && <TH theme={themeObj}>Roll No</TH>}
-                                        {mode === 'students' && <TH theme={themeObj}>Class / Section</TH>}
-                                        {mode === 'employees' && <TH theme={themeObj}>Role</TH>}
-                                        <TH theme={themeObj}>Attendance Mode</TH>
-                                        <TH theme={themeObj}>RFID card</TH>
-                                        <TH theme={themeObj}>QR code</TH>
-                                        <TH theme={themeObj}>Face</TH>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pageData.map((person, idx) => {
-                                        const isEditingRfid = editing?.personId === person.id && editing.field === 'rfid';
-                                        const isEditingQr = editing?.personId === person.id && editing.field === 'qr';
-                                        const hasAnyCard = !!(person.rfid_uid || person.qr_uid);
-                                        const className = person.class_id ? classesMap.get(person.class_id) || '' : '';
-                                        const sectionName = person.section_id ? sectionsMap.get(person.section_id) || '' : '';
-                                        const classLabel = className && sectionName
-                                            ? `${className} - ${sectionName}`
-                                            : className || sectionName || '—';
-
-                                        return (
-                                            <Row key={person.id} theme={themeObj}>
-                                                <TD theme={themeObj}>{page * PAGE_SIZE + idx + 1}</TD>
-                                                <TD theme={themeObj} style={{ fontWeight: 600 }}>{person.name}</TD>
-                                                {mode === 'students' && <TD theme={themeObj}>{person.roll_number || person.id}</TD>}
-                                                {mode === 'students' && <TD theme={themeObj}>{classLabel}</TD>}
-                                                {mode === 'employees' && <TD theme={themeObj}>{person.role || '—'}</TD>}
-                                                <TD theme={themeObj}>
-                                                    {isEditingRfid ? (
-                                                        <Select
-                                                            theme={themeObj}
-                                                            value={editAttendanceMode}
-                                                            onChange={e => setEditAttendanceMode(e.target.value as 'rfid_required' | 'manual_only' | 'hybrid')}
-                                                            style={{ minWidth: 150 }}
-                                                        >
-                                                            <option value="manual_only">Manual Only</option>
-                                                            <option value="rfid_required">RFID Required</option>
-                                                            <option value="hybrid">Hybrid</option>
-                                                        </Select>
-                                                    ) : (
-                                                        <RfidBadge
-                                                            $assigned={getEffectiveAttendanceMode(person.attendance_mode, hasAnyCard) !== 'manual_only'}
-                                                            title="Based on RFID/QR assignment"
-                                                        >
-                                                            {getEffectiveAttendanceMode(person.attendance_mode, hasAnyCard) === 'hybrid'
-                                                                ? 'Hybrid'
-                                                                : getEffectiveAttendanceMode(person.attendance_mode, hasAnyCard) === 'rfid_required'
-                                                                    ? 'RFID Required'
-                                                                    : 'Manual Only'}
-                                                        </RfidBadge>
-                                                    )}
-                                                </TD>
-                                                <TD theme={themeObj}>
-                                                    {isEditingRfid ? (
-                                                        <>
-                                                            <ScanInput
-                                                                theme={themeObj}
-                                                                autoFocus
-                                                                placeholder="NFC tap, USB RFID reader, or paste UID..."
-                                                                value={editValue}
-                                                                onChange={e => handleEditInputChange(e.target.value)}
-                                                                onKeyDown={e => handleEditKeyDown(e, person.id)}
-                                                            />
-                                                            {isNfcSupported ? (
-                                                                <div style={{ marginTop: '0.4rem' }}>
-                                                                    <MobileNfcBtn $active={isNfcScanning} onClick={handleStartNfc}>
-                                                                        <NfcIcon style={{ fontSize: 16 }} />
-                                                                        {isNfcScanning ? 'Listening...' : 'Scan with Phone NFC'}
-                                                                    </MobileNfcBtn>
-                                                                </div>
-                                                            ) : (
-                                                                !isSecureContext && (
-                                                                    <NfcDiagnosticTxt theme={themeObj}>
-                                                                        HTTPS required for mobile NFC.
-                                                                    </NfcDiagnosticTxt>
-                                                                )
-                                                            )}
-                                                            <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.45rem', flexWrap: 'wrap' }}>
-                                                                <ActionBtn
-                                                                    $color="#22c55e"
-                                                                    onClick={() => handleSaveRfid(person.id)}
-                                                                    disabled={saving}
-                                                                >
-                                                                    {saving ? <CircularProgress size={12} /> : <CheckCircle style={{ fontSize: 14 }} />}
-                                                                    Save RFID
-                                                                </ActionBtn>
-                                                                <ActionBtn $color="#94a3b8" onClick={cancelEdit}>
-                                                                    <Cancel style={{ fontSize: 14 }} />
-                                                                    Cancel
-                                                                </ActionBtn>
-                                                            </div>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <RfidBadge $assigned={!!person.rfid_uid}>
-                                                                {person.rfid_uid ? (
-                                                                    <>
-                                                                        <Nfc style={{ fontSize: 14 }} />
-                                                                        {person.rfid_uid}
-                                                                    </>
-                                                                ) : (
-                                                                    'Not assigned'
-                                                                )}
-                                                            </RfidBadge>
-                                                            <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
-                                                                <ActionBtn $color="#a855f7" onClick={() => startEditRfid(person)}>
-                                                                    <CreditCard style={{ fontSize: 14 }} />
-                                                                    {person.rfid_uid ? 'Change RFID' : 'Assign RFID'}
-                                                                </ActionBtn>
-                                                                {person.rfid_uid && (
-                                                                    <ActionBtn $color="#ef4444" onClick={() => handleRemoveRfid(person.id)}>
-                                                                        <Delete style={{ fontSize: 14 }} />
-                                                                        Clear RFID
-                                                                    </ActionBtn>
-                                                                )}
-                                                            </div>
-                                                        </>
-                                                    )}
-                                                </TD>
-                                                <TD theme={themeObj}>
-                                                    {isEditingQr ? (
-                                                        <>
-                                                            <QrPasteHint theme={themeObj}>
-                                                                Camera scanning is only on <b>QR Attendance</b>. Paste a value here, use a USB QR keyboard wedge, or use <b>Student QR labels</b> to generate codes.
-                                                            </QrPasteHint>
-                                                            <ScanInput
-                                                                theme={themeObj}
-                                                                autoFocus
-                                                                placeholder="Camera scan or paste QR text..."
-                                                                value={editValue}
-                                                                onChange={e => setEditValue(e.target.value)}
-                                                                onKeyDown={e => handleEditKeyDown(e, person.id)}
-                                                            />
-                                                            <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.45rem', flexWrap: 'wrap' }}>
-                                                                <ActionBtn
-                                                                    $color="#22c55e"
-                                                                    onClick={() => handleSaveQr(person.id)}
-                                                                    disabled={saving}
-                                                                >
-                                                                    {saving ? <CircularProgress size={12} /> : <CheckCircle style={{ fontSize: 14 }} />}
-                                                                    Save QR
-                                                                </ActionBtn>
-                                                                <ActionBtn $color="#94a3b8" onClick={cancelEdit}>
-                                                                    <Cancel style={{ fontSize: 14 }} />
-                                                                    Cancel
-                                                                </ActionBtn>
-                                                            </div>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <RfidBadge $assigned={!!person.qr_uid} style={{ borderColor: 'rgba(14,165,233,0.35)' }}>
-                                                                {person.qr_uid ? (
-                                                                    <>
-                                                                        <QrCodeScannerIcon style={{ fontSize: 14 }} />
-                                                                        {person.qr_uid}
-                                                                    </>
-                                                                ) : (
-                                                                    'Not assigned'
-                                                                )}
-                                                            </RfidBadge>
-                                                            <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
-                                                                <ActionBtn $color="#0ea5e9" onClick={() => startEditQr(person)}>
-                                                                    <QrCodeScannerIcon style={{ fontSize: 14 }} />
-                                                                    {person.qr_uid ? 'Change QR' : 'Assign QR'}
-                                                                </ActionBtn>
-                                                                {person.qr_uid && (
-                                                                    <ActionBtn $color="#ef4444" onClick={() => handleRemoveQr(person.id)}>
-                                                                        <Delete style={{ fontSize: 14 }} />
-                                                                        Clear QR
-                                                                    </ActionBtn>
-                                                                )}
-                                                            </div>
-                                                        </>
-                                                    )}
-                                                </TD>
-                                                {/* ── Face Column ── */}
-                                                <TD theme={themeObj}>
-                                                    <RfidBadge $assigned={!!person.face_embedding} style={{ borderColor: person.face_embedding ? 'rgba(34,197,94,0.35)' : 'rgba(148,163,184,0.2)' }}>
-                                                        <FaceIcon style={{ fontSize: 14 }} />
-                                                        {person.face_embedding ? 'Enrolled' : 'No Face'}
-                                                    </RfidBadge>
-                                                    <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
-                                                        <ActionBtn
-                                                            $color="#22c55e"
-                                                            onClick={() => {
-                                                                const enrollPerson = {
-                                                                    person_id: person.id,
-                                                                    name: person.name,
-                                                                    type: mode === 'students' ? 'student' : 'employee',
-                                                                    roll_number: person.roll_number,
-                                                                    role: person.role,
-                                                                    face_embedding: person.face_embedding,
-                                                                };
-                                                                setSelectedEnrollPerson(enrollPerson);
-                                                                setShowFaceEnroll(true);
-                                                                void startEnrollCamera(undefined, person.id, mode === 'students' ? 'student' : 'employee');
-                                                            }}
-                                                        >
-                                                            <FaceIcon style={{ fontSize: 14 }} />
-                                                            {person.face_embedding ? 'Re-enroll' : 'Enroll Face'}
-                                                        </ActionBtn>
-                                                        {person.face_embedding && (
-                                                            <ActionBtn
-                                                                $color="#ef4444"
-                                                                onClick={async () => {
-                                                                    if (!window.confirm('Remove face enrollment for ' + person.name + '?')) return;
-                                                                    const tbl = mode === 'students' ? 'students' : 'staff';
-                                                                    const { error } = await supabase.from(tbl).update({ face_embedding: null, face_embedding_dim: null }).eq('id', person.id).eq('school_id', user!.school_id);
-                                                                    if (error) { toast.showToast('Failed to remove face: ' + error.message, 'error'); return; }
-                                                                    setPeople(prev => prev.map(p => p.id === person.id ? { ...p, face_embedding: null } : p));
-                                                                    toast.showToast('Face enrollment removed', 'success');
-                                                                }}
-                                                            >
-                                                                <Delete style={{ fontSize: 14 }} />
-                                                                Clear Face
-                                                            </ActionBtn>
-                                                        )}
-                                                    </div>
-                                                </TD>
-                                            </Row>
-                                        );
-                                    })}
-                                </tbody>
-                            </Table>
-                        </TableWrap>
-
-                        {totalPages > 1 && (
-                            <PaginationBar theme={themeObj}>
-                                <span>
-                                    Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} of {filtered.length}
-                                </span>
-                                <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                    <PageBtn theme={themeObj} disabled={page === 0} onClick={() => setPage(p => p - 1)}>← Prev</PageBtn>
-                                    <PageBtn theme={themeObj} disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Next →</PageBtn>
-                                </div>
-                            </PaginationBar>
-                        )}
-                    </>
-                )}
-            </TableCard>
-
-        </Page>
-
-        {/* ─── Face Enrollment Modal (per-row, camera-first) ─────────────── */}
-        {showFaceEnroll && selectedEnrollPerson && ReactDOM.createPortal(
-            <ModalOverlay theme={themeObj} onClick={() => { stopEnrollCamera(); setShowFaceEnroll(false); setSelectedEnrollPerson(null); }}>
-                <ModalBox theme={themeObj} onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
-
-                    {/* Header */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${themeObj.BORDER}`, paddingBottom: '0.75rem' }}>
-                        <ModalTitle theme={themeObj}><FaceIcon /> Face Enrollment</ModalTitle>
-                        <EnrollCloseBtn theme={themeObj} onClick={() => { stopEnrollCamera(); setShowFaceEnroll(false); setSelectedEnrollPerson(null); }}>✕ Close</EnrollCloseBtn>
+            <Page theme={themeObj}>
+                <TopBar>
+                    <Title theme={themeObj}>
+                        <CreditCard style={{ fontSize: 22 }} />
+                        RFID / QR Card Assignment
+                    </Title>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <FilterBadge>{assignedCount}/{totalCount} assigned</FilterBadge>
+                        <ModeToggle theme={themeObj}>
+                            <ModeBtn $active={mode === 'students'} theme={themeObj} onClick={() => setMode('students')}>
+                                <School style={{ fontSize: 16 }} />
+                                Students
+                            </ModeBtn>
+                            <ModeBtn $active={mode === 'employees'} theme={themeObj} onClick={() => setMode('employees')}>
+                                <Work style={{ fontSize: 16 }} />
+                                Employees
+                            </ModeBtn>
+                        </ModeToggle>
                     </div>
+                </TopBar>
 
-                    {/* Person info banner */}
-                    <div style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 10, padding: '0.65rem 1rem', fontSize: '0.88rem' }}>
-                        <span style={{ color: themeObj.TEXT_SECONDARY, fontWeight: 600 }}>Enrolling face for: </span>
-                        <span style={{ fontWeight: 800, color: '#22c55e' }}>{selectedEnrollPerson.name}</span>
-                        {selectedEnrollPerson.roll_number && <span style={{ color: themeObj.TEXT_SECONDARY }}> · {selectedEnrollPerson.roll_number}</span>}
-                        {selectedEnrollPerson.role && <span style={{ color: themeObj.TEXT_SECONDARY }}> · {selectedEnrollPerson.role}</span>}
-                        <span style={{ marginLeft: 8, fontSize: '0.72rem', fontWeight: 800, background: selectedEnrollPerson.face_embedding ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)', color: selectedEnrollPerson.face_embedding ? '#22c55e' : '#ef4444', padding: '2px 8px', borderRadius: 999 }}>
-                            {selectedEnrollPerson.face_embedding ? 'RE-ENROLLING' : 'NEW ENROLLMENT'}
-                        </span>
-                    </div>
+                <FiltersBar theme={themeObj}>
+                    <SearchWrap theme={themeObj}>
+                        <SearchIcon theme={themeObj}><Search /></SearchIcon>
+                        <SearchInput
+                            theme={themeObj}
+                            placeholder={mode === 'students' ? 'Search by name, roll number, or card UID...' : 'Search by name, role, or card UID...'}
+                            value={search}
+                            onChange={e => { setSearch(e.target.value); setPage(0); }}
+                        />
+                    </SearchWrap>
 
-                    {/* Camera selector */}
-                    {enrollCameras.length > 1 && (
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.8rem', background: themeObj.BG, padding: '0.4rem 0.8rem', borderRadius: 8, border: `1px solid ${themeObj.BORDER}` }}>
-                            <FaceIcon style={{ fontSize: 16, color: themeObj.TEXT_SECONDARY }} />
-                            <span style={{ color: themeObj.TEXT_SECONDARY, fontWeight: 650, whiteSpace: 'nowrap' }}>Camera:</span>
-                            <select value={selectedEnrollCameraId} onChange={e => { setSelectedEnrollCameraId(e.target.value); void startEnrollCamera(e.target.value); }} style={{ flex: 1, padding: '0.3rem 0.5rem', borderRadius: 6, background: themeObj.CARD, color: themeObj.TEXT_PRIMARY, border: `1px solid ${themeObj.BORDER}`, fontSize: '0.8rem' }}>
-                                {enrollCameras.map(c => (<option key={c.deviceId} value={c.deviceId}>{c.label || `Camera ${c.deviceId.slice(0, 5)}`}</option>))}
-                            </select>
-                        </div>
+                    {mode === 'students' && (
+                        <Select theme={themeObj} value={filterClass} onChange={e => { setFilterClass(e.target.value); setFilterSection('all'); setPage(0); }}>
+                            <option value="all">All Classes</option>
+                            {sortedClasses.map((c: any) => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
+                        </Select>
                     )}
 
-                    {/* Camera viewport */}
-                    <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', borderRadius: 12, overflow: 'hidden', background: '#000', border: `2px solid ${themeObj.BORDER}` }}>
-                        {enrollModelsLoading && (
-                            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.7)', zIndex: 6 }}>
-                                <FaceIcon style={{ fontSize: 36, color: '#22c55e', opacity: 0.7 }} />
-                                <span style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 700 }}>Loading AI models...</span>
+                    {mode === 'students' && (
+                        <Select theme={themeObj} value={filterSection} onChange={e => { setFilterSection(e.target.value); setPage(0); }}>
+                            <option value="all">All Sections</option>
+                            {filteredSections.map((section) => (
+                                <option key={section.id} value={String(section.id)}>
+                                    {section.name}
+                                </option>
+                            ))}
+                        </Select>
+                    )}
+
+                    {mode === 'students' && (
+                        <Select
+                            theme={themeObj}
+                            value={filterSession}
+                            onChange={e => { setFilterSession(e.target.value); setPage(0); }}
+                            aria-label="Session"
+                        >
+                            {sessions.length === 0 ? (
+                                <option value="">Loading…</option>
+                            ) : (
+                                sessions.map(s => (
+                                    <option key={s.id} value={String(s.id)}>{s.name}</option>
+                                ))
+                            )}
+                        </Select>
+                    )}
+
+                    <Select
+                        theme={themeObj}
+                        value={filterPersonStatus}
+                        onChange={e => {
+                            setFilterPersonStatus(e.target.value as PersonStatusFilter);
+                            setPage(0);
+                        }}
+                        aria-label="Enrollment status"
+                    >
+                        {PERSON_STATUS_FILTER_OPTIONS.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                    </Select>
+
+                    <Select theme={themeObj} value={filterStatus} onChange={e => { setFilterStatus(e.target.value as any); setPage(0); }}>
+                        <option value="all">All Cards</option>
+                        <option value="assigned">Assigned</option>
+                        <option value="unassigned">Unassigned</option>
+                    </Select>
+
+                    <ActionBtn $color="#a855f7" onClick={fetchData} disabled={loading}>
+                        <Refresh style={{ fontSize: 14 }} />
+                        Refresh
+                    </ActionBtn>
+                </FiltersBar>
+
+                <TableCard theme={themeObj}>
+                    {loading ? (
+                        <CenterLoading><CircularProgress size={28} /></CenterLoading>
+                    ) : filtered.length === 0 ? (
+                        <EmptyState theme={themeObj}>
+                            <PersonSearch style={{ fontSize: 48, opacity: 0.3, display: 'block', margin: '0 auto 0.75rem' }} />
+                            No {mode} found matching your filters.
+                        </EmptyState>
+                    ) : (
+                        <>
+                            <TableWrap>
+                                <Table>
+                                    <thead>
+                                        <tr>
+                                            <TH theme={themeObj}>#</TH>
+                                            <TH theme={themeObj}>Name</TH>
+                                            {mode === 'students' && <TH theme={themeObj}>Roll No</TH>}
+                                            {mode === 'students' && <TH theme={themeObj}>Class / Section</TH>}
+                                            {mode === 'employees' && <TH theme={themeObj}>Role</TH>}
+                                            <TH theme={themeObj}>Attendance Mode</TH>
+                                            <TH theme={themeObj}>RFID card</TH>
+                                            <TH theme={themeObj}>QR code</TH>
+                                            <TH theme={themeObj}>Face</TH>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {pageData.map((person, idx) => {
+                                            const isEditingRfid = editing?.personId === person.id && editing.field === 'rfid';
+                                            const isEditingQr = editing?.personId === person.id && editing.field === 'qr';
+                                            const hasAnyCard = !!(person.rfid_uid || person.qr_uid);
+                                            const className = person.class_id ? classesMap.get(person.class_id) || '' : '';
+                                            const sectionName = person.section_id ? sectionsMap.get(person.section_id) || '' : '';
+                                            const classLabel = className && sectionName
+                                                ? `${className} - ${sectionName}`
+                                                : className || sectionName || '—';
+
+                                            return (
+                                                <Row key={person.id} theme={themeObj}>
+                                                    <TD theme={themeObj}>{page * PAGE_SIZE + idx + 1}</TD>
+                                                    <TD theme={themeObj} style={{ fontWeight: 600 }}>{person.name}</TD>
+                                                    {mode === 'students' && <TD theme={themeObj}>{person.roll_number || person.id}</TD>}
+                                                    {mode === 'students' && <TD theme={themeObj}>{classLabel}</TD>}
+                                                    {mode === 'employees' && <TD theme={themeObj}>{person.role || '—'}</TD>}
+                                                    <TD theme={themeObj}>
+                                                        {isEditingRfid ? (
+                                                            <Select
+                                                                theme={themeObj}
+                                                                value={editAttendanceMode}
+                                                                onChange={e => setEditAttendanceMode(e.target.value as 'rfid_required' | 'manual_only' | 'hybrid')}
+                                                                style={{ minWidth: 150 }}
+                                                            >
+                                                                <option value="manual_only">Manual Only</option>
+                                                                <option value="rfid_required">RFID Required</option>
+                                                                <option value="hybrid">Hybrid</option>
+                                                            </Select>
+                                                        ) : (
+                                                            <RfidBadge
+                                                                $assigned={getEffectiveAttendanceMode(person.attendance_mode, hasAnyCard) !== 'manual_only'}
+                                                                title="Based on RFID/QR assignment"
+                                                            >
+                                                                {getEffectiveAttendanceMode(person.attendance_mode, hasAnyCard) === 'hybrid'
+                                                                    ? 'Hybrid'
+                                                                    : getEffectiveAttendanceMode(person.attendance_mode, hasAnyCard) === 'rfid_required'
+                                                                        ? 'RFID Required'
+                                                                        : 'Manual Only'}
+                                                            </RfidBadge>
+                                                        )}
+                                                    </TD>
+                                                    <TD theme={themeObj}>
+                                                        {isEditingRfid ? (
+                                                            <>
+                                                                <ScanInput
+                                                                    theme={themeObj}
+                                                                    autoFocus
+                                                                    placeholder="NFC tap, USB RFID reader, or paste UID..."
+                                                                    value={editValue}
+                                                                    onChange={e => handleEditInputChange(e.target.value)}
+                                                                    onKeyDown={e => handleEditKeyDown(e, person.id)}
+                                                                />
+                                                                {isNfcSupported ? (
+                                                                    <div style={{ marginTop: '0.4rem' }}>
+                                                                        <MobileNfcBtn $active={isNfcScanning} onClick={handleStartNfc}>
+                                                                            <NfcIcon style={{ fontSize: 16 }} />
+                                                                            {isNfcScanning ? 'Listening...' : 'Scan with Phone NFC'}
+                                                                        </MobileNfcBtn>
+                                                                    </div>
+                                                                ) : (
+                                                                    !isSecureContext && (
+                                                                        <NfcDiagnosticTxt theme={themeObj}>
+                                                                            HTTPS required for mobile NFC.
+                                                                        </NfcDiagnosticTxt>
+                                                                    )
+                                                                )}
+                                                                <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.45rem', flexWrap: 'wrap' }}>
+                                                                    <ActionBtn
+                                                                        $color="#22c55e"
+                                                                        onClick={() => handleSaveRfid(person.id)}
+                                                                        disabled={saving}
+                                                                    >
+                                                                        {saving ? <CircularProgress size={12} /> : <CheckCircle style={{ fontSize: 14 }} />}
+                                                                        Save RFID
+                                                                    </ActionBtn>
+                                                                    <ActionBtn $color="#94a3b8" onClick={cancelEdit}>
+                                                                        <Cancel style={{ fontSize: 14 }} />
+                                                                        Cancel
+                                                                    </ActionBtn>
+                                                                </div>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <RfidBadge $assigned={!!person.rfid_uid}>
+                                                                    {person.rfid_uid ? (
+                                                                        <>
+                                                                            <Nfc style={{ fontSize: 14 }} />
+                                                                            {person.rfid_uid}
+                                                                        </>
+                                                                    ) : (
+                                                                        'Not assigned'
+                                                                    )}
+                                                                </RfidBadge>
+                                                                <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                                                                    <ActionBtn $color="#a855f7" onClick={() => startEditRfid(person)}>
+                                                                        <CreditCard style={{ fontSize: 14 }} />
+                                                                        {person.rfid_uid ? 'Change RFID' : 'Assign RFID'}
+                                                                    </ActionBtn>
+                                                                    {person.rfid_uid && (
+                                                                        <ActionBtn $color="#ef4444" onClick={() => handleRemoveRfid(person.id)}>
+                                                                            <Delete style={{ fontSize: 14 }} />
+                                                                            Clear RFID
+                                                                        </ActionBtn>
+                                                                    )}
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </TD>
+                                                    <TD theme={themeObj}>
+                                                        {isEditingQr ? (
+                                                            <>
+                                                                <QrPasteHint theme={themeObj}>
+                                                                    Camera scanning is only on <b>QR Attendance</b>. Paste a value here, use a USB QR keyboard wedge, or use <b>Student QR labels</b> to generate codes.
+                                                                </QrPasteHint>
+                                                                <ScanInput
+                                                                    theme={themeObj}
+                                                                    autoFocus
+                                                                    placeholder="Camera scan or paste QR text..."
+                                                                    value={editValue}
+                                                                    onChange={e => setEditValue(e.target.value)}
+                                                                    onKeyDown={e => handleEditKeyDown(e, person.id)}
+                                                                />
+                                                                <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.45rem', flexWrap: 'wrap' }}>
+                                                                    <ActionBtn
+                                                                        $color="#22c55e"
+                                                                        onClick={() => handleSaveQr(person.id)}
+                                                                        disabled={saving}
+                                                                    >
+                                                                        {saving ? <CircularProgress size={12} /> : <CheckCircle style={{ fontSize: 14 }} />}
+                                                                        Save QR
+                                                                    </ActionBtn>
+                                                                    <ActionBtn $color="#94a3b8" onClick={cancelEdit}>
+                                                                        <Cancel style={{ fontSize: 14 }} />
+                                                                        Cancel
+                                                                    </ActionBtn>
+                                                                </div>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <RfidBadge $assigned={!!person.qr_uid} style={{ borderColor: 'rgba(14,165,233,0.35)' }}>
+                                                                    {person.qr_uid ? (
+                                                                        <>
+                                                                            <QrCodeScannerIcon style={{ fontSize: 14 }} />
+                                                                            {person.qr_uid}
+                                                                        </>
+                                                                    ) : (
+                                                                        'Not assigned'
+                                                                    )}
+                                                                </RfidBadge>
+                                                                <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                                                                    <ActionBtn $color="#0ea5e9" onClick={() => startEditQr(person)}>
+                                                                        <QrCodeScannerIcon style={{ fontSize: 14 }} />
+                                                                        {person.qr_uid ? 'Change QR' : 'Assign QR'}
+                                                                    </ActionBtn>
+                                                                    {person.qr_uid && (
+                                                                        <ActionBtn $color="#ef4444" onClick={() => handleRemoveQr(person.id)}>
+                                                                            <Delete style={{ fontSize: 14 }} />
+                                                                            Clear QR
+                                                                        </ActionBtn>
+                                                                    )}
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </TD>
+                                                    {/* ── Face Column ── */}
+                                                    <TD theme={themeObj}>
+                                                        <RfidBadge $assigned={!!person.face_embedding} style={{ borderColor: person.face_embedding ? 'rgba(34,197,94,0.35)' : 'rgba(148,163,184,0.2)' }}>
+                                                            <FaceIcon style={{ fontSize: 14 }} />
+                                                            {person.face_embedding ? 'Enrolled' : 'No Face'}
+                                                        </RfidBadge>
+                                                        <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                                                            <ActionBtn
+                                                                $color="#22c55e"
+                                                                onClick={() => {
+                                                                    const enrollPerson = {
+                                                                        person_id: person.id,
+                                                                        name: person.name,
+                                                                        type: mode === 'students' ? 'student' : 'employee',
+                                                                        roll_number: person.roll_number,
+                                                                        role: person.role,
+                                                                        face_embedding: person.face_embedding,
+                                                                    };
+                                                                    setSelectedEnrollPerson(enrollPerson);
+                                                                    setShowFaceEnroll(true);
+                                                                    void startEnrollCamera(undefined, person.id, mode === 'students' ? 'student' : 'employee');
+                                                                }}
+                                                            >
+                                                                <FaceIcon style={{ fontSize: 14 }} />
+                                                                {person.face_embedding ? 'Re-enroll' : 'Enroll Face'}
+                                                            </ActionBtn>
+                                                            {person.face_embedding && (
+                                                                <ActionBtn
+                                                                    $color="#ef4444"
+                                                                    onClick={async () => {
+                                                                        if (!window.confirm('Remove face enrollment for ' + person.name + '?')) return;
+                                                                        const tbl = mode === 'students' ? 'students' : 'staff';
+                                                                        const { error } = await supabase.from(tbl).update({ face_embedding: null, face_embedding_dim: null }).eq('id', person.id).eq('school_id', user!.school_id);
+                                                                        if (error) { toast.showToast('Failed to remove face: ' + error.message, 'error'); return; }
+                                                                        setPeople(prev => prev.map(p => p.id === person.id ? { ...p, face_embedding: null } : p));
+                                                                        toast.showToast('Face enrollment removed', 'success');
+                                                                    }}
+                                                                >
+                                                                    <Delete style={{ fontSize: 14 }} />
+                                                                    Clear Face
+                                                                </ActionBtn>
+                                                            )}
+                                                        </div>
+                                                    </TD>
+                                                </Row>
+                                            );
+                                        })}
+                                    </tbody>
+                                </Table>
+                            </TableWrap>
+
+                            {totalPages > 1 && (
+                                <PaginationBar theme={themeObj}>
+                                    <span>
+                                        Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} of {filtered.length}
+                                    </span>
+                                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                        <PageBtn theme={themeObj} disabled={page === 0} onClick={() => setPage(p => p - 1)}>← Prev</PageBtn>
+                                        <PageBtn theme={themeObj} disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Next →</PageBtn>
+                                    </div>
+                                </PaginationBar>
+                            )}
+                        </>
+                    )}
+                </TableCard>
+
+            </Page>
+
+            {/* ─── Face Enrollment Modal (per-row, camera-first) ─────────────── */}
+            {showFaceEnroll && selectedEnrollPerson && ReactDOM.createPortal(
+                <ModalOverlay theme={themeObj} onClick={() => { stopEnrollCamera(); setShowFaceEnroll(false); setSelectedEnrollPerson(null); }}>
+                    <ModalBox theme={themeObj} onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
+
+                        {/* Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${themeObj.BORDER}`, paddingBottom: '0.75rem' }}>
+                            <ModalTitle theme={themeObj}><FaceIcon /> Face Enrollment</ModalTitle>
+                            <EnrollCloseBtn theme={themeObj} onClick={() => { stopEnrollCamera(); setShowFaceEnroll(false); setSelectedEnrollPerson(null); }}>✕ Close</EnrollCloseBtn>
+                        </div>
+
+                        {/* Person info banner */}
+                        <div style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 10, padding: '0.65rem 1rem', fontSize: '0.88rem' }}>
+                            <span style={{ color: themeObj.TEXT_SECONDARY, fontWeight: 600 }}>Enrolling face for: </span>
+                            <span style={{ fontWeight: 800, color: '#22c55e' }}>{selectedEnrollPerson.name}</span>
+                            {selectedEnrollPerson.roll_number && <span style={{ color: themeObj.TEXT_SECONDARY }}> · {selectedEnrollPerson.roll_number}</span>}
+                            {selectedEnrollPerson.role && <span style={{ color: themeObj.TEXT_SECONDARY }}> · {selectedEnrollPerson.role}</span>}
+                            <span style={{ marginLeft: 8, fontSize: '0.72rem', fontWeight: 800, background: selectedEnrollPerson.face_embedding ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)', color: selectedEnrollPerson.face_embedding ? '#22c55e' : '#ef4444', padding: '2px 8px', borderRadius: 999 }}>
+                                {selectedEnrollPerson.face_embedding ? 'RE-ENROLLING' : 'NEW ENROLLMENT'}
+                            </span>
+                        </div>
+
+                        {/* Camera selector */}
+                        {enrollCameras.length > 1 && (
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.8rem', background: themeObj.BG, padding: '0.4rem 0.8rem', borderRadius: 8, border: `1px solid ${themeObj.BORDER}` }}>
+                                <FaceIcon style={{ fontSize: 16, color: themeObj.TEXT_SECONDARY }} />
+                                <span style={{ color: themeObj.TEXT_SECONDARY, fontWeight: 650, whiteSpace: 'nowrap' }}>Camera:</span>
+                                <select value={selectedEnrollCameraId} onChange={e => { setSelectedEnrollCameraId(e.target.value); void startEnrollCamera(e.target.value); }} style={{ flex: 1, padding: '0.3rem 0.5rem', borderRadius: 6, background: themeObj.CARD, color: themeObj.TEXT_PRIMARY, border: `1px solid ${themeObj.BORDER}`, fontSize: '0.8rem' }}>
+                                    {enrollCameras.map(c => (<option key={c.deviceId} value={c.deviceId}>{c.label || `Camera ${c.deviceId.slice(0, 5)}`}</option>))}
+                                </select>
                             </div>
                         )}
-                        {enrollCameraError && (
-                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', fontSize: '0.85rem', fontWeight: 700, padding: '1rem', textAlign: 'center', zIndex: 6 }}>{enrollCameraError}</div>
-                        )}
-                        <video ref={enrollVideoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
-                        {/* Circular FaceID Guideline Overlay */}
-                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 4 }}>
-                            <div style={{
-                                width: '60%', height: '80%', borderRadius: '50%',
-                                border: `3px dashed ${dupMatchName ? '#ef4444' : (detectedEnrollDescriptor ? '#22c55e' : (stableFrameCount > 0 ? '#f59e0b' : 'rgba(255,255,255,0.45)'))}`,
-                                boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)',
-                                transition: 'all 0.2s ease-out',
-                                transform: detectedEnrollDescriptor ? 'scale(1.04)' : 'scale(1)'
-                            }} />
-                        </div>
-                        {/* Face detection box */}
-                        {isEnrollCameraActive && enrollFaceBox && (
-                            <div style={{ position: 'absolute', border: `3px solid ${dupMatchName ? '#ef4444' : '#22c55e'}`, borderRadius: 8, left: `${enrollFaceBox.x}px`, top: `${enrollFaceBox.y}px`, width: `${enrollFaceBox.width}px`, height: `${enrollFaceBox.height}px`, boxShadow: `0 0 16px ${dupMatchName ? 'rgba(239,68,68,0.7)' : 'rgba(34,197,94,0.7)'}`, pointerEvents: 'none', transition: 'all 0.1s ease-out', zIndex: 5 }} />
-                        )}
-                        {/* Status indicator overlay */}
-                        <div style={{ position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)', background: dupMatchName ? 'rgba(239,68,68,0.85)' : 'rgba(0,0,0,0.65)', color: dupMatchName ? '#fff' : (detectedEnrollDescriptor ? '#22c55e' : (stableFrameCount > 0 ? '#f59e0b' : '#94a3b8')), padding: '4px 14px', borderRadius: 999, fontSize: '0.72rem', fontWeight: 800, whiteSpace: 'nowrap', backdropFilter: 'blur(4px)', maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {dupMatchName
-                                ? `⚠️ Already enrolled: ${dupMatchName}`
-                                : detectedEnrollDescriptor
-                                    ? '✅ Face locked — Ready to Register'
-                                    : stableFrameCount > 0
-                                        ? `🔍 Scanning… ${stableFrameCount}/5 — Hold still`
-                                        : '👤 Center your face in the oval'
-                            }
-                        </div>
-                    </div>
 
-                    {/* Action buttons */}
-                    <div style={{ display: 'flex' }}>
-                        <button
-                            onClick={async () => {
-                                await saveEnrolledFace();
-                                if (selectedEnrollPerson && detectedEnrollDescriptor && !dupMatchName) {
-                                    setPeople(prev => prev.map(p => p.id === selectedEnrollPerson.person_id ? { ...p, face_embedding: 'enrolled' } : p));
-                                    setShowFaceEnroll(false);
-                                    setSelectedEnrollPerson(null);
+                        {/* Camera viewport */}
+                        <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', borderRadius: 12, overflow: 'hidden', background: '#000', border: `2px solid ${themeObj.BORDER}` }}>
+                            {enrollModelsLoading && (
+                                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.7)', zIndex: 6 }}>
+                                    <FaceIcon style={{ fontSize: 36, color: '#22c55e', opacity: 0.7 }} />
+                                    <span style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 700 }}>Loading AI models...</span>
+                                </div>
+                            )}
+                            {enrollCameraError && (
+                                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', fontSize: '0.85rem', fontWeight: 700, padding: '1rem', textAlign: 'center', zIndex: 6 }}>{enrollCameraError}</div>
+                            )}
+                            <video ref={enrollVideoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+                            {/* Circular FaceID Guideline Overlay */}
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 4 }}>
+                                <div style={{
+                                    width: '60%', height: '80%', borderRadius: '50%',
+                                    border: `3px dashed ${dupMatchName ? '#ef4444' : (detectedEnrollDescriptor ? '#22c55e' : (stableFrameCount > 0 ? '#f59e0b' : 'rgba(255,255,255,0.45)'))}`,
+                                    boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)',
+                                    transition: 'all 0.2s ease-out',
+                                    transform: detectedEnrollDescriptor ? 'scale(1.04)' : 'scale(1)'
+                                }} />
+                            </div>
+                            {/* Face detection box */}
+                            {isEnrollCameraActive && enrollFaceBox && (
+                                <div style={{ position: 'absolute', border: `3px solid ${dupMatchName ? '#ef4444' : '#22c55e'}`, borderRadius: 8, left: `${enrollFaceBox.x}px`, top: `${enrollFaceBox.y}px`, width: `${enrollFaceBox.width}px`, height: `${enrollFaceBox.height}px`, boxShadow: `0 0 16px ${dupMatchName ? 'rgba(239,68,68,0.7)' : 'rgba(34,197,94,0.7)'}`, pointerEvents: 'none', transition: 'all 0.1s ease-out', zIndex: 5 }} />
+                            )}
+                            {/* Status indicator overlay */}
+                            <div style={{ position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)', background: dupMatchName ? 'rgba(239,68,68,0.85)' : 'rgba(0,0,0,0.65)', color: dupMatchName ? '#fff' : (detectedEnrollDescriptor ? '#22c55e' : (stableFrameCount > 0 ? '#f59e0b' : '#94a3b8')), padding: '4px 14px', borderRadius: 999, fontSize: '0.72rem', fontWeight: 800, whiteSpace: 'nowrap', backdropFilter: 'blur(4px)', maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {dupMatchName
+                                    ? `⚠️ Already enrolled: ${dupMatchName}`
+                                    : detectedEnrollDescriptor
+                                        ? '✅ Face locked — Ready to Register'
+                                        : stableFrameCount > 0
+                                            ? `🔍 Scanning… ${stableFrameCount}/5 — Hold still`
+                                            : '👤 Center your face in the oval'
                                 }
-                            }}
-                            disabled={!detectedEnrollDescriptor || isEnrollingFace || !!dupMatchName}
-                            style={{ flex: 1, padding: '0.75rem', borderRadius: 10, border: 'none', background: dupMatchName ? '#ef4444' : (detectedEnrollDescriptor ? '#22c55e' : '#6b7280'), color: '#fff', fontWeight: 800, cursor: (!detectedEnrollDescriptor || !!dupMatchName) ? 'not-allowed' : 'pointer', fontSize: '0.85rem', boxShadow: dupMatchName ? '0 4px 16px rgba(239,68,68,0.35)' : (detectedEnrollDescriptor ? '0 4px 16px rgba(34,197,94,0.35)' : 'none'), transition: 'all 0.2s', opacity: dupMatchName ? 0.8 : 1 }}
-                        >
-                            {isEnrollingFace ? '⏳ Registering...' : dupMatchName ? '⚠️ Already Enrolled to Another Person' : (detectedEnrollDescriptor ? '✓ Register & Save Face' : 'Align Face to Register')}
-                        </button>
-                    </div>
+                            </div>
+                        </div>
 
-                </ModalBox>
-            </ModalOverlay>
-        , document.body)}
+                        {/* Action buttons */}
+                        <div style={{ display: 'flex' }}>
+                            <button
+                                onClick={async () => {
+                                    await saveEnrolledFace();
+                                    if (selectedEnrollPerson && detectedEnrollDescriptor && !dupMatchName) {
+                                        setPeople(prev => prev.map(p => p.id === selectedEnrollPerson.person_id ? { ...p, face_embedding: 'enrolled' } : p));
+                                        setShowFaceEnroll(false);
+                                        setSelectedEnrollPerson(null);
+                                    }
+                                }}
+                                disabled={!detectedEnrollDescriptor || isEnrollingFace || !!dupMatchName}
+                                style={{ flex: 1, padding: '0.75rem', borderRadius: 10, border: 'none', background: dupMatchName ? '#ef4444' : (detectedEnrollDescriptor ? '#22c55e' : '#6b7280'), color: '#fff', fontWeight: 800, cursor: (!detectedEnrollDescriptor || !!dupMatchName) ? 'not-allowed' : 'pointer', fontSize: '0.85rem', boxShadow: dupMatchName ? '0 4px 16px rgba(239,68,68,0.35)' : (detectedEnrollDescriptor ? '0 4px 16px rgba(34,197,94,0.35)' : 'none'), transition: 'all 0.2s', opacity: dupMatchName ? 0.8 : 1 }}
+                            >
+                                {isEnrollingFace ? '⏳ Registering...' : dupMatchName ? '⚠️ Already Enrolled to Another Person' : (detectedEnrollDescriptor ? '✓ Register & Save Face' : 'Align Face to Register')}
+                            </button>
+                        </div>
+
+                    </ModalBox>
+                </ModalOverlay>
+                , document.body)}
         </>
     );
 };

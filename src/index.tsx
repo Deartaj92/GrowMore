@@ -17,21 +17,7 @@ if ('serviceWorker' in navigator) {
     const appVersion = process.env.REACT_APP_VERSION || process.env.npm_package_version || 'dev';
     const swUrl = `/sw.js?v=${encodeURIComponent(appVersion)}`;
 
-    if (isLocalhost) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        registrations.forEach((registration) => {
-          registration.unregister();
-        });
-      });
-      if ('caches' in window) {
-        caches.keys().then((cacheNames) => {
-          cacheNames
-            .filter((cacheName) => cacheName.startsWith('growmore-'))
-            .forEach((cacheName) => caches.delete(cacheName));
-        });
-      }
-      return;
-    }
+    // Register Service Worker in all environments (including localhost) for consistent offline caching behavior
 
     let hasPendingReload = false;
     const reloadForFreshWorker = () => {
