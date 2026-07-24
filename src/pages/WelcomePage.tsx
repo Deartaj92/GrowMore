@@ -12,13 +12,8 @@ import { ThemeContext } from '../components/Layout';
 import { fetchRenderSettings, isTeacherCardVisible, RenderSettings } from '../services/renderSettingsService';
 import { formatAppDate } from '../utils/dateUtils';
 
-// Capacitor App import for back button handling
+// Capacitor App import stub
 let CapacitorApp: any = null;
-try {
-  CapacitorApp = require('@capacitor/app').App;
-} catch {
-  // Capacitor not available
-}
 
 const Container = styled.div`
   padding: 2rem;

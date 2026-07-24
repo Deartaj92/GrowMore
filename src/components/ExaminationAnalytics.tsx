@@ -2077,39 +2077,9 @@ const ExaminationAnalytics: React.FC = () => {
       // Save PDF
       const fileName = `Examination_Analytics_${selectedExam.name.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
       
-      // Handle mobile/desktop differently
-      const capacitor = (window as any).Capacitor;
-      const isNative = capacitor?.isNativePlatform?.() || false;
-      
-      if (isNative) {
-        try {
-          const pdfBlob = doc.output('blob');
-          const { Filesystem, Directory } = await import('@capacitor/filesystem');
-          const base64Data = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              const base64 = (reader.result as string).split(',')[1];
-              resolve(base64);
-            };
-            reader.readAsDataURL(pdfBlob);
-          });
-          
-          await Filesystem.writeFile({
-            path: `Documents/${fileName}`,
-            data: base64Data,
-            directory: Directory.ExternalStorage as any
-          });
-          
-          showToast('PDF saved to Documents folder', 'success');
-        } catch (mobileError) {
-          // Fallback to regular download if mobile save fails
-          doc.save(fileName);
-          showToast('PDF exported successfully', 'success');
-        }
-      } else {
-        doc.save(fileName);
-        showToast('PDF exported successfully', 'success');
-      }
+      // Export PDF directly in the browser
+      doc.save(fileName);
+      showToast('PDF exported successfully', 'success');
     } catch (error) {
       showToast('Failed to export PDF', 'error');
     } finally {

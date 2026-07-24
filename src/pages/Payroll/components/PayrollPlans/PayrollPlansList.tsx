@@ -20,6 +20,8 @@ import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   Refresh as RefreshIcon,
+  ToggleOn as ToggleOnIcon,
+  ToggleOff as ToggleOffIcon,
 } from '@mui/icons-material';
 import Loader from '../../../../components/Loader';
 import CreatePayrollPlanModal from './CreatePayrollPlanModal';
@@ -229,6 +231,26 @@ const PayrollPlansList: React.FC = () => {
     }
   };
 
+  const handleToggleStatus = async (plan: PayrollPlanWithItems) => {
+    const newStatus = plan.status === 'active' ? 'inactive' : 'active';
+    const confirmMessage = plan.status === 'active'
+      ? 'Are you sure you want to deactivate this payroll plan?'
+      : 'Are you sure you want to activate this payroll plan?';
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      await payrollService.updatePayrollPlan(user.school_id, plan.id, { status: newStatus }, user.id);
+      showToast(`Payroll plan status updated to ${newStatus}`, 'success');
+      loadPlans();
+    } catch (error: any) {
+      console.error('Error updating plan status:', error);
+      showToast(error.message || 'Failed to update payroll plan status', 'error');
+    }
+  };
+
   const handleDuplicate = async (plan: PayrollPlan) => {
     try {
       const planWithItems = await payrollService.getPayrollPlan(user.school_id, plan.id);
@@ -297,8 +319,9 @@ const PayrollPlansList: React.FC = () => {
     groupPlans.map((plan) => {
       const isExpanded = expandedPlans.has(plan.id);
       const totalSalary = calculateTotalSalary(plan);
-      const isExpired = isExpiredPlan(plan);
-      const displayStatus = isExpired ? 'cancelled' : plan.status;
+      const isInactive = plan.status === 'inactive';
+      const isExpired = isExpiredPlan(plan) && plan.status === 'active';
+      const displayStatus = isInactive ? 'draft' : (isExpired ? 'cancelled' : plan.status);
 
       return (
         <React.Fragment key={plan.id}>
@@ -328,15 +351,33 @@ const PayrollPlansList: React.FC = () => {
             <td style={{ padding: '0.625rem 0.625rem' }}>
               <StatusBadge
                 status={displayStatus}
-                bgColor={isExpired ? 'rgba(239, 68, 68, 0.12)' : 'rgba(34, 197, 94, 0.12)'}
-                color={isExpired ? '#dc2626' : '#16a34a'}
+                bgColor={isInactive ? 'rgba(107, 114, 128, 0.12)' : (isExpired ? 'rgba(239, 68, 68, 0.12)' : 'rgba(34, 197, 94, 0.12)')}
+                color={isInactive ? '#6b7280' : (isExpired ? '#dc2626' : '#16a34a')}
                 style={{ fontSize: '0.6875rem', padding: '0.2rem 0.5rem' }}
               >
-                {isExpired ? 'expired' : 'active'}
+                {isInactive ? 'inactive' : (isExpired ? 'expired' : 'active')}
               </StatusBadge>
             </td>
             <ActionCell onClick={(e) => e.stopPropagation()} style={{ padding: '0.625rem 0.625rem' }}>
               <ActionButtons>
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleStatus(plan);
+                  }}
+                  title={plan.status === 'active' ? 'Deactivate' : 'Activate'}
+                  style={{ 
+                    color: plan.status === 'active' ? '#22c55e' : '#6b7280', 
+                    width: '28px', 
+                    height: '28px' 
+                  }}
+                >
+                  {plan.status === 'active' ? (
+                    <ToggleOnIcon style={{ fontSize: '1.1rem' }} />
+                  ) : (
+                    <ToggleOffIcon style={{ fontSize: '1.1rem' }} />
+                  )}
+                </IconButton>
                 <IconButton
                   onClick={(e) => {
                     e.stopPropagation();
@@ -529,7 +570,7 @@ const PayrollPlansList: React.FC = () => {
               <th style={{ padding: '0.5rem 0.625rem', fontSize: '0.6875rem' }}>Total Salary</th>
               <th style={{ padding: '0.5rem 0.625rem', fontSize: '0.6875rem' }}>Effective From</th>
               <th style={{ padding: '0.5rem 0.625rem', fontSize: '0.6875rem' }}>Status</th>
-              <th style={{ textAlign: 'right', width: '100px', padding: '0.5rem 0.625rem', fontSize: '0.6875rem' }}>Actions</th>
+              <th style={{ textAlign: 'right', width: '120px', padding: '0.5rem 0.625rem', fontSize: '0.6875rem' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -559,7 +600,7 @@ const PayrollPlansList: React.FC = () => {
                 <GroupHeaderRow>
                   <td colSpan={7}>
                     <GroupHeaderButton type="button" onClick={() => setShowExpiredPlans(prev => !prev)}>
-                      <GroupPill $tone="expired">Expired Plans ({expiredPlans.length})</GroupPill>
+                      <GroupPill $tone="expired">Expired & Inactive Plans ({expiredPlans.length})</GroupPill>
                       {showExpiredPlans ? <ExpandLessIcon style={{ fontSize: '1rem' }} /> : <ExpandMoreIcon style={{ fontSize: '1rem' }} />}
                     </GroupHeaderButton>
                   </td>

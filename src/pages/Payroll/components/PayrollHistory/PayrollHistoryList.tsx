@@ -26,6 +26,11 @@ import {
   Edit as EditIcon,
   Save as SaveIcon,
   Close as CloseIcon,
+  AccountBalance as BankIcon,
+  AttachMoney as CashIcon,
+  ConfirmationNumber as ChequeIcon,
+  PhoneAndroid as MobileIcon,
+  Payment as PaymentIcon,
 } from '@mui/icons-material';
 import Loader from '../../../../components/Loader';
 import { formatPayrollDate } from '../../utils';
@@ -900,11 +905,20 @@ const PayrollHistoryList: React.FC = () => {
                     </div>
                   </td>
                   <td>
-                    <div style={{ color: theme.TEXT_SECONDARY, fontSize: '0.8rem' }}>
-                      {payment.referenceNo || '-'}
+                    <div style={{ color: theme.TEXT_SECONDARY, fontSize: '0.8rem', fontWeight: 600 }}>
+                      {payment.referenceNo ? `Ref: ${payment.referenceNo}` : 'No Reference'}
                     </div>
                     <div style={{ marginTop: '0.32rem' }}>
-                      <StatusBadge>
+                      <StatusBadge style={{ textTransform: 'capitalize', gap: '4px' }}>
+                        {(() => {
+                          switch (payment.paymentMode) {
+                            case 'cash': return <CashIcon style={{ fontSize: 13, color: '#10b981' }} />;
+                            case 'bank_transfer': return <BankIcon style={{ fontSize: 13, color: '#6366f1' }} />;
+                            case 'cheque': return <ChequeIcon style={{ fontSize: 13, color: '#f59e0b' }} />;
+                            case 'easypaisa_jazzcash': return <MobileIcon style={{ fontSize: 13, color: '#0ea5e9' }} />;
+                            default: return <PaymentIcon style={{ fontSize: 13 }} />;
+                          }
+                        })()}
                         {payment.paymentMode.replace(/_/g, ' ')}
                       </StatusBadge>
                     </div>

@@ -3,7 +3,10 @@ import { useAuth } from './AuthContext';
 import { activityTrackingService, Notification, NotificationPreferences } from '../services/activityTrackingService';
 import { supabase } from '../supabaseClient';
 import { pushNotificationService } from '../services/pushNotificationService';
-import { Capacitor } from '@capacitor/core';
+const Capacitor = {
+  isNativePlatform: () => false,
+  getPlatform: () => 'web'
+};
 
 const PUSH_INIT_SESSION_KEY = 'gm_push_init_session';
 const PUSH_ALERT_SESSION_KEY = 'gm_push_alert_shown_session';

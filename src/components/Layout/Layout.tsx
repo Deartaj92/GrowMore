@@ -62,13 +62,8 @@ import { isWeb as checkIsWeb } from '../../utils/platformDetection';
 import { AppInputLockProvider } from '../../contexts/AppInputLockContext';
 import '../../utils/testNotifications';
 
-// Capacitor import for mobile back button handling
+// Capacitor import stub
 let CapacitorApp: any = null;
-try {
-  CapacitorApp = require('@capacitor/app').App;
-} catch (e) {
-  // Capacitor not available
-}
 
 
 // Main Layout Component

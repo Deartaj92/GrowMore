@@ -26,6 +26,17 @@ import {
   Edit as EditIcon,
   Save as SaveIcon,
   Close as CloseIcon,
+  KeyboardArrowDown as ExpandIcon,
+  KeyboardArrowUp as CollapseIcon,
+  AccountBalance as BankIcon,
+  AttachMoney as CashIcon,
+  ConfirmationNumber as ChequeIcon,
+  PhoneAndroid as MobileIcon,
+  Notes as NotesIcon,
+  CheckCircle as CheckIcon,
+  HourglassEmpty as PendingIcon,
+  Cancel as UnpaidIcon,
+  ReceiptLong as ReceiptIcon,
 } from '@mui/icons-material';
 import Loader from '../../../../components/Loader';
 import PayrollDateField from '../PayrollDateField';
@@ -108,6 +119,132 @@ const SummaryValue = styled.div<{ $color?: string }>`
   font-size: 1.125rem;
   font-weight: 700;
   color: ${({ $color, theme }) => $color || theme.TEXT_PRIMARY};
+`;
+
+const MonthDrawerCard = styled.div<{ $status: 'unpaid' | 'partial' | 'paid' }>`
+  border-radius: 12px;
+  background: ${({ theme }) => theme.CARD || (theme.BG === '#252525' ? '#2c303b' : '#ffffff')};
+  border: 1px solid ${({ $status, theme }) =>
+    $status === 'paid'
+      ? (theme.BG === '#252525' ? 'rgba(16, 185, 129, 0.35)' : 'rgba(16, 185, 129, 0.4)')
+      : $status === 'partial'
+      ? (theme.BG === '#252525' ? 'rgba(245, 158, 11, 0.35)' : 'rgba(245, 158, 11, 0.4)')
+      : (theme.BG === '#252525' ? 'rgba(239, 68, 68, 0.25)' : 'rgba(239, 68, 68, 0.3)')};
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+  transition: all 0.2s ease-in-out;
+  box-shadow: ${({ theme }) => theme.BG === '#252525' ? '0 4px 16px rgba(0, 0, 0, 0.2)' : '0 4px 16px rgba(0, 0, 0, 0.04)'};
+`;
+
+const MonthDrawerHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.1rem;
+  cursor: pointer;
+  user-select: none;
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.015)' : 'rgba(0, 0, 0, 0.01)'};
+
+  &:hover {
+    background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.025)'};
+  }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.65rem;
+  }
+`;
+
+const MonthDrawerLeft = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+`;
+
+const MonthTitle = styled.div`
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+`;
+
+const MonthSubtext = styled.div`
+  font-size: 0.73rem;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+`;
+
+const MonthDrawerRight = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: space-between;
+  }
+`;
+
+const MonthStatPill = styled.div<{ $color?: string; $bg?: string }>`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 0.25rem 0.6rem;
+  border-radius: 8px;
+  background: ${({ $bg, theme }) => $bg || (theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.04)' : '#f8fafc')};
+  border: 1px solid ${({ theme }) => theme.BORDER};
+
+  @media (max-width: 768px) {
+    align-items: flex-start;
+  }
+`;
+
+const MonthStatLabel = styled.span`
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  letter-spacing: 0.06em;
+`;
+
+const MonthStatValue = styled.span<{ $color?: string }>`
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: ${({ $color, theme }) => $color || theme.TEXT_PRIMARY};
+`;
+
+const DrawerBody = styled.div`
+  padding: 0.85rem 1.1rem;
+  border-top: 1px solid ${({ theme }) => theme.BORDER};
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(0, 0, 0, 0.25)' : 'rgba(248, 250, 252, 0.65)'};
+  animation: slideDown 0.2s ease-out;
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+`;
+
+const PaymentItemRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  background: ${({ theme }) => theme.CARD || (theme.BG === '#252525' ? '#252525' : '#ffffff')};
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  margin-bottom: 0.5rem;
+  gap: 0.75rem;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
 `;
 
 const ContentGrid = styled.div`
@@ -483,6 +620,153 @@ const sortByOldestPeriod = (items: GenerationWithBalance[]) =>
     return a.generation.payrollMonth - b.generation.payrollMonth;
   });
 
+const getBreakdownLists = (gen: PayrollGeneration) => {
+  const earningsList: Array<{ name: string; amount: number }> = [];
+  const deductionsList: Array<{ name: string; amount: number }> = [];
+
+  const normalizeKey = (str: string) =>
+    str.toLowerCase().replace(/^(bonus:|adjustment:|allowance:)\s*/i, '').trim();
+
+  const isDuplicateEarning = (name: string, amount: number) => {
+    const key = normalizeKey(name);
+    return earningsList.some(
+      e => normalizeKey(e.name) === key && Math.abs(e.amount - amount) < 0.01
+    );
+  };
+
+  const isDuplicateDeduction = (name: string, amount: number) => {
+    const key = normalizeKey(name);
+    return deductionsList.some(
+      d => normalizeKey(d.name) === key && Math.abs(d.amount - amount) < 0.01
+    );
+  };
+
+  // 1. Basic Pay
+  const basicPay = gen.planSnapshot?.basicPay || 0;
+  if (basicPay > 0) {
+    earningsList.push({ name: 'Basic Pay', amount: basicPay });
+  }
+
+  // 2. Plan Snapshot Allowances
+  const planItems = gen.planSnapshot?.items || [];
+  planItems.filter(i => i.itemType === 'allowance').forEach(item => {
+    if (!isDuplicateEarning(item.name, item.amount)) {
+      earningsList.push({ name: item.name, amount: item.amount });
+    }
+  });
+
+  // 3. Calculation Details Allowances
+  const calcAllowances = gen.calculationDetails?.allowances || [];
+  calcAllowances.forEach(allow => {
+    if (!isDuplicateEarning(allow.name, allow.amount)) {
+      earningsList.push({ name: allow.name, amount: allow.amount });
+    }
+  });
+
+  // 4. Generation Items
+  const genItems = gen.items || [];
+  genItems.filter(i => i.itemType === 'allowance').forEach(item => {
+    if (!isDuplicateEarning(item.itemName, item.amount)) {
+      earningsList.push({ name: item.itemName, amount: item.amount });
+    }
+  });
+
+  // 5. Bonus Adjustments
+  const adjustments = gen.calculationDetails?.adjustments || [];
+  adjustments.filter(a => a.type === 'bonus' || a.amount > 0).forEach(adj => {
+    const rawName = adj.name || 'Bonus Adjustment';
+    const cleanName = rawName.replace(/^bonus:\s*/i, 'Bonus: ');
+    if (!isDuplicateEarning(cleanName, adj.amount)) {
+      earningsList.push({ name: cleanName, amount: adj.amount });
+    }
+  });
+
+  // 6. Applied Adjustments
+  const appliedAdjs = gen.calculationDetails?.appliedAdjustments || [];
+  appliedAdjs.forEach(adj => {
+    const cleanName = adj.reason ? `Adjustment: ${adj.reason}` : `Adjustment (${adj.adjustmentType})`;
+    if (adj.amount > 0 && !isDuplicateEarning(cleanName, adj.amount)) {
+      earningsList.push({ name: cleanName, amount: adj.amount });
+    }
+  });
+
+  // 7. Leave Bonus
+  const leaveBonus = gen.leaveBonusAmount ?? gen.calculationDetails?.leaveBonusAmount ?? 0;
+  if (leaveBonus > 0 && !isDuplicateEarning('Leave Bonus', leaveBonus)) {
+    earningsList.push({ name: 'Leave Bonus', amount: leaveBonus });
+  }
+
+  // 8. Old Balance
+  const oldBalance = gen.oldBalanceAmount ?? gen.calculationDetails?.oldBalanceAmount ?? 0;
+  if (oldBalance > 0 && !isDuplicateEarning('Old Balance Carry Forward', oldBalance)) {
+    earningsList.push({ name: 'Old Balance Carry Forward', amount: oldBalance });
+  }
+
+  // 9. Unallocated earnings check
+  const targetEarnings = gen.totalEarnings || gen.grossSalary || 0;
+  const subtotalEarnings = earningsList.reduce((sum, e) => sum + e.amount, 0);
+  const diffEarnings = targetEarnings - subtotalEarnings;
+  if (diffEarnings > 0.01) {
+    earningsList.push({ name: 'Other Allowances / Earnings', amount: diffEarnings });
+  }
+
+  // ── DEDUCTIONS EXTRACTION ─────────────────────────────────────────
+  const absentCut = gen.absentDeductions ?? gen.calculationDetails?.absentDeductions ?? 0;
+  if (absentCut > 0 && !isDuplicateDeduction('Absent Deduction', absentCut)) {
+    deductionsList.push({ name: 'Absent Deduction', amount: absentCut });
+  }
+
+  const leaveCut = gen.leaveDeductions ?? gen.calculationDetails?.leaveDeductions ?? 0;
+  if (leaveCut > 0 && !isDuplicateDeduction('Excess Leave Deduction', leaveCut)) {
+    deductionsList.push({ name: 'Excess Leave Deduction', amount: leaveCut });
+  }
+
+  const lateCut = gen.lateDeductions ?? gen.calculationDetails?.lateDeductions ?? 0;
+  if (lateCut > 0 && !isDuplicateDeduction('Late Deduction', lateCut)) {
+    deductionsList.push({ name: 'Late Deduction', amount: lateCut });
+  }
+
+  const advanceCut = gen.advanceDeductions ?? gen.calculationDetails?.advanceDeductions ?? 0;
+  if (advanceCut > 0 && !isDuplicateDeduction('Salary Advance Repayment', advanceCut)) {
+    deductionsList.push({ name: 'Salary Advance Repayment', amount: advanceCut });
+  }
+
+  planItems.filter(i => i.itemType === 'deduction').forEach(item => {
+    if (!isDuplicateDeduction(item.name, item.amount)) {
+      deductionsList.push({ name: item.name, amount: item.amount });
+    }
+  });
+
+  const calcDeductions = gen.calculationDetails?.deductions || [];
+  calcDeductions.forEach(ded => {
+    if (!isDuplicateDeduction(ded.name, ded.amount)) {
+      deductionsList.push({ name: ded.name, amount: ded.amount });
+    }
+  });
+
+  genItems.filter(i => i.itemType === 'deduction').forEach(item => {
+    if (!isDuplicateDeduction(item.itemName, item.amount)) {
+      deductionsList.push({ name: item.itemName, amount: item.amount });
+    }
+  });
+
+  adjustments.filter(a => a.type === 'fine' || a.type === 'extra_cut').forEach(adj => {
+    const rawName = adj.name || 'Fine / Cut';
+    if (!isDuplicateDeduction(rawName, adj.amount)) {
+      deductionsList.push({ name: rawName, amount: adj.amount });
+    }
+  });
+
+  const targetDeductions = gen.totalDeductions || 0;
+  const subtotalDeductions = deductionsList.reduce((sum, d) => sum + d.amount, 0);
+  const diffDeductions = targetDeductions - subtotalDeductions;
+  if (diffDeductions > 0.01) {
+    deductionsList.push({ name: 'Other Deductions', amount: diffDeductions });
+  }
+
+  return { earningsList, deductionsList, targetEarnings, targetDeductions };
+};
+
 const PayrollPaymentsList: React.FC = () => {
   const { theme: themeMode } = useContext(ThemeContext);
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
@@ -515,6 +799,19 @@ const PayrollPaymentsList: React.FC = () => {
     remarks: '',
   });
   const [confirmDeletePayment, setConfirmDeletePayment] = useState<PaymentHistoryGroup | null>(null);
+  const [expandedMonthIds, setExpandedMonthIds] = useState<Record<number, boolean>>({});
+  const [selectedGenerationDetails, setSelectedGenerationDetails] = useState<PayrollGeneration | null>(null);
+
+  const breakdownDetails = useMemo(() => {
+    return selectedGenerationDetails ? getBreakdownLists(selectedGenerationDetails) : null;
+  }, [selectedGenerationDetails]);
+
+  const toggleMonthExpand = (generationId: number) => {
+    setExpandedMonthIds(prev => ({
+      ...prev,
+      [generationId]: !prev[generationId],
+    }));
+  };
 
   useEffect(() => {
     if (user?.school_id) {
@@ -933,159 +1230,211 @@ const PayrollPaymentsList: React.FC = () => {
                 <ContentCard>
                   <CardTitle>
                     <div>
-                      <CardHeading>Outstanding Payroll Months</CardHeading>
+                      <CardHeading>Salary Months & Payment History</CardHeading>
                       <CardSubtext>
-                        Amount entered on the right is automatically allocated from the earliest unpaid month to the latest.
+                        Click any salary month to expand its collapsible payment drawer and view individual installments.
                       </CardSubtext>
                     </div>
                   </CardTitle>
 
-                  <TableWrapper>
-                    <StyledTable>
-                      <thead>
-                        <tr>
-                          <th>Month</th>
-                          <th style={{ textAlign: 'right' }}>Net Salary</th>
-                          <th style={{ textAlign: 'right' }}>Bonus</th>
-                          <th style={{ textAlign: 'right' }}>Other Ded.</th>
-                          <th style={{ textAlign: 'right' }}>Paid</th>
-                          <th style={{ textAlign: 'right' }}>Remaining</th>
-                          <th style={{ textAlign: 'right' }}>Pay Now</th>
-                          <th style={{ textAlign: 'right' }}>After Payment</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {allocationPreview.length === 0 ? (
-                          <tr>
-                            <td colSpan={8} style={{ textAlign: 'center', padding: '2rem 1rem' }}>
-                              <div style={{ fontSize: '0.85rem', color: theme.TEXT_SECONDARY }}>
-                                No unpaid or partially paid payroll months found for this employee.
+                  {generationsWithBalance.length === 0 ? (
+                    <EmptyState style={{ padding: '2rem 1rem' }}>
+                      <PaymentIcon />
+                      <h3>No Payroll Generations Found</h3>
+                      <p>Generate salary for this employee first to collect or view payments.</p>
+                    </EmptyState>
+                  ) : (
+                    generationsWithBalance.map((item) => {
+                      const isExpanded = !!expandedMonthIds[item.generation.id];
+                      const statusColor = item.paymentStatus === 'paid' ? '#10b981' : item.paymentStatus === 'partial' ? '#f59e0b' : '#ef4444';
+                      const statusLabel = item.paymentStatus === 'paid' ? 'PAID' : item.paymentStatus === 'partial' ? 'PARTIAL' : 'UNPAID';
+                      const allocatedItem = allocationPreview.find(a => a.generation.id === item.generation.id);
+
+                      return (
+                        <MonthDrawerCard key={item.generation.id} $status={item.paymentStatus} theme={theme}>
+                          <MonthDrawerHeader theme={theme} onClick={() => toggleMonthExpand(item.generation.id)}>
+                            <MonthDrawerLeft>
+                              <StatusBadge style={{
+                                background: item.paymentStatus === 'paid' ? 'rgba(16, 185, 129, 0.15)' : item.paymentStatus === 'partial' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                color: statusColor,
+                                border: `1px solid ${statusColor}40`,
+                                fontWeight: 800,
+                              }}>
+                                {statusLabel}
+                              </StatusBadge>
+                              <div>
+                                <MonthTitle theme={theme}>{formatPeriod(item.generation)}</MonthTitle>
+                                <MonthSubtext theme={theme}>
+                                  {item.generation.planSnapshot?.planName || item.generation.staff?.role || 'Payroll Plan'}
+                                </MonthSubtext>
                               </div>
-                            </td>
-                          </tr>
-                        ) : (
-                          allocationPreview.map((item) => (
-                            <tr key={item.generation.id}>
-                              <td>
-                                <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>{formatPeriod(item.generation)}</div>
-                                <div style={{ fontSize: '0.72rem', color: theme.TEXT_SECONDARY }}>
-                                  {item.generation.planSnapshot?.planName || item.generation.staff?.role || 'Payroll'}
+                            </MonthDrawerLeft>
+
+                            <MonthDrawerRight theme={theme}>
+                              <MonthStatPill
+                                theme={theme}
+                                $bg="rgba(99, 102, 241, 0.08)"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedGenerationDetails(item.generation);
+                                }}
+                                style={{ cursor: 'pointer', border: `1px solid ${theme.ACCENT}40` }}
+                                title="Click to view full salary payroll breakdown & calculation details"
+                              >
+                                <MonthStatLabel theme={theme} style={{ color: theme.ACCENT, display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                  Net Salary 🔍
+                                </MonthStatLabel>
+                                <MonthStatValue theme={theme} $color={theme.ACCENT}>
+                                  {formatCurrency(item.generation.netSalary)}
+                                </MonthStatValue>
+                              </MonthStatPill>
+
+                              <MonthStatPill theme={theme} $bg={item.totalPaid > 0 ? 'rgba(16, 185, 129, 0.08)' : undefined}>
+                                <MonthStatLabel theme={theme}>Paid So Far</MonthStatLabel>
+                                <MonthStatValue $color="#10b981">{formatCurrency(item.totalPaid)}</MonthStatValue>
+                              </MonthStatPill>
+
+                              <MonthStatPill theme={theme} $bg={item.remainingBalance > 0 ? 'rgba(239, 68, 68, 0.08)' : undefined}>
+                                <MonthStatLabel theme={theme}>Remaining</MonthStatLabel>
+                                <MonthStatValue $color={item.remainingBalance > 0 ? '#ef4444' : '#10b981'}>
+                                  {formatCurrency(item.remainingBalance)}
+                                </MonthStatValue>
+                              </MonthStatPill>
+
+                              {allocatedItem && allocatedItem.allocationAmount > 0 && (
+                                <MonthStatPill theme={theme} $bg="rgba(99, 102, 241, 0.12)">
+                                  <MonthStatLabel theme={theme}>Pay Now</MonthStatLabel>
+                                  <MonthStatValue $color={theme.ACCENT}>
+                                    +{formatCurrency(allocatedItem.allocationAmount)}
+                                  </MonthStatValue>
+                                </MonthStatPill>
+                              )}
+
+                              <StatusBadge style={{ background: theme.BG === '#252525' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }}>
+                                {item.payments.length} {item.payments.length === 1 ? 'Installment' : 'Installments'}
+                              </StatusBadge>
+
+                              <IconButton style={{ padding: 4 }}>
+                                {isExpanded ? <CollapseIcon sx={{ fontSize: 20 }} /> : <ExpandIcon sx={{ fontSize: 20 }} />}
+                              </IconButton>
+                            </MonthDrawerRight>
+                          </MonthDrawerHeader>
+
+                          {isExpanded && (
+                            <DrawerBody theme={theme}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
+                                <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: theme.TEXT_PRIMARY }}>
+                                  Payment Installment History for {formatPeriod(item.generation)}
+                                </Typography>
+                                {item.payments.length > 0 && (
+                                  <StatusBadge style={{ fontSize: '0.7rem' }}>
+                                    {item.payments.length} transaction{item.payments.length === 1 ? '' : 's'} recorded
+                                  </StatusBadge>
+                                )}
+                              </div>
+
+                              {item.payments.length === 0 ? (
+                                <div style={{
+                                  padding: '1.25rem 1rem',
+                                  textAlign: 'center',
+                                  color: theme.TEXT_SECONDARY,
+                                  fontSize: '0.8rem',
+                                  background: theme.CARD,
+                                  borderRadius: '8px',
+                                  border: `1px dashed ${theme.BORDER}`,
+                                }}>
+                                  No payment installments recorded for this salary month yet.
                                 </div>
-                              </td>
-                              <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(item.generation.netSalary)}</td>
-                              <td style={{ textAlign: 'right', color: '#10b981', fontSize: '0.75rem' }}>
-                                {(() => {
-                                  const adjustments = item.generation.calculationDetails?.adjustments || [];
-                                  const bonus = adjustments.filter(a => a.type === 'bonus').reduce((sum, a) => sum + a.amount, 0);
-                                  const leaveBonus = item.generation.calculationDetails?.leaveBonusAmount ?? item.generation.leaveBonusAmount ?? 0;
-                                  const totalBonus = bonus + leaveBonus;
-                                  return totalBonus > 0 ? `+${formatCurrency(totalBonus)}` : '-';
-                                })()}
-                              </td>
-                              <td style={{ textAlign: 'right', color: '#ef4444', fontSize: '0.75rem' }}>
-                                {(() => {
-                                  const adjustments = item.generation.calculationDetails?.adjustments || [];
-                                  const fine = adjustments.filter(a => a.type !== 'bonus').reduce((sum, a) => sum + a.amount, 0);
-                                  return fine > 0 ? `-${formatCurrency(fine)}` : '-';
-                                })()}
-                              </td>
-                              <td style={{ textAlign: 'right', color: '#10b981' }}>{formatCurrency(item.totalPaid)}</td>
-                              <td style={{ textAlign: 'right', color: item.remainingBalance > 0 ? '#ef4444' : '#10b981', fontWeight: 600 }}>
-                                {formatCurrency(item.remainingBalance)}
-                              </td>
-                              <td style={{ textAlign: 'right', fontWeight: 700, color: item.allocationAmount > 0 ? theme.ACCENT : theme.TEXT_SECONDARY }}>
-                                {item.allocationAmount > 0 ? formatCurrency(item.allocationAmount) : '-'}
-                              </td>
-                              <td style={{ textAlign: 'right', fontWeight: 600 }}>
-                                {formatCurrency(item.balanceAfterAllocation)}
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </StyledTable>
-                  </TableWrapper>
+                              ) : (
+                                item.payments.map((payment) => {
+                                  const matchingGroup = paymentHistory.find(g => g.paymentIds.includes(payment.id));
+                                  const renderModeIcon = () => {
+                                    switch (payment.paymentMode) {
+                                      case 'cash': return <CashIcon style={{ fontSize: 14, color: '#10b981' }} />;
+                                      case 'bank_transfer': return <BankIcon style={{ fontSize: 14, color: '#6366f1' }} />;
+                                      case 'cheque': return <ChequeIcon style={{ fontSize: 14, color: '#f59e0b' }} />;
+                                      case 'easypaisa_jazzcash': return <MobileIcon style={{ fontSize: 14, color: '#0ea5e9' }} />;
+                                      default: return <PaymentIcon style={{ fontSize: 14 }} />;
+                                    }
+                                  };
 
-                  <InlineSection>
-                    <CardTitle style={{ marginBottom: '0.7rem' }}>
-                      <div>
-                        <CardHeading style={{ fontSize: '0.88rem' }}>Recent Payment History</CardHeading>
-                        <CardSubtext>Compact history for the selected employee.</CardSubtext>
-                      </div>
-                      <HistoryIcon sx={{ color: theme.TEXT_SECONDARY, fontSize: 18 }} />
-                    </CardTitle>
+                                  return (
+                                    <PaymentItemRow key={payment.id} theme={theme}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                        <StatusBadge style={{ textTransform: 'capitalize', gap: '4px' }}>
+                                          {renderModeIcon()}
+                                          {payment.paymentMode.replace(/_/g, ' ')}
+                                        </StatusBadge>
 
-                    <TableWrapper>
-                      <StyledTable>
-                        <thead>
-                          <tr>
-                            <th>Date</th>
-                            <th>Salary Months</th>
-                            <th style={{ textAlign: 'right' }}>Amount</th>
-                            <th>Mode</th>
-                            <th style={{ textAlign: 'right' }}>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {paymentHistory.length === 0 ? (
-                            <tr>
-                              <td colSpan={5} style={{ textAlign: 'center', padding: '1.25rem 1rem', color: theme.TEXT_SECONDARY }}>
-                                No payroll payments recorded yet.
-                              </td>
-                            </tr>
-                          ) : (
-                            paymentHistory.slice(0, 8).map((payment) => (
-                              <tr key={payment.key}>
-                                <td style={{ whiteSpace: 'nowrap' }}>{formatPayrollDate(payment.paymentDate)}</td>
-                                <td>
-                                  <div style={{ fontWeight: 600, fontSize: '0.79rem' }}>
-                                    {payment.periods.length > 1
-                                      ? `${payment.periods[0]} to ${payment.periods[payment.periods.length - 1]}`
-                                      : payment.periods[0]}
-                                  </div>
-                                  <div style={{ fontSize: '0.7rem', color: theme.TEXT_SECONDARY }}>
-                                    {payment.periods.length > 1 ? `${payment.periods.length} months combined` : 'Single month'}
-                                  </div>
-                                </td>
-                                <td style={{ textAlign: 'right', fontWeight: 700, color: '#10b981' }}>
-                                  {formatCurrency(payment.amount)}
-                                </td>
-                                <td>
-                                  <StatusBadge>{payment.paymentMode.replace(/_/g, ' ')}</StatusBadge>
-                                </td>
-                                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                                  <Box display="flex" justifyContent="flex-end" gap={0.5}>
-                                    <IconButton
-                                      onClick={() => handleOpenEditPayment(payment)}
-                                      title="Edit Payment"
-                                      style={{ color: theme.ACCENT }}
-                                    >
-                                      <EditIcon style={{ fontSize: '0.9rem' }} />
-                                    </IconButton>
-                                    <IconButton
-                                      onClick={() => handleDownloadReceipt(payment.paymentIds)}
-                                      title="Download Receipt"
-                                      style={{ color: theme.ACCENT }}
-                                    >
-                                      <PictureAsPdfIcon style={{ fontSize: '0.9rem' }} />
-                                    </IconButton>
-                                    <IconButton
-                                      onClick={() => handleDeletePaymentClick(payment)}
-                                      title="Delete Payment"
-                                      disabled={deletingPaymentId === payment.paymentIds[0]}
-                                      style={{ color: '#ef4444' }}
-                                    >
-                                      <DeleteIcon style={{ fontSize: '0.9rem' }} />
-                                    </IconButton>
-                                  </Box>
-                                </td>
-                              </tr>
-                            ))
+                                        <div>
+                                          <div style={{ fontSize: '0.82rem', fontWeight: 600, color: theme.TEXT_PRIMARY }}>
+                                            {formatPayrollDate(payment.paymentDate)}
+                                          </div>
+                                          <div style={{ fontSize: '0.72rem', color: theme.TEXT_SECONDARY, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                            {payment.referenceNo ? <span>Ref: <b>{payment.referenceNo}</b></span> : <span>No Reference</span>}
+                                            {payment.remarks && (
+                                              <span style={{
+                                                background: theme.BG === '#252525' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+                                                padding: '1px 6px',
+                                                borderRadius: '4px',
+                                                fontSize: '0.68rem',
+                                              }}>
+                                                💬 {payment.remarks}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                        <div style={{ textAlign: 'right' }}>
+                                          <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#10b981' }}>
+                                            +{formatCurrency(payment.amount)}
+                                          </div>
+                                          <div style={{ fontSize: '0.68rem', color: theme.TEXT_SECONDARY }}>
+                                            Installment Paid
+                                          </div>
+                                        </div>
+
+                                        <Box display="flex" gap={0.5}>
+                                          <IconButton
+                                            onClick={() => handleDownloadReceipt([payment.id])}
+                                            title="Download Receipt"
+                                            style={{ color: theme.ACCENT }}
+                                          >
+                                            <PictureAsPdfIcon style={{ fontSize: '0.9rem' }} />
+                                          </IconButton>
+                                          {matchingGroup && (
+                                            <>
+                                              <IconButton
+                                                onClick={() => handleOpenEditPayment(matchingGroup)}
+                                                title="Edit Payment"
+                                                style={{ color: theme.ACCENT }}
+                                              >
+                                                <EditIcon style={{ fontSize: '0.9rem' }} />
+                                              </IconButton>
+                                              <IconButton
+                                                onClick={() => handleDeletePaymentClick(matchingGroup)}
+                                                title="Delete Payment"
+                                                disabled={deletingPaymentId === payment.id}
+                                                style={{ color: '#ef4444' }}
+                                              >
+                                                <DeleteIcon style={{ fontSize: '0.9rem' }} />
+                                              </IconButton>
+                                            </>
+                                          )}
+                                        </Box>
+                                      </div>
+                                    </PaymentItemRow>
+                                  );
+                                })
+                              )}
+                            </DrawerBody>
                           )}
-                        </tbody>
-                      </StyledTable>
-                    </TableWrapper>
-                  </InlineSection>
+                        </MonthDrawerCard>
+                      );
+                    })
+                  )}
                 </ContentCard>
 
                 <ContentCard>
@@ -1367,6 +1716,134 @@ const PayrollPaymentsList: React.FC = () => {
                   <DeleteIcon style={{ fontSize: 16 }} />
                 )}
                 Yes, Delete Payment
+              </EditButton>
+            </EditModalFooter>
+          </EditModalCard>
+        </EditModalOverlay>,
+        document.body
+      )}
+
+      {selectedGenerationDetails && breakdownDetails && ReactDOM.createPortal(
+        <EditModalOverlay theme={theme} onClick={() => setSelectedGenerationDetails(null)}>
+          <EditModalCard theme={theme} style={{ maxWidth: '620px' }} onClick={(e) => e.stopPropagation()}>
+            <EditModalHeader theme={theme}>
+              <EditModalTitle theme={theme}>
+                <ReceiptIcon style={{ fontSize: 22, color: theme.ACCENT }} />
+                Salary Payroll Details ({formatPeriod(selectedGenerationDetails)})
+              </EditModalTitle>
+              <IconButton onClick={() => setSelectedGenerationDetails(null)} title="Close">
+                <CloseIcon style={{ fontSize: '0.95rem' }} />
+              </IconButton>
+            </EditModalHeader>
+
+            <EditModalBody theme={theme}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.65rem', borderBottom: `1px solid ${theme.BORDER}` }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.95rem', color: theme.TEXT_PRIMARY }}>
+                    {selectedGenerationDetails.staff?.name || selectedStaff?.name || 'Employee'}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: theme.TEXT_SECONDARY }}>
+                    Role: {selectedGenerationDetails.staff?.role || selectedStaff?.role || 'Staff'} • Plan: {selectedGenerationDetails.planSnapshot?.planName || 'Standard Payroll'}
+                  </div>
+                </div>
+                <StatusBadge style={{
+                  background: selectedGenerationDetails.status === 'paid' ? 'rgba(16,185,129,0.15)' : 'rgba(99,102,241,0.15)',
+                  color: selectedGenerationDetails.status === 'paid' ? '#10b981' : theme.ACCENT,
+                  fontWeight: 700,
+                }}>
+                  Status: {selectedGenerationDetails.status.toUpperCase()}
+                </StatusBadge>
+              </div>
+
+              {selectedGenerationDetails.attendanceData?.summary && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', marginTop: '0.65rem' }}>
+                  <MiniStat theme={theme}>
+                    <MiniLabel theme={theme}>Working Days</MiniLabel>
+                    <MiniValue theme={theme}>{selectedGenerationDetails.attendanceData.summary.workingDays}</MiniValue>
+                  </MiniStat>
+                  <MiniStat theme={theme}>
+                    <MiniLabel theme={theme}>Present Days</MiniLabel>
+                    <MiniValue $color="#10b981">{selectedGenerationDetails.attendanceData.summary.presentDays}</MiniValue>
+                  </MiniStat>
+                  <MiniStat theme={theme}>
+                    <MiniLabel theme={theme}>Absent Days</MiniLabel>
+                    <MiniValue $color="#ef4444">{selectedGenerationDetails.attendanceData.summary.absentDays}</MiniValue>
+                  </MiniStat>
+                  <MiniStat theme={theme}>
+                    <MiniLabel theme={theme}>Leave Days</MiniLabel>
+                    <MiniValue $color="#f59e0b">{selectedGenerationDetails.attendanceData.summary.leaveDays}</MiniValue>
+                  </MiniStat>
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem', marginTop: '0.75rem' }}>
+                <div style={{ background: theme.BG === '#252525' ? 'rgba(16,185,129,0.06)' : 'rgba(16,185,129,0.04)', padding: '0.85rem', borderRadius: '10px', border: '1px solid rgba(16,185,129,0.2)' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#10b981', marginBottom: '0.5rem', borderBottom: '1px solid rgba(16,185,129,0.2)', paddingBottom: '0.25rem' }}>
+                    ➕ Gross Earnings Breakdown
+                  </div>
+                  {breakdownDetails.earningsList.map((item, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', padding: '0.18rem 0', color: theme.TEXT_PRIMARY }}>
+                      <span>{item.name}:</span>
+                      <span style={{ fontWeight: 600, color: '#10b981' }}>+{formatCurrency(item.amount)}</span>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 700, paddingTop: '0.4rem', marginTop: '0.4rem', borderTop: '1px solid rgba(16,185,129,0.3)', color: '#10b981' }}>
+                    <span>Total Earnings:</span>
+                    <span>{formatCurrency(breakdownDetails.targetEarnings)}</span>
+                  </div>
+                </div>
+
+                <div style={{ background: theme.BG === '#252525' ? 'rgba(239,68,68,0.06)' : 'rgba(239,68,68,0.04)', padding: '0.85rem', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.2)' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#ef4444', marginBottom: '0.5rem', borderBottom: '1px solid rgba(239,68,68,0.2)', paddingBottom: '0.25rem' }}>
+                    ➖ Deductions Breakdown
+                  </div>
+                  {breakdownDetails.deductionsList.length === 0 ? (
+                    <div style={{ fontSize: '0.78rem', color: theme.TEXT_SECONDARY, padding: '0.3rem 0' }}>
+                      No deductions recorded for this month.
+                    </div>
+                  ) : (
+                    breakdownDetails.deductionsList.map((item, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', padding: '0.18rem 0', color: theme.TEXT_PRIMARY }}>
+                        <span>{item.name}:</span>
+                        <span style={{ fontWeight: 600, color: '#ef4444' }}>-{formatCurrency(item.amount)}</span>
+                      </div>
+                    ))
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 700, paddingTop: '0.4rem', marginTop: '0.4rem', borderTop: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}>
+                    <span>Total Deductions:</span>
+                    <span>-{formatCurrency(breakdownDetails.targetDeductions)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{
+                marginTop: '0.85rem',
+                padding: '0.75rem 0.9rem',
+                borderRadius: '10px',
+                background: theme.BG === '#252525' ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.08)',
+                border: `1px solid ${theme.ACCENT}40`,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}>
+                <div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: theme.TEXT_SECONDARY }}>
+                    Net Payable Salary
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: theme.TEXT_SECONDARY }}>
+                    Calculated for {formatPeriod(selectedGenerationDetails)}
+                  </div>
+                </div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: theme.ACCENT }}>
+                  {formatCurrency(selectedGenerationDetails.netSalary)}
+                </div>
+              </div>
+            </EditModalBody>
+
+            <EditModalFooter theme={theme}>
+              <EditButton type="button" $variant="secondary" onClick={() => setSelectedGenerationDetails(null)}>
+                <CloseIcon style={{ fontSize: 16 }} />
+                Close Breakdown
               </EditButton>
             </EditModalFooter>
           </EditModalCard>

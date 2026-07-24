@@ -9,7 +9,7 @@ import { useToast } from '../components/useToast';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import { styled as muiStyled } from '@mui/material/styles';
 import { format } from 'date-fns';
-import { App as CapacitorApp } from '@capacitor/app';
+const CapacitorApp: any = null;
 import { isWeb as checkIsWeb } from '../utils/platformDetection';
 import Loader from '../components/Loader';
 import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';

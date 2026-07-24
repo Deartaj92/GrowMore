@@ -61,8 +61,28 @@ async function withFetchOverride<T>(
             : (input as Request).url;
 
         const isModelFile = url.includes('/models/') || url.includes('cdn.jsdelivr.net');
-        const finalUrl = url;
 
+        if (isModelFile && !forceReload && typeof caches !== 'undefined') {
+            try {
+                const cache = await caches.open('face-api-models-cache');
+                const cachedResponse = await cache.match(url);
+                if (cachedResponse) {
+                    const blob = await cachedResponse.blob();
+                    const fileName = url.substring(url.lastIndexOf('/') + 1);
+                    loadedBytesMap.set(fileName, blob.size);
+                    updateCombinedProgress();
+                    return new Response(blob, {
+                        headers: cachedResponse.headers,
+                        status: cachedResponse.status,
+                        statusText: cachedResponse.statusText,
+                    });
+                }
+            } catch (cacheErr) {
+                console.warn('[faceapi] Cache Storage match failed:', cacheErr);
+            }
+        }
+
+        const finalUrl = url;
         const finalInput = typeof input === 'string' ? finalUrl
             : input instanceof URL ? new URL(finalUrl)
             : new Request(finalUrl, input as Request);
@@ -79,6 +99,20 @@ async function withFetchOverride<T>(
         // Fetch the body once as a Blob to read size instantly, updating progress,
         // and reconstruct a clean, fast native Response object.
         const blob = await response.blob();
+
+        if (isModelFile && typeof caches !== 'undefined') {
+            try {
+                const cache = await caches.open('face-api-models-cache');
+                await cache.put(url, new Response(blob.slice(), {
+                    headers: response.headers,
+                    status: response.status,
+                    statusText: response.statusText,
+                }));
+            } catch (cacheErr) {
+                console.warn('[faceapi] Cache Storage put failed:', cacheErr);
+            }
+        }
+
         const fileName = url.substring(url.lastIndexOf('/') + 1);
         loadedBytesMap.set(fileName, blob.size);
         updateCombinedProgress();

@@ -1,4 +1,3 @@
-import { Capacitor } from '@capacitor/core';
 import { supabase } from '../supabaseClient';
 import {
     buildRfidUidCandidates,
@@ -39,6 +38,7 @@ export interface RFIDMapping {
     status?: string;
     face_embedding?: string | number[] | Float32Array | null;
     face_embedding_dim?: number;
+    qr_uid?: string | null;
 }
 
 export interface QueuedScan {
@@ -122,34 +122,7 @@ class RFIDOfflineService {
         settings?: any,
         sessionId?: number | null
     ): Promise<void> {
-        try {
-            const { Capacitor } = await import('@capacitor/core');
-            if (!Capacitor.isNativePlatform()) return;
-
-            const { Preferences } = await import('@capacitor/preferences');
-            if (!Preferences) return;
-
-            await Preferences.set({
-                key: `${NATIVE_RFID_CACHE_PREFIX}${schoolId}`,
-                value: JSON.stringify(mappings),
-            });
-
-            if (settings) {
-                await Preferences.set({
-                    key: `${NATIVE_ATTN_SETTINGS_PREFIX}${schoolId}`,
-                    value: JSON.stringify(settings),
-                });
-            }
-
-            if (sessionId) {
-                await Preferences.set({
-                    key: `${NATIVE_ACTIVE_SESSION_PREFIX}${schoolId}`,
-                    value: String(sessionId),
-                });
-            }
-        } catch (error) {
-            console.warn('Failed to persist native RFID background cache:', error);
-        }
+        // No-op on web-only website
     }
 
     private persistWebFallbackMappings(schoolId: string, mappings: RFIDMapping[]): void {
@@ -173,19 +146,7 @@ class RFIDOfflineService {
     }
 
     private async readNativeFallbackMappings(schoolId: string): Promise<RFIDMapping[]> {
-        try {
-            if (!Capacitor.isNativePlatform()) return [];
-
-            const { Preferences } = await import('@capacitor/preferences');
-            const { value } = await Preferences.get({ key: `${NATIVE_RFID_CACHE_PREFIX}${schoolId}` });
-            if (!value) return [];
-
-            const parsed = JSON.parse(value);
-            return Array.isArray(parsed) ? parsed : [];
-        } catch (error) {
-            console.warn('Failed to read native RFID fallback cache:', error);
-            return [];
-        }
+        return [];
     }
 
     private async replaceIndexedDbMappings(mappings: RFIDMapping[]): Promise<void> {
@@ -244,20 +205,7 @@ class RFIDOfflineService {
         date: string,
         historyItems: CachedAttendanceHistoryItem[]
     ): Promise<void> {
-        try {
-            const { Capacitor } = await import('@capacitor/core');
-            if (!Capacitor.isNativePlatform()) return;
-
-            const { Preferences } = await import('@capacitor/preferences');
-            if (!Preferences) return;
-
-            await Preferences.set({
-                key: `${NATIVE_DAILY_HISTORY_PREFIX}${schoolId}_${date}`,
-                value: JSON.stringify(historyItems),
-            });
-        } catch (error) {
-            console.warn('Failed to persist native RFID daily history cache:', error);
-        }
+        // No-op on web-only website
     }
 
     private buildDailyHistoryKey(
@@ -294,12 +242,6 @@ class RFIDOfflineService {
     }
 
     private getRuntimePlatform(): RuntimePlatform {
-        if (typeof window !== 'undefined' && window.electronAPI) {
-            return 'electron';
-        }
-        if (Capacitor.isNativePlatform()) {
-            return 'mobile';
-        }
         return 'web';
     }
 
@@ -531,7 +473,7 @@ class RFIDOfflineService {
         };
     }
 
-    private async getDB(): Promise<IDBDatabase> {
+    public async getDB(): Promise<IDBDatabase> {
         if (this.db) return this.db;
 
         return new Promise((resolve, reject) => {
@@ -1718,6 +1660,7 @@ class RFIDOfflineService {
         targetDate: string | undefined,
         cleanUID: string,
         platform: RuntimePlatform,
+        forceOffline: boolean = false,
     ): Promise<{ success: boolean; person: RFIDMapping | null; type: MarkResultType; attendance_status?: string; recorded_time?: string }> {
         const effectiveAttendanceMode = this.normalizeAttendanceMode(resolvedPerson.attendance_mode, true);
 
@@ -1788,7 +1731,7 @@ class RFIDOfflineService {
                 recorded_time?: string;
             };
 
-            if (navigator.onLine) {
+            if (navigator.onLine && !forceOffline) {
                 // ── ONLINE PATH: always query the DB directly for current attendance state ──
                 // This prevents stale local cache from causing wrong checkout/checkin decisions.
                 const serverResult = await this.applyScanToServer({
@@ -1889,13 +1832,14 @@ class RFIDOfflineService {
         person: RFIDMapping,
         schoolId: number,
         targetDate?: string,
+        forceOffline: boolean = false,
     ): Promise<{ success: boolean; person: RFIDMapping | null; type: MarkResultType; attendance_status?: string; recorded_time?: string }> {
         const platform = this.getRuntimePlatform();
         let cleanUID = sanitizeRfidUid(person.rfid_uid);
         if (cleanUID.length < 4) {
             cleanUID = this.buildSyntheticFaceQueueUid(person.person_id);
         }
-        return this.runAttendancePipelineAfterIdentification(person, schoolId, targetDate, cleanUID, platform);
+        return this.runAttendancePipelineAfterIdentification(person, schoolId, targetDate, cleanUID, platform, forceOffline);
     }
 }
 

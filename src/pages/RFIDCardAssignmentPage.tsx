@@ -542,6 +542,8 @@ const RFIDCardAssignmentPage: React.FC = () => {
     const accumulatedDescriptorsRef = useRef<Float32Array[]>([]);
     const allEnrolledCacheRef = useRef<{ id: number; name: string; table: 'students' | 'staff'; descriptor: Float32Array }[]>([]);
     const [dupMatchName, setDupMatchName] = useState<string | null>(null);
+    const enrollSocketRef = useRef<WebSocket | null>(null);
+    const [nativeEnrollFrame, setNativeEnrollFrame] = useState<string | null>(null);
 
     const [isNfcSupported, setIsNfcSupported] = useState(false);
     const [isNfcScanning, setIsNfcScanning] = useState(false);
@@ -576,52 +578,149 @@ const RFIDCardAssignmentPage: React.FC = () => {
     // ─── Face Enrollment Helpers ─────────────────────────────────────────────────
     const ENROLL_REQUIRED_FRAMES = 5;
 
-    const startEnrollLoop = useCallback((currentPersonId: number, currentPersonType: 'student' | 'employee') => {
-        if (enrollLoopRef.current) clearTimeout(enrollLoopRef.current);
+    const normalizeDescriptor = (arr: Float32Array): Float32Array => {
+        let sum = 0;
+        for (let i = 0; i < arr.length; i++) sum += arr[i] * arr[i];
+        const norm = Math.sqrt(sum);
+        if (norm === 0) return arr;
+        const res = new Float32Array(arr.length);
+        for (let i = 0; i < arr.length; i++) res[i] = arr[i] / norm;
+        return res;
+    };
+
+    const stopEnrollCamera = useCallback(() => {
+        setIsEnrollCameraActive(false);
+        setNativeEnrollFrame(null);
+        setDetectedEnrollDescriptor(null);
+        setEnrollFaceBox(null);
+        setDupMatchName(null);
+        setStableFrameCount(0);
         stableFrameCountRef.current = 0;
         accumulatedDescriptorsRef.current = [];
-        setStableFrameCount(0);
-        setDetectedEnrollDescriptor(null);
-        const DUPE_THRESHOLD = 0.50;
-        const STABILITY_THRESHOLD = 0.12; // max distance between consecutive descriptors to count as 'stable'
-
-        const runDetection = async () => {
-            if (!enrollVideoRef.current || !enrollStreamRef.current || !enrollVideoRef.current.srcObject) return;
-            if (enrollVideoRef.current.readyState < 2) {
-                if (enrollStreamRef.current && enrollStreamRef.current.active) {
-                    enrollLoopRef.current = setTimeout(runDetection, 200);
-                }
-                return;
-            }
-            const startTime = Date.now();
+        if (enrollSocketRef.current) {
             try {
-                const detection = await faceapi.detectSingleFace(
-                    enrollVideoRef.current,
-                    new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.65 })
-                ).withFaceLandmarks().withFaceDescriptor();
-                if (detection) {
-                    const descriptor = detection.descriptor;
-                    const box = detection.detection.box;
-                    const vW = enrollVideoRef.current.videoWidth || 640;
-                    const vH = enrollVideoRef.current.videoHeight || 480;
-                    const dW = enrollVideoRef.current.clientWidth || 320;
-                    const dH = enrollVideoRef.current.clientHeight || 240;
-                    const scaleX = dW / vW; const scaleY = dH / vH;
-                    setEnrollFaceBox({
-                        x: dW - (box.x + box.width) * scaleX,
-                        y: box.y * scaleY,
-                        width: box.width * scaleX,
-                        height: box.height * scaleY,
-                    });
+                enrollSocketRef.current.send(JSON.stringify({ action: 'stop_camera' }));
+            } catch (e) {}
+            try {
+                enrollSocketRef.current.close();
+            } catch (e) {}
+            enrollSocketRef.current = null;
+        }
+        if (enrollLoopRef.current) {
+            clearTimeout(enrollLoopRef.current);
+            enrollLoopRef.current = null;
+        }
+    }, []);
 
-                    // ── Multi-frame stability check ──
+    const startEnrollCamera = useCallback(async (deviceId?: string, personId?: number, personType?: 'student' | 'employee') => {
+        setEnrollCameraError('');
+        setEnrollModelsLoading(true);
+        setDupMatchName(null);
+        setNativeEnrollFrame(null);
+
+        // Stop any running camera first
+        if (enrollSocketRef.current) {
+            try { enrollSocketRef.current.close(); } catch (e) {}
+            enrollSocketRef.current = null;
+        }
+
+        // Enumerate video devices so we have camera labels and indices
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(d => d.kind === 'videoinput');
+            setEnrollCameras(videoDevices);
+        } catch (e) {
+            console.warn('Could not enumerate cameras in browser:', e);
+        }
+
+        const ws = new WebSocket('ws://localhost:8000');
+        enrollSocketRef.current = ws;
+
+        ws.onopen = async () => {
+            console.log('Connected to native face server for enrollment.');
+            setEnrollModelsLoading(false);
+            setIsEnrollCameraActive(true);
+
+            // Pre-load all enrolled embeddings into cache for live duplicate check (completely offline)
+            if (user?.school_id) {
+                const localMappings = await rfidOfflineService.getAllMappings();
+                allEnrolledCacheRef.current = localMappings
+                    .filter(m => m.face_embedding)
+                    .map(m => {
+                        const d = parseFaceEmbedding(m.face_embedding);
+                        return d ? {
+                            id: m.person_id as number,
+                            name: m.name,
+                            table: (m.type === 'student' ? 'students' : 'staff') as 'students' | 'staff',
+                            descriptor: d
+                        } : null;
+                    })
+                    .filter((item): item is NonNullable<typeof item> => item !== null);
+            }
+
+            // Sync face mapping embeddings to python server
+            const formattedMappings = allEnrolledCacheRef.current.map(item => ({
+                person_id: item.id,
+                name: item.name,
+                type: item.table === 'students' ? 'student' : 'employee',
+                face_embedding: Array.from(item.descriptor)
+            }));
+
+            ws.send(JSON.stringify({
+                action: 'update_mappings',
+                mappings: formattedMappings,
+                threshold: 0.50
+            }));
+
+            // Determine index of chosen camera input
+            let camIdx = 0;
+            const targetId = deviceId || selectedEnrollCameraId;
+            if (targetId) {
+                const idx = enrollCameras.findIndex(c => c.deviceId === targetId);
+                if (idx >= 0) camIdx = idx;
+            }
+            ws.send(JSON.stringify({
+                action: 'start_camera',
+                camera_index: camIdx
+            }));
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.event === 'frame') {
+                    setNativeEnrollFrame(data.image);
+                } else if (data.event === 'faces_detected' && data.faces && data.faces.length > 0) {
+                    // Extract the first detected face
+                    const face = data.faces[0];
+                    const descriptor = new Float32Array(face.descriptor);
+                    setEnrollFaceBox(face.box);
+
+                    if (stableFrameCountRef.current >= ENROLL_REQUIRED_FRAMES) {
+                        // Already locked! Skip further stability checks to prevent flickering resets
+                        if (enrollLoopRef.current) clearTimeout(enrollLoopRef.current);
+                        enrollLoopRef.current = setTimeout(() => {
+                            setEnrollFaceBox(null);
+                            stableFrameCountRef.current = 0;
+                            accumulatedDescriptorsRef.current = [];
+                            setStableFrameCount(0);
+                            setDetectedEnrollDescriptor(null);
+                        }, 1200);
+                        return;
+                    }
+
+                    // Multi-frame stability check using normalized vectors on-the-fly
                     const prev = accumulatedDescriptorsRef.current;
+                    const STABILITY_THRESHOLD = 0.15; // Strict and robust for normalized vectors
                     let isStable = true;
                     if (prev.length > 0) {
                         const lastDesc = prev[prev.length - 1];
-                        const dist = calculateEuclideanDistance(descriptor, lastDesc);
+                        const dist = calculateEuclideanDistance(
+                            normalizeDescriptor(descriptor),
+                            normalizeDescriptor(lastDesc)
+                        );
+                        console.log('[SFace Enrollment] Normalized consecutive L2 distance:', dist);
                         if (dist > STABILITY_THRESHOLD) {
-                            // Face moved too much — reset
                             isStable = false;
                             stableFrameCountRef.current = 0;
                             accumulatedDescriptorsRef.current = [];
@@ -636,7 +735,6 @@ const RFIDCardAssignmentPage: React.FC = () => {
                         setStableFrameCount(stableFrameCountRef.current);
 
                         if (stableFrameCountRef.current >= ENROLL_REQUIRED_FRAMES) {
-                            // Average all accumulated descriptors for best quality
                             const all = accumulatedDescriptorsRef.current;
                             const averaged = new Float32Array(descriptor.length);
                             for (let i = 0; i < descriptor.length; i++) {
@@ -646,94 +744,60 @@ const RFIDCardAssignmentPage: React.FC = () => {
                         }
                     }
 
-                    // ── Live duplicate check ──
+                    // Live duplicate check using normalized vectors on-the-fly
                     if (stableFrameCountRef.current >= ENROLL_REQUIRED_FRAMES) {
                         let foundDupe: string | null = null;
+                        const currentPersonId = personId ?? 0;
+                        const currentPersonType = personType ?? 'student';
                         for (const enrolled of allEnrolledCacheRef.current) {
                             const isSelf =
                                 (currentPersonType === 'student' && enrolled.table === 'students' && enrolled.id === currentPersonId) ||
                                 (currentPersonType !== 'student' && enrolled.table === 'staff' && enrolled.id === currentPersonId);
                             if (isSelf) continue;
-                            const dist = calculateEuclideanDistance(descriptor, enrolled.descriptor);
-                            if (dist < DUPE_THRESHOLD) { foundDupe = enrolled.name; break; }
+                            const dist = calculateEuclideanDistance(
+                                normalizeDescriptor(descriptor),
+                                normalizeDescriptor(enrolled.descriptor)
+                            );
+                            if (dist < 0.45) { foundDupe = enrolled.name; break; }
                         }
                         setDupMatchName(foundDupe);
                     } else {
                         setDupMatchName(null);
                     }
-                } else {
-                    // No face — reset stability
-                    stableFrameCountRef.current = 0;
-                    accumulatedDescriptorsRef.current = [];
-                    setStableFrameCount(0);
-                    setDetectedEnrollDescriptor(null);
-                    setEnrollFaceBox(null);
-                    setDupMatchName(null);
+
+                    // Reset fadeout timer
+                    if (enrollLoopRef.current) clearTimeout(enrollLoopRef.current);
+                    enrollLoopRef.current = setTimeout(() => {
+                        // Clear box and stability if no faces seen for 1.2 seconds
+                        setEnrollFaceBox(null);
+                        stableFrameCountRef.current = 0;
+                        accumulatedDescriptorsRef.current = [];
+                        setStableFrameCount(0);
+                        setDetectedEnrollDescriptor(null);
+                    }, 1200);
+
+                } else if (data.event === 'camera_error') {
+                    setEnrollCameraError(data.message || 'Local camera device could not be opened.');
+                    setIsEnrollCameraActive(false);
                 }
-            } catch { /* ignore */ }
-            const elapsed = Date.now() - startTime;
-            if (enrollStreamRef.current && enrollStreamRef.current.active) {
-                enrollLoopRef.current = setTimeout(runDetection, Math.max(300 - elapsed, 0));
+            } catch (err) {
+                console.error('Error parsing native message during enrollment:', err);
             }
         };
-        enrollLoopRef.current = setTimeout(runDetection, 300);
-    }, []);
 
-    const stopEnrollCamera = useCallback(() => {
-        setIsEnrollCameraActive(false);
-        setDetectedEnrollDescriptor(null);
-        setEnrollFaceBox(null);
-        setDupMatchName(null);
-        setStableFrameCount(0);
-        stableFrameCountRef.current = 0;
-        accumulatedDescriptorsRef.current = [];
-        if (enrollLoopRef.current) { clearTimeout(enrollLoopRef.current); enrollLoopRef.current = null; }
-        if (enrollStreamRef.current) { enrollStreamRef.current.getTracks().forEach(t => t.stop()); enrollStreamRef.current = null; }
-        if (enrollVideoRef.current) { enrollVideoRef.current.srcObject = null; }
-    }, []);
+        ws.onerror = (err) => {
+            console.error('WebSocket error during enrollment:', err);
+            setEnrollCameraError('Native server connection failed. Please ensure the local server script "python face_scanner_server.py" is running on your machine.');
+            setEnrollModelsLoading(false);
+            setIsEnrollCameraActive(false);
+        };
 
-    const startEnrollCamera = useCallback(async (deviceId?: string, personId?: number, personType?: 'student' | 'employee') => {
-        setEnrollCameraError('');
-        setEnrollModelsLoading(true);
-        setDupMatchName(null);
-        try { await loadFaceRecognitionModels(); } catch { setEnrollCameraError('Failed to load AI models'); setEnrollModelsLoading(false); return; }
-        setEnrollModelsLoading(false);
-        try {
-            if (enrollStreamRef.current) enrollStreamRef.current.getTracks().forEach(t => t.stop());
-            const irDevice = await getIRCameraDevice();
-            const targetId = deviceId || selectedEnrollCameraId || irDevice?.deviceId;
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: targetId ? { deviceId: { exact: targetId }, width: { ideal: 640 }, height: { ideal: 480 } } : { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
-            });
-            enrollStreamRef.current = stream;
-            if (enrollVideoRef.current) enrollVideoRef.current.srcObject = stream;
-            setIsEnrollCameraActive(true);
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = devices.filter(d => d.kind === 'videoinput');
-            setEnrollCameras(videoDevices);
-            if (targetId) setSelectedEnrollCameraId(targetId);
-
-            // Pre-load all enrolled embeddings into cache for live duplicate check
-            if (user?.school_id) {
-                const [studRes, staffRes] = await Promise.all([
-                    supabase.from('students').select('id, name, face_embedding').eq('school_id', user.school_id).not('face_embedding', 'is', null),
-                    supabase.from('staff').select('id, name, face_embedding').eq('school_id', user.school_id).not('face_embedding', 'is', null),
-                ]);
-                allEnrolledCacheRef.current = [
-                    ...(studRes.data || []).flatMap(r => {
-                        const d = parseFaceEmbedding(r.face_embedding);
-                        return d ? [{ id: r.id, name: r.name, table: 'students' as const, descriptor: d }] : [];
-                    }),
-                    ...(staffRes.data || []).flatMap(r => {
-                        const d = parseFaceEmbedding(r.face_embedding);
-                        return d ? [{ id: r.id, name: r.name, table: 'staff' as const, descriptor: d }] : [];
-                    }),
-                ];
-            }
-
-            startEnrollLoop(personId ?? 0, personType ?? 'student');
-        } catch { setEnrollCameraError('Could not access camera device.'); }
-    }, [startEnrollLoop, selectedEnrollCameraId, user?.school_id]);
+        ws.onclose = () => {
+            console.log('Enrollment WebSocket closed.');
+            setIsEnrollCameraActive(false);
+            setNativeEnrollFrame(null);
+        };
+    }, [selectedEnrollCameraId, user?.school_id, enrollCameras]);
 
     const saveEnrolledFace = useCallback(async () => {
         if (!selectedEnrollPerson || !detectedEnrollDescriptor || !user?.school_id || dupMatchName) return;
@@ -741,12 +805,52 @@ const RFIDCardAssignmentPage: React.FC = () => {
         try {
             const hexEmbedding = float32ArrayToHex(detectedEnrollDescriptor);
             const table = selectedEnrollPerson.type === 'student' ? 'students' : 'staff';
-            const { error } = await supabase
-                .from(table)
-                .update({ face_embedding: hexEmbedding, face_embedding_dim: 128 })
-                .eq('id', selectedEnrollPerson.person_id)
-                .eq('school_id', user.school_id);
-            if (error) throw error;
+            
+            // 1. Save to local IndexedDB mappings immediately so it works offline
+            try {
+                const db = await rfidOfflineService.getDB();
+                await new Promise<void>((resolve, reject) => {
+                    const tx = db.transaction('mappings', 'readwrite');
+                    const store = tx.objectStore('mappings');
+                    const request = store.getAll();
+                    request.onsuccess = () => {
+                        const allItems = request.result || [];
+                        const match = allItems.find((item: any) => item.person_id === selectedEnrollPerson.person_id && item.type === selectedEnrollPerson.type);
+                        if (match) {
+                            match.face_embedding = hexEmbedding;
+                            match.face_embedding_dim = 128;
+                            store.put(match);
+                        } else {
+                            store.put({
+                                person_id: selectedEnrollPerson.person_id,
+                                name: selectedEnrollPerson.name,
+                                type: selectedEnrollPerson.type,
+                                face_embedding: hexEmbedding,
+                                face_embedding_dim: 128,
+                                attendance_mode: 'hybrid'
+                            });
+                        }
+                        resolve();
+                    };
+                    request.onerror = () => reject(request.error);
+                });
+            } catch (e) {
+                console.warn('Failed to update local IndexedDB cache for mapping:', e);
+            }
+
+            // 2. Proactively run the remote Supabase update in a non-blocking background promise
+            void (async () => {
+                try {
+                    await supabase
+                        .from(table)
+                        .update({ face_embedding: hexEmbedding, face_embedding_dim: 128 })
+                        .eq('id', selectedEnrollPerson.person_id)
+                        .eq('school_id', user.school_id);
+                } catch (err) {
+                    console.warn('Failed to update remote Supabase mapping. Will sync later:', err);
+                }
+            })();
+
             toast.showToast(`✅ Face registered for ${selectedEnrollPerson.name}!`, 'success');
             stopEnrollCamera();
             setSelectedEnrollPerson(null);
@@ -763,19 +867,31 @@ const RFIDCardAssignmentPage: React.FC = () => {
         if (!query.trim()) { setEnrollSearchResults([]); return; }
         setEnrollSearchLoading(true);
         try {
-            if (!user?.school_id) { setEnrollSearchLoading(false); return; }
-            if (type === 'student') {
-                const { data, error } = await supabase.from('students').select('id,name,roll_number,rfid_uid,qr_uid,face_embedding,picture_url').eq('school_id', user.school_id).ilike('name', `%${query}%`).limit(15);
-                if (error) throw error;
-                setEnrollSearchResults((data || []).map(s => ({ rfid_uid: s.rfid_uid || s.qr_uid || `face_${s.id}`, person_id: s.id, name: s.name, type: 'student', roll_number: s.roll_number, picture_url: s.picture_url, face_embedding: s.face_embedding })));
-            } else {
-                const { data, error } = await supabase.from('staff').select('id,name,role,rfid_uid,qr_uid,face_embedding,picture_url').eq('school_id', user.school_id).ilike('name', `%${query}%`).limit(15);
-                if (error) throw error;
-                setEnrollSearchResults((data || []).map(s => ({ rfid_uid: s.rfid_uid || s.qr_uid || `face_${s.id}`, person_id: s.id, name: s.name, type: 'employee', role: s.role, picture_url: s.picture_url, face_embedding: s.face_embedding })));
-            }
-        } catch (err: any) { setEnrollSearchError(err.message || 'Search error'); }
+            const localMappings = await rfidOfflineService.getAllMappings();
+            const q = query.toLowerCase();
+            const filteredResults = localMappings
+                .filter(m => {
+                    const matchType = type === 'student' ? m.type === 'student' : m.type === 'employee';
+                    if (!matchType) return false;
+                    return m.name.toLowerCase().includes(q) || 
+                           String(m.roll_number || '').toLowerCase().includes(q);
+                })
+                .slice(0, 15)
+                .map(m => ({
+                    rfid_uid: m.rfid_uid || m.qr_uid || `face_${m.person_id}`,
+                    person_id: m.person_id,
+                    name: m.name,
+                    type: m.type,
+                    roll_number: m.roll_number,
+                    picture_url: m.picture_url,
+                    face_embedding: m.face_embedding
+                }));
+            setEnrollSearchResults(filteredResults);
+        } catch (err: any) {
+            setEnrollSearchError(err.message || 'Search error');
+        }
         setEnrollSearchLoading(false);
-    }, [user?.school_id]);
+    }, []);
 
     const fetchData = useCallback(async () => {
         if (!user?.school_id) return;
@@ -1774,7 +1890,15 @@ const RFIDCardAssignmentPage: React.FC = () => {
                             {enrollCameraError && (
                                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', fontSize: '0.85rem', fontWeight: 700, padding: '1rem', textAlign: 'center', zIndex: 6 }}>{enrollCameraError}</div>
                             )}
-                            <video ref={enrollVideoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+                            {nativeEnrollFrame ? (
+                                <img
+                                    src={nativeEnrollFrame}
+                                    alt="Native Face Enroll"
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                />
+                            ) : (
+                                <video ref={enrollVideoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: 'none' }} />
+                            )}
                             {/* Circular FaceID Guideline Overlay */}
                             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 4 }}>
                                 <div style={{
@@ -1785,10 +1909,10 @@ const RFIDCardAssignmentPage: React.FC = () => {
                                     transform: detectedEnrollDescriptor ? 'scale(1.04)' : 'scale(1)'
                                 }} />
                             </div>
-                            {/* Face detection box */}
-                            {isEnrollCameraActive && enrollFaceBox && (
+                            {/* Face detection box (Native stream handles this) */}
+                            {/* isEnrollCameraActive && enrollFaceBox && (
                                 <div style={{ position: 'absolute', border: `3px solid ${dupMatchName ? '#ef4444' : '#22c55e'}`, borderRadius: 8, left: `${enrollFaceBox.x}px`, top: `${enrollFaceBox.y}px`, width: `${enrollFaceBox.width}px`, height: `${enrollFaceBox.height}px`, boxShadow: `0 0 16px ${dupMatchName ? 'rgba(239,68,68,0.7)' : 'rgba(34,197,94,0.7)'}`, pointerEvents: 'none', transition: 'all 0.1s ease-out', zIndex: 5 }} />
-                            )}
+                            ) */}
                             {/* Status indicator overlay */}
                             <div style={{ position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)', background: dupMatchName ? 'rgba(239,68,68,0.85)' : 'rgba(0,0,0,0.65)', color: dupMatchName ? '#fff' : (detectedEnrollDescriptor ? '#22c55e' : (stableFrameCount > 0 ? '#f59e0b' : '#94a3b8')), padding: '4px 14px', borderRadius: 999, fontSize: '0.72rem', fontWeight: 800, whiteSpace: 'nowrap', backdropFilter: 'blur(4px)', maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {dupMatchName

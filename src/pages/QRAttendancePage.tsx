@@ -1558,6 +1558,8 @@ const QRAttendancePage: React.FC = () => {
     const markedPersonsRef = useRef<Set<number>>(new Set());
     const faceLastSeenRef = useRef<Map<number, number>>(new Map());
     const mappingsRef = useRef<RFIDMapping[]>([]);
+    const faceSocketRef = useRef<WebSocket | null>(null);
+    const [nativeFaceFrame, setNativeFaceFrame] = useState<string | null>(null);
 
 
 
@@ -2389,7 +2391,12 @@ const QRAttendancePage: React.FC = () => {
         setStatusMsg('Face detected. Matching...');
 
         try {
-            const result = await rfidOfflineService.markAttendanceWithPerson(person, user.school_id!, selectedDate);
+            const result = await rfidOfflineService.markAttendanceWithPerson(person, user.school_id!, selectedDate, true);
+            
+            // Refresh queue count
+            const q = await rfidOfflineService.getQueue();
+            setQueueCount(q.length);
+
             const time = result.recorded_time
                 ? new Date(result.recorded_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
                 : formatTime();
@@ -2554,12 +2561,14 @@ const QRAttendancePage: React.FC = () => {
 
             const startTime = Date.now();
             try {
-                const detections = await faceapi.detectAllFaces(
+                const detection = await faceapi.detectSingleFace(
                     faceVideoRef.current,
-                    new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 })
+                    new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.5 })
                 )
                 .withFaceLandmarks()
-                .withFaceDescriptors();
+                .withFaceDescriptor();
+
+                const detections = detection ? [detection] : [];
 
                 // Clear marked persons who haven't been seen in the last 1.5 seconds (walked away) to allow scanning again later
                 const now = Date.now();
@@ -2640,110 +2649,115 @@ const QRAttendancePage: React.FC = () => {
     const startFaceRecognition = useCallback(async (deviceId?: string) => {
         setFaceCameraError('');
         setModelsLoading(true);
-        try {
-            await loadFaceRecognitionModels((status) => {
-                setModelsStatus(status);
-            });
-            setModelsLoadedState(true);
-            setModelsLoading(false);
-        } catch (err: any) {
-            setFaceCameraError(err.message || 'Failed to load face models');
-            setModelsLoading(false);
-            return;
+        setModelsStatus('Connecting to native face server (ws://localhost:8000)...');
+        setNativeFaceFrame(null);
+
+        // Stop any running socket first
+        if (faceSocketRef.current) {
+            try { faceSocketRef.current.close(); } catch (e) {}
+            faceSocketRef.current = null;
         }
 
+        // Enumerate video devices so we have camera labels and indices
         try {
-            if (faceStreamRef.current) {
-                faceStreamRef.current.getTracks().forEach(t => t.stop());
-            }
-
-            let constraints: MediaStreamConstraints = {
-                video: {
-                    facingMode: 'user',
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
-                }
-            };
-
-            const irDevice = await getIRCameraDevice();
-            const targetDeviceId = deviceId || irDevice?.deviceId;
-
-            if (targetDeviceId) {
-                constraints = {
-                    video: {
-                        deviceId: { exact: targetDeviceId },
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
-                    }
-                };
-            }
-
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            faceStreamRef.current = stream;
-            if (faceVideoRef.current) {
-                faceVideoRef.current.srcObject = stream;
-            }
-            setIsFaceScanning(true);
-
-            // Re-check devices now that permission is granted and labels are visible
             const devices = await navigator.mediaDevices.enumerateDevices();
             const videoDevices = devices.filter(d => d.kind === 'videoinput');
             setFaceCameras(videoDevices);
-
-            const irKeywords = [/ir\s/i, /infrared/i, /hello/i, /rgbir/i];
-            let foundIRDevice: MediaDeviceInfo | null = null;
-            for (const kw of irKeywords) {
-                const match = videoDevices.find(d => kw.test(d.label));
-                if (match) {
-                    foundIRDevice = match;
-                    break;
-                }
-            }
-
-            if (foundIRDevice && !deviceId) {
-                const activeTrack = stream.getVideoTracks()[0];
-                const settings = activeTrack?.getSettings();
-                if (settings && settings.deviceId !== foundIRDevice.deviceId) {
-                    console.log('Permission granted. Switching stream to IR camera:', foundIRDevice.label);
-                    stream.getTracks().forEach(t => t.stop());
-                    
-                    const irStream = await navigator.mediaDevices.getUserMedia({
-                        video: {
-                            deviceId: { exact: foundIRDevice.deviceId },
-                            width: { ideal: 640 },
-                            height: { ideal: 480 }
-                        }
-                    });
-                    faceStreamRef.current = irStream;
-                    if (faceVideoRef.current) {
-                        faceVideoRef.current.srcObject = irStream;
-                    }
-                }
-            }
-
-            // Start detection loop
-            startFaceLoop();
-        } catch (err: any) {
-            console.error('Error starting face camera:', err);
-            setFaceCameraError('Could not access camera device.');
+        } catch (e) {
+            console.warn('Could not enumerate cameras in browser:', e);
         }
-    }, [startFaceLoop]);
+
+        const ws = new WebSocket('ws://localhost:8000');
+        faceSocketRef.current = ws;
+
+        ws.onopen = async () => {
+            console.log('Connected to face recognition native server.');
+            setModelsStatus('Server connected. Syncing face data...');
+            setModelsLoadedState(true);
+            setModelsLoading(false);
+            setIsFaceScanning(true);
+
+            // Re-load mappings from memory/local DB and format embeddings
+            const list = mappingsRef.current.length > 0 ? mappingsRef.current : await rfidOfflineService.getAllMappings();
+            mappingsRef.current = list;
+            const formattedMappings = list.map(m => {
+                const parsed = parseFaceEmbedding(m.face_embedding);
+                return {
+                    person_id: m.person_id,
+                    name: m.name,
+                    type: m.type,
+                    face_embedding: parsed ? Array.from(parsed) : null
+                };
+            }).filter(m => m.face_embedding !== null);
+
+            ws.send(JSON.stringify({
+                action: 'update_mappings',
+                mappings: formattedMappings,
+                threshold: faceMatchThreshold
+            }));
+
+            // Determine index of chosen camera input
+            let camIdx = 0;
+            if (deviceId) {
+                const idx = faceCameras.findIndex(c => c.deviceId === deviceId);
+                if (idx >= 0) camIdx = idx;
+            }
+            ws.send(JSON.stringify({
+                action: 'start_camera',
+                camera_index: camIdx
+            }));
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const data = jsonParse(event.data);
+                if (data.event === 'frame') {
+                    setNativeFaceFrame(data.image);
+                } else if (data.event === 'face_matched') {
+                    // Match person in our mappings
+                    const matchedPerson = mappingsRef.current.find(m => m.person_id === data.person_id && m.type === data.type);
+                    if (matchedPerson) {
+                        void executeFaceProcess(matchedPerson);
+                    }
+                } else if (data.event === 'camera_error') {
+                    setFaceCameraError(data.message || 'Local camera device could not be opened.');
+                    setIsFaceScanning(false);
+                }
+            } catch (err) {
+                console.error('Error parsing native server message:', err);
+            }
+        };
+
+        // Local helper to parse JSON safely
+        function jsonParse(str: string) {
+            return JSON.parse(str);
+        }
+
+        ws.onerror = (err) => {
+            console.error('Face server socket error:', err);
+            setFaceCameraError('Native server connection failed. Please ensure the local server script "python face_scanner_server.py" is running on your machine.');
+            setModelsLoading(false);
+            setIsFaceScanning(false);
+        };
+
+        ws.onclose = () => {
+            console.log('Face server connection closed.');
+            setIsFaceScanning(false);
+            setNativeFaceFrame(null);
+        };
+    }, [faceCameras, executeFaceProcess]);
 
     const stopFaceRecognition = useCallback(() => {
         setIsFaceScanning(false);
-        setFaceMatchRects([]);
-        markedPersonsRef.current.clear();
-        faceLastSeenRef.current.clear();
-        if (faceLoopRef.current) {
-            clearTimeout(faceLoopRef.current);
-            faceLoopRef.current = null;
-        }
-        if (faceStreamRef.current) {
-            faceStreamRef.current.getTracks().forEach(t => t.stop());
-            faceStreamRef.current = null;
-        }
-        if (faceVideoRef.current) {
-            faceVideoRef.current.srcObject = null;
+        setNativeFaceFrame(null);
+        if (faceSocketRef.current) {
+            try {
+                faceSocketRef.current.send(JSON.stringify({ action: 'stop_camera' }));
+            } catch (e) {}
+            try {
+                faceSocketRef.current.close();
+            } catch (e) {}
+            faceSocketRef.current = null;
         }
     }, []);
 
@@ -3820,52 +3834,21 @@ const QRAttendancePage: React.FC = () => {
                                             </div>
                                         </CameraStoppedOverlay>
                                     )}
-                                    <video
-                                         ref={faceVideoRef}
-                                         autoPlay
-                                         playsInline
-                                         muted
-                                         style={{ width: '100%', height: '100%', minHeight: 250, objectFit: 'cover', transform: 'scaleX(-1)' }}
-                                     />
-                                    {isFaceScanning && faceMatchRects && faceMatchRects.map((rect, idx) => (
-                                         <div
-                                             key={idx}
-                                             style={{
-                                                 position: 'absolute',
-                                                 border: rect.status === 'already' ? '3px solid #f59e0b' : '3px solid #22c55e',
-                                                 borderRadius: '8px',
-                                                 left: `${rect.x}px`,
-                                                 top: `${rect.y}px`,
-                                                 width: `${rect.width}px`,
-                                                 height: `${rect.height}px`,
-                                                 boxShadow: rect.status === 'already' ? '0 0 12px rgba(245,158,11,0.6)' : '0 0 12px rgba(34,197,94,0.6)',
-                                                 pointerEvents: 'none',
-                                                 transition: 'all 0.1s ease-out',
-                                                 zIndex: 5
-                                             }}
-                                         >
-                                             {rect.name && (
-                                                 <div
-                                                     style={{
-                                                         position: 'absolute',
-                                                         bottom: '100%',
-                                                         left: '50%',
-                                                         transform: 'translateX(-50%)',
-                                                         background: rect.status === 'already' ? '#f59e0b' : '#22c55e',
-                                                         color: '#fff',
-                                                         fontSize: '0.72rem',
-                                                         fontWeight: 800,
-                                                         padding: '2px 8px',
-                                                         borderRadius: '4px',
-                                                         whiteSpace: 'nowrap',
-                                                         marginBottom: '4px',
-                                                     }}
-                                                 >
-                                                     {rect.status === 'already' ? `${rect.name} - Already Marked` : rect.name}
-                                                 </div>
-                                             )}
-                                         </div>
-                                     ))}
+                                    {nativeFaceFrame ? (
+                                        <img
+                                            src={nativeFaceFrame}
+                                            alt="Native Face Stream"
+                                            style={{ width: '100%', height: '100%', minHeight: 250, objectFit: 'cover' }}
+                                        />
+                                    ) : (
+                                        <video
+                                             ref={faceVideoRef}
+                                             autoPlay
+                                             playsInline
+                                             muted
+                                             style={{ width: '100%', height: '100%', minHeight: 250, objectFit: 'cover', transform: 'scaleX(-1)', display: 'none' }}
+                                         />
+                                    )}
                                 </div>
                             )}
                         </CameraRegion>

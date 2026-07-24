@@ -30,23 +30,9 @@ const warmRfidCaches = async (schoolId: number | undefined, contextLabel: string
   }
 };
 
-// Save school_id to native Android SharedPreferences so the background NFC service can read it
+// Save school_id to native Android SharedPreferences - Stub for web-only mode
 const saveSchoolIdNative = async (schoolId: number | undefined) => {
-  if (!schoolId) return;
-  try {
-    const { Capacitor } = await import('@capacitor/core');
-    if (!Capacitor.isNativePlatform()) return;
-
-    // Capacitor Preferences stores keys as "CapacitorStorage.KEY" in SharedPreferences
-    const { Preferences } = await import('@capacitor/preferences');
-    if (Preferences) {
-      await Preferences.set({ key: 'school_id', value: String(schoolId) });
-      console.log('Saved school_id for native NFC background scanning:', schoolId);
-    }
-  } catch (e) {
-    // If anything fails (module not found, not native, etc), silently ignore
-    console.debug('Native school_id save skipped:', e);
-  }
+  // No-op on web-only website
 };
 
 interface User {

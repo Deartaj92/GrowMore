@@ -4,7 +4,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { rfidOfflineService } from '../services/rfidOfflineService';
 import { normalizeDesktopScannerUid } from '../utils/rfidUtils';
 import { useToast } from './useToast';
-import { Capacitor } from '@capacitor/core';
+const Capacitor = {
+  isNativePlatform: () => false
+};
 
 const getLocalDateKey = () => {
     const now = new Date();

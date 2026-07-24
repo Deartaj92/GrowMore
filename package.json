@@ -6,131 +6,23 @@
   "scripts": {
     "sync-release-notes": "node scripts/sync-release-notes.js",
     "generate-web-icons": "node scripts/generate-web-icons.js",
-    "generate-android-icons": "node scripts/generate-android-icons.js",
     "fix-icon": "node scripts/fix-icon.js",
-    "start": "cross-env NODE_OPTIONS=--max-old-space-size=8192 craco start",
+    "start:app": "cross-env NODE_OPTIONS=--max-old-space-size=8192 craco start",
+    "start:face-server": "python face_scanner_server.py",
+    "start": "concurrently -k -p \"[{name}]\" -n \"APP,FACE_SERVER\" -c \"cyan,magenta\" \"npm run start:app\" \"npm run start:face-server\"",
     "build": "cross-env REACT_APP_VERSION=$npm_package_version craco build",
-    "build:with-token": "node scripts/copy-tinymce.js && node scripts/inject-token-build.js",
-    "electron": "npm run build:with-token && electron .",
-    "electron:run": "electron .",
-    "electron-pack": "npm run build && electron-builder --win --mac --linux",
     "ensure-latest": "node scripts/ensure-latest-code.js",
     "ensure-latest:commit": "node scripts/ensure-latest-code.js --auto-commit",
-    "electron-pack-win": "rimraf dist && npm run fix-icon && node scripts/build-electron.js",
-    "electron-pack-win-fix": "rimraf dist && npm run fix-icon && node scripts/copy-tinymce.js && node scripts/inject-token-build.js && node scripts/copy-aboutus-image.js && node scripts/generate-asset-manifest.js && electron-builder --win",
     "build:latest": "npm run ensure-latest && npm run build",
     "build:latest:commit": "npm run ensure-latest:commit && npm run build",
-    "electron-pack-win-ps": "rimraf dist && powershell -ExecutionPolicy Bypass -File scripts/build-electron.ps1",
-    "electron-pack-win-simple": "rimraf dist && npm run fix-icon && npm run build && node scripts/copy-aboutus-image.js && electron-builder --win",
-    "electron-pack-win-packager": "rimraf dist && npm run build && electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite",
-    "electron-pack-win-fast": "rimraf dist && npm run fix-icon && npm run build && node scripts/copy-electron-files.js && node scripts/copy-aboutus-image.js && node scripts/generate-asset-manifest.js && electron-builder --win",
-    "win-pack": "rimraf dist && npm run build && electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite",
-    "electron-pack-mac": "rimraf dist && npm run build && electron-builder --mac",
-    "electron-pack-linux": "rimraf dist && npm run build && electron-builder --linux",
-    "android": "npm run generate-android-icons && npm run build && npx cap sync android && npx cap open android",
-    "android:build": "npm run generate-android-icons && npm run build && npx cap sync android && cd android && java -version && gradlew.bat assembleDebug",
-    "android:nb": "npm run generate-android-icons && npx cap sync android && cd android && java -version && gradlew.bat assembleDebug",
-    "android:dev": "npm run start:mobile",
-    "start:mobile": "node --max-old-space-size=8192 ./node_modules/@craco/craco/bin/craco.js start",
-    "sync:android": "npm run generate-android-icons && npx cap sync android",
-    "open:android": "npx cap open android",
-    "setup:mobile": "node scripts/setup-mobile-dev.js",
-    "dev:mobile": "scripts/setup-mobile-dev.bat",
-    "dev:mobile:ps": "powershell -ExecutionPolicy Bypass -File scripts/setup-mobile-dev.ps1",
-    "update": "npm run sync-release-notes && node scripts/upload-apk.js",
-    "update:desktop": "npm run sync-release-notes && node scripts/upload-installer.js",
-    "upload:desktop": "npm run sync-release-notes && node scripts/upload-installer-only.js",
-    "update:bundle": "npm run sync-release-notes && node scripts/deploy-update.js",
-    "release:apk": "npm run sync-release-notes && node scripts/upload-apk.js",
-    "release:desktop": "npm run sync-release-notes && node scripts/upload-installer.js",
-    "upload:bundle": "npm run sync-release-notes && node scripts/upload-bundle.js",
-    "setup:github": "node scripts/setup-github-updates.js",
-    "setup:github:ps": "powershell -ExecutionPolicy Bypass -File scripts/setup-github-updates.ps1",
     "test": "node --max-old-space-size=8192 ./node_modules/@craco/craco/bin/craco.js test",
     "eject": "react-scripts eject"
   },
-  "main": "public/electron.js",
-  "homepage": ".",
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
   },
-  "build": {
-    "appId": "com.growmore.app",
-    "productName": "Grow More",
-    "files": [
-      "build/**/*",
-      "public/electron.js",
-      "public/preload.js",
-      "!node_modules/node-global-key-listener/bin/MacKeyServer",
-      "!**/*.map"
-    ],
-    "directories": {
-      "buildResources": "assets",
-      "output": "dist"
-    },
-    "win": {
-      "target": [
-        "nsis"
-      ],
-      "icon": "assets/patternLogo.ico",
-      "requestedExecutionLevel": "asInvoker",
-      "forceCodeSigning": false
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Grow More",
-      "deleteAppDataOnUninstall": false,
-      "include": "installer.nsh",
-      "installerIcon": "assets/patternLogo.ico",
-      "uninstallerIcon": "assets/patternLogo.ico",
-      "installerHeaderIcon": "assets/patternLogo.ico",
-      "menuCategory": "Grow More",
-      "displayLanguageSelector": true,
-      "allowElevation": true,
-      "perMachine": false
-    },
-    "mac": {
-      "target": [
-        "dmg"
-      ],
-      "icon": "assets/patternLogo.icns"
-    },
-    "linux": {
-      "target": [
-        "AppImage"
-      ],
-      "icon": "assets/patternLogo-linux.png"
-    },
-    "asar": true,
-    "compression": "normal",
-    "extraResources": [
-      {
-        "from": "assets",
-        "to": "assets"
-      }
-    ],
-    "removePackageScripts": true,
-    "removePackageKeywords": true,
-    "extraMetadata": {
-      "main": "build/electron.js"
-    }
-  },
   "dependencies": {
-    "@awesome-cordova-plugins/android-permissions": "^8.1.0",
-    "@capacitor-community/file-opener": "^7.0.1",
-    "@capacitor-community/http": "^1.4.1",
-    "@capacitor/android": "^7.2.0",
-    "@capacitor/app": "^7.1.0",
-    "@capacitor/browser": "^7.0.2",
-    "@capacitor/core": "^7.2.0",
-    "@capacitor/filesystem": "^7.1.4",
-    "@capacitor/live-updates": "^0.4.0",
-    "@capacitor/preferences": "^7.0.4",
-    "@capacitor/push-notifications": "^7.0.3",
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.0",
     "@mui/icons-material": "^5.15.12",
@@ -148,15 +40,12 @@
     "@types/react-virtualized-auto-sizer": "^1.0.4",
     "@vladmandic/face-api": "^1.7.15",
     "apexcharts": "^5.3.6",
-    "auto-launch": "^5.0.6",
     "browser-image-compression": "^2.0.1",
     "canvasjs-react-charts": "^1.0.5",
     "chart.js": "^4.4.9",
     "cors": "^2.8.5",
     "date-fns": "^2.30.0",
     "dayjs": "^1.11.13",
-    "electron-is-dev": "^2.0.0",
-    "electron-push-receiver": "^2.1.3",
     "express": "^4.21.2",
     "firebase-admin": "^13.6.0",
     "flatpickr": "^4.6.13",
@@ -169,10 +58,8 @@
     "jszip": "^3.10.1",
     "lodash": "^4.17.21",
     "multer": "^1.4.5-lts.2",
-    "node-global-key-listener": "^0.3.0",
     "pdf-lib": "^1.17.1",
     "pg": "^8.15.6",
-    "phonegap-nfc": "^1.2.0",
     "qrcode": "^1.5.4",
     "react": "^18.2.0",
     "react-apexcharts": "^1.8.0",
@@ -198,7 +85,6 @@
     "zustand": "^4.3.9"
   },
   "devDependencies": {
-    "@capacitor/cli": "^7.2.0",
     "@craco/craco": "^7.1.0",
     "@types/node": "^18.15.11",
     "@types/pg": "^8.11.14",
@@ -209,18 +95,14 @@
     "@types/react-window": "^1.8.8",
     "@types/styled-components": "^5.1.34",
     "@types/three": "^0.154.0",
-    "app-builder-bin": "^5.0.0-alpha.12",
+    "concurrently": "^10.0.3",
     "cross-env": "^10.1.0",
     "depcheck": "^1.4.7",
-    "electron": "^36.2.0",
-    "electron-builder": "^26.0.12",
-    "electron-packager": "^17.1.2",
     "eslint-plugin-react-hooks": "^5.2.0",
     "react-scripts": "5.0.1",
     "rimraf": "^3.0.2",
     "shadcn": "^3.5.2",
     "sharp": "^0.34.4",
-    "to-ico": "^1.1.5",
     "typescript": "^4.9.5"
   },
   "browserslist": {

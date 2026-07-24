@@ -140,16 +140,15 @@ import { ThemeContext, darkTheme, lightTheme } from './contexts/ThemeContext';
 import GlobalBackHandler from './components/GlobalBackHandler';
 import { NavigationProvider } from './contexts/NavigationContext';
 import InitialRouteHandler from './components/InitialRouteHandler';
-import { Capacitor } from '@capacitor/core';
 import { isWeb } from './utils/platformDetection';
 import GlobalNFCListener from './components/GlobalNFCListener';
 import GlobalSyncManager from './components/GlobalSyncManager';
 import GlobalAttendanceAutomationNotifier from './components/GlobalAttendanceAutomationNotifier';
 
-// Use HashRouter in Electron and Capacitor, BrowserRouter in standard web
+// Use HashRouter in Electron, BrowserRouter in standard web
 const isElectron = Boolean((window as any).electronAPI);
-const isNative = Capacitor.isNativePlatform();
-const AppRouter = (isElectron || isNative) ? HashRouter : BrowserRouter;
+const isNative = false;
+const AppRouter = isElectron ? HashRouter : BrowserRouter;
 
 const App: React.FC = () => {
   const { theme } = useContext(ThemeContext);

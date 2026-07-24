@@ -22,13 +22,8 @@ import { ExpandMore, ExpandLess, Receipt, History as HistoryIcon, CheckCircle, C
 import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
 import AppDateField from '../components/shared/AppDateField';
 
-// Capacitor import for mobile back button handling
+// Capacitor import stub
 let CapacitorApp: any = null;
-try {
-  CapacitorApp = require('@capacitor/app').App;
-} catch (e) {
-  // Capacitor not available, will use fallback
-}
 
 const Container = styled.div`
   padding: 2rem;
