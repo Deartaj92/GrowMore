@@ -33,6 +33,9 @@ const WhatsAppBulkSender: React.FC<WhatsAppBulkSenderProps> = ({
   const [customMessages, setCustomMessages] = useState<Map<number, string>>(new Map());
   const [isEditingMessage, setIsEditingMessage] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<'urdu' | 'english'>('urdu');
+  const [dbAbsentTemplate, setDbAbsentTemplate] = useState<string | null>(() => {
+    return localStorage.getItem('whatsapp_absent_template') || null;
+  });
 
   const applySentIds = useCallback((idSet: Set<number>) => {
     setSentStudentIds(idSet);
@@ -169,6 +172,19 @@ ${data.remarks ? `تبصرہ: ${data.remarks}` : ''}
 ${data.school_short_name || schoolName}`;
       }
 
+      if (effectiveStatus === 'absent') {
+        const templateToUse = dbAbsentTemplate || localStorage.getItem('whatsapp_absent_template');
+        if (templateToUse) {
+          const classNameFormatted = data.section_name ? `${data.class_name} - ${data.section_name}` : data.class_name;
+          return templateToUse
+            .replace(/\{studentName\}/g, data.student_name)
+            .replace(/\{className\}/g, classNameFormatted)
+            .replace(/\{date\}/g, data.date || selectedDate)
+            .replace(/\{schoolName\}/g, data.school_short_name || schoolName)
+            .replace(/\{remarks\}/g, data.remarks || '');
+        }
+      }
+
       return `روزنامہ حاضری کی رپورٹ
 محترم والد/والدہ!
 آپ کا بچہ ${data.student_name} کلاس ${data.class_name} آج بتاریخ ${data.date || selectedDate} سکول سے ${urduStatus} ہے۔
@@ -178,7 +194,19 @@ ${data.remarks ? `تبصرہ: ${data.remarks}` : ''}
 ${data.school_short_name || schoolName}`;
     } else {
       // English message format
-      const emoji = statusEmoji[status] || '📝';
+      if (effectiveStatus === 'absent') {
+        const engTemplateToUse = localStorage.getItem('whatsapp_absent_english_template');
+        if (engTemplateToUse) {
+          const classNameFormatted = data.section_name ? `${data.class_name} - ${data.section_name}` : data.class_name;
+          return engTemplateToUse
+            .replace(/\{studentName\}/g, data.student_name)
+            .replace(/\{className\}/g, classNameFormatted)
+            .replace(/\{date\}/g, data.date || selectedDate)
+            .replace(/\{schoolName\}/g, data.school_short_name || schoolName)
+            .replace(/\{remarks\}/g, data.remarks || '');
+        }
+      }
+
       const statusText = (effectiveStatus.charAt(0).toUpperCase() + effectiveStatus.slice(1));
       const headerPrefix = data.notification_channel === 'sms' ? '' : '📚 ';
 
@@ -354,7 +382,7 @@ ${data.school_short_name || schoolName}`;
   useEffect(() => {
     let cancelled = false;
 
-    const loadRemoteSentStatus = async () => {
+    const loadRemoteData = async () => {
       if (!user?.school_id) {
         if (!cancelled) {
           loadSentStatusFromLocal();
@@ -363,18 +391,29 @@ ${data.school_short_name || schoolName}`;
       }
 
       try {
-        const { data, error } = await supabase
-          .from('notification_logs')
-          .select('student_id')
-          .eq('school_id', user.school_id)
-          .eq('notification_date', selectedDate);
-
-        if (error) throw error;
+        const [logsRes, profileRes] = await Promise.all([
+          supabase
+            .from('notification_logs')
+            .select('student_id')
+            .eq('school_id', user.school_id)
+            .eq('notification_date', selectedDate),
+          supabase
+            .from('institute_profile')
+            .select('absent_message_template')
+            .eq('school_id', user.school_id)
+            .maybeSingle()
+        ]);
 
         if (!cancelled) {
-          const idSet = new Set<number>((data || []).map(row => row.student_id));
-          applySentIds(idSet);
-          persistSentIds(idSet);
+          if (logsRes.data) {
+            const idSet = new Set<number>((logsRes.data || []).map(row => row.student_id));
+            applySentIds(idSet);
+            persistSentIds(idSet);
+          }
+          if (profileRes.data?.absent_message_template) {
+            setDbAbsentTemplate(profileRes.data.absent_message_template);
+            localStorage.setItem('whatsapp_absent_template', profileRes.data.absent_message_template);
+          }
         }
       } catch (error) {
         if (!cancelled) {
@@ -383,7 +422,7 @@ ${data.school_short_name || schoolName}`;
       }
     };
 
-    loadRemoteSentStatus();
+    loadRemoteData();
 
     return () => {
       cancelled = true;

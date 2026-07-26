@@ -1636,13 +1636,12 @@ const Header: React.FC<HeaderProps> = ({
   const miscDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isRestrictedRole || !searchSchoolId) {
-      setSearchStudents([]);
-      setSearchEmployees([]);
-      setSearchClasses([]);
-      setSearchSections([]);
+    if (isRestrictedRole || !searchSchoolId || !searchOpen) {
       return;
     }
+
+    // Skip re-fetching if search data is already populated
+    if (searchStudents.length > 0) return;
 
     let isMounted = true;
 
@@ -1655,7 +1654,7 @@ const Header: React.FC<HeaderProps> = ({
             .eq('school_id', searchSchoolId),
           supabase
             .from('staff')
-            .select('*')
+            .select('id, name, father_name, designation, phone')
             .eq('school_id', searchSchoolId)
             .order('name', { ascending: true }),
           supabase
@@ -1677,10 +1676,6 @@ const Header: React.FC<HeaderProps> = ({
       } catch (error) {
         if (!isMounted) return;
         console.error('Error loading global search data:', error);
-        setSearchStudents([]);
-        setSearchEmployees([]);
-        setSearchClasses([]);
-        setSearchSections([]);
       }
     };
 
@@ -1689,7 +1684,7 @@ const Header: React.FC<HeaderProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [isRestrictedRole, searchSchoolId]);
+  }, [isRestrictedRole, searchSchoolId, searchOpen, searchStudents.length]);
 
   useEffect(() => {
     setSearchOpen(false);
@@ -1870,6 +1865,13 @@ const Header: React.FC<HeaderProps> = ({
       icon: <DescriptionIcon />,
       path: '/students/withdrawal-register',
       color: '#14b8a6'
+    },
+    {
+      title: 'Student Certificates',
+      description: 'Generate SLC, Character, and Bonafide Certificates',
+      icon: <DescriptionIcon />,
+      path: '/students/certificates',
+      color: '#ec4899'
     },
     {
       title: 'Student Reports',

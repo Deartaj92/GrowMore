@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { ThemeContext, lightTheme, darkTheme } from '../../../contexts/ThemeContext';
+import { useTheme } from '../../../components/Layout/contexts/ThemeContext';
+import { lightTheme, darkTheme } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../components/useToast';
 import { newPayrollService } from '../services/newPayrollService';
+import { generatePayrollPaymentReceipt } from '../paymentReceipt';
 import { usePayrollDisplaySettings } from '../PayrollDisplaySettingsContext';
 import {
   History as HistoryIcon,
@@ -161,7 +163,7 @@ interface PaymentRecord {
 }
 
 const PaymentHistoryList: React.FC = () => {
-  const { theme: themeMode } = useContext(ThemeContext);
+  const { theme: themeMode } = useTheme();
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
   const { user } = useAuth() as any;
   const { showToast } = useToast();
@@ -368,10 +370,19 @@ const PaymentHistoryList: React.FC = () => {
             </div>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => window.print()} color="primary" variant="outlined" size="small">
-              Print Voucher
+            <Button
+              onClick={() => {
+                if (user?.school_id && selectedReceipt) {
+                  generatePayrollPaymentReceipt(user.school_id, selectedReceipt.id);
+                }
+              }}
+              color="primary"
+              variant="contained"
+              size="small"
+            >
+              Download PDF Receipt
             </Button>
-            <Button onClick={() => setSelectedReceipt(null)} color="primary" variant="contained" size="small">
+            <Button onClick={() => setSelectedReceipt(null)} color="primary" variant="outlined" size="small">
               Close
             </Button>
           </DialogActions>

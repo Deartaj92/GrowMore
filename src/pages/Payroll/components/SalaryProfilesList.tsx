@@ -105,9 +105,18 @@ const ActionButton = styled.button<{ theme: any; $variant?: 'primary' | 'seconda
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease-in-out;
 
-  &:hover {
+  &:hover:not(:disabled) {
     opacity: 0.9;
+  }
+
+  &:disabled {
+    background: ${({ theme }) => (theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0')};
+    border-color: ${({ theme }) => (theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.12)' : '#cbd5e1')};
+    color: ${({ theme }) => (theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.4)' : '#94a3b8')};
+    cursor: not-allowed;
+    opacity: 0.85;
   }
 `;
 

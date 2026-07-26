@@ -1,6 +1,25 @@
 import React, { useState, useEffect, useRef, useMemo, useContext } from 'react';
 import styled, { useTheme } from 'styled-components';
-import { Save, MonetizationOn, Calculate, Payment, History, Search, AccountCircle, CardGiftcard, Paid, ErrorOutline, DeleteOutline as DeleteIcon, Edit, Info } from '@mui/icons-material';
+import { 
+  Save, 
+  MonetizationOn, 
+  Calculate, 
+  Payment, 
+  History, 
+  Search, 
+  AccountCircle, 
+  CardGiftcard, 
+  Paid, 
+  ErrorOutline, 
+  DeleteOutline as DeleteIcon, 
+  Edit, 
+  Info,
+  CheckCircle,
+  AccountBalanceWallet,
+  ReceiptLong,
+  Person
+} from '@mui/icons-material';
+import { Skeleton } from '@mui/material';
 import { supabase } from '../supabaseClient';
 import { useToast } from '../components/useToast';
 import { useLocation } from 'react-router-dom';
@@ -12,50 +31,37 @@ import { useProgress } from '../components/Layout';
 import { fetchAllRows } from '../utils/paginationHelper';
 import { formatAppDate } from '../utils/dateUtils';
 import AppDateField from '../components/shared/AppDateField';
-
 import Loader from '../components/Loader';
 import { getStudentDisplayId, matchesStudentSearch, fetchStudentByIdentifier, getSequenceNumber } from '../utils/studentUtils';
+
+/* ── EXACT THEME STYLED COMPONENTS & MAXIMUM SPACE UTILIZATION ── */
+
 const Container = styled.div`
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 1.5rem 1rem;
+  padding: 1rem;
   box-sizing: border-box;
+
   @media (max-width: 768px) {
-    padding: 1rem 0.5rem;
-  }
-  @media (max-width: 700px) {
-    padding: 0.7rem 0.5rem;
-    min-width: 0;
-    width: 100%;
-    max-width: 100%;
-    margin: 0;
-    box-sizing: border-box;
+    padding: 0.6rem 0.4rem;
   }
 `;
 
 const PageGrid = styled.div`
   display: grid;
-  grid-template-columns: 420px 1fr;
-  gap: 1.5rem;
+  grid-template-columns: 390px 1fr;
+  gap: 1.2rem;
   align-items: start;
-  min-height: calc(100vh - 200px);
+  min-height: calc(100vh - 160px);
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 350px 1fr;
+    gap: 1rem;
+  }
   @media (max-width: 900px) {
     grid-template-columns: 1fr;
     gap: 1rem;
-  }
-  @media (max-width: 700px) {
-    display: flex;
-    flex-direction: column;
-    gap: 0.7rem;
-    min-width: 0;
-    width: 100%;
-    max-width: 100%;
-    margin: 0;
-    box-sizing: border-box;
-    > div {
-      width: 100%;
-    }
   }
 `;
 
@@ -63,130 +69,56 @@ const LeftSection = styled.div`
   position: sticky;
   top: 1rem;
   height: 100%;
-  @media (max-width: 700px) {
+  @media (max-width: 900px) {
     position: static;
     width: 100%;
-    min-width: 0;
-    max-width: 100%;
   }
 `;
 
 const RightSection = styled.div`
-  flex: 2 1 0;
+  flex: 1;
   min-width: 0;
   width: 100%;
   display: flex;
   flex-direction: column;
-  @media (max-width: 700px) {
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-  }
-`;
-
-const Heading = styled.h2`
-  font-size: 22px;
-  font-weight: 700;
-  color: ${({ theme }) => theme.ACCENT};
-  margin: 0 0 1.2rem 0;
-  text-align: left;
-`;
-
-const SearchBar = styled.div`
-  display: flex;
-  align-items: center;
-  background: ${({ theme }) => theme.FIELD_BG};
-  border: 1.2px solid ${({ theme }) => theme.FIELD_BORDER};
-  border-radius: 10px;
-  padding: 10px 14px;
-  width: 100%;
-  margin-bottom: 1.2rem;
-  position: relative;
-  transition: border-color 0.15s;
-  
-  &:focus-within {
-    border-color: ${({ theme }) => theme.ACCENT};
-  }
-`;
-
-const SearchInput = styled.input`
-  border: none !important;
-  background: transparent;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 1rem;
-  outline: none !important;
-  width: 100%;
-  margin-left: 10px;
-  box-shadow: none !important;
-  
-  &:focus {
-    border: none !important;
-    outline: none !important;
-    box-shadow: none !important;
-  }
-  
-  &::placeholder {
-    color: #7c8597;
-  }
-`;
-
-const FilterSelect = styled.select`
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1.2px solid ${({ theme }) => theme.FIELD_BORDER};
-  background: ${({ theme }) => theme.FIELD_BG};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 1rem;
-  outline: none;
-  margin-left: 1rem;
-`;
-
-const CardGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 2rem 2rem;
-  margin-top: 0;
-  @media (max-width: 1100px) {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto;
-    gap: 1.2rem;
-  }
+  gap: 1.2rem;
 `;
 
 const Card = styled.div`
   background: ${({ theme }) => theme.CARD};
-  border-radius: 18px;
-  box-shadow: 0 6px 32px #00000029, 0 1.5px 6px #0000001a;
+  border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
   border: 1px solid ${({ theme }) => theme.BORDER};
-  padding: 1.8rem 2rem;
+  padding: 1.25rem 1.4rem;
   display: flex;
   flex-direction: column;
   position: relative;
   box-sizing: border-box;
   width: 100%;
+  transition: border-color 0.15s ease;
+
   @media (max-width: 700px) {
-    padding: 0.7rem 0.8rem;
-    border-radius: 12px;
-    min-width: 0;
-    width: 100%;
-    box-sizing: border-box;
-    margin: 0 0 1rem 0;
+    padding: 0.85rem 0.95rem;
+    border-radius: 10px;
   }
 `;
 
 const CardTitle = styled.h3`
-  font-size: 1.35rem;
+  font-size: 1.2rem;
   font-weight: 700;
-  color: ${({ theme }) => theme.ACCENT};
-  margin: 0;
+  color: ${({ theme }) => (theme as any).ACCENT};
+  margin: 0 0 1rem 0;
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.6rem;
+
+  svg {
+    font-size: 1.3rem;
+  }
+
   @media (max-width: 700px) {
-    font-size: 1.1rem;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
+    font-size: 1.05rem;
+    margin-bottom: 0.75rem;
   }
 `;
 
@@ -197,80 +129,87 @@ const CardPlaceholder = styled.div`
   align-items: center;
   justify-content: center;
   color: #7c8597;
-  font-size: 1.1rem;
-  gap: 0.7rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  gap: 0.6rem;
+  padding: 2rem 1rem;
+  text-align: center;
 `;
 
 const CardIcon = styled.div`
-  font-size: 2.7rem;
+  font-size: 2.5rem;
   color: #7c8597;
-`;
-
-const HeaderSection = styled.div`
-  width: 100%;
-  max-width: 1400px;
-  margin: 0 auto 2.2rem auto;
-  padding: 1.5rem 1rem 0 1rem;
   display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
+  align-items: center;
+  justify-content: center;
 `;
 
-const SearchHeaderBar = styled.div`
+/* Search Bar */
+const SearchBar = styled.div`
   display: flex;
   align-items: center;
   background: ${({ theme }) => theme.FIELD_BG};
   border: 1.2px solid ${({ theme }) => theme.FIELD_BORDER};
-  border-radius: 10px;
-  padding: 0.7rem 1.2rem;
+  border-radius: 9px;
+  padding: 6px 12px;
   width: 100%;
-  max-width: 600px;
-  margin: 0 auto;
+  margin-bottom: 1rem;
   position: relative;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+  
+  &:focus-within {
+    border-color: ${({ theme }) => (theme as any).ACCENT};
+  }
+`;
+
+const SearchInput = styled.input`
+  border: none !important;
+  background: transparent;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.95rem;
+  outline: none !important;
+  width: 100%;
+  margin-left: 8px;
+  box-shadow: none !important;
+  
+  &::placeholder {
+    color: #7c8597;
+  }
 `;
 
 const SearchIconStyled = styled(Search)`
   color: #7c8597;
-  font-size: 1.5rem !important;
-`;
-
-const SearchInputHeader = styled.input`
-  border: none;
-  background: transparent;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 1.15rem;
-  outline: none;
-  width: 100%;
-  margin-left: 12px;
+  font-size: 1.3rem !important;
 `;
 
 const SuggestionList = styled.ul`
   position: absolute;
-  top: 100%;
+  top: calc(100% + 4px);
   left: 0;
   right: 0;
   background: ${({ theme }) => theme.CARD};
   border: 1.5px solid ${({ theme }) => theme.BORDER};
-  border-radius: 0 0 12px 12px;
-  box-shadow: 0 8px 32px #0003, 0 1.5px 6px #232a3b22;
-  z-index: 10;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  z-index: 100;
   margin: 0;
-  padding: 0.1rem 0;
+  padding: 0.3rem 0;
   list-style: none;
   max-height: 260px;
   overflow-y: auto;
 `;
 
-const SuggestionItem = styled.li<{active: boolean}>`
-  padding: 0.45rem 1.1rem 0.45rem 0.9rem;
+const SuggestionItem = styled.li<{ active: boolean }>`
+  padding: 0.5rem 0.85rem;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   background: ${({ active, theme }) => active ? theme.HOVER_BG : 'transparent'};
   cursor: pointer;
-  font-size: 0.98rem;
+  font-size: 0.92rem;
   display: flex;
   align-items: center;
-  border-left: 3.5px solid ${({ active, theme }) => active ? theme.ACCENT : 'transparent'};
-  transition: background 0.16s, border-color 0.16s;
+  border-left: 3px solid ${({ active, theme }) => active ? (theme as any).ACCENT : 'transparent'};
+  transition: background 0.15s, border-color 0.15s;
   &:hover {
     background: ${({ theme }) => theme.HOVER_BG};
   }
@@ -287,25 +226,19 @@ const SuggestionItemRow = styled.div`
 const SuggestionMain = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.7rem;
-  min-width: 0;
-`;
-
-const SuggestionTextCol = styled.div`
-  display: flex;
-  flex-direction: column;
+  gap: 0.65rem;
   min-width: 0;
 `;
 
 const SuggestionAvatar = styled.div`
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: #232a3b;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: #b0b8d1;
   overflow: hidden;
   border: 1.5px solid #353b4a;
@@ -322,23 +255,23 @@ const SuggestionInfo = styled.div`
 const SuggestionName = styled.span`
   font-weight: 700;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 0.99rem;
+  font-size: 0.92rem;
   line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 170px;
+  max-width: 160px;
 `;
 
 const SuggestionFather = styled.span`
   color: #7c8597;
-  font-size: 0.97rem;
+  font-size: 0.8rem;
   font-weight: 500;
   line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 170px;
+  max-width: 160px;
 `;
 
 const SuggestionMetaCol = styled.div`
@@ -346,87 +279,47 @@ const SuggestionMetaCol = styled.div`
   flex-direction: column;
   align-items: flex-end;
   min-width: 0;
-  margin-left: 1.2rem;
+  margin-left: 0.8rem;
 `;
 
 const SuggestionClass = styled.span`
   color: ${({ theme }) => (theme as any).ACCENT};
-  font-size: 0.91rem;
-  line-height: 1.1;
+  font-size: 0.85rem;
+  font-weight: 700;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 90px;
 `;
 
 const SuggestionId = styled.span`
   color: #a0a7b8;
-  font-size: 0.91rem;
-  line-height: 1.1;
+  font-size: 0.78rem;
   white-space: nowrap;
 `;
 
-const CompactHeaderCard = styled(Card)`
-  padding: 0.7rem 2.2rem;
-  margin-bottom: 2rem;
-  max-width: 100%;
-  width: 100%;
-  margin-left: 0;
-  margin-right: 0;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.2rem;
-  min-height: unset;
-  box-sizing: border-box;
-`;
-
-const HeaderTitle = styled.div`
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: ${({ theme }) => (theme as any).ACCENT};
-  display: flex;
-  align-items: center;
-  gap: 10px;
-`;
-
-const CardStack = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  height: auto;
-  @media (max-width: 700px) {
-    gap: 0.7rem;
-    width: 100vw;
-    min-width: 0;
-    max-width: 100vw;
-  }
-`;
-
+/* Selected Student Banner */
 const StudentInfoRow = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.2rem;
-  margin-bottom: 1.5rem;
-  padding: 12px 16px;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+  padding: 8px 12px;
   background: ${({ theme }) => theme.FIELD_BG};
   border: 1.2px solid ${({ theme }) => theme.FIELD_BORDER};
-  border-radius: 10px;
+  border-radius: 9px;
   width: 100%;
-  @media (max-width: 700px) {
-    flex-direction: row;
-    align-items: center;
-    gap: 0.7rem;
-    padding: 10px 8px;
-    margin-bottom: 1rem;
-  }
+  box-sizing: border-box;
+`;
+
+const StudentInfoMain = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
 `;
 
 const StudentAvatar = styled.div`
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background: #232a3b;
   display: flex;
@@ -436,271 +329,194 @@ const StudentAvatar = styled.div`
   color: #b0b8d1;
   overflow: hidden;
   border: 1.5px solid #353b4a;
+  flex-shrink: 0;
 `;
 
 const StudentInfoTextCol = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.1rem;
   min-width: 0;
-  
-  @media (max-width: 700px) {
-    flex: 1 1 0;
-    min-width: 0;
-  }
 `;
 
 const StudentName = styled.span`
   font-weight: 700;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 1rem;
+  font-size: 0.95rem;
+  line-height: 1.1;
 `;
 
 const StudentFather = styled.span`
   color: #7c8597;
-  font-size: 0.92rem;
+  font-size: 0.82rem;
 `;
 
 const StudentInfoMetaCol = styled.div`
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.2rem;
-  min-width: 0;
-  
-  @media (max-width: 700px) {
-    flex-direction: row;
-    align-items: center;
-    gap: 0.5rem;
-    flex-shrink: 0;
-  }
+  gap: 0.1rem;
+  flex-shrink: 0;
 `;
 
 const StudentInfoClass = styled.span`
-  color: ${({ theme }) => theme.ACCENT};
-  font-size: 0.92rem;
-  font-weight: 600;
+  color: ${({ theme }) => (theme as any).ACCENT};
+  font-size: 0.88rem;
+  font-weight: 700;
   white-space: nowrap;
-  
-  @media (max-width: 700px) {
-    font-size: 0.85rem;
-  }
 `;
 
 const StudentInfoId = styled.span`
   color: #7c8597;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   white-space: nowrap;
-  
-  @media (max-width: 700px) {
-    font-size: 0.8rem;
-  }
 `;
 
-const StudentInfoMain = styled.div`
+/* Fine Details Section */
+const FineDetailsContent = styled.div`
   display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  min-width: 0;
-  
-  @media (max-width: 700px) {
-    flex: 1 1 0;
-    min-width: 0;
-    gap: 0.6rem;
-  }
+  flex-direction: column;
+  width: 100%;
 `;
 
-const HeaderFlexRow = styled.div`
+const FineSummaryColumn = styled.div`
   display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 0.85rem;
+  width: 100%;
+`;
+
+const FineSummaryCard = styled.div`
+  width: 100%;
+  background: ${({ theme }) => theme.CARD};
+  border-radius: 8px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  padding: 0.45rem 0.75rem;
+  display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
+  min-height: 34px;
+  box-sizing: border-box;
+`;
+
+const FineSummaryLabel = styled.div`
+  color: #7c8597;
+  font-size: 0.85rem;
+  font-weight: 500;
+`;
+
+const FineSummaryValue = styled.div<{ color?: string }>`
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: ${({ color }) => color || '#a78bfa'};
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+
+  svg {
+    font-size: 1.05rem !important;
+  }
+`;
+
+const TableWrapper = styled.div`
   width: 100%;
+  overflow-x: auto;
+  max-height: 400px;
+  overflow-y: auto;
+  border-radius: 8px;
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }) => (theme as any).ACCENT + '55'} transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => (theme as any).ACCENT + '77'};
+    border-radius: 6px;
+  }
+`;
+
+const AttendanceTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+`;
+
+const AttendanceTh = styled.th`
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  color: #7c8597;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  background: ${({ theme }) => theme.CARD};
+  position: sticky;
+  top: 0;
+  z-index: 2;
+`;
+
+const AttendanceTd = styled.td`
+  padding: 0.5rem 0.75rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.88rem;
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+`;
+
+/* Right Section Collection Form */
+const CardStack = styled.div`
+  display: flex;
+  flex-direction: column;
   gap: 1.2rem;
-`;
-
-const HeaderLeft = styled.div`
-  flex: 1 1 0;
-  display: flex;
-  align-items: center;
-  min-width: 0;
-`;
-
-const HeaderCenter = styled.div`
-  flex: 2 1 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-`;
-
-const HeaderRight = styled.div`
-  flex: 1 1 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  min-width: 0;
+  width: 100%;
 `;
 
 const CollectFormGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1.2rem;
+  gap: 0.85rem;
   width: 100%;
-  padding: 1.2rem 0;
-  margin-top: 0.5rem;
+  box-sizing: border-box;
+
   @media (max-width: 900px) {
-    grid-template-columns: 1fr 1fr;
-    gap: 0.7rem;
+    grid-template-columns: repeat(2, 1fr);
   }
-  @media (max-width: 700px) {
+  @media (max-width: 600px) {
     grid-template-columns: 1fr 1fr;
-    gap: 0.4rem;
-    padding: 0.3rem 0 0 0;
-    margin-top: 0;
-    align-items: start;
+    gap: 0.6rem;
   }
 `;
 
-const CollectField = styled.div`
+const CollectField = styled.div<{ $fullWidth?: boolean }>`
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.3rem;
   width: 100%;
+  grid-column: ${({ $fullWidth }) => ($fullWidth ? '1 / -1' : 'span 1')};
 
-  &:nth-child(n+4) {
-    margin-top: 0.8rem;
-  }
-
-  &:last-child {
-    margin-top: 2.25rem;
-  }
-
-  @media (max-width: 700px) {
-    gap: 0.2rem;
-    margin: 0;
-    
-    &:nth-child(n+4) {
-      margin-top: 0;
-    }
-
+  @media (max-width: 600px) {
     &:nth-child(5) {
       grid-column: 1 / -1;
     }
-
     &:last-child {
-      margin-top: 0.3rem;
       grid-column: 1 / -1;
     }
   }
 `;
 
 const CollectLabel = styled.label`
-  font-size: 0.93rem;
-  color: #7c8597;
-  font-weight: 500;
-  margin-bottom: 0.2rem;
-  @media (max-width: 700px) {
-    font-size: 0.75rem;
-    margin-bottom: 0.05rem;
-    line-height: 1.2;
-  }
-`;
-
-const CollectInput = styled.input`
-  width: 100%;
-  border: 1.2px solid ${({ theme }) => theme.FIELD_BORDER};
-  background: ${({ theme }) => theme.FIELD_BG};
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  border-radius: 7px;
-  padding: 7px 10px;
-  font-size: 1.05rem;
-  outline: none;
-  transition: border 0.15s;
-  height: 38px;
-  &:focus {
-    border-color: ${({ theme }) => theme.ACCENT};
-  }
-  @media (max-width: 700px) {
-    padding: 4px 6px;
-    font-size: 0.85rem;
-    height: 30px;
-    border-radius: 4px;
-    border-width: 1px;
-  }
-`;
-
-const QuickButtonRow = styled.div`
-  display: flex;
-  gap: 0.25rem;
-  margin-top: 0.18rem;
-  justify-content: flex-start;
-  flex-wrap: wrap;
-`;
-
-const QuickButton = styled.button`
-  background: ${({ theme }) => theme.ACCENT};
-  color: #fff;
-  border: none;
-  border-radius: 5px;
-  padding: 1px 7px;
   font-size: 0.82rem;
+  color: #7c8597;
   font-weight: 600;
-  cursor: pointer;
-  height: 22px;
-  min-width: 36px;
-  line-height: 1;
-  transition: background 0.15s;
-  margin: 0;
-  &:hover {
-    background: ${({ theme }) => theme.ACCENT_DARK || '#4f46e5'};
-  }
-`;
-
-const CollectButton = styled.button`
-  background: ${({ theme }) => theme.ACCENT};
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 0;
-  font-size: 1.08rem;
-  font-weight: 700;
-  cursor: pointer;
-  width: 100%;
-  height: 38px;
-  box-shadow: 0 1px 4px #0000001a;
-  transition: background 0.15s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  
-  &:hover {
-    background: ${({ theme }) => theme.ACCENT_DARK || '#4f46e5'};
-  }
-  
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-  
-  @media (max-width: 700px) {
-    font-size: 0.85rem;
-    height: 30px;
-    border-radius: 4px;
-    gap: 0.3rem;
-    box-shadow: 0 1px 2px #0000001a;
-  }
 `;
 
 const InputWithPrefixWrapper = styled.div`
   position: relative;
   width: 100%;
-  
-  input {
-    @media (max-width: 700px) {
-      padding-left: 2rem !important;
-    }
-  }
 `;
 
 const InputPrefix = styled.span`
@@ -710,41 +526,220 @@ const InputPrefix = styled.span`
   transform: translateY(-50%);
   color: #7c8597;
   pointer-events: none;
-  font-size: 1.05rem;
-  @media (max-width: 700px) {
-    left: 6px;
-    font-size: 0.8rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+`;
+
+const CollectInput = styled.input`
+  width: 100%;
+  border: 1.2px solid ${({ theme }) => theme.FIELD_BORDER};
+  background: ${({ theme }) => theme.FIELD_BG};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.15s;
+  height: 38px;
+  box-sizing: border-box;
+
+  &:focus {
+    border-color: ${({ theme }) => (theme as any).ACCENT};
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
   }
 `;
 
 const StyledSelect = styled.select`
   width: 100%;
   height: 38px;
-  padding: 7px 10px;
-  border-radius: 7px;
+  padding: 6px 10px;
+  border-radius: 8px;
   border: 1.2px solid ${({ theme }) => theme.FIELD_BORDER};
   background: ${({ theme }) => theme.FIELD_BG};
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   outline: none;
-  transition: border 0.15s;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+
   &:focus {
-    border-color: ${({ theme }) => theme.ACCENT};
+    border-color: ${({ theme }) => (theme as any).ACCENT};
   }
-  @media (max-width: 700px) {
-    padding: 4px 6px;
-    font-size: 0.85rem;
-    height: 30px;
-    border-radius: 4px;
-    border-width: 1px;
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
   }
 `;
 
-const AddIcon = styled.span`
-  margin-right: 0.5rem;
+const CollectButton = styled.button`
+  background: ${({ theme }) => (theme as any).ACCENT};
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 0 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  height: 38px;
+  transition: background-color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+
+  &:hover:not(:disabled) {
+    background: ${({ theme }) => (theme as any).ACCENT_DARK || '#4f46e5'};
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
 `;
 
-// Styled components for the Modal
+/* Status Button & Dropdowns */
+const StatusButton = styled.button<{ status: string }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.15rem 0.65rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: transform 0.15s;
+  background: ${({ status, theme }) => {
+    const isDark = theme.BG === '#252525' || theme.BG === '#181c2a';
+    if (status === 'Leave' || status === 'leave') return isDark ? 'rgba(37,99,235,0.18)' : '#eff6ff';
+    if (status === 'late' || status === 'Late') return isDark ? 'rgba(245,158,11,0.18)' : '#fef9e7';
+    return isDark ? 'rgba(239,68,68,0.18)' : '#fef2f2';
+  }};
+  color: ${({ status }) => {
+    if (status === 'Leave' || status === 'leave') return '#3b82f6';
+    if (status === 'late' || status === 'Late') return '#f59e0b';
+    return '#ef4444';
+  }};
+  border: 1.2px solid ${({ status, theme }) => {
+    const isDark = theme.BG === '#252525' || theme.BG === '#181c2a';
+    if (status === 'Leave' || status === 'leave') return isDark ? '#2563eb' : '#bfdbfe';
+    if (status === 'late' || status === 'Late') return isDark ? '#eab308' : '#fde68a';
+    return isDark ? '#ef4444' : '#fecaca';
+  }};
+
+  &:hover {
+    transform: scale(1.04);
+  }
+`;
+
+const StatusDropdown = styled.div<{ direction: 'up' | 'down' }>`
+  position: absolute;
+  z-index: 1000;
+  min-width: 130px;
+  background: ${({ theme }) => theme.CARD};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border: 1.5px solid ${({ theme }) => theme.BORDER};
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  padding: 0.25rem 0;
+  display: flex;
+  flex-direction: column;
+`;
+
+const StatusOption = styled.button<{ color: string; separator?: boolean }>`
+  background: transparent;
+  border: none;
+  color: ${({ color }) => color};
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-top: ${({ separator, theme }) => separator ? `1px solid ${theme.BORDER}` : 'none'};
+
+  &:hover {
+    background: ${({ theme }) => theme.HOVER_BG};
+  }
+`;
+
+const DropdownDate = styled.div`
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: ${({ theme }) => (theme as any).ACCENT};
+  padding: 0.35rem 0.85rem;
+  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
+  margin-bottom: 0.2rem;
+`;
+
+/* Special Fines */
+const SpecialFinesSection = styled.div`
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px dashed ${({ theme }) => theme.BORDER};
+`;
+
+const SpecialFineEntry = styled.div`
+  padding: 0.55rem 0.75rem;
+  background: ${({ theme }) => theme.FIELD_BG};
+  border-left: 3px solid #3b82f6;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const SpecialFineInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+`;
+
+const SpecialFineDescription = styled.div`
+  font-size: 0.85rem;
+  color: #3b82f6;
+  font-weight: 600;
+`;
+
+const SpecialFineAmount = styled.div`
+  font-size: 0.92rem;
+  color: #3b82f6;
+  font-weight: 700;
+  white-space: nowrap;
+  margin-left: 0.8rem;
+`;
+
+const SpecialFineActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.8rem;
+`;
+
+const SpecialFineIconButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0.3rem;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border-radius: 4px;
+  transition: background 0.15s;
+  &:hover {
+    background: ${({ theme }) => theme.HOVER_BG};
+  }
+`;
+
+/* Modals */
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
@@ -756,307 +751,79 @@ const ModalOverlay = styled.div`
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  overflow-y: auto;
   padding: 1rem;
   box-sizing: border-box;
 `;
 
 const ModalDialog = styled.div`
   background: ${({ theme }) => theme.CARD};
-  padding: 2rem 2.5rem;
-  border-radius: 12px;
-  box-shadow: 0 5px 25px rgba(0,0,0,0.2);
+  padding: 1.6rem 1.8rem;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
   width: 100%;
-  max-width: 450px;
+  max-width: 420px;
   border: 1px solid ${({ theme }) => theme.BORDER};
   text-align: center;
-  @media (max-width: 700px) {
-    padding: 1.1rem 0.7rem;
-    max-width: 98vw;
-    min-width: 0;
-  }
 `;
 
 const ModalTitle = styled.h4`
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   font-weight: 700;
   margin-top: 0;
-  margin-bottom: 0.8rem;
+  margin-bottom: 0.75rem;
 `;
 
 const ModalMessage = styled.p`
-  color: ${({ theme }) => theme.TEXT_SECONDARY || '#adb5bd'};
-  font-size: 1rem;
-  margin-bottom: 1.8rem;
-  line-height: 1.6;
+  color: #7c8597;
+  font-size: 0.92rem;
+  margin-bottom: 1.4rem;
+  line-height: 1.5;
 `;
 
 const ModalButtonRow = styled.div`
   display: flex;
-  gap: 0.8rem;
+  gap: 0.75rem;
   justify-content: center;
 `;
 
 const ModalButton = styled.button<{ primary?: boolean }>`
-  padding: 0.6rem 1.5rem;
+  padding: 0.55rem 1.3rem;
   border-radius: 7px;
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 700;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+  transition: background-color 0.15s;
 
   ${({ theme, primary }) => primary ? `
-    background-color: ${theme.ACCENT_DANGER || '#e53e3e'};
+    background-color: #ef4444;
     color: #fff;
-    border-color: ${theme.ACCENT_DANGER || '#e53e3e'};
-    &:hover {
-      background-color: ${theme.ACCENT_DANGER_DARK || '#c53030'};
-      border-color: ${theme.ACCENT_DANGER_DARK || '#c53030'};
-    }
+    &:hover { background-color: #dc2626; }
   ` : `
-    background-color: ${theme.BUTTON_SECONDARY_BG || theme.FIELD_BG };
+    background-color: ${theme.FIELD_BG};
     color: ${theme.TEXT_PRIMARY};
-    border: 1px solid ${theme.BUTTON_SECONDARY_BORDER || theme.FIELD_BORDER};
-    &:hover {
-      background-color: ${theme.BUTTON_SECONDARY_HOVER_BG || theme.HOVER_BG};
-      border-color: ${theme.BUTTON_SECONDARY_HOVER_BORDER || theme.ACCENT};
-    }
+    border-color: ${theme.FIELD_BORDER};
+    &:hover { background-color: ${theme.HOVER_BG}; }
   `}
-`;
-
-const FineDetailsContent = styled.div`
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  
-  @media (max-width: 700px) {
-    .fine-summary {
-      order: 2;
-      margin-top: 0.5rem;
-      margin-bottom: 0;
-    }
-    
-    .fine-table {
-      order: 1;
-    }
-  }
-`;
-
-const FineSummaryRow = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.5rem;
-  margin-bottom: 0.7rem;
-  width: 100%;
-  
-  @media (max-width: 700px) {
-    gap: 0.3rem;
-    margin-bottom: 0;
-  }
-`;
-
-const FineSummaryCard = styled.div`
-  width: 100%;
-  background: ${({ theme }) => theme.CARD};
-  border-radius: 7px;
-  box-shadow: 0 1px 4px #0001;
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  padding: 0.4rem 0.7rem 0.3rem 0.7rem;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 34px;
-  
-  @media (max-width: 700px) {
-    padding: 0.25rem 0.5rem;
-    min-height: 28px;
-    border-radius: 5px;
-    border-width: 1px;
-  }
-`;
-
-const FineSummaryLabel = styled.div`
-  color: #7c8597;
-  font-size: 0.87rem;
-  font-weight: 500;
-  line-height: 1.1;
-  
-  @media (max-width: 700px) {
-    font-size: 0.75rem;
-    font-weight: 600;
-  }
-`;
-
-const FineSummaryValue = styled.div<{ color?: string }>`
-  font-size: 1.01rem;
-  font-weight: 800;
-  color: ${({ color }) => color || '#a78bfa'};
-  line-height: 1.1;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.2rem;
-  
-  @media (max-width: 700px) {
-    font-size: 0.85rem;
-    font-weight: 700;
-    gap: 0.15rem;
-    
-    svg {
-      font-size: 15px !important;
-      margin-right: 3px !important;
-    }
-    
-    span {
-      font-size: 0.7rem !important;
-      margin-right: 3px !important;
-    }
-    
-    .remission-text {
-      font-size: 0.7rem !important;
-      margin-right: 4px !important;
-    }
-  }
-`;
-
-const AttendanceTable = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 0.7rem;
-`;
-
-const AttendanceTh = styled.th`
-  padding: 0.32rem 0.5rem;
-  text-align: left;
-  color: #7c8597;
-  font-size: 0.91rem;
-  font-weight: 700;
-  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
-  background: ${({ theme }) => theme.CARD};
-  position: sticky;
-  top: 0;
-  z-index: 2;
-`;
-
-const AttendanceTd = styled.td`
-  padding: 0.32rem 0.5rem;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 0.91rem;
-  border-bottom: 1px solid ${({ theme }) => theme.BORDER};
-`;
-
-// Update the TableWrapper styled component to ensure the scrollbar is visible
-const TableWrapper = styled.div`
-  width: 100%;
-  overflow-x: auto;
-  max-height: 500px;
-  overflow-y: scroll;
-  scrollbar-width: thin;
-  scrollbar-color: ${({ theme }) => theme.ACCENT}40 ${({ theme }) => theme.BG};
-  &::-webkit-scrollbar {
-    width: 10px;
-    background: ${({ theme }) => theme.BG};
-  }
-  &::-webkit-scrollbar-thumb {
-    background: ${({ theme }) => theme.ACCENT}80;
-    border-radius: 6px;
-  }
-  &::-webkit-scrollbar-track {
-    background: ${({ theme }) => theme.BG};
-    border-radius: 6px;
-  }
-  @media (max-width: 700px) {
-    border-radius: 10px;
-    background: ${({ theme }) => theme.CARD};
-    padding-bottom: 0.5rem;
-    margin-bottom: 0.5rem;
-    min-width: 0;
-    box-sizing: border-box;
-  }
-`;
-
-const SpecialFinesSection = styled.div`
-  margin-top: 1.2rem;
-  padding-top: 1rem;
-  border-top: 1px solid ${({ theme }) => theme.BORDER};
-`;
-
-const SpecialFineEntry = styled.div`
-  padding: 0.6rem 0.8rem;
-  background: ${({ theme }) => theme.FIELD_BG};
-  border-left: 3px solid #3b82f6;
-  border-radius: 4px;
-  margin-bottom: 0.6rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const SpecialFineInfo = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  flex: 1;
-`;
-
-const SpecialFineDescription = styled.div`
-  font-size: 0.85rem;
-  color: #3b82f6;
-  font-weight: 500;
-`;
-
-const SpecialFineAmount = styled.div`
-  font-size: 0.95rem;
-  color: #3b82f6;
-  font-weight: 700;
-  white-space: nowrap;
-  margin-left: 1rem;
-`;
-
-const SpecialFineActions = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin-left: 1rem;
-`;
-
-const SpecialFineIconButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  padding: 0.35rem;
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  border-radius: 6px;
-  transition: background 0.15s, color 0.15s;
-  &:hover {
-    background: ${({ theme }) => theme.ACCENT}22;
-  }
 `;
 
 const ModalFormRow = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  margin-bottom: 1rem;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
   text-align: left;
 `;
 
-// Circle spinner loader for search suggestions
 const CircleLoader = styled.span`
   display: inline-block;
   margin-left: 0.2rem;
   width: 16px;
   height: 16px;
   vertical-align: middle;
-  border: 2px solid ${({ theme }) => theme.ACCENT + '55'};
-  border-top: 2px solid ${({ theme }) => theme.ACCENT};
+  border: 2px solid ${({ theme }) => ((theme as any).ACCENT || '#6366f1') + '55'};
+  border-top: 2px solid ${({ theme }) => (theme as any).ACCENT || '#6366f1'};
   border-radius: 50%;
   animation: circle-spin 0.7s linear infinite;
   @keyframes circle-spin {
@@ -1065,118 +832,73 @@ const CircleLoader = styled.span`
   }
 `;
 
-// Add a helper to get day short name
 function getDayShort(dateStr: string) {
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-US', { weekday: 'short' });
 }
 
-// Add styled components for status dropdown and button
-const StatusButton = styled.button<{ status: string }>`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  margin: 0 auto;
-  top: unset;
-  right: unset;
-  left: unset;
-  bottom: unset;
-  padding: clamp(0.08rem, 0.5vw, 0.2rem) clamp(0.4rem, 1vw, 0.8rem);
-  border-radius: 999px;
-  border: none;
-  font-weight: 600;
-  font-size: clamp(0.6rem, 1.2vw, 0.75rem);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background: ${({ status, theme }) => {
-    const themeAny = theme as any;
-    const isDark = themeAny.BG === '#252525' || themeAny.BG === '#181c2a';
-    if (status === 'Leave') {
-      return isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff';
-    } else if (status === 'late' || status === 'Late') {
-      return isDark ? 'rgba(245,158,11,0.15)' : '#fef9e7';
-    } else {
-      return isDark ? 'rgba(239,68,68,0.15)' : '#fef2f2';
-    }
-  }};
-  color: ${({ status }) => {
-    if (status === 'Leave') return '#2563eb';
-    if (status === 'late' || status === 'Late') return '#eab308';
-    return '#ef4444';
-  }};
-  border: 1.5px solid ${({ status, theme }) => {
-    const themeAny = theme as any;
-    const isDark = themeAny.BG === '#252525' || themeAny.BG === '#181c2a';
-    if (status === 'Leave') {
-      return isDark ? '#2563eb' : '#bfdbfe';
-    } else if (status === 'late' || status === 'Late') {
-      return isDark ? '#eab308' : '#fde68a';
-    } else {
-      return isDark ? '#ef4444' : '#fecaca';
-    }
-  }};
-  &:hover {
-    transform: scale(1.05);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  }
-  @media (max-width: 600px) {
-    padding: 0.15rem 0.6rem;
-    font-size: 0.7rem;
-  }
-`;
+/* ── SKELETON LOADERS ── */
 
-const StatusDropdown = styled.div<{ direction: 'up' | 'down' }>`
-  position: absolute;
-  z-index: 1000;
-  min-width: 120px;
-  max-width: 220px;
-  width: max-content;
-  box-sizing: border-box;
-  background: ${({ theme }) => theme.BG === '#252525' || theme.BG === '#181c2a' ? '#2a2a2a' : '#ffffff'};
-  color: ${({ theme }) => theme.BG === '#252525' || theme.BG === '#181c2a' ? '#f3f4f6' : '#232a3b'};
-  border: 1.5px solid ${({ theme }) => theme.BG === '#252525' || theme.BG === '#181c2a' ? '#353b4a' : '#e5e7eb'};
-  border-radius: 8px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.1);
-  padding: 0.2rem 0;
-  display: flex;
-  flex-direction: column;
-  right: 0;
-  ${({ direction }) =>
-    direction === 'down'
-      ? 'top: calc(100% + 6px);'
-      : 'bottom: calc(100% + 6px);'}
-`;
+const TableRowSkeleton: React.FC<{ columns: number }> = ({ columns }) => (
+  <>
+    {Array.from({ length: 4 }).map((_, rIdx) => (
+      <tr key={rIdx}>
+        {Array.from({ length: columns }).map((_, cIdx) => (
+          <AttendanceTd key={cIdx}>
+            <Skeleton
+              variant="text"
+              animation="wave"
+              height={22}
+              sx={{
+                bgcolor: (theme: any) =>
+                  theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
+                borderRadius: '4px',
+              }}
+            />
+          </AttendanceTd>
+        ))}
+      </tr>
+    ))}
+  </>
+);
 
-const StatusOption = styled.button<{ color: string; separator?: boolean }>`
-  background: ${({ theme }) => theme.BG === '#252525' || theme.BG === '#181c2a' ? '#2a2a2a' : '#ffffff'};
-  border: none;
-  color: ${({ color }) => color};
-  font-weight: 600;
-  font-size: 0.93rem;
-  padding: 0.4rem 1rem;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.15s;
-  border-top: ${({ separator }) => separator ? '1px solid #eee' : 'none'};
-  margin-top: ${({ separator }) => separator ? '2px' : '0'};
-  width: 100%;
-  &:hover {
-    background: ${({ theme }) => theme.BG === '#252525' || theme.BG === '#181c2a' ? '#3a3a3a' : '#f8f9fa'};
-  }
-`;
+const PageSkeleton: React.FC = () => {
+  return (
+    <Container>
+      <PageGrid>
+        <LeftSection>
+          <Card>
+            <Skeleton variant="rectangular" height={38} sx={{ borderRadius: '9px', mb: 2 }} animation="wave" />
+            <Skeleton variant="rectangular" height={52} sx={{ borderRadius: '9px', mb: 2 }} animation="wave" />
+            <Skeleton variant="text" width={140} height={28} sx={{ mb: 1.5 }} animation="wave" />
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <Skeleton key={idx} variant="rectangular" height={34} sx={{ borderRadius: '8px', mb: 1 }} animation="wave" />
+            ))}
+            <Skeleton variant="rectangular" height={150} sx={{ borderRadius: '8px', mt: 1.5 }} animation="wave" />
+          </Card>
+        </LeftSection>
+        <RightSection>
+          <CardStack>
+            <Card>
+              <Skeleton variant="text" width={160} height={28} sx={{ mb: 2 }} animation="wave" />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.85rem' }}>
+                {Array.from({ length: 6 }).map((_, idx) => (
+                  <Skeleton key={idx} variant="rectangular" height={38} sx={{ borderRadius: '8px' }} animation="wave" />
+                ))}
+              </div>
+            </Card>
+            <Card>
+              <Skeleton variant="text" width={160} height={28} sx={{ mb: 2 }} animation="wave" />
+              <Skeleton variant="rectangular" height={130} sx={{ borderRadius: '8px' }} animation="wave" />
+            </Card>
+          </CardStack>
+        </RightSection>
+      </PageGrid>
+    </Container>
+  );
+};
 
-// In the StatusDropdown definition, add a new styled component for the date display
-const DropdownDate = styled.div`
-  font-size: 0.93rem;
-  font-weight: 600;
-  color: #6366f1;
-  background: ${({ theme }) => theme.BG === '#252525' || theme.BG === '#181c2a' ? '#2a2a2a' : '#ffffff'};
-  padding: 0.4rem 1rem 0.2rem 1rem;
-  border-bottom: 1px solid #e5e7eb;
-  margin-bottom: 0.2rem;
-`;
-
+/* ── MAIN COMPONENT ── */
 
 const FineCollection: React.FC = () => {
   const theme = useTheme();
@@ -1186,7 +908,6 @@ const FineCollection: React.FC = () => {
   const { setLoading, loading } = useLoading();
   const { startProgress, setProgress, completeProgress } = useProgress();
   
-  // Check if user has school_id
   if (!user?.school_id) {
     return (
       <Container>
@@ -1254,9 +975,8 @@ const FineCollection: React.FC = () => {
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const pillRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const pillRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  // Add status options
   const statusOptions = [
     { value: 'Present', label: 'Present', color: '#22c55e' },
     { value: 'Absent', label: 'Absent', color: '#ef4444' },
@@ -1265,7 +985,6 @@ const FineCollection: React.FC = () => {
   ];
   const deleteOption = { value: 'DELETE', label: 'Delete', color: '#ef4444' };
 
-  // Calculate fine totals using useMemo for efficiency
   const totalFine = useMemo(() => {
     return attendanceRows.reduce((sum, row) => sum + Number(row.fine || 0), 0);
   }, [attendanceRows]);
@@ -1278,32 +997,26 @@ const FineCollection: React.FC = () => {
     return specialFinesForStudent.reduce((sum, s) => sum + Number(s.paid_amount || 0), 0);
   }, [specialFinesForStudent]);
 
-  // Total actual cash collected
   const totalActualPaid = useMemo(() => {
     return paymentHistory.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
   }, [paymentHistory]);
 
-  // Total remission given
   const totalGivenRemission = useMemo(() => {
     return paymentHistory.reduce((sum, payment) => sum + Number(payment.remission || 0), 0);
   }, [paymentHistory]);
   
-  // Combined total of actual paid and remission given
   const totalAccountedFor = useMemo(() => {
       return totalActualPaid + totalGivenRemission;
   }, [totalActualPaid, totalGivenRemission]);
 
-  // Remaining fine to be paid
   const remainingFineDisplay = useMemo(() => {
     const combinedTotal = totalFine + totalSpecialForStudent;
     const combinedAccounted = totalAccountedFor + totalSpecialPaidForStudent;
-    const remaining = combinedTotal - combinedAccounted; // Uses combined accounted
+    const remaining = combinedTotal - combinedAccounted;
     return remaining > 0 ? remaining : 0;
   }, [totalFine, totalAccountedFor, totalSpecialForStudent, totalSpecialPaidForStudent]);
 
-  // Flag to determine if collection form should be disabled
   const isCollectionDisabled = useMemo(() => {
-    // Disable when no student selected or remaining fine is 0
     return !selectedStudent || remainingFineDisplay <= 0;
   }, [selectedStudent, remainingFineDisplay]);
 
@@ -1355,9 +1068,7 @@ const FineCollection: React.FC = () => {
         .eq('school_id', user.school_id)
         .select();
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       if (data && data.length > 0) {
         setSpecialFinesForStudent(prev => prev.map(fine => fine.id === editingSpecialFineId ? { ...fine, ...data[0] } : fine));
@@ -1393,9 +1104,7 @@ const FineCollection: React.FC = () => {
         .eq('id', specialFineToDeleteId)
         .eq('school_id', user.school_id);
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
       setSpecialFinesForStudent(prev => prev.filter(fine => fine.id !== specialFineToDeleteId));
       showToast('Special fine deleted successfully.', 'success');
     } catch (err: any) {
@@ -1406,16 +1115,12 @@ const FineCollection: React.FC = () => {
     }
   };
 
-  // Helper function to format currency
   const formatCurrency = (value: number): string => {
-    // Check if the value is a whole number
     if (value % 1 === 0) {
       return String(value);
     }
-    // Otherwise, format to 2 decimal places
     return value.toFixed(2);
   };
-
 
   useEffect(() => {
     let isMounted = true;
@@ -1423,18 +1128,15 @@ const FineCollection: React.FC = () => {
       startProgress(false);
       setProgress(10);
       setLoading(true);
-      const minDuration = 1500;
+      const minDuration = 1200;
       const start = Date.now();
-      // Start data fetch and timer in parallel
       const dataPromise = (async () => {
         const [{ data: studentsData }, { data: classesData }, { data: sectionsData }] = await Promise.all([
           supabase.from('students').select('*').eq('status', 'active').eq('school_id', user.school_id),
           supabase.from('classes').select('id, name, has_sections').eq('school_id', user.school_id),
           supabase.from('sections').select('id, name').eq('school_id', user.school_id),
         ]);
-        if (studentsData) {
-          setStudents(studentsData);
-        }
+        if (studentsData) setStudents(studentsData);
         if (classesData) setClasses(classesData);
         if (sectionsData) setSections(sectionsData);
       })();
@@ -1449,67 +1151,21 @@ const FineCollection: React.FC = () => {
   }, [user?.school_id]);
 
   useEffect(() => {
-    const fetchAll = async () => {
-      if (!user?.school_id) return;
-      const minDuration = 2000;
-      const start = Date.now();
-      setLoading(true);
-      const [studentsData, classesData, sectionsData] = await Promise.all([
-        fetchAllRows(async (from, to) => {
-          return await supabase.from('students')
-            .select('*')
-            .eq('status', 'active')
-            .eq('school_id', user.school_id)
-            .range(from, to);
-        }),
-        fetchAllRows(async (from, to) => {
-          return await supabase.from('classes')
-            .select('id, name, has_sections')
-            .eq('school_id', user.school_id)
-            .range(from, to);
-        }),
-        fetchAllRows(async (from, to) => {
-          return await supabase.from('sections')
-            .select('id, name')
-            .eq('school_id', user.school_id)
-            .range(from, to);
-        }),
-      ]);
-      setStudents(studentsData);
-      setClasses(classesData);
-      setSections(sectionsData);
-      const elapsed = Date.now() - start;
-      if (elapsed < minDuration) {
-        setTimeout(() => setLoading(false), minDuration - elapsed);
-      } else {
-        setLoading(false);
-      }
-    };
-    fetchAll();
-  }, [user?.school_id]);
-
-  // Auto-focus search input on page load (after loading completes)
-  useEffect(() => {
     if (!loading && students.length > 0 && !selectedStudent) {
-      // Focus search input after page is loaded and no student is selected
       const focusTimer = setTimeout(() => {
         if (searchInputRef.current && document.activeElement !== searchInputRef.current) {
           searchInputRef.current.focus();
         }
       }, 100);
-      
       return () => clearTimeout(focusTimer);
     }
   }, [loading, students.length, selectedStudent]);
 
   useEffect(() => {
-    // If navigated with a studentId (can be ID or roll_number sequence), auto-select that student after students are loaded
     if (students.length > 0 && location.state && location.state.studentId) {
       const identifier = location.state.studentId;
-      // Try to find by ID first, then by roll_number sequence
       let student = students.find((s: any) => String(s.id) === String(identifier));
       if (!student) {
-        // Try to find by roll_number sequence (exact match only)
         for (const s of students) {
           const match = matchesStudentSearch(s, String(identifier));
           if (match.matches && match.score >= 1000) {
@@ -1522,35 +1178,27 @@ const FineCollection: React.FC = () => {
         handleSelectStudent(student);
       }
     }
-    // eslint-disable-next-line
   }, [students, location.state]);
 
   const handleSelectStudent = (student: any) => {
-    // Blur search input first to release focus (important for Enter key)
     if (searchInputRef.current && document.activeElement === searchInputRef.current) {
       searchInputRef.current.blur();
     }
     
-    // Update state
     setSearch(student.name);
     setShowSuggestions(false);
     setJustSelectedStudent(true);
     setSearchExactMatch(true);
     setSelectedStudent(student);
     
-    // Check if amount field will be disabled (after state updates complete)
-    // If disabled, focus search field instead; otherwise focus amount field
     const determineFocus = () => {
-      // Check if amount field is disabled (which happens when remaining fine is 0)
       if (amountInputRef.current && amountInputRef.current.disabled) {
-        // Field is disabled, focus search field and select its content
-        isFocusingAmountRef.current = false; // Don't try to focus amount
+        isFocusingAmountRef.current = false;
         if (searchInputRef.current) {
           searchInputRef.current.focus();
           searchInputRef.current.select();
         }
       } else if (amountInputRef.current && !amountInputRef.current.disabled) {
-        // Field is enabled, focus amount field
         isFocusingAmountRef.current = true;
         amountInputRef.current.focus();
         if (amountInputRef.current.value) {
@@ -1559,18 +1207,14 @@ const FineCollection: React.FC = () => {
       }
     };
     
-    // Wait for state updates and disabled state to be calculated
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         determineFocus();
-        // Try again after a delay to catch delayed disabled state updates
         setTimeout(determineFocus, 50);
         setTimeout(determineFocus, 150);
         setTimeout(determineFocus, 300);
-        // Final check after all calculations complete
         setTimeout(() => {
           determineFocus();
-          // Only clear flag if field is disabled, otherwise keep it for useEffect backup
           if (amountInputRef.current && amountInputRef.current.disabled) {
             isFocusingAmountRef.current = false;
           }
@@ -1579,16 +1223,13 @@ const FineCollection: React.FC = () => {
     });
   };
 
-  // Search effect
   useEffect(() => {
-    // If we just selected a student, keep suggestions hidden
     if (justSelectedStudent) {
       setShowSuggestions(false);
-      setJustSelectedStudent(false); // Reset the flag
+      setJustSelectedStudent(false);
       return;
     }
 
-    // If the search exactly matches the selected student's name or roll number, don't show suggestions
     if (searchExactMatch && selectedStudent) {
       const selectedRollNumber = getStudentDisplayId(selectedStudent);
       if (search === selectedStudent.name || search === String(selectedRollNumber)) {
@@ -1597,7 +1238,6 @@ const FineCollection: React.FC = () => {
       }
     }
 
-    // If search doesn't match selected student name or roll number anymore, clear the exact match flag
     if (searchExactMatch && selectedStudent) {
       const selectedRollNumber = getStudentDisplayId(selectedStudent);
       if (search !== selectedStudent.name && search !== String(selectedRollNumber)) {
@@ -1615,11 +1255,8 @@ const FineCollection: React.FC = () => {
     }
     
     setSuggestionsLoading(true);
-     
     const searchTerm = search.trim();
     const searchLower = searchTerm.toLowerCase();
-    
-    // Filter and score students for better sorting - use roll number only (not ID)
     const isNumericSearch = !isNaN(Number(searchLower));
     const searchTermNum = isNumericSearch ? parseInt(searchLower) : null;
     
@@ -1629,40 +1266,34 @@ const FineCollection: React.FC = () => {
         let score = 0;
         let matches = false;
         
-        // Get roll number sequence for search and sorting
-        // roll_number format: "S{school_id}-{sequence}" (e.g., "S1-20")
         const sequenceNumber = getSequenceNumber(student.roll_number);
         const sequenceStr = sequenceNumber || '';
-        const rollNumberNum = sequenceNumber ? parseInt(sequenceNumber) : Infinity; // Use Infinity for students without roll number so they sort last
+        const rollNumberNum = sequenceNumber ? parseInt(sequenceNumber) : Infinity;
 
-        // Check roll number search only (not ID)
         if (isNumericSearch && searchTermNum !== null) {
-          // Numeric search - check roll_number sequence only
           if (sequenceStr && sequenceStr === searchLower) {
-            score = 1000; // Highest priority for exact roll_number sequence match
+            score = 1000;
             matches = true;
           } else if (sequenceStr && sequenceStr.startsWith(searchLower)) {
-            score = 800; // High priority for roll_number sequence starts with
+            score = 800;
             matches = true;
           } else if (sequenceStr && sequenceStr.includes(searchLower)) {
-            score = 600; // Medium priority for roll_number sequence contains
+            score = 600;
             matches = true;
           }
         } else {
-          // Non-numeric search - check roll_number sequence only
           if (sequenceStr && sequenceStr.includes(searchLower)) {
             score = 10;
             matches = true;
           }
         }
 
-        // Name search (only if roll number didn't match)
         if (!matches) {
           if (studentNameLower.startsWith(searchLower)) {
-            score = 100; // High priority for name starts with
+            score = 100;
             matches = true;
           } else if (studentNameLower.includes(searchLower)) {
-            score = 50; // Lower priority for name contains
+            score = 50;
             matches = true;
           }
         }
@@ -1671,12 +1302,7 @@ const FineCollection: React.FC = () => {
       })
       .filter(item => item !== null)
       .sort((a, b) => {
-        // First sort by score (higher score first)
-        if (b!.score !== a!.score) {
-          return b!.score - a!.score;
-        }
-        // Then sort by roll number numerically ascending (for same score group)
-        // This ensures "20" comes before "200", "201", etc.
+        if (b!.score !== a!.score) return b!.score - a!.score;
         return a!.rollNumberNum - b!.rollNumberNum;
       })
       .map(item => item!.student);
@@ -1705,14 +1331,11 @@ const FineCollection: React.FC = () => {
       e.preventDefault();
       e.stopPropagation();
       if (suggestions[activeSuggestion]) {
-        // Call handleSelectStudent directly - it handles blur and focus internally
-        // No need to blur here as handleSelectStudent does it
         handleSelectStudent(suggestions[activeSuggestion]);
       }
     }
   };
 
-  // Scroll active suggestion into view when arrow keys are used
   useEffect(() => {
     if (showSuggestions && suggestionItemRefs.current[activeSuggestion]) {
       suggestionItemRefs.current[activeSuggestion]?.scrollIntoView({
@@ -1722,32 +1345,16 @@ const FineCollection: React.FC = () => {
     }
   }, [activeSuggestion, showSuggestions]);
 
-  // Scroll active suggestion into view when arrow keys are used
-  useEffect(() => {
-    if (showSuggestions && suggestionItemRefs.current[activeSuggestion]) {
-      suggestionItemRefs.current[activeSuggestion]?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-      });
-    }
-  }, [activeSuggestion, showSuggestions]);
-
-  // Handling suggestions showing/hiding with onFocus
   const handleSearchFocus = () => {
-    // Only show suggestions if we don't have an exact match with selected student
-    // AND there are actual suggestions available to show
     if (!searchExactMatch && suggestions.length > 0) {
       setShowSuggestions(true);
     }
   };
 
-  // Handling search input changes to properly track when to show/hide suggestions
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setSearch(newValue);
     setSuggestionsLoading(true);
-    // If the user modifies the search text and it no longer matches the selected student's name or roll number,
-    // clear the exact match flag to allow suggestions to show again
     if (searchExactMatch && selectedStudent) {
       const selectedRollNumber = getStudentDisplayId(selectedStudent);
       if (newValue !== selectedStudent.name && newValue !== String(selectedRollNumber)) {
@@ -1777,7 +1384,6 @@ const FineCollection: React.FC = () => {
       setAttendanceLoading(true);
       setAttendanceError(null);
       try {
-        // 1. Fetch attendance records (absent/late) with pagination
         const attData = await fetchAllRows(async (from, to) => {
           return await supabase
             .from('attendance_records')
@@ -1789,7 +1395,6 @@ const FineCollection: React.FC = () => {
             .range(from, to);
         });
         
-        // 2. Fetch all fine settings for the school with pagination
         const fineData = await fetchAllRows(async (from, to) => {
           return await supabase
             .from('fines')
@@ -1798,13 +1403,9 @@ const FineCollection: React.FC = () => {
             .order('effective_from', { ascending: true })
             .range(from, to);
         });
-        // 3. For each attendance record, find the fine in effect on that date using the class from the record
+
         const rows = (attData || []).map((rec: any) => {
-          // Use the class_id directly from the attendance record (this is the class the student was in when attendance was marked)
-          // If class_id is not available in the record (old records), fall back to student's current class
           const classIdFromRecord = rec.class_id || selectedStudent.class_id;
-          
-          // Find fines for that specific class
           const classFines = fineData?.filter((f: any) => String(f.class_id) === String(classIdFromRecord)) || [];
           
           let applicableFine = null;
@@ -1835,7 +1436,6 @@ const FineCollection: React.FC = () => {
     fetchAttendanceAndFines();
   }, [selectedStudent, user?.school_id]);
 
-  // New useEffect for fetching payment history
   useEffect(() => {
     if (!selectedStudent) {
       setPaymentHistory([]);
@@ -1847,7 +1447,6 @@ const FineCollection: React.FC = () => {
       setPaymentHistoryLoading(true);
       setPaymentHistoryError(null);
       try {
-        // Helper function to fetch all rows with pagination (handles 1000 row limit)
         const fetchAllRows = async (queryBuilder: any, pageSize: number = 1000): Promise<any[]> => {
           const allData: any[] = [];
           let from = 0;
@@ -1877,7 +1476,6 @@ const FineCollection: React.FC = () => {
 
         const data = await fetchAllRows(paymentsQuery);
         setPaymentHistory(data || []);
-        // Also fetch special fines for selected student
         try {
           const { data: sdata, error: sError } = await supabase
             .from('special_fines')
@@ -1899,19 +1497,12 @@ const FineCollection: React.FC = () => {
     fetchPaymentHistoryData();
   }, [selectedStudent, user?.school_id]);
 
-  // Persistent focus restoration - checks and restores focus if lost during re-renders
-  // Also handles case where amount field is disabled (remaining fine = 0) by focusing search
   useEffect(() => {
-    // Don't run if we just collected a payment and want to focus search
-    if (shouldFocusSearchAfterPaymentRef.current) {
-      return;
-    }
+    if (shouldFocusSearchAfterPaymentRef.current) return;
     
     if (selectedStudent && amountInputRef.current) {
-      // Check if field is disabled - if so, focus search field instead
       if (amountInputRef.current.disabled) {
-        // Field is disabled (remaining fine is 0), ensure search field has focus
-        isFocusingAmountRef.current = false; // Clear flag since we're focusing search
+        isFocusingAmountRef.current = false;
         if (searchInputRef.current && document.activeElement !== searchInputRef.current) {
           searchInputRef.current.focus();
           searchInputRef.current.select();
@@ -1919,18 +1510,12 @@ const FineCollection: React.FC = () => {
         return;
       }
       
-      // Field is enabled - ensure we're trying to focus it
-      // Set flag to true if it's not already set (in case it was cleared by previous disabled student)
       if (!isFocusingAmountRef.current) {
         isFocusingAmountRef.current = true;
       }
       
-      // Check and restore focus if needed
       const checkAndRestoreFocus = () => {
-        // Don't restore focus if we should be focusing search after payment
-        if (shouldFocusSearchAfterPaymentRef.current) {
-          return;
-        }
+        if (shouldFocusSearchAfterPaymentRef.current) return;
         if (amountInputRef.current && 
             !amountInputRef.current.disabled &&
             isFocusingAmountRef.current && 
@@ -1939,14 +1524,12 @@ const FineCollection: React.FC = () => {
         }
       };
       
-      // Check at various intervals to catch focus loss
       const timers = [
         setTimeout(checkAndRestoreFocus, 100),
         setTimeout(checkAndRestoreFocus, 200),
         setTimeout(checkAndRestoreFocus, 400),
         setTimeout(() => {
           checkAndRestoreFocus();
-          // Clear flag after final check
           isFocusingAmountRef.current = false;
         }, 600)
       ];
@@ -1963,10 +1546,9 @@ const FineCollection: React.FC = () => {
       return;
     }
 
-    const currentAmount = parseFloat(amount || '0'); // Default to 0 if empty
-    const currentRemission = parseFloat(remission || '0'); // Default to 0 if empty
+    const currentAmount = parseFloat(amount || '0');
+    const currentRemission = parseFloat(remission || '0');
 
-    // Better validation with more precise error messages
     if (isNaN(currentAmount) || currentAmount < 0) {
       showToast("Please enter a valid non-negative amount.", 'error');
       return;
@@ -1982,13 +1564,11 @@ const FineCollection: React.FC = () => {
 
     const actualRemainingFine = (totalFine + totalSpecialForStudent) - (totalAccountedFor + totalSpecialPaidForStudent);
 
-    // First check if there's any remaining fine at all
     if (actualRemainingFine <= 0) {
       showToast("There is no remaining fine to collect.", 'error');
       return;
     }
 
-    // Then check if the amount exceeds remaining fine
     if ((currentAmount + currentRemission) > actualRemainingFine) {
       showToast(`Collection (Rs. ${formatCurrency(currentAmount + currentRemission)}) exceeds remaining fine (Rs. ${formatCurrency(actualRemainingFine)}).`, 'error');
       return;
@@ -2024,13 +1604,9 @@ const FineCollection: React.FC = () => {
         setRemarks('');
         setCollectDate(new Date().toISOString().slice(0, 10));
         
-        // After payment is collected, focus back on search and select its content
-        // Set flag to prevent useEffect from interfering
         shouldFocusSearchAfterPaymentRef.current = true;
         isFocusingAmountRef.current = false;
         
-        // Use requestAnimationFrame to ensure state updates and DOM updates are complete
-        // Also blur any currently focused elements first to ensure clean focus transfer
         if (document.activeElement instanceof HTMLElement) {
           document.activeElement.blur();
         }
@@ -2038,12 +1614,10 @@ const FineCollection: React.FC = () => {
           requestAnimationFrame(() => {
             if (searchInputRef.current) {
               searchInputRef.current.focus();
-              // Select all content in the search field
               if (searchInputRef.current.value) {
                 searchInputRef.current.select();
               }
             }
-            // Clear flag after focus is set
             setTimeout(() => {
               shouldFocusSearchAfterPaymentRef.current = false;
             }, 100);
@@ -2064,9 +1638,7 @@ const FineCollection: React.FC = () => {
 
   const confirmActualDelete = async () => {
     if (itemToDeleteId === null) return;
-    
     setIsDeleting(true);
-    
     try {
       const { error } = await supabase
         .from('fine_payments')
@@ -2092,7 +1664,6 @@ const FineCollection: React.FC = () => {
   };
 
   const handleDeletePayment = async (paymentId: number) => {
-    // Instead of window.confirm, show the modal
     setItemToDeleteId(paymentId);
     setShowDeleteConfirmModal(true);
   };
@@ -2102,23 +1673,16 @@ const FineCollection: React.FC = () => {
     setItemToDeleteId(null);
   };
 
-  // Add Enter key handler for delete confirmation
   useEffect(() => {
     if (!showDeleteConfirmModal) return;
-    
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        confirmActualDelete();
-      } else if (e.key === 'Escape') {
-        cancelDelete();
-      }
+      if (e.key === 'Enter') confirmActualDelete();
+      else if (e.key === 'Escape') cancelDelete();
     };
-    
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [showDeleteConfirmModal]);
 
-  // Handle Enter key press on form inputs to submit payment
   const handleFormKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !isCollecting) {
       e.preventDefault();
@@ -2126,7 +1690,6 @@ const FineCollection: React.FC = () => {
     }
   };
 
-  // Fetch current session
   useEffect(() => {
     const fetchCurrentSession = async () => {
       try {
@@ -2138,19 +1701,13 @@ const FineCollection: React.FC = () => {
           .single();
         
         if (sessionError) throw sessionError;
-        if (sessionData) {
-          setSessionId(sessionData.id);
-        }
-      } catch (err) {
-      }
+        if (sessionData) setSessionId(sessionData.id);
+      } catch (err) {}
     };
     
-    if (user?.school_id) {
-      fetchCurrentSession();
-    }
+    if (user?.school_id) fetchCurrentSession();
   }, [user?.school_id]);
 
-  // Add effect to dismiss dropdown on click outside or scroll
   useEffect(() => {
     if (dropdownIdx === null) return;
     const handleClick = (e: MouseEvent) => {
@@ -2177,26 +1734,26 @@ const FineCollection: React.FC = () => {
   }
 
   if (loading) {
-    return <Loader />;
+    return <PageSkeleton />;
   }
 
   return (
     <Container>
       <PageGrid>
+        {/* LEFT COLUMN */}
         <LeftSection>
           <Card>
             {/* Search Field */}
             <SearchBar ref={inputRef}>
-              <SearchIconStyled style={{ color: '#7c8597', fontSize: '1.3rem' }} />
+              <SearchIconStyled />
               <SearchInput
                 ref={searchInputRef}
                 value={search}
                 onChange={handleSearchChange}
                 onFocus={handleSearchFocus}
                 onKeyDown={handleKeyDown}
-                placeholder="Search by name or roll number..."
+                placeholder="Search student by name or roll number..."
               />
-              {/* Show circle loader when suggestions are loading */}
               {suggestionsLoading && <CircleLoader />}
               {showSuggestions && suggestions.length > 0 && (
                 <SuggestionList>
@@ -2214,7 +1771,7 @@ const FineCollection: React.FC = () => {
                             {student.picture_url ? (
                               <img src={student.picture_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
-                              <AccountCircle style={{ fontSize: '1.4rem' }} />
+                              <AccountCircle style={{ fontSize: '1.2rem' }} />
                             )}
                           </SuggestionAvatar>
                           <SuggestionInfo>
@@ -2233,7 +1790,7 @@ const FineCollection: React.FC = () => {
               )}
             </SearchBar>
 
-            {/* Student Info */}
+            {/* Selected Student Banner */}
             {selectedStudent && (
               <StudentInfoRow>
                 <StudentInfoMain>
@@ -2241,7 +1798,7 @@ const FineCollection: React.FC = () => {
                     {selectedStudent.picture_url ? (
                       <img src={selectedStudent.picture_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      <AccountCircle style={{ fontSize: '1.6rem' }} />
+                      <AccountCircle style={{ fontSize: '1.4rem' }} />
                     )}
                   </StudentAvatar>
                   <StudentInfoTextCol>
@@ -2256,114 +1813,111 @@ const FineCollection: React.FC = () => {
               </StudentInfoRow>
             )}
 
-            <div style={{ marginTop: '1.5rem' }}>
-              <CardTitle><Calculate style={{ color: (theme as any).ACCENT }} /> Fine Details</CardTitle>
+            <div>
+              <CardTitle>
+                <Calculate /> Fine Details
+              </CardTitle>
               
               {selectedStudent ? (
                 <FineDetailsContent>
-                  <FineSummaryRow className="fine-summary">
+                  <FineSummaryColumn>
                     <FineSummaryCard>
                       <FineSummaryLabel>Total Fine</FineSummaryLabel>
-                      <FineSummaryValue color="#6366f1">
-                        <CardGiftcard style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4 }} /> 
+                      <FineSummaryValue color="#a78bfa">
+                        <CardGiftcard style={{ fontSize: 16 }} />
                         Rs. {formatCurrency(totalFine)}
                       </FineSummaryValue>
                     </FineSummaryCard>
+
                     <FineSummaryCard>
-                      <FineSummaryLabel>Paid Amount</FineSummaryLabel>
-                      <FineSummaryValue color="#22c55e">
-                        {totalGivenRemission > 0 && (
-                          <span className="remission-text" style={{ color: '#5a6478', fontWeight: 500, fontSize: '0.97em', marginRight: 8 }}>
-                            (Remission: Rs. {formatCurrency(totalGivenRemission)})
-                          </span>
-                        )}
-                        <Paid style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4 }} />
+                      <FineSummaryLabel>
+                        Paid Amount {totalGivenRemission > 0 && <span style={{ fontSize: '0.78rem', color: '#7c8597', fontWeight: 400 }}>(Remission: Rs. {formatCurrency(totalGivenRemission)})</span>}
+                      </FineSummaryLabel>
+                      <FineSummaryValue color="#4ade80">
+                        <Paid style={{ fontSize: 16 }} />
                         Rs. {formatCurrency(totalActualPaid)}
                       </FineSummaryValue>
                     </FineSummaryCard>
+
                     <FineSummaryCard>
                       <FineSummaryLabel>Special Fine</FineSummaryLabel>
-                      <FineSummaryValue color="#a855f7">
-                        <CardGiftcard style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4 }} /> 
+                      <FineSummaryValue color="#a78bfa">
+                        <CardGiftcard style={{ fontSize: 16 }} />
                         Rs. {formatCurrency(totalSpecialForStudent - totalSpecialPaidForStudent)}
                       </FineSummaryValue>
                     </FineSummaryCard>
+
                     <FineSummaryCard>
                       <FineSummaryLabel>Remaining</FineSummaryLabel>
                       <FineSummaryValue color="#f43f5e">
-                        <ErrorOutline style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4 }} /> 
+                        <ErrorOutline style={{ fontSize: 16 }} />
                         Rs. {formatCurrency(remainingFineDisplay)}
                       </FineSummaryValue>
                     </FineSummaryCard>
-                  </FineSummaryRow>
-                  <TableWrapper className="attendance-table-wrapper fine-table">
-                  <AttendanceTable>
-                    <thead>
-                      <tr>
-                        <AttendanceTh>Date</AttendanceTh>
-                        <AttendanceTh>Day</AttendanceTh>
-                        <AttendanceTh>Status</AttendanceTh>
-                        <AttendanceTh>Fine</AttendanceTh>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {attendanceLoading ? (
-                        <tr><AttendanceTd colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}><Loader size="small" /></AttendanceTd></tr>
-                      ) : attendanceError ? (
-                        <tr><AttendanceTd colSpan={4}>{attendanceError}</AttendanceTd></tr>
-                      ) : attendanceRows.length === 0 ? (
-                        <tr><AttendanceTd colSpan={4}>No absent or late records found.</AttendanceTd></tr>
-                      ) : (
-                        attendanceRows.map((row, idx) => (
-                          <tr key={row.date + row.status + idx}>
-                            <AttendanceTd>{row.date}</AttendanceTd>
-                            <AttendanceTd>{getDayShort(row.date)}</AttendanceTd>
-                            <AttendanceTd style={{ position: 'relative', textAlign: 'center', verticalAlign: 'middle' }}>
-                              <StatusButton
-                                ref={el => (pillRefs.current[idx] = el)}
-                                status={row.status}
-                                onClick={e => {
-                                  const rect = pillRefs.current[idx]?.getBoundingClientRect();
-                                  if (rect) {
-                                    const viewportHeight = window.innerHeight;
-                                    const dropdownHeight = 200;
-                                    const spaceBelow = viewportHeight - rect.bottom - 20; // 20px padding from bottom
-                                    const spaceAbove = rect.top - 20; // 20px padding from top
-                                    
-                                    // If not enough space below but enough space above, position above
-                                    const shouldPositionAbove = spaceBelow < dropdownHeight && spaceAbove > dropdownHeight;
-                                    
-                                    setDropdownDirection(shouldPositionAbove ? 'up' : 'down');
-                                    setDropdownPos({
-                                      left: rect.left,
-                                      top: shouldPositionAbove ? rect.top - 204 : rect.bottom + 4,
-                                    });
-                                  } else {
-                                    setDropdownDirection('down');
-                                    setDropdownPos(null);
-                                  }
-                                  setDropdownIdx(idx);
-                                }}
-                              >
-                              {row.status}
-                              </StatusButton>
-                              {dropdownIdx === idx && dropdownPos && (
-                                ReactDOM.createPortal(
-                                  <StatusDropdown
-                                    ref={dropdownRef}
-                                    direction={dropdownDirection}
-                                    style={{
-                                      position: 'fixed',
-                                      top: dropdownPos.top,
-                                      left: dropdownPos.left,
-                                      zIndex: 1000,
-                                      backgroundColor: (themeAny.BG === '#252525' || themeAny.BG === '#181c2a') ? '#2a2a2a' : '#ffffff',
-                                      color: (themeAny.BG === '#252525' || themeAny.BG === '#181c2a') ? '#f3f4f6' : '#232a3b',
-                                      boxShadow: '0 4px 24px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.1)',
-                                      border: '1.5px solid',
-                                      borderColor: (themeAny.BG === '#252525' || themeAny.BG === '#181c2a') ? '#353b4a' : '#e5e7eb',
-                                    }}
-                                  >
+                  </FineSummaryColumn>
+
+                  <TableWrapper className="attendance-table-wrapper">
+                    <AttendanceTable>
+                      <thead>
+                        <tr>
+                          <AttendanceTh>Date</AttendanceTh>
+                          <AttendanceTh>Day</AttendanceTh>
+                          <AttendanceTh style={{ textAlign: 'center' }}>Status</AttendanceTh>
+                          <AttendanceTh style={{ textAlign: 'right' }}>Fine</AttendanceTh>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {attendanceLoading ? (
+                          <TableRowSkeleton columns={4} />
+                        ) : attendanceError ? (
+                          <tr><AttendanceTd colSpan={4} style={{ color: '#ef4444' }}>{attendanceError}</AttendanceTd></tr>
+                        ) : attendanceRows.length === 0 ? (
+                          <tr><AttendanceTd colSpan={4} style={{ textAlign: 'center', color: '#7c8597', padding: '1.5rem 0' }}>No absent or late records found.</AttendanceTd></tr>
+                        ) : (
+                          attendanceRows.map((row, idx) => (
+                            <tr key={row.date + row.status + idx}>
+                              <AttendanceTd>{row.date}</AttendanceTd>
+                              <AttendanceTd>{getDayShort(row.date)}</AttendanceTd>
+                              <AttendanceTd style={{ position: 'relative', textAlign: 'center', verticalAlign: 'middle' }}>
+                                <StatusButton
+                                  ref={el => (pillRefs.current[idx] = el)}
+                                  status={row.status}
+                                  onClick={e => {
+                                    const rect = pillRefs.current[idx]?.getBoundingClientRect();
+                                    if (rect) {
+                                      const viewportHeight = window.innerHeight;
+                                      const dropdownHeight = 200;
+                                      const spaceBelow = viewportHeight - rect.bottom - 20;
+                                      const spaceAbove = rect.top - 20;
+                                      const shouldPositionAbove = spaceBelow < dropdownHeight && spaceAbove > dropdownHeight;
+                                      
+                                      setDropdownDirection(shouldPositionAbove ? 'up' : 'down');
+                                      setDropdownPos({
+                                        left: rect.left,
+                                        top: shouldPositionAbove ? rect.top - 204 : rect.bottom + 4,
+                                      });
+                                    } else {
+                                      setDropdownDirection('down');
+                                      setDropdownPos(null);
+                                    }
+                                    setDropdownIdx(idx);
+                                  }}
+                                >
+                                  {row.status}
+                                </StatusButton>
+
+                                {dropdownIdx === idx && dropdownPos && (
+                                  ReactDOM.createPortal(
+                                    <StatusDropdown
+                                      ref={dropdownRef}
+                                      direction={dropdownDirection}
+                                      style={{
+                                        position: 'fixed',
+                                        top: dropdownPos.top,
+                                        left: dropdownPos.left,
+                                        zIndex: 1000,
+                                      }}
+                                    >
                                       <DropdownDate>{row.date}</DropdownDate>
                                       {statusOptions.map(opt => (
                                         <StatusOption
@@ -2389,7 +1943,6 @@ const FineCollection: React.FC = () => {
                                                   }
                                                 ], { onConflict: 'student_id,date,session_id' });
                                               if (error) throw error;
-                                              // If status is 'leave' or 'present', remove the row, else update in place
                                               if (['leave', 'present'].includes(opt.value.toLowerCase())) {
                                                 setAttendanceRows(prevRows => prevRows.filter((_, i) => i !== idx));
                                               } else {
@@ -2398,75 +1951,6 @@ const FineCollection: React.FC = () => {
                                                 );
                                               }
                                               showToast('Status updated.', 'success');
-                                              // Refetch attendance and fine data to refresh all loaded data
-                                              if (selectedStudent) {
-                                                setAttendanceLoading(true);
-                                                setAttendanceError(null);
-                                                try {
-                                                  // Helper function to fetch all rows with pagination (handles 1000 row limit)
-                                                  const fetchAllRows = async (queryBuilder: any, pageSize: number = 1000): Promise<any[]> => {
-                                                    const allData: any[] = [];
-                                                    let from = 0;
-                                                    let hasMore = true;
-
-                                                    while (hasMore) {
-                                                      const to = from + pageSize - 1;
-                                                      const { data, error } = await queryBuilder.range(from, to);
-                                                      if (error) throw error;
-                                                      if (data && data.length > 0) {
-                                                        allData.push(...data);
-                                                        hasMore = data.length === pageSize;
-                                                        from += pageSize;
-                                                      } else {
-                                                        hasMore = false;
-                                                      }
-                                                    }
-                                                    return allData;
-                                                  };
-
-                                                  // Fetch attendance records with pagination
-                                                  const attendanceQuery = supabase
-                                                    .from('attendance_records')
-                                                    .select('date, status, session_id')
-                                                    .eq('student_id', selectedStudent.id)
-                                                    .eq('school_id', user.school_id)
-                                                    .in('status', ['absent', 'late'])
-                                                    .order('date', { ascending: false });
-                                                  
-                                                  const attData = await fetchAllRows(attendanceQuery);
-                                                  
-                                                  // Fetch fines with pagination
-                                                  const finesQuery = supabase
-                                                    .from('fines')
-                                                    .select('absent_fine, late_fine, effective_from')
-                                                    .eq('class_id', selectedStudent.class_id)
-                                                    .eq('school_id', user.school_id)
-                                                    .order('effective_from', { ascending: true });
-                                                  
-                                                  const fineData = await fetchAllRows(finesQuery);
-                                                  const rows = (attData || []).map((rec: any) => {
-                                                    let fine = fineData && fineData.length > 0 ? fineData[0] : null;
-                                                    for (const f of fineData) {
-                                                      if (f.effective_from <= rec.date) fine = f;
-                                                    }
-                                                    let fineAmount = 0;
-                                                    if (fine) {
-                                                      fineAmount = rec.status === 'absent' ? Number(fine.absent_fine) : Number(fine.late_fine);
-                                                    }
-                                                    return {
-                                                      date: rec.date,
-                                                      status: rec.status,
-                                                      fine: fineAmount,
-                                                    };
-                                                  });
-                                                  setAttendanceRows(rows);
-                                                } catch (err: any) {
-                                                  setAttendanceError('Failed to fetch attendance or fine data.');
-                                                  setAttendanceRows([]);
-                                                } finally {
-                                                  setAttendanceLoading(false);
-                                                }
-                                              }
                                             } catch (err) {
                                               showToast('Failed to update status.', 'error');
                                             }
@@ -2488,7 +1972,6 @@ const FineCollection: React.FC = () => {
                                               .eq('date', row.date)
                                               .eq('school_id', user.school_id);
                                             if (error) throw error;
-                                            // Remove the row from local state
                                             setAttendanceRows(prevRows => prevRows.filter((_, i) => i !== idx));
                                             showToast('Attendance record removed.', 'success');
                                           } catch (err) {
@@ -2502,60 +1985,63 @@ const FineCollection: React.FC = () => {
                                     </StatusDropdown>,
                                     document.body
                                   )
-                              )}
-                            </AttendanceTd>
-                            <AttendanceTd>Rs. {row.fine}</AttendanceTd>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </AttendanceTable>
+                                )}
+                              </AttendanceTd>
+                              <AttendanceTd style={{ textAlign: 'right', fontWeight: 700, color: '#f43f5e' }}>
+                                Rs. {row.fine}
+                              </AttendanceTd>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </AttendanceTable>
                   </TableWrapper>
+
                   {specialFinesForStudent.length > 0 && (
                     <SpecialFinesSection>
-                      <div style={{ fontSize: '0.95rem', fontWeight: 600, color: (theme as any).TEXT_PRIMARY, marginBottom: '0.8rem' }}>
+                      <div style={{ fontSize: '0.88rem', fontWeight: 700, color: themeAny.TEXT_PRIMARY, marginBottom: '0.5rem' }}>
                         Special Fines
                       </div>
-                          {specialFinesForStudent.map((fine, idx) => {
-                            const canDelete = !hasCollectionAfterSpecialFine(fine);
-                            return (
-                              <SpecialFineEntry key={fine.id || idx}>
-                                <SpecialFineInfo>
-                                  <SpecialFineDescription>
-                                    {fine.description?.trim() ? fine.description : 'Special fine'}
-                                  </SpecialFineDescription>
-                                  <span style={{ fontSize: '0.75rem', color: '#7c8597', marginTop: '0.2rem' }}>{formatAppDate(fine.created_at)}</span>
-                                </SpecialFineInfo>
-                                <SpecialFineActions>
-                                  <SpecialFineAmount>
-                                    Rs. {formatCurrency(fine.amount || 0)}
-                                  </SpecialFineAmount>
-                                  <SpecialFineIconButton
-                                    type="button"
-                                    title="Edit special fine"
-                                    onClick={() => handleEditSpecialFine(fine)}
-                                  >
-                                    <Edit style={{ fontSize: '1rem', color: (theme as any).ACCENT }} />
-                                  </SpecialFineIconButton>
-                                  {canDelete && (
-                                    <SpecialFineIconButton
-                                      type="button"
-                                      title="Delete special fine"
-                                      onClick={() => handleDeleteSpecialFine(fine)}
-                                    >
-                                      <DeleteIcon style={{ fontSize: '1rem', color: '#ef4444' }} />
-                                    </SpecialFineIconButton>
-                                  )}
-                                </SpecialFineActions>
-                              </SpecialFineEntry>
-                            );
-                          })}
+                      {specialFinesForStudent.map((fine, idx) => {
+                        const canDelete = !hasCollectionAfterSpecialFine(fine);
+                        return (
+                          <SpecialFineEntry key={fine.id || idx}>
+                            <SpecialFineInfo>
+                              <SpecialFineDescription>
+                                {fine.description?.trim() ? fine.description : 'Special fine'}
+                              </SpecialFineDescription>
+                              <span style={{ fontSize: '0.75rem', color: '#7c8597', marginTop: '0.1rem' }}>{formatAppDate(fine.created_at)}</span>
+                            </SpecialFineInfo>
+                            <SpecialFineActions>
+                              <SpecialFineAmount>
+                                Rs. {formatCurrency(fine.amount || 0)}
+                              </SpecialFineAmount>
+                              <SpecialFineIconButton
+                                type="button"
+                                title="Edit special fine"
+                                onClick={() => handleEditSpecialFine(fine)}
+                              >
+                                <Edit style={{ fontSize: '0.95rem', color: (themeAny as any).ACCENT }} />
+                              </SpecialFineIconButton>
+                              {canDelete && (
+                                <SpecialFineIconButton
+                                  type="button"
+                                  title="Delete special fine"
+                                  onClick={() => handleDeleteSpecialFine(fine)}
+                                >
+                                  <DeleteIcon style={{ fontSize: '0.95rem', color: '#ef4444' }} />
+                                </SpecialFineIconButton>
+                              )}
+                            </SpecialFineActions>
+                          </SpecialFineEntry>
+                        );
+                      })}
                     </SpecialFinesSection>
                   )}
                 </FineDetailsContent>
               ) : (
                 <CardPlaceholder>
-                  <CardIcon><MonetizationOn style={{ fontSize: '3.2rem' }} /></CardIcon>
+                  <CardIcon><MonetizationOn /></CardIcon>
                   Select a student to view fine details
                 </CardPlaceholder>
               )}
@@ -2563,226 +2049,248 @@ const FineCollection: React.FC = () => {
           </Card>
         </LeftSection>
 
-        <CardStack>
-          <Card>
-            <CardTitle><Payment style={{ color: (theme as any).ACCENT }} /> Collect Payment</CardTitle>
-            {selectedStudent ? (
-              <CollectFormGrid>
-                {/* Amount Field */}
-                <CollectField>
-                  <CollectLabel>Amount</CollectLabel>
-                  <InputWithPrefixWrapper>
-                    <InputPrefix>Rs.</InputPrefix>
-                    <CollectInput
-                      ref={amountInputRef}
-                      type="tel"
-                      value={amount}
-                      inputMode="numeric"
-                      pattern="[0-9]*"
+        {/* RIGHT COLUMN */}
+        <RightSection>
+          <CardStack>
+            {/* Collect Payment Form */}
+            <Card>
+              <CardTitle>
+                <Payment /> Collect Payment
+              </CardTitle>
+              {selectedStudent ? (
+                <CollectFormGrid>
+                  {/* Amount Field */}
+                  <CollectField>
+                    <CollectLabel>Amount</CollectLabel>
+                    <InputWithPrefixWrapper>
+                      <InputPrefix>Rs.</InputPrefix>
+                      <CollectInput
+                        ref={amountInputRef}
+                        type="tel"
+                        value={amount}
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        autoComplete="new-password"
+                        name="amount-input"
+                        data-form-type="other"
+                        data-lpignore="true"
+                        data-1p-ignore="true"
+                        spellCheck="false"
+                        onChange={e => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setAmount(val);
+                        }}
+                        onFocus={() => {
+                          if (isFocusingAmountRef.current) {
+                            setTimeout(() => {
+                              if (document.activeElement === amountInputRef.current) {
+                                isFocusingAmountRef.current = false;
+                              }
+                            }, 100);
+                          }
+                        }}
+                        placeholder="0.00"
+                        style={{ paddingLeft: '2.5rem' }}
+                        onKeyDown={e => {
+                          if (["e", "E", "+", "-", "."].includes(e.key)) {
+                            e.preventDefault();
+                          }
+                          handleFormKeyDown(e);
+                        }}
+                        disabled={isCollectionDisabled}
+                      />
+                    </InputWithPrefixWrapper>
+                  </CollectField>
+
+                  {/* Remission Field */}
+                  <CollectField>
+                    <CollectLabel>Remission</CollectLabel>
+                    <InputWithPrefixWrapper>
+                      <InputPrefix>Rs.</InputPrefix>
+                      <CollectInput
+                        type="tel"
+                        value={remission}
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        autoComplete="new-password"
+                        name="remission-input"
+                        data-form-type="other"
+                        data-lpignore="true"
+                        data-1p-ignore="true"
+                        spellCheck="false"
+                        onChange={e => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setRemission(val);
+                        }}
+                        placeholder="0.00"
+                        style={{ paddingLeft: '2.5rem' }}
+                        onKeyDown={e => {
+                          if (["e", "E", "+", "-", "."].includes(e.key)) {
+                            e.preventDefault();
+                          }
+                          handleFormKeyDown(e);
+                        }}
+                        disabled={isCollectionDisabled}
+                      />
+                    </InputWithPrefixWrapper>
+                  </CollectField>
+
+                  {/* Collection Date Field */}
+                  <CollectField>
+                    <CollectLabel>Collection Date</CollectLabel>
+                    <AppDateField
+                      value={collectDate}
+                      onChange={e => setCollectDate(e.target.value)}
+                      disabled={isCollectionDisabled}
+                      textFieldProps={{
+                        InputLabelProps: { shrink: true },
+                        autoComplete: 'new-password',
+                        onKeyDown: handleFormKeyDown,
+                        inputProps: {
+                          'data-form-type': 'other',
+                          'data-lpignore': 'true',
+                          'data-1p-ignore': 'true',
+                        },
+                      }}
+                    />
+                  </CollectField>
+
+                  {/* Payment Method Field */}
+                  <CollectField>
+                    <CollectLabel>Payment Method</CollectLabel>
+                    <StyledSelect 
+                      value={paymentMethod} 
                       autoComplete="new-password"
-                      name="amount-input"
+                      data-form-type="other"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
+                      onChange={e => setPaymentMethod(e.target.value)}
+                      disabled={isCollectionDisabled}
+                    >
+                      <option value="Cash">Cash</option>
+                      <option value="Card">Card</option>
+                      <option value="Online">Online</option>
+                      <option value="Other">Other</option>
+                    </StyledSelect>
+                  </CollectField>
+
+                  {/* Remarks Field */}
+                  <CollectField>
+                    <CollectLabel>Remarks</CollectLabel>
+                    <CollectInput
+                      type="text"
+                      value={remarks}
+                      autoComplete="new-password"
                       data-form-type="other"
                       data-lpignore="true"
                       data-1p-ignore="true"
                       spellCheck="false"
-                      onChange={e => {
-                        // Only allow integers
-                        const val = e.target.value.replace(/[^0-9]/g, '');
-                        setAmount(val);
-                      }}
-                      onFocus={() => {
-                        // Clear the focusing flag when field actually receives focus
-                        if (isFocusingAmountRef.current) {
-                          // Don't clear immediately, wait a bit to ensure focus sticks
-                          setTimeout(() => {
-                            if (document.activeElement === amountInputRef.current) {
-                              isFocusingAmountRef.current = false;
-                            }
-                          }, 100);
-                        }
-                      }}
-                      placeholder="0.00"
-                      style={{ paddingLeft: '2.8rem' }}
-                      onKeyDown={e => {
-                        if (["e", "E", "+", "-", "."].includes(e.key)) {
-                          e.preventDefault();
-                        }
-                        handleFormKeyDown(e);
-                      }}
+                      onChange={e => setRemarks(e.target.value)}
+                      placeholder="Optional notes"
+                      onKeyDown={handleFormKeyDown}
                       disabled={isCollectionDisabled}
                     />
-                  </InputWithPrefixWrapper>
-                </CollectField>
+                  </CollectField>
 
-                {/* Remission Field */}
-                <CollectField>
-                  <CollectLabel>Remission</CollectLabel>
-                  <InputWithPrefixWrapper>
-                    <InputPrefix>Rs.</InputPrefix>
-                    <CollectInput
-                      type="tel"
-                      value={remission}
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      autoComplete="new-password"
-                      name="remission-input"
-                      data-form-type="other"
-                      data-lpignore="true"
-                      data-1p-ignore="true"
-                      spellCheck="false"
-                      onChange={e => {
-                        // Only allow integers
-                        const val = e.target.value.replace(/[^0-9]/g, '');
-                        setRemission(val);
-                      }}
-                      placeholder="0.00"
-                      style={{ paddingLeft: '2.8rem' }}
-                      onKeyDown={e => {
-                        if (["e", "E", "+", "-", "."].includes(e.key)) {
-                          e.preventDefault();
-                        }
-                        handleFormKeyDown(e);
-                      }}
-                      disabled={isCollectionDisabled}
-                    />
-                  </InputWithPrefixWrapper>
-                </CollectField>
-
-                {/* Date Field */}
-                <CollectField>
-                  <CollectLabel>Collection Date</CollectLabel>
-                  <AppDateField
-                    value={collectDate}
-                    onChange={e => setCollectDate(e.target.value)}
-                    disabled={isCollectionDisabled}
-                    textFieldProps={{
-                      InputLabelProps: { shrink: true },
-                      autoComplete: 'new-password',
-                      onKeyDown: handleFormKeyDown,
-                      inputProps: {
-                        'data-form-type': 'other',
-                        'data-lpignore': 'true',
-                        'data-1p-ignore': 'true',
-                      },
-                    }}
-                  />
-                </CollectField>
-
-                {/* Payment Method Field */}
-                <CollectField>
-                  <CollectLabel>Payment Method</CollectLabel>
-                  <StyledSelect 
-                    value={paymentMethod} 
-                    autoComplete="new-password"
-                    data-form-type="other"
-                    data-lpignore="true"
-                    data-1p-ignore="true"
-                    onChange={e => setPaymentMethod(e.target.value)}
-                    disabled={isCollectionDisabled}
-                  >
-                    <option value="Cash">Cash</option>
-                    <option value="Card">Card</option>
-                    <option value="Online">Online</option>
-                    <option value="Other">Other</option>
-                  </StyledSelect>
-                </CollectField>
-
-                {/* Remarks Field */}
-                <CollectField>
-                  <CollectLabel>Remarks</CollectLabel>
-                  <CollectInput
-                    className="standalone" 
-                    type="text"
-                    value={remarks}
-                    autoComplete="new-password"
-                    data-form-type="other"
-                    data-lpignore="true"
-                    data-1p-ignore="true"
-                    spellCheck="false"
-                    onChange={e => setRemarks(e.target.value)}
-                    placeholder="Optional notes"
-                    onKeyDown={handleFormKeyDown}
-                    disabled={isCollectionDisabled}
-                  />
-                </CollectField>
-
-                {/* Collect Button Field */}
-                <CollectField>
-                  <CollectButton
-                    type="button"
-                    onClick={handleCollectPayment}
-                    disabled={isCollecting || isCollectionDisabled}
-                  >
-                    {isCollecting ? 'Collecting...' : (
-                      <>
-                        <AddIcon /> Collect
-                      </>
-                    )}
-                  </CollectButton>
-                </CollectField>
-              </CollectFormGrid>
-            ) : (
-              <CardPlaceholder style={{ minHeight: '120px' }}>
-                <CardIcon><Payment style={{ fontSize: '3.2rem' }} /></CardIcon>
-                Select a student to collect payment
-              </CardPlaceholder>
-            )}
-          </Card>
-          <Card>
-            <CardTitle><History style={{ color: (theme as any).ACCENT }} /> Payment History</CardTitle>
-            {selectedStudent ? (
-              paymentHistoryLoading ? (
-                <CardPlaceholder style={{ minHeight: '120px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><Loader size="small" /></CardPlaceholder>
-              ) : paymentHistoryError ? (
-                <CardPlaceholder style={{ minHeight: '120px', color: 'red' }}>{paymentHistoryError}</CardPlaceholder>
-              ) : paymentHistory.length > 0 ? (
-                <TableWrapper>
-                  <AttendanceTable style={{ marginTop: '0.5rem', minWidth: 600 }}>
-                  <thead>
-                    <tr>
-                      <AttendanceTh>Date</AttendanceTh>
-                      <AttendanceTh>Day</AttendanceTh>
-                      <AttendanceTh>Amount</AttendanceTh>
-                      <AttendanceTh>Remission</AttendanceTh>
-                      <AttendanceTh>Method</AttendanceTh>
-                      <AttendanceTh>Remarks</AttendanceTh>
-                      <AttendanceTh>Action</AttendanceTh>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paymentHistory.map((payment: any, idx: number) => (
-                      <tr key={payment.id || idx}>
-                        <AttendanceTd>{formatAppDate(payment.payment_date)}</AttendanceTd>
-                        <AttendanceTd>{getDayShort(payment.payment_date)}</AttendanceTd>
-                        <AttendanceTd>Rs. {payment.amount}</AttendanceTd>
-                        <AttendanceTd>Rs. {payment.remission || 0}</AttendanceTd>
-                        <AttendanceTd>{payment.payment_method}</AttendanceTd>
-                        <AttendanceTd>{payment.remarks || '-'}</AttendanceTd>
-                        <AttendanceTd>
-                          <DeleteIcon
-                            style={{ cursor: 'pointer', color: '#f43f5e', fontSize: '1.2rem' }}
-                            onClick={() => handleDeletePayment(payment.id)}
-                          />
-                        </AttendanceTd>
-                      </tr>
-                    ))}
-                  </tbody>
-                </AttendanceTable>
-                </TableWrapper>
+                  {/* Collect Button Field */}
+                  <CollectField>
+                    <CollectButton
+                      type="button"
+                      onClick={handleCollectPayment}
+                      disabled={isCollecting || isCollectionDisabled}
+                    >
+                      {isCollecting ? 'Collecting...' : (
+                        <>
+                          <Paid style={{ fontSize: '1.15rem' }} /> Collect
+                        </>
+                      )}
+                    </CollectButton>
+                  </CollectField>
+                </CollectFormGrid>
               ) : (
-                <CardPlaceholder style={{ minHeight: '120px' }}>No payment history found for this student.</CardPlaceholder>
-              )
-            ) : (
-              <CardPlaceholder style={{ minHeight: '120px' }}>
-                <CardIcon><History style={{ fontSize: '3.2rem' }} /></CardIcon>
-                Select a student to view payment history
-              </CardPlaceholder>
-            )}
-          </Card>
-        </CardStack>
+                <CardPlaceholder style={{ minHeight: '120px' }}>
+                  <CardIcon><Payment /></CardIcon>
+                  Select a student to collect payment
+                </CardPlaceholder>
+              )}
+            </Card>
+
+            {/* Payment History Table Card */}
+            <Card>
+              <CardTitle>
+                <History /> Payment History
+              </CardTitle>
+              {selectedStudent ? (
+                paymentHistoryLoading ? (
+                  <TableWrapper>
+                    <AttendanceTable style={{ minWidth: 550 }}>
+                      <thead>
+                        <tr>
+                          <AttendanceTh>Date</AttendanceTh>
+                          <AttendanceTh>Day</AttendanceTh>
+                          <AttendanceTh>Amount</AttendanceTh>
+                          <AttendanceTh>Remission</AttendanceTh>
+                          <AttendanceTh>Method</AttendanceTh>
+                          <AttendanceTh>Remarks</AttendanceTh>
+                          <AttendanceTh style={{ textAlign: 'center' }}>Action</AttendanceTh>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <TableRowSkeleton columns={7} />
+                      </tbody>
+                    </AttendanceTable>
+                  </TableWrapper>
+                ) : paymentHistoryError ? (
+                  <CardPlaceholder style={{ minHeight: '120px', color: '#ef4444' }}>{paymentHistoryError}</CardPlaceholder>
+                ) : paymentHistory.length > 0 ? (
+                  <TableWrapper>
+                    <AttendanceTable style={{ minWidth: 550 }}>
+                      <thead>
+                        <tr>
+                          <AttendanceTh>Date</AttendanceTh>
+                          <AttendanceTh>Day</AttendanceTh>
+                          <AttendanceTh>Amount</AttendanceTh>
+                          <AttendanceTh>Remission</AttendanceTh>
+                          <AttendanceTh>Method</AttendanceTh>
+                          <AttendanceTh>Remarks</AttendanceTh>
+                          <AttendanceTh style={{ textAlign: 'center' }}>Action</AttendanceTh>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paymentHistory.map((payment: any, idx: number) => (
+                          <tr key={payment.id || idx}>
+                            <AttendanceTd>{formatAppDate(payment.payment_date)}</AttendanceTd>
+                            <AttendanceTd>{getDayShort(payment.payment_date)}</AttendanceTd>
+                            <AttendanceTd style={{ fontWeight: 700, color: '#4ade80' }}>Rs. {payment.amount}</AttendanceTd>
+                            <AttendanceTd style={{ fontWeight: 600, color: '#7c8597' }}>Rs. {payment.remission || 0}</AttendanceTd>
+                            <AttendanceTd>{payment.payment_method}</AttendanceTd>
+                            <AttendanceTd style={{ color: '#7c8597' }}>{payment.remarks || '-'}</AttendanceTd>
+                            <AttendanceTd style={{ textAlign: 'center' }}>
+                              <DeleteIcon
+                                style={{ cursor: 'pointer', color: '#f43f5e', fontSize: '1.15rem' }}
+                                onClick={() => handleDeletePayment(payment.id)}
+                              />
+                            </AttendanceTd>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </AttendanceTable>
+                  </TableWrapper>
+                ) : (
+                  <CardPlaceholder style={{ minHeight: '120px' }}>No payment history found for this student.</CardPlaceholder>
+                )
+              ) : (
+                <CardPlaceholder style={{ minHeight: '120px' }}>
+                  <CardIcon><History /></CardIcon>
+                  Select a student to view payment history
+                </CardPlaceholder>
+              )}
+            </Card>
+          </CardStack>
+        </RightSection>
       </PageGrid>
 
-      {/* Delete Confirmation Modal */}
+      {/* Modals */}
       {showSpecialFineEditModal && ReactDOM.createPortal(
         <ModalOverlay onClick={cancelEditSpecialFine}>
           <ModalDialog onClick={(e) => e.stopPropagation()}>
@@ -2816,9 +2324,10 @@ const FineCollection: React.FC = () => {
         </ModalOverlay>,
         document.body
       )}
+
       {showDeleteConfirmModal && ReactDOM.createPortal(
-        <ModalOverlay onClick={cancelDelete}> {/* Optional: close on overlay click */}
-          <ModalDialog onClick={(e) => e.stopPropagation()}> {/* Prevents closing when clicking inside dialog */}
+        <ModalOverlay onClick={cancelDelete}>
+          <ModalDialog onClick={(e) => e.stopPropagation()}>
             <ModalTitle>Confirm Deletion</ModalTitle>
             <ModalMessage>
               Are you sure you want to delete this payment record? This action cannot be undone.
@@ -2837,6 +2346,7 @@ const FineCollection: React.FC = () => {
         </ModalOverlay>,
         document.body
       )}
+
       {showSpecialFineDeleteConfirmModal && ReactDOM.createPortal(
         <ModalOverlay onClick={cancelDeleteSpecialFine}>
           <ModalDialog onClick={(e) => e.stopPropagation()}>

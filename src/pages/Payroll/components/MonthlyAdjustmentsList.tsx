@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { ThemeContext, lightTheme, darkTheme } from '../../../contexts/ThemeContext';
+import { useTheme } from '../../../components/Layout/contexts/ThemeContext';
+import { lightTheme, darkTheme } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../components/useToast';
 import { supabase } from '../../../supabaseClient';
@@ -91,9 +92,18 @@ const ActionButton = styled.button<{ theme: any; $variant?: 'primary' | 'seconda
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease-in-out;
 
-  &:hover {
+  &:hover:not(:disabled) {
     opacity: 0.9;
+  }
+
+  &:disabled {
+    background: ${({ theme }) => (theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0')};
+    border-color: ${({ theme }) => (theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.12)' : '#cbd5e1')};
+    color: ${({ theme }) => (theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.4)' : '#94a3b8')};
+    cursor: not-allowed;
+    opacity: 0.85;
   }
 `;
 
@@ -146,7 +156,7 @@ const MONTHS = [
 ];
 
 const MonthlyAdjustmentsList: React.FC = () => {
-  const { theme: themeMode } = useContext(ThemeContext);
+  const { theme: themeMode } = useTheme();
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
   const { user } = useAuth() as any;
   const { showToast } = useToast();
@@ -325,42 +335,44 @@ const MonthlyAdjustmentsList: React.FC = () => {
           </div>
         </div>
       ) : (
-        <Table theme={theme}>
-          <thead>
-            <tr>
-              <th>Staff Member</th>
-              <th>Role</th>
-              <th>Adjustment Type</th>
-              <th>Title / Reason</th>
-              <th>Amount</th>
-              <th>Remarks</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {adjustments.map(adj => (
-              <tr key={adj.id}>
-                <td style={{ fontWeight: 600 }}>{adj.staffName}</td>
-                <td>{adj.role}</td>
-                <td>
-                  <TypeBadge $type={adj.type}>
-                    {adj.type === 'addition' ? '➕ Addition' : '➖ Subtraction'}
-                  </TypeBadge>
-                </td>
-                <td style={{ fontWeight: 600 }}>{adj.title}</td>
-                <td style={{ fontWeight: 700, color: adj.type === 'addition' ? '#10b981' : '#ef4444' }}>
-                  {adj.type === 'addition' ? '+' : '-'}{formatCurrency(adj.amount)}
-                </td>
-                <td style={{ fontSize: '0.8rem', color: theme.TEXT_SECONDARY }}>{adj.remarks || 'N/A'}</td>
-                <td>
-                  <IconButton size="small" color="error" onClick={() => handleDeleteAdjustment(adj.id)}>
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </td>
+        <div style={{ overflowX: 'auto' }}>
+          <Table theme={theme}>
+            <thead>
+              <tr>
+                <th>Staff Member</th>
+                <th>Role</th>
+                <th>Adjustment Type</th>
+                <th>Title / Reason</th>
+                <th>Amount</th>
+                <th>Remarks</th>
+                <th>Action</th>
               </tr>
-            ))}
-          </tbody>
-        </Table>
+            </thead>
+            <tbody>
+              {adjustments.map(adj => (
+                <tr key={adj.id}>
+                  <td style={{ fontWeight: 600 }}>{adj.staffName}</td>
+                  <td>{adj.role}</td>
+                  <td>
+                    <TypeBadge $type={adj.type}>
+                      {adj.type === 'addition' ? '➕ Addition' : '➖ Subtraction'}
+                    </TypeBadge>
+                  </td>
+                  <td style={{ fontWeight: 600 }}>{adj.title}</td>
+                  <td style={{ fontWeight: 700, color: adj.type === 'addition' ? '#10b981' : '#ef4444' }}>
+                    {adj.type === 'addition' ? '+' : '-'}{formatCurrency(adj.amount)}
+                  </td>
+                  <td style={{ fontSize: '0.8rem', color: theme.TEXT_SECONDARY }}>{adj.remarks || 'N/A'}</td>
+                  <td>
+                    <IconButton size="small" color="error" onClick={() => handleDeleteAdjustment(adj.id)}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </div>
       )}
 
       {/* Add Adjustment Modal */}

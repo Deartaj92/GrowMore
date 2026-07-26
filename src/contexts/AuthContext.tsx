@@ -176,8 +176,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('user', JSON.stringify(user));
         saveSchoolIdNative(user.school_id); // Allow background NFC service to read school_id
         warmRfidCaches(user.school_id, 'after super admin login');
-        navigate('/welcome', { replace: true });
-        clearNavigationHistory('/welcome');
+        // Don't redirect here - let Login.tsx or InitialRouteHandler handle redirects based on permissions
         setLoading(false);
         return user;
       }

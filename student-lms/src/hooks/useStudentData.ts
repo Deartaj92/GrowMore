@@ -141,39 +141,56 @@ export const useStudentData = () => {
     }
   }, []);
 
-  // 2. Fetch Attendance History and Calculate Stats
+  // 2. Fetch Attendance History and Calculate Stats (mirrors StudentProfile.tsx)
   const getAttendanceData = useCallback(async (studentId: number, schoolId: number, sessionId: number | null) => {
-    const cacheKey = `attendance_${studentId}_${schoolId}_${sessionId}`;
+    const cacheKey = `attendance_v6_${studentId}_${schoolId}_${sessionId}`;
     const cached = getCache(cacheKey);
     if (cached) return cached;
     setLoading(true);
     setError(null);
     try {
-      let attendanceQuery = supabase
-        .from('attendance_records')
-        .select('*')
-        .eq('student_id', studentId)
-        .order('date', { ascending: false });
-
+      // 1. Fetch Session details if sessionId is passed
+      let session: any = null;
       if (sessionId) {
-        // Fetch session dates first
-        const { data: session } = await supabase
+        const { data: sessData } = await supabase
           .from('sessions')
-          .select('start_date, end_date')
+          .select('id, start_date, end_date')
           .eq('id', sessionId)
-          .single();
+          .maybeSingle();
+        session = sessData;
+      }
 
-        if (session) {
+      // 2. Paginated fetching of all attendance records (same as StudentProfile.tsx)
+      let records: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+
+      while (true) {
+        let attendanceQuery = supabase
+          .from('attendance_records')
+          .select('*')
+          .eq('student_id', studentId)
+          .order('date', { ascending: false });
+
+        if (session && session.start_date && session.end_date) {
           attendanceQuery = attendanceQuery
             .gte('date', session.start_date)
             .lte('date', session.end_date);
         }
+
+        const { data, error: attError } = await attendanceQuery.range(page * pageSize, (page + 1) * pageSize - 1);
+        if (attError) throw attError;
+
+        if (data && data.length > 0) {
+          records = [...records, ...data];
+          if (data.length < pageSize) break;
+          page++;
+        } else {
+          break;
+        }
       }
 
-      const { data: attendanceRecords, error: attError } = await attendanceQuery;
-      if (attError) throw attError;
-
-      // Fetch half leaves
+      // 3. Fetch half leaves for student (same as StudentProfile.tsx)
       let halfLeavesQuery = supabase
         .from('half_leaves')
         .select('*')
@@ -186,11 +203,9 @@ export const useStudentData = () => {
       }
 
       const { data: halfLeaves } = await halfLeavesQuery;
-
-      const records = attendanceRecords || [];
       const hlRecords = halfLeaves || [];
 
-      // Calculate Stats
+      // 4. Calculate Stats (matching StudentProfile.tsx)
       const stats = {
         present: 0,
         absent: 0,
@@ -202,16 +217,17 @@ export const useStudentData = () => {
       };
 
       records.forEach((r: any) => {
-        if (r.status === 'present') stats.present++;
-        else if (r.status === 'absent') stats.absent++;
-        else if (r.status === 'late') stats.late++;
-        else if (r.status === 'leave') stats.leave++;
+        const st = (r.status || '').toLowerCase();
+        if (st === 'present') stats.present++;
+        else if (st === 'absent') stats.absent++;
+        else if (st === 'late') stats.late++;
+        else if (st === 'leave') stats.leave++;
       });
 
       if (stats.total > 0) {
-        // (Present + Late + Leave) / Total is standard
-        const activeDays = stats.present + stats.late + stats.leave;
-        stats.percentage = Math.round((activeDays / stats.total) * 100);
+        // Matching StudentProfile.tsx calculation: attended = present + late
+        const attended = stats.present + stats.late;
+        stats.percentage = Math.round((attended / stats.total) * 100);
       }
 
       const result = {
@@ -222,7 +238,7 @@ export const useStudentData = () => {
       setCache(cacheKey, result);
       return result;
     } catch (e: any) {
-      console.error(e);
+      console.error('getAttendanceData error:', e);
       setError(e.message || 'Failed to fetch attendance data');
       return null;
     } finally {
@@ -288,28 +304,23 @@ export const useStudentData = () => {
   }, []);
 
   // 4. Fetch Academics Data: Subjects, Timetable, Class Tests & Examination results
-  const getAcademicsData = useCallback(async (studentId: number, schoolId: number, classId: number | null, sectionId: number | null) => {
-    const cacheKey = `academics_v2_${studentId}_${schoolId}_${classId}_${sectionId}`;
+  const getAcademicsData = useCallback(async (studentId: number, schoolId: number, classId: number | null, sectionId: number | null, sessionId?: number | null) => {
+    const cacheKey = `academics_v6_${studentId}_${schoolId}_${classId}_${sectionId}_${sessionId ?? 'all'}`;
     const cached = getCache(cacheKey);
     if (cached) return cached;
     setLoading(true);
     setError(null);
     try {
-      // Fetch all school subjects linked to student's class
-      let subjects: any[] = [];
-      if (classId) {
-        // In some schools subjects are linked directly or queried by class_id.
-        // Let's check how they are configured in the class.
-        // Usually there is a class_subjects join table, or teacher_subject_assignments, or we query all subjects.
-        // For simplicity, let's load all subjects for this school.
-        const { data: subjData } = await supabase
-          .from('subjects')
-          .select('*')
-          .eq('school_id', schoolId)
-          .order('name');
-        
-        subjects = subjData || [];
-      }
+      // Fetch all school subjects
+      const { data: subjData } = await supabase
+        .from('subjects')
+        .select('*')
+        .eq('school_id', schoolId)
+        .order('name');
+      
+      const subjects = subjData || [];
+      const subjectsMap = new Map<number, string>();
+      subjects.forEach((s: any) => subjectsMap.set(s.id, s.name));
 
       // Fetch Time Table records
       let timetable: any[] = [];
@@ -328,28 +339,72 @@ export const useStudentData = () => {
         timetable = ttData || [];
       }
 
-      // Fetch Class Test Results (from test_results join test_records)
-      const { data: testResults } = await supabase
-        .from('test_results')
-        .select(`
-          id,
-          obtained_marks,
-          max_marks,
-          percentage,
-          grade,
-          test_records!inner(
-            id,
-            name,
-            test_date,
-            subject_id
-          )
-        `)
-        .eq('student_id', studentId)
-        .eq('school_id', schoolId)
-        .order('created_at', { ascending: false });
+      // Fetch Class Test Results — paginated loop & direct session_id filter (mirrors StudentProfile.tsx)
+      let testResultsRaw: any[] = [];
+      let testPage = 0;
+      const testPageSize = 1000;
 
-      // Fetch Examination Summaries (Term Exams)
-      const { data: examSummaries } = await supabase
+      while (true) {
+        let testQuery = supabase
+          .from('test_results')
+          .select(`
+            id,
+            obtained_marks,
+            max_marks,
+            percentage,
+            grade,
+            remarks,
+            session_id,
+            test_records!inner(
+              id,
+              name,
+              test_date,
+              passing_marks,
+              subject_id
+            )
+          `)
+          .eq('student_id', studentId)
+          .eq('school_id', schoolId)
+          .order('id', { ascending: false });
+
+        if (sessionId) {
+          testQuery = testQuery.eq('session_id', sessionId);
+        }
+
+        const { data: tData, error: tErr } = await testQuery.range(
+          testPage * testPageSize,
+          (testPage + 1) * testPageSize - 1
+        );
+
+        if (tErr) {
+          console.error('Error fetching test_results:', tErr);
+          break;
+        }
+
+        if (tData && tData.length > 0) {
+          testResultsRaw = [...testResultsRaw, ...tData];
+          if (tData.length < testPageSize) break;
+          testPage++;
+        } else {
+          break;
+        }
+      }
+
+      // Normalize test results with subject names
+      const testResults = testResultsRaw.map((tr: any) => {
+        const subId = tr.test_records?.subject_id;
+        const subName = subId ? subjectsMap.get(subId) || null : null;
+        return {
+          ...tr,
+          test_records: {
+            ...tr.test_records,
+            subject_name: subName,
+          },
+        };
+      });
+
+      // Fetch Examination Summaries — filter by session via examinations join
+      let summaryQuery = supabase
         .from('examination_summaries')
         .select(`
           examination_id,
@@ -358,62 +413,91 @@ export const useStudentData = () => {
           percentage,
           grade,
           status,
+          position,
+          rank_in_class,
+          rank_in_section,
+          total_strength,
           examinations!inner(
             id,
             name,
             exam_type,
-            status
+            status,
+            session_id
           )
         `)
         .eq('student_id', studentId)
         .eq('school_id', schoolId)
         .order('examination_id', { ascending: false });
 
-      // Fetch Exam Results for detailed subjects
-      const { data: examResults, error: examResultsError } = await supabase
-        .from('exam_results')
-        .select(`
-          id,
-          exam_id,
-          subject_id,
-          total_marks,
-          obtained_marks,
-          percentage,
-          grade,
-          status,
-          subject:subjects(name)
-        `)
-        .eq('student_id', studentId)
-        .eq('school_id', schoolId);
-        
-      if (examResultsError) {
-        console.error("Error fetching exam results:", examResultsError);
-      }
+      const { data: examSummariesAll } = await summaryQuery;
 
-      // Attach subjects to their respective exam summaries
-      const summariesWithSubjects = (examSummaries || []).map((summary: any) => ({
-        ...summary,
-        subjects: (examResults || [])
-          .filter((res: any) => Number(res.exam_id) === Number(summary.examination_id))
-          .map((res: any) => ({
-            id: res.id,
-            name: Array.isArray(res.subject) ? res.subject[0]?.name : res.subject?.name || 'Subject',
-            total_marks: res.total_marks,
-            obtained_marks: res.obtained_marks,
-            percentage: res.percentage,
-            grade: res.grade,
-            status: res.status,
-          }))
-      }));
+      // Filter by session on client side (examinations!inner session_id filter not always supported in all versions)
+      const examSummariesRaw = sessionId
+        ? (examSummariesAll || []).filter((s: any) => {
+            const ex = Array.isArray(s.examinations) ? s.examinations[0] : s.examinations;
+            return ex?.session_id === sessionId;
+          })
+        : (examSummariesAll || []);
 
-      console.log("Fetched exam summaries:", examSummaries);
-      console.log("Fetched exam results:", examResults);
-      console.log("Combined summaries:", summariesWithSubjects);
+      // For each summary, fetch per-subject results individually (mirrors StudentProfile approach)
+      // exam_results uses max_marks (not total_marks) for per-subject marks
+      const summariesWithSubjects = await Promise.all(
+        (examSummariesRaw || []).map(async (summary: any) => {
+          const { data: subjectResults, error: subErr } = await supabase
+            .from('exam_results')
+            .select(`
+              *,
+              subject:subjects!inner(
+                id,
+                name
+              )
+            `)
+            .eq('exam_id', summary.examination_id)
+            .eq('student_id', studentId)
+            .eq('school_id', schoolId);
+
+          if (subErr) {
+            console.error(`exam_results fetch error for exam ${summary.examination_id}:`, subErr);
+          }
+
+          const examination = Array.isArray(summary.examinations)
+            ? summary.examinations[0]
+            : summary.examinations;
+
+          return {
+            examination_id: summary.examination_id,
+            total_marks: summary.total_marks,
+            obtained_marks: summary.obtained_marks,
+            percentage: summary.percentage,
+            grade: summary.grade,
+            status: summary.status,
+            position: summary.position,
+            rank_in_class: summary.rank_in_class,
+            rank_in_section: summary.rank_in_section,
+            total_strength: summary.total_strength,
+            examinations: examination,
+            subjects: (subjectResults || []).map((res: any) => {
+              const subjectName = Array.isArray(res.subject)
+                ? res.subject[0]?.name
+                : res.subject?.name || 'Subject';
+              return {
+                id: res.id,
+                name: subjectName,
+                max_marks: res.max_marks,       // correct column name in exam_results
+                obtained_marks: res.obtained_marks,
+                percentage: res.percentage,
+                grade: res.grade,
+                status: res.status,
+              };
+            }),
+          };
+        })
+      );
 
       const result = {
         subjects,
         timetable,
-        testResults: testResults || [],
+        testResults,
         examSummaries: summariesWithSubjects,
       };
       setCache(cacheKey, result);

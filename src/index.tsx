@@ -14,10 +14,18 @@ if ('serviceWorker' in navigator) {
       window.location.hostname === '127.0.0.1' ||
       window.location.hostname === '[::1]';
 
+    // In local development, unregister service worker so normal refresh always gets fresh code
+    if (isLocalhost) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          registration.unregister();
+        }
+      });
+      return;
+    }
+
     const appVersion = process.env.REACT_APP_VERSION || process.env.npm_package_version || 'dev';
     const swUrl = `/sw.js?v=${encodeURIComponent(appVersion)}`;
-
-    // Register Service Worker in all environments (including localhost) for consistent offline caching behavior
 
     let hasPendingReload = false;
     const reloadForFreshWorker = () => {

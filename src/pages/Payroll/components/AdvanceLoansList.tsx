@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { ThemeContext, lightTheme, darkTheme } from '../../../contexts/ThemeContext';
+import { useTheme } from '../../../components/Layout/contexts/ThemeContext';
+import { lightTheme, darkTheme } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../components/useToast';
 import { supabase } from '../../../supabaseClient';
@@ -119,7 +120,7 @@ interface AdvanceItem {
 }
 
 const AdvanceLoansList: React.FC = () => {
-  const { theme: themeMode } = useContext(ThemeContext);
+  const { theme: themeMode } = useTheme();
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
   const { user } = useAuth() as any;
   const { showToast } = useToast();
@@ -245,44 +246,46 @@ const AdvanceLoansList: React.FC = () => {
           No active advances or loans recorded.
         </div>
       ) : (
-        <Table theme={theme}>
-          <thead>
-            <tr>
-              <th>Staff Member</th>
-              <th>Total Advance</th>
-              <th>Monthly Recovery</th>
-              <th>Repaid Amount</th>
-              <th>Remaining Loan</th>
-              <th>Recovery Progress</th>
-            </tr>
-          </thead>
-          <tbody>
-            {advances.map(item => {
-              const pct = Math.min(100, Math.round((item.repaidAmount / (item.amount || 1)) * 100));
-              return (
-                <tr key={item.id}>
-                  <td style={{ fontWeight: 600 }}>{item.staffName}</td>
-                  <td>{formatCurrency(item.amount)}</td>
-                  <td style={{ color: theme.ACCENT, fontWeight: 700 }}>
-                    {formatCurrency(item.monthlyInstallment)}/mo
-                  </td>
-                  <td style={{ color: '#10b981', fontWeight: 700 }}>
-                    {formatCurrency(item.repaidAmount)}
-                  </td>
-                  <td style={{ color: item.remainingBalance > 0 ? '#ef4444' : '#10b981', fontWeight: 700 }}>
-                    {formatCurrency(item.remainingBalance)}
-                  </td>
-                  <td>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 600 }}>{pct}% Repaid</div>
-                    <ProgressBar>
-                      <div style={{ width: `${pct}%` }} />
-                    </ProgressBar>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </Table>
+        <div style={{ overflowX: 'auto' }}>
+          <Table theme={theme}>
+            <thead>
+              <tr>
+                <th>Staff Member</th>
+                <th>Total Advance</th>
+                <th>Monthly Recovery</th>
+                <th>Repaid Amount</th>
+                <th>Remaining Loan</th>
+                <th>Recovery Progress</th>
+              </tr>
+            </thead>
+            <tbody>
+              {advances.map(item => {
+                const pct = Math.min(100, Math.round((item.repaidAmount / (item.amount || 1)) * 100));
+                return (
+                  <tr key={item.id}>
+                    <td style={{ fontWeight: 600 }}>{item.staffName}</td>
+                    <td>{formatCurrency(item.amount)}</td>
+                    <td style={{ color: theme.ACCENT, fontWeight: 700 }}>
+                      {formatCurrency(item.monthlyInstallment)}/mo
+                    </td>
+                    <td style={{ color: '#10b981', fontWeight: 700 }}>
+                      {formatCurrency(item.repaidAmount)}
+                    </td>
+                    <td style={{ color: item.remainingBalance > 0 ? '#ef4444' : '#10b981', fontWeight: 700 }}>
+                      {formatCurrency(item.remainingBalance)}
+                    </td>
+                    <td>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 600 }}>{pct}% Repaid</div>
+                      <ProgressBar>
+                        <div style={{ width: `${pct}%` }} />
+                      </ProgressBar>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        </div>
       )}
 
       {/* Issue Modal */}

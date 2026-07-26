@@ -600,3 +600,241 @@ export const generateCombinedPayrollPaymentReceipt = async (
   const fileName = `Payroll_Receipt_${periodPart}_${employeeName.replace(/[^a-z0-9]+/gi, '_')}.pdf`;
   doc.save(fileName);
 };
+
+/**
+ * Generate a double-copy A5 Salary Statement PDF (Top: Employee Copy, Bottom: Office Copy)
+ */
+export const generateSalaryStatementPDF = async (
+  schoolId: number,
+  generation: any,
+  roundUpAmounts: boolean = false
+) => {
+  const [school, paymentsRes] = await Promise.all([
+    loadSchoolReceiptProfile(schoolId),
+    supabase
+      .from('payroll_payments')
+      .select('*')
+      .eq('school_id', schoolId)
+      .eq('generation_id', generation.id)
+      .order('payment_date', { ascending: true }),
+  ]);
+
+  const payments = paymentsRes.data || [];
+  const monthName = new Date(generation.payrollYear, generation.payrollMonth - 1, 1).toLocaleString('default', {
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const drawStatementCopy = (startY: number, copyLabel: 'EMPLOYEE COPY' | 'OFFICE COPY') => {
+    const left = 10;
+    const right = 200;
+    const width = 190;
+    const top = startY + 4;
+
+    // Header Branding Container
+    doc.setFillColor(30, 58, 138); // Deep Navy
+    doc.roundedRect(left, top, width, 18, 3, 3, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text(school.name.toUpperCase(), left + 5, top + 7.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    const subText = [school.address, school.phone ? `Ph: ${school.phone}` : ''].filter(Boolean).join(' | ');
+    doc.text(subText || 'Official Staff Monthly Salary Statement', left + 5, top + 13.5);
+
+    // Copy Badge
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text(copyLabel, right - 5, top + 7.5, { align: 'right' });
+    doc.setFontSize(7);
+    doc.text(`STATEMENT: ${monthName.toUpperCase()}`, right - 5, top + 13.5, { align: 'right' });
+
+    // Meta Section
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(left, top + 20, width, 16, 2.5, 2.5, 'FD');
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(6.8); doc.setTextColor(100, 116, 139);
+    doc.text('EMPLOYEE NAME', left + 4, top + 25);
+    doc.text('DESIGNATION / ROLE', left + 55, top + 25);
+    doc.text('PAY PERIOD', left + 110, top + 25);
+    doc.text('PAYMENT STATUS', left + 155, top + 25);
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(15, 23, 42);
+    doc.text(generation.staff?.name || `Staff #${generation.staffId}`, left + 4, top + 31.5);
+    doc.text(generation.staff?.role || 'Staff Member', left + 55, top + 31.5);
+    doc.text(monthName, left + 110, top + 31.5);
+
+    const isPaid = generation.status === 'paid';
+    doc.setTextColor(isPaid ? 16 : 220, isPaid ? 185 : 38, isPaid ? 129 : 38);
+    doc.text(generation.status.toUpperCase().replace('_', ' '), left + 155, top + 31.5);
+
+    // Attendance Row
+    const attWidth = (width - 9) / 4;
+    const attItems = [
+      { label: 'Working Days', val: String(generation.workingDays || 0) },
+      { label: 'Present Days', val: String(generation.presentDays || 0) },
+      { label: 'Absent Days', val: String(generation.absentDays || 0) },
+      { label: 'Late Days', val: String(generation.lateDays || 0) },
+    ];
+
+    attItems.forEach((item, idx) => {
+      const x = left + idx * (attWidth + 3);
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(x, top + 38, attWidth, 12, 2, 2, 'FD');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(6); doc.setTextColor(100, 116, 139);
+      doc.text(item.label.toUpperCase(), x + attWidth / 2, top + 42, { align: 'center' });
+      doc.setFontSize(8.5); doc.setTextColor(15, 23, 42);
+      doc.text(item.val, x + attWidth / 2, top + 47.5, { align: 'center' });
+    });
+
+    // Breakdown Grid (Earnings vs Deductions)
+    const colWidth = (width - 4) / 2;
+
+    // Earnings Box
+    doc.setFillColor(240, 253, 244); // Light Green
+    doc.setDrawColor(187, 247, 208);
+    doc.roundedRect(left, top + 52, colWidth, 40, 2.5, 2.5, 'FD');
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(22, 101, 52);
+    doc.text('(+) EARNINGS BREAKDOWN', left + 3, top + 57);
+    doc.text('AMOUNT', left + colWidth - 3, top + 57, { align: 'right' });
+    doc.setDrawColor(187, 247, 208); doc.line(left + 2, top + 58.5, left + colWidth - 2, top + 58.5);
+
+    let eY = top + 63;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(15, 23, 42);
+    doc.text('Basic Monthly Pay', left + 3, eY);
+    doc.setFont('helvetica', 'bold');
+    doc.text(formatPayrollCurrency(generation.basicPay, roundUpAmounts), left + colWidth - 3, eY, { align: 'right' });
+    eY += 4.5;
+
+    (generation.earningsItems || []).forEach((item: any) => {
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(15, 23, 42);
+      doc.text(item.name, left + 3, eY);
+      doc.setFont('helvetica', 'bold'); doc.setTextColor(22, 101, 52);
+      doc.text(`+${formatPayrollCurrency(item.amount, roundUpAmounts)}`, left + colWidth - 3, eY, { align: 'right' });
+      eY += 4.5;
+    });
+
+    doc.setDrawColor(22, 101, 52); doc.line(left + 2, top + 84, left + colWidth - 2, top + 84);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.8); doc.setTextColor(22, 101, 52);
+    doc.text('GROSS EARNINGS', left + 3, top + 88.5);
+    doc.text(formatPayrollCurrency(generation.totalEarnings, roundUpAmounts), left + colWidth - 3, top + 88.5, { align: 'right' });
+
+    // Deductions Box
+    const dLeft = left + colWidth + 4;
+    doc.setFillColor(254, 242, 242); // Light Red
+    doc.setDrawColor(254, 202, 202);
+    doc.roundedRect(dLeft, top + 52, colWidth, 40, 2.5, 2.5, 'FD');
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(153, 27, 27);
+    doc.text('(-) DEDUCTIONS BREAKDOWN', dLeft + 3, top + 57);
+    doc.text('AMOUNT', dLeft + colWidth - 3, top + 57, { align: 'right' });
+    doc.setDrawColor(254, 202, 202); doc.line(dLeft + 2, top + 58.5, dLeft + colWidth - 2, top + 58.5);
+
+    let dY = top + 63;
+    if (!generation.deductionItems || generation.deductionItems.length === 0) {
+      doc.setFont('helvetica', 'italic'); doc.setFontSize(6.8); doc.setTextColor(100, 116, 139);
+      doc.text('No deductions for this period', dLeft + 3, dY);
+    } else {
+      (generation.deductionItems || []).forEach((item: any) => {
+        doc.setFont('helvetica', 'normal'); doc.setTextColor(15, 23, 42);
+        doc.text(item.name, dLeft + 3, dY);
+        doc.setFont('helvetica', 'bold'); doc.setTextColor(153, 27, 27);
+        doc.text(`-${formatPayrollCurrency(item.amount, roundUpAmounts)}`, dLeft + colWidth - 3, dY, { align: 'right' });
+        dY += 4.5;
+      });
+    }
+
+    doc.setDrawColor(153, 27, 27); doc.line(dLeft + 2, top + 84, dLeft + colWidth - 2, top + 84);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.8); doc.setTextColor(153, 27, 27);
+    doc.text('TOTAL DEDUCTIONS', dLeft + 3, top + 90.5);
+    doc.text(`-${formatPayrollCurrency(generation.totalDeductions, roundUpAmounts)}`, dLeft + colWidth - 3, top + 88.5, { align: 'right' });
+
+    // Net Summary Banner
+    doc.setFillColor(37, 99, 235); // Blue
+    doc.roundedRect(left, top + 94, width, 12, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(6.2);
+    doc.text('NET PAYABLE SALARY', left + 5, top + 98.5);
+    doc.setFontSize(10);
+    doc.text(formatPayrollCurrency(generation.netSalary, roundUpAmounts), left + 5, top + 104);
+
+    doc.setFontSize(7);
+    doc.text(`Disbursed: ${formatPayrollCurrency(generation.paidAmount, roundUpAmounts)}`, right - 5, top + 98.5, { align: 'right' });
+    doc.text(`Remaining: ${formatPayrollCurrency(generation.remainingBalance, roundUpAmounts)}`, right - 5, top + 104, { align: 'right' });
+
+    // Payment Audit Trail Strip in PDF
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(left, top + 108, width, 17, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(71, 85, 105);
+    doc.text(`PAYMENT TRANSACTIONS LOG (${payments.length} RECORDED)`, left + 4, top + 112.5);
+
+    if (payments.length === 0) {
+      doc.setFont('helvetica', 'italic'); doc.setFontSize(6.2); doc.setTextColor(148, 163, 184);
+      doc.text('No payment transactions recorded for this statement.', left + 4, top + 119);
+    } else {
+      let pX = left + 4;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(5.8);
+      const displayPayments = payments.slice(0, 6);
+      displayPayments.forEach((p: any, i: number) => {
+        const dObj = new Date(p.payment_date);
+        const pDate = `${dObj.getDate()}-${dObj.toLocaleString('default', { month: 'short' })}`;
+        const pTxt = `#${p.id} (${pDate}): ${formatPayrollCurrency(parseFloat(p.amount || '0'), roundUpAmounts)}`;
+        doc.setTextColor(16, 185, 129);
+        doc.text(pTxt, pX, top + 119);
+        pX += doc.getTextWidth(pTxt) + (i < displayPayments.length - 1 ? 4 : 0);
+        if (i < displayPayments.length - 1) {
+          doc.setTextColor(203, 213, 225);
+          doc.text('|', pX - 2.5, top + 119);
+        }
+      });
+      if (payments.length > 6) {
+        doc.setTextColor(100, 116, 139);
+        doc.setFontSize(5.6);
+        doc.text(`+${payments.length - 6} more`, pX + 2, top + 119);
+      }
+    }
+
+    // Signatures
+    const sigY = top + 132;
+    doc.setDrawColor(100, 116, 139);
+    doc.line(left + 15, sigY, left + 65, sigY);
+    doc.line(right - 65, sigY, right - 15, sigY);
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(6.8); doc.setTextColor(71, 85, 105);
+    doc.text('Staff Member Signature', left + 40, sigY + 4, { align: 'center' });
+    doc.text('Authorized Signatory / Accountant', right - 40, sigY + 4, { align: 'center' });
+  };
+
+  // Draw Employee Copy on top half of A4 page
+  drawStatementCopy(0, 'EMPLOYEE COPY');
+
+  // Draw Cut Line
+  doc.setDrawColor(148, 163, 184);
+  doc.setLineDashPattern([2, 2], 0);
+  doc.line(10, 148.5, 200, 148.5);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.setTextColor(148, 163, 184);
+  doc.text('✂  CUT HERE - DUAL COPY SALARY STATEMENT  ✂', 105, 147.5, { align: 'center' });
+  doc.setLineDashPattern([], 0);
+
+  // Draw Office Copy on bottom half of A4 page
+  drawStatementCopy(148.5, 'OFFICE COPY');
+
+  const fileName = `Salary_Statement_${monthName.replace(/\s+/g, '_')}_Staff_${generation.staffId}.pdf`;
+  doc.save(fileName);
+};
+

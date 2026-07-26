@@ -21,9 +21,9 @@ export const pathToPermissionKey: Record<string, string> = {
   '/students/add': 'students-add',
   '/bulk-student-admission': 'students-bulk-admission',
   '/students/status': 'students-status',
-  '/bulk-promote-demote': 'students-bulk-promote',
   '/family-management': 'family-management',
   '/students/withdrawal-register': 'withdrawal-register',
+  '/students/certificates': 'students-certificates',
   '/students/cards': 'students-cards',
   '/misc/notebook-tags': 'notebook-tags',
   '/student/:id': 'student-profile',
@@ -127,6 +127,7 @@ export const pathToPermissionKey: Record<string, string> = {
   '/settings/user-permissions': 'settings-user-management', // Using same permission
   '/settings/rendersettings': 'settings-landing-page',
   '/settings/general-settings': 'settings-general',
+  '/settings/lms-control': 'settings-general',
   '/settings/notifications': 'settings-notifications',
 
   // Payroll Management

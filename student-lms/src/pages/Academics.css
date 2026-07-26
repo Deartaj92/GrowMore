@@ -84,20 +84,22 @@
 .tab-section-header {
   margin-bottom: 1.25rem;
   border-bottom: 1px solid var(--glass-border);
-  padding-bottom: 0.85rem;
+  padding: 1.1rem 1.35rem 1rem;
 }
 
 .tab-section-header h3 {
   font-family: var(--font-title);
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.4rem;
+  line-height: 1.35;
 }
 
 .tab-section-header p {
-  font-size: 12px;
-  color: var(--text-muted);
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.55;
 }
 
 /* Schedule Tab Details */
@@ -105,138 +107,7 @@
   padding: 1.25rem;
 }
 
-.timetable-days-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.timetable-day-row {
-  display: grid;
-  grid-template-columns: 120px 1fr;
-  gap: 1.25rem;
-  align-items: center;
-  border-bottom: 1px solid var(--glass-border);
-  padding-bottom: 1rem;
-}
-
-.timetable-day-row:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.expanded-details-row {
-  background: var(--bg-secondary);
-  border-top: 1px solid var(--glass-border);
-}
-
-[data-theme="dark"] .expanded-details-row {
-  background: var(--bg-primary);
-  border-top: 1px solid var(--glass-border);
-}
-
-.day-name-badge {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--glass-border);
-  padding: 0.5rem 0.85rem;
-  border-radius: var(--radius-xs);
-  text-align: center;
-}
-
-.day-name-badge strong {
-  font-family: var(--font-title);
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--text-primary);
-  letter-spacing: 0.01em;
-}
-
-.periods-row-wrapper {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 0.75rem;
-}
-
-.period-box {
-  padding: 0.75rem 0.85rem;
-}
-
-.period-number {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--primary);
-  text-transform: uppercase;
-}
-
-.period-subject {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.period-time {
-  font-size: 11.5px;
-  color: var(--text-secondary);
-}
-
-.period-room {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.no-periods-note {
-  color: var(--text-muted);
-  font-size: 12px;
-  font-style: italic;
-}
-
-/* Curriculum Subject Grid */
-.subjects-section-list {
-  margin-top: 2.25rem;
-  border-top: 1px solid var(--glass-border);
-  padding-top: 1.5rem;
-}
-
-.subjects-section-list h3 {
-  font-family: var(--font-title);
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 1rem;
-}
-
-.subjects-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 0.85rem;
-}
-
-.subject-item-card {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 0.85rem !important;
-}
-
-.subject-item-card svg {
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-}
-
-.sub-detail strong {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.sub-detail p {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 0.1rem;
-}
-
-/* Tables in Academics (Tests, Exams) */
+/* Tables in Academics (Tests) */
 .academics-table-wrapper {
   width: 100%;
   overflow-x: auto;
@@ -249,11 +120,13 @@
 }
 
 .academics-table th {
-  padding: 0.65rem 0.85rem;
-  font-size: 11px;
+  padding: 0.85rem 1.1rem;
+  font-size: 11.5px;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1.4;
   border-bottom: 2px solid var(--glass-border);
   background-color: var(--bg-secondary);
 }
@@ -269,8 +142,9 @@
 }
 
 .academics-table td {
-  padding: 0.75rem 0.85rem;
-  font-size: 12.5px;
+  padding: 0.9rem 1.1rem;
+  font-size: 13.5px;
+  line-height: 1.5;
   color: var(--text-primary);
   border-bottom: 1px solid var(--glass-border);
 }
@@ -293,15 +167,787 @@
   font-size: 12px;
 }
 
-@media (max-width: 768px) {
-  .timetable-day-row {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-    align-items: stretch;
+/* Examination Cards Grid */
+.exam-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.25rem;
+}
+
+/* ── Vertical Exam Card ───────────────────────────────────────── */
+.exam-vcard {
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--glass-bg-elevated);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.exam-vcard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.28);
+}
+
+/* Pass / Fail accent on left border */
+.exam-vcard.pass { border-left: 3px solid #10b981; }
+.exam-vcard.fail { border-left: 3px solid #ef4444; }
+
+/* ── Header ── */
+.evc-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1.1rem 1.25rem 1rem;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(139, 92, 246, 0.08) 100%);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.evc-title-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.evc-type {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.evc-name {
+  font-family: var(--font-title);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.evc-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.evc-status.pass {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.evc-status.fail {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* ── Score Ring + Stats Row ── */
+.evc-score-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.evc-ring-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 96px;
+  height: 96px;
+}
+
+.evc-ring-wrap svg {
+  position: absolute;
+  top: 0; left: 0;
+}
+
+.evc-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.evc-ring-pct {
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.evc-ring-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Stats Column */
+.evc-stats-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.evc-stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.evc-stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.evc-stat-val {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.evc-stat-val.green  { color: #10b981; }
+.evc-stat-val.purple { color: #8b5cf6; }
+
+.evc-stat-muted {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+/* ── Rank Pills ── */
+.evc-rank-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(255,255,255,0.02);
+}
+
+.evc-rank-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.evc-rank-pill.gold   { background: rgba(245,158,11,0.12); color: #f59e0b; border: 1px solid rgba(245,158,11,0.25); }
+.evc-rank-pill.blue   { background: rgba(59,130,246,0.12);  color: #3b82f6; border: 1px solid rgba(59,130,246,0.25); }
+.evc-rank-pill.purple { background: rgba(139,92,246,0.12);  color: #8b5cf6; border: 1px solid rgba(139,92,246,0.25); }
+
+/* ── Subject Marks Section ── */
+.evc-subjects {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+}
+
+.evc-subjects-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1.25rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.evc-subjects-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.evc-sub-pill {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  padding: 2px 9px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+}
+
+/* No subjects notice */
+.evc-no-subjects {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1.25rem;
+  color: var(--text-muted);
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* Subject Rows */
+.evc-subject-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.evc-subject-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 1.25rem;
+  border-bottom: 1px solid var(--glass-border);
+  transition: background 0.15s ease;
+}
+
+.evc-subject-row:last-child { border-bottom: none; }
+.evc-subject-row:hover { background: rgba(255,255,255,0.03); }
+
+.evc-sub-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.evc-sub-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.evc-sub-bar-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.evc-sub-bar-track {
+  width: 100%;
+  max-width: 140px;
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.evc-sub-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
+/* Right side of subject row */
+.evc-sub-right {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-shrink: 0;
+}
+
+.evc-sub-marks {
+  font-size: 12.5px;
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.evc-sub-sep {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 11px;
+}
+
+.evc-sub-grade {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #8b5cf6;
+  min-width: 18px;
+  text-align: center;
+}
+
+.evc-sub-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+}
+
+.evc-sub-status.pass { color: #10b981; }
+.evc-sub-status.fail { color: #ef4444; }
+
+@media (max-width: 640px) {
+  .exam-cards-grid { grid-template-columns: 1fr; }
+  .evc-sub-bar-track { max-width: 80px; }
+}
+
+
+.empty-results-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+  gap: 0.75rem;
+  text-align: center;
+}
+
+/* ── Rank / Position Row ──────────────────────────────────────── */
+.exam-rank-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.07) 0%, rgba(139, 92, 246, 0.07) 100%);
+  border: 1px solid var(--glass-border);
+}
+
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+}
+
+.rank-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rank-value {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.rank-icon.gold  { color: #f59e0b; }
+.rank-icon.blue  { color: #3b82f6; }
+.rank-icon.purple { color: #8b5cf6; }
+
+/* ── Subject No-Data Notice ───────────────────────────────────── */
+.no-subjects-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-xs);
+  background: var(--bg-secondary);
+  border: 1px dashed var(--glass-border);
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.no-subjects-notice svg {
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+/* ── Subject Table Extras ─────────────────────────────────────── */
+.sub-num {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  width: 28px;
+}
+
+.marks-sep {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.score-bar-pct {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 28px;
+}
+
+.subjects-table tbody tr:hover {
+  background-color: var(--bg-secondary);
+}
+
+/* ── Subject-Wise Class Tests ────────────────────────────────── */
+.tests-summary-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  padding: 0.4rem 0.85rem;
+  border-radius: 20px;
+  white-space: nowrap;
+  line-height: 1.4;
+  display: inline-flex;
+  align-items: center;
+}
+
+.subject-test-groups-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  margin-top: 1.25rem;
+}
+
+.subject-test-card {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: all 0.2s ease;
+  border: 1.5px solid var(--glass-border);
+  background: var(--glass-bg);
+  box-shadow: var(--glass-shadow), var(--glass-highlight);
+}
+
+.subject-test-card:hover {
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: var(--glass-shadow-hover), var(--glass-highlight);
+}
+
+.stc-header {
+  width: 100%;
+  min-height: 76px;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.6rem;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  gap: 1.5rem;
+  transition: background 0.2s ease;
+  border-radius: 0;
+}
+
+.stc-header:hover {
+  background: var(--glass-bg-elevated);
+}
+
+.stc-title-group {
+  display: flex;
+  align-items: center;
+  gap: 1.15rem;
+  min-width: 0;
+}
+
+.stc-icon-badge {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(99, 102, 241, 0.14);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #818cf8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.6);
+}
+
+.stc-title-text-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  justify-content: center;
+  min-width: 0;
+}
+
+.stc-subject-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+}
+
+.stc-sub-info {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  line-height: 1.35;
+  display: block;
+  white-space: nowrap;
+}
+
+.stc-right-group {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-shrink: 0;
+}
+
+.stc-avg-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+  justify-content: center;
+}
+
+.stc-chip-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.stc-chip-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.stc-chip-val.high { color: #10b981; }
+.stc-chip-val.mid  { color: #f59e0b; }
+.stc-chip-val.low  { color: #ef4444; }
+
+.stc-pass-tag {
+  padding: 0.4rem 0.9rem;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.stc-pass-tag.pass {
+  background: rgba(16, 185, 129, 0.14);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.stc-pass-tag.warn {
+  background: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.stc-expand-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.stc-header:hover .stc-expand-icon {
+  background: var(--bg-accent);
+  color: var(--text-primary);
+}
+
+.stc-content {
+  border-top: 1px solid var(--glass-border-subtle);
+  padding: 1rem 1.25rem 1.25rem;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.stc-test-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 600;
+}
+
+.test-cell-icon {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.stc-pct-bar-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.stc-pct-val {
+  font-weight: 700;
+  font-size: 12.5px;
+  min-width: 36px;
+}
+
+.stc-pct-track {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-secondary);
+  border-radius: 3px;
+  overflow: hidden;
+  max-width: 100px;
+}
+
+.stc-pct-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+/* ── Mobile Responsiveness for Academics Page ───────────────── */
+@media (max-width: 640px) {
+  .academics-page {
+    gap: 1rem;
   }
-  
-  .day-name-badge {
-    text-align: left;
-    padding: 0.4rem 0.75rem;
+
+  .academics-tabs-header {
+    gap: 0.25rem;
+    padding: 0.25rem;
+  }
+
+  .tab-toggle {
+    padding: 0.45rem 0.5rem;
+    font-size: 11.5px;
+    min-height: 38px;
+  }
+
+  .tab-toggle svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .tab-section-header {
+    padding: 0.9rem 1rem;
+    margin-bottom: 1rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .tab-section-header h3 {
+    font-size: 1.15rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .tab-section-header p {
+    font-size: 12px;
+  }
+
+  .tests-summary-badge {
+    font-size: 11px;
+    padding: 0.3rem 0.65rem;
+  }
+
+  .schedule-tab, .tests-tab, .exams-tab {
+    padding: 0.75rem;
+  }
+
+  .stc-header {
+    padding: 0.9rem 1rem;
+    min-height: 64px;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .stc-title-group {
+    gap: 0.75rem;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .stc-icon-badge {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+  }
+
+  .stc-subject-name {
+    font-size: 1rem;
+    margin-bottom: 0.15rem;
+  }
+
+  .stc-sub-info {
+    font-size: 11.5px;
+  }
+
+  .stc-right-group {
+    gap: 0.75rem;
+    margin-left: auto;
+  }
+
+  .stc-avg-chip {
+    gap: 0.15rem;
+  }
+
+  .stc-chip-label {
+    font-size: 9.5px;
+  }
+
+  .stc-chip-val {
+    font-size: 1rem;
+  }
+
+  .stc-pass-tag {
+    padding: 0.25rem 0.65rem;
+    font-size: 11px;
+  }
+
+  .stc-expand-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .stc-content {
+    padding: 0.75rem 0.6rem;
+  }
+
+  .academics-table th {
+    padding: 0.65rem 0.75rem;
+    font-size: 10.5px;
+  }
+
+  .academics-table td {
+    padding: 0.75rem 0.75rem;
+    font-size: 12px;
+  }
+
+  .exam-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
   }
 }
+
+

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useSession } from '../contexts/SessionContext';
 import { useNotifications } from '../hooks/useNotifications';
 import {
   LayoutDashboard,
@@ -14,7 +15,10 @@ import {
   Moon,
   Bell,
   ChevronRight,
+  ChevronDown,
+  Wrench,
 } from 'lucide-react';
+import { useLmsSettings } from '../contexts/LmsSettingsContext';
 import { MobileDockNav } from './MobileDockNav';
 import { StudentPhoto } from './StudentPhoto';
 import { GrowMoreLogo } from './GrowMoreLogo';
@@ -40,6 +44,8 @@ const DESKTOP_NAV = [
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { student, logout } = useAuth();
+  const { sessions, selectedSession, setSelectedSession } = useSession();
+  const { settings } = useLmsSettings();
   const navigate = useNavigate();
   const location = useLocation();
   const notifRef = useRef<HTMLDivElement>(null);
@@ -93,15 +99,52 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     });
   };
 
-  const pageMeta = PAGE_META[location.pathname] ?? {
-    title: 'Student Portal',
-    subtitle: 'GrowMore learning management',
+  const desktopNavItems = [
+    { path: '/', label: settings.tabs.dashboard.label || 'Dashboard', icon: LayoutDashboard, enabled: settings.tabs.dashboard.enabled },
+    { path: '/attendance', label: settings.tabs.attendance.label || 'Attendance', icon: CalendarCheck, enabled: settings.tabs.attendance.enabled },
+    { path: '/fees', label: settings.tabs.fees.label || 'Fees & Challans', icon: CreditCard, enabled: settings.tabs.fees.enabled },
+    { path: '/academics', label: settings.tabs.academics.label || 'Academics', icon: GraduationCap, enabled: settings.tabs.academics.enabled },
+    { path: '/feedback', label: settings.tabs.feedback.label || 'Feedback', icon: MessageSquareCode, enabled: settings.tabs.feedback.enabled },
+    { path: '/profile', label: settings.tabs.profile.label || 'My Profile', icon: User, enabled: settings.tabs.profile.enabled },
+  ].filter((item) => item.enabled !== false);
+
+  const pageMeta = {
+    title: desktopNavItems.find(i => i.path === location.pathname)?.label || 'Student Portal',
+    subtitle: PAGE_META[location.pathname]?.subtitle || 'GrowMore learning management',
   };
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
+
+  if (settings.maintenance_mode) {
+    return (
+      <div className="lms-maintenance-container">
+        <div className="lms-maintenance-card glass-panel">
+          <div className="maintenance-icon-badge">
+            <Wrench size={36} />
+          </div>
+          <h2>Portal Under Maintenance</h2>
+          <p>{settings.maintenance_message || 'Student LMS Portal is currently undergoing scheduled maintenance. Please check back shortly.'}</p>
+          <button type="button" className="btn btn-secondary" onClick={handleLogout}>
+            <LogOut size={16} /> Sign Out
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const currentNavConfig = [
+    { path: '/', enabled: settings.tabs.dashboard.enabled },
+    { path: '/attendance', enabled: settings.tabs.attendance.enabled },
+    { path: '/fees', enabled: settings.tabs.fees.enabled },
+    { path: '/academics', enabled: settings.tabs.academics.enabled },
+    { path: '/feedback', enabled: settings.tabs.feedback.enabled },
+    { path: '/profile', enabled: settings.tabs.profile.enabled },
+  ].find((item) => item.path === location.pathname);
+
+  const isCurrentTabDisabled = currentNavConfig && currentNavConfig.enabled === false;
 
   return (
     <div className="lms-layout">
@@ -119,7 +162,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </div>
 
         <nav className="sidebar-nav" aria-label="Main navigation">
-          {DESKTOP_NAV.map((item) => {
+          <div className="nav-section-header">
+            <span className="nav-section-label">MAIN NAVIGATION</span>
+          </div>
+          {desktopNavItems.map((item) => {
             const Icon = item.icon;
             return (
               <NavLink
@@ -128,7 +174,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 end={item.path === '/'}
                 className={({ isActive }) => `nav-link-item ${isActive ? 'active' : ''}`}
               >
-                <span className="nav-icon"><Icon size={18} strokeWidth={2} /></span>
+                <span className="nav-icon-box">
+                  <Icon size={18} strokeWidth={2} />
+                </span>
                 <span className="nav-label">{item.label}</span>
                 <ChevronRight className="nav-arrow" size={14} />
               </NavLink>
@@ -162,6 +210,26 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <h1 className="navbar-page-title">{pageMeta.title}</h1>
               <p className="navbar-page-subtitle">{pageMeta.subtitle}</p>
             </div>
+            {sessions.length > 0 && (
+              <div className="navbar-session-wrap">
+                <div className="navbar-session-box">
+                  <select
+                    id="global-session-select"
+                    value={selectedSession ?? ''}
+                    onChange={(e) => setSelectedSession(Number(e.target.value))}
+                    className="navbar-session-select"
+                    aria-label="Select academic session"
+                  >
+                    {sessions.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}{s.is_active ? ' ✦' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={12} className="navbar-session-icon" />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="navbar-right">
@@ -244,7 +312,22 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           </div>
         </header>
 
-        <main className="lms-content animate-fade-in">{children}</main>
+        <main className="lms-content animate-fade-in">
+          {isCurrentTabDisabled ? (
+            <div className="lms-disabled-tab-card glass-panel">
+              <div className="disabled-icon-badge">
+                <Wrench size={32} />
+              </div>
+              <h3>Module Disabled</h3>
+              <p>This module has been temporarily disabled by your school administrator.</p>
+              <button type="button" className="btn btn-primary" onClick={() => navigate('/')} style={{ marginTop: '0.75rem' }}>
+                Return to Dashboard
+              </button>
+            </div>
+          ) : (
+            children
+          )}
+        </main>
       </div>
 
       <MobileDockNav />

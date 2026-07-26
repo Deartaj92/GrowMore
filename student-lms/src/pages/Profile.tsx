@@ -48,8 +48,11 @@ const DetailItem: React.FC<{ label: string; value: React.ReactNode }> = ({ label
   </div>
 );
 
+import { useLmsSettings } from '../contexts/LmsSettingsContext';
+
 export const Profile: React.FC = () => {
   const { student, refreshProfile } = useAuth();
+  const { settings } = useLmsSettings();
   const [profileData, setProfileData] = useState<ProfileRecord | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -242,80 +245,82 @@ export const Profile: React.FC = () => {
         </div>
       </section>
 
-      <section className="profile-section glass-panel">
-        <div className="profile-section-head">
-          <Lock size={18} className="profile-section-icon" aria-hidden />
-          <h2>Security</h2>
-        </div>
-        <p className="profile-section-desc">Update your portal sign-in password.</p>
-
-        <form onSubmit={handlePasswordChange} className="profile-password-form">
-          {passSuccess && (
-            <div className="profile-alert profile-alert--success">
-              <CheckCircle size={16} aria-hidden />
-              <span>Password updated successfully.</span>
-            </div>
-          )}
-          {passError && (
-            <div className="profile-alert profile-alert--danger">
-              <ShieldAlert size={16} aria-hidden />
-              <span>{passError}</span>
-            </div>
-          )}
-
-          <div className="profile-password-grid">
-            <div className="form-group">
-              <label htmlFor="current-pass">Current password</label>
-              <div className="input-field-icon-wrapper">
-                <Key size={16} className="input-icon" aria-hidden />
-                <input
-                  type="password"
-                  id="current-pass"
-                  className="input-field"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  disabled={updatingPass}
-                  autoComplete="current-password"
-                />
-              </div>
-            </div>
-            <div className="form-group">
-              <label htmlFor="new-pass">New password</label>
-              <div className="input-field-icon-wrapper">
-                <Lock size={16} className="input-icon" aria-hidden />
-                <input
-                  type="password"
-                  id="new-pass"
-                  className="input-field"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  disabled={updatingPass}
-                  autoComplete="new-password"
-                />
-              </div>
-            </div>
-            <div className="form-group">
-              <label htmlFor="confirm-pass">Confirm password</label>
-              <div className="input-field-icon-wrapper">
-                <Lock size={16} className="input-icon" aria-hidden />
-                <input
-                  type="password"
-                  id="confirm-pass"
-                  className="input-field"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={updatingPass}
-                  autoComplete="new-password"
-                />
-              </div>
-            </div>
+      {settings.tabs.profile.allow_password_change !== false && (
+        <section className="profile-section glass-panel">
+          <div className="profile-section-head">
+            <Lock size={18} className="profile-section-icon" aria-hidden />
+            <h2>Security</h2>
           </div>
+          <p className="profile-section-desc">Update your portal sign-in password.</p>
 
-          <button type="submit" className="btn btn-primary" disabled={updatingPass}>
-            {updatingPass ? 'Saving…' : 'Update password'}
-          </button>
-        </form>
-      </section>
+          <form onSubmit={handlePasswordChange} className="profile-password-form">
+            {passSuccess && (
+              <div className="profile-alert profile-alert--success">
+                <CheckCircle size={16} aria-hidden />
+                <span>Password updated successfully.</span>
+              </div>
+            )}
+            {passError && (
+              <div className="profile-alert profile-alert--danger">
+                <ShieldAlert size={16} aria-hidden />
+                <span>{passError}</span>
+              </div>
+            )}
+
+            <div className="profile-password-grid">
+              <div className="form-group">
+                <label htmlFor="current-pass">Current password</label>
+                <div className="input-field-icon-wrapper">
+                  <Key size={16} className="input-icon" aria-hidden />
+                  <input
+                    type="password"
+                    id="current-pass"
+                    className="input-field"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    disabled={updatingPass}
+                    autoComplete="current-password"
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <label htmlFor="new-pass">New password</label>
+                <div className="input-field-icon-wrapper">
+                  <Lock size={16} className="input-icon" aria-hidden />
+                  <input
+                    type="password"
+                    id="new-pass"
+                    className="input-field"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    disabled={updatingPass}
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <label htmlFor="confirm-pass">Confirm password</label>
+                <div className="input-field-icon-wrapper">
+                  <Lock size={16} className="input-icon" aria-hidden />
+                  <input
+                    type="password"
+                    id="confirm-pass"
+                    className="input-field"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={updatingPass}
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" className="btn btn-primary" disabled={updatingPass}>
+              {updatingPass ? 'Saving…' : 'Update password'}
+            </button>
+          </form>
+        </section>
+      )}
 
       <button
         type="button"

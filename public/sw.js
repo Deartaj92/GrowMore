@@ -95,21 +95,18 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 3. Static Assets - Cache First, falling back to network
+    // 3. Static Assets - Network First (Stale-While-Revalidate style)
     if (isStaticAsset(request.url)) {
         event.respondWith(
-            caches.match(request, { ignoreSearch: true }).then((cachedResponse) => {
-                if (cachedResponse) {
-                    return cachedResponse;
-                }
-                return fetch(request).then((networkResponse) => {
+            fetch(request)
+                .then((networkResponse) => {
                     if (canCacheResponse(networkResponse)) {
                         const copy = networkResponse.clone();
                         caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
                     }
                     return networkResponse;
-                });
-            })
+                })
+                .catch(() => caches.match(request, { ignoreSearch: true }))
         );
         return;
     }

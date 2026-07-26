@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useStudentData } from '../hooks/useStudentData';
-import { supabase } from '../services/supabase';
+import { useSession } from '../contexts/SessionContext';
 import {
   UserCheck,
   UserMinus,
@@ -33,32 +33,14 @@ const LOGS_DISPLAY_LIMIT = 15;
 export const Attendance: React.FC = () => {
   const { student } = useAuth();
   const { getAttendanceData, loading } = useStudentData();
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [selectedSession, setSelectedSession] = useState<number | null>(null);
+  const { selectedSession } = useSession();
+
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
   const [halfLeaves, setHalfLeaves] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [filterStatus, setFilterStatus] = useState<string>('all');
-
-  useEffect(() => {
-    if (student) {
-      supabase
-        .from('sessions')
-        .select('*')
-        .eq('school_id', student.school_id)
-        .order('start_date', { ascending: false })
-        .then(({ data }) => {
-          if (data) {
-            setSessions(data);
-            const active = data.find((s) => s.is_active);
-            if (active) setSelectedSession(active.id);
-            else if (data.length > 0) setSelectedSession(data[0].id);
-          }
-        });
-    }
-  }, [student]);
 
   useEffect(() => {
     if (student && selectedSession !== null) {
@@ -160,22 +142,6 @@ export const Attendance: React.FC = () => {
   return (
     <div className="attendance-page">
       <div className="attendance-top-bar glass-panel">
-        <div className="session-selector-wrapper">
-          <label htmlFor="session-select">Select Academic Session:</label>
-          <select
-            id="session-select"
-            value={selectedSession || ''}
-            onChange={(e) => setSelectedSession(Number(e.target.value))}
-            className="input-field session-select"
-          >
-            {sessions.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} {s.is_active ? '(Active)' : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-
         <StatBlock
           variant="blue"
           icon={Percent}

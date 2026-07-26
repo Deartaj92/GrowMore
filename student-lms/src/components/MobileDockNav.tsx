@@ -6,8 +6,10 @@ import {
   CreditCard,
   GraduationCap,
   User,
+  MessageSquareCode,
   type LucideIcon,
 } from 'lucide-react';
+import { useLmsSettings } from '../contexts/LmsSettingsContext';
 import './MobileDockNav.css';
 
 type DockTab = {
@@ -17,26 +19,8 @@ type DockTab = {
   end?: boolean;
 };
 
-const DOCK_TABS: DockTab[] = [
-  { path: '/attendance', label: 'Attendance', icon: CalendarCheck },
-  { path: '/fees', label: 'Fees', icon: CreditCard },
-  { path: '/', label: 'Home', icon: LayoutDashboard, end: true },
-  { path: '/academics', label: 'Academics', icon: GraduationCap },
-  { path: '/profile', label: 'Profile', icon: User },
-];
-
 const BAR_HEIGHT = 64;
 const NOTCH_HALF = 38;
-
-function getActiveIndex(pathname: string): number {
-  if (pathname === '/') return 2;
-  for (let i = 0; i < DOCK_TABS.length; i++) {
-    if (i === 2) continue;
-    const { path } = DOCK_TABS[i];
-    if (pathname === path || pathname.startsWith(`${path}/`)) return i;
-  }
-  return 2;
-}
 
 /** SVG path: dark bar with concave notch centered at `cx` */
 function buildDockPath(width: number, cx: number): string {
@@ -59,12 +43,26 @@ function buildDockPath(width: number, cx: number): string {
 
 export const MobileDockNav: React.FC = () => {
   const { pathname } = useLocation();
+  const { settings } = useLmsSettings();
   const dockRef = useRef<HTMLElement>(null);
   const tabRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const [layout, setLayout] = useState({ width: 360, cx: 180 });
 
-  const activeIndex = getActiveIndex(pathname);
-  const ActiveIcon = DOCK_TABS[activeIndex].icon;
+  const dockTabs: DockTab[] = [
+    { path: '/attendance', label: settings.tabs.attendance.label || 'Attendance', icon: CalendarCheck, enabled: settings.tabs.attendance.enabled },
+    { path: '/fees', label: settings.tabs.fees.label || 'Fees', icon: CreditCard, enabled: settings.tabs.fees.enabled },
+    { path: '/', label: settings.tabs.dashboard.label || 'Home', icon: LayoutDashboard, end: true, enabled: settings.tabs.dashboard.enabled },
+    { path: '/academics', label: settings.tabs.academics.label || 'Academics', icon: GraduationCap, enabled: settings.tabs.academics.enabled },
+    { path: '/profile', label: settings.tabs.profile.label || 'Profile', icon: User, enabled: settings.tabs.profile.enabled },
+  ].filter((t) => t.enabled !== false);
+
+  const getActiveIndex = (pathStr: string): number => {
+    const idx = dockTabs.findIndex((t) => (t.end ? pathStr === '/' : pathStr.startsWith(t.path)));
+    return idx >= 0 ? idx : 0;
+  };
+
+  const activeIndex = Math.min(getActiveIndex(pathname), Math.max(0, dockTabs.length - 1));
+  const ActiveIcon = dockTabs[activeIndex]?.icon || LayoutDashboard;
 
   const measure = useCallback(() => {
     const dock = dockRef.current;
@@ -111,7 +109,7 @@ export const MobileDockNav: React.FC = () => {
       </div>
 
       <div className="mobile-dock-tabs">
-        {DOCK_TABS.map((tab, index) => {
+        {dockTabs.map((tab, index) => {
           const Icon = tab.icon;
           const isActive = index === activeIndex;
           return (

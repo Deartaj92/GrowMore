@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { ThemeContext, lightTheme, darkTheme } from '../../../contexts/ThemeContext';
+import { useTheme } from '../../../components/Layout/contexts/ThemeContext';
+import { lightTheme, darkTheme } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../components/useToast';
 import { newPayrollService, NewPayrollGeneration } from '../services/newPayrollService';
 import { usePayrollDisplaySettings } from '../PayrollDisplaySettingsContext';
-import PayslipModal from './PayslipModal';
+import SalaryStatementDialog from './SalaryStatementDialog';
 import {
   Calculate as GenerateIcon,
   Receipt as ReceiptIcon,
@@ -25,69 +26,59 @@ import {
   Checkbox,
 } from '@mui/material';
 
+import { clayCardStyle } from '../../../styles/DesignSystem';
+
 const Container = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0.75rem;
 `;
 
 const ControlsCard = styled.div<{ theme: any }>`
-  background: ${({ theme }) =>
-    theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.03)' : '#ffffff'};
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  border-radius: 12px;
-  padding: 1.25rem;
+  ${clayCardStyle}
+  padding: 0.85rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 1rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  gap: 0.75rem;
 `;
 
 const SelectGroup = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
 `;
 
 const SummaryStrip = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
 `;
 
 const SummaryCard = styled.div<{ theme: any; $color?: string }>`
-  background: ${({ theme }) =>
-    theme.BG === '#252525' ? 'rgba(255,255,255,0.03)' : '#ffffff'};
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  border-radius: 12px;
-  padding: 1.1rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  ${clayCardStyle}
+  padding: 0.85rem;
 
   label {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: ${({ theme }) => theme.TEXT_SECONDARY};
     text-transform: uppercase;
     font-weight: 700;
     display: block;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.2rem;
   }
 
   div {
-    font-size: 1.4rem;
+    font-size: 1.35rem;
     font-weight: 800;
     color: ${({ $color, theme }) => $color || theme.TEXT_PRIMARY};
   }
 `;
 
 const TableCard = styled.div<{ theme: any }>`
-  background: ${({ theme }) =>
-    theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.03)' : '#ffffff'};
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  border-radius: 12px;
-  padding: 1.25rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  ${clayCardStyle}
+  padding: 0.85rem;
   overflow-x: auto;
 `;
 
@@ -150,9 +141,18 @@ const ActionButton = styled.button<{ theme: any; $variant?: 'primary' | 'seconda
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease-in-out;
 
-  &:hover {
+  &:hover:not(:disabled) {
     opacity: 0.9;
+  }
+
+  &:disabled {
+    background: ${({ theme }) => (theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0')};
+    border-color: ${({ theme }) => (theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.12)' : '#cbd5e1')};
+    color: ${({ theme }) => (theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.4)' : '#94a3b8')};
+    cursor: not-allowed;
+    opacity: 0.85;
   }
 `;
 
@@ -164,7 +164,7 @@ const MONTHS = [
 type GenerationItem = NewPayrollGeneration & { isGeneratedInDb: boolean };
 
 const PayrollGenerator: React.FC = () => {
-  const { theme: themeMode } = useContext(ThemeContext);
+  const { theme: themeMode } = useTheme();
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
   const { user } = useAuth() as any;
   const { showToast } = useToast();
@@ -537,12 +537,12 @@ const PayrollGenerator: React.FC = () => {
         )}
       </TableCard>
 
-      {/* Official Payslip Modal */}
-      {viewPayslipGen && (
-        <PayslipModal generation={viewPayslipGen} onClose={() => setViewPayslipGen(null)} />
-      )}
-
-
+      {/* Salary Statement Dialog */}
+      <SalaryStatementDialog
+        open={!!viewPayslipGen}
+        generation={viewPayslipGen}
+        onClose={() => setViewPayslipGen(null)}
+      />
     </Container>
   );
 };

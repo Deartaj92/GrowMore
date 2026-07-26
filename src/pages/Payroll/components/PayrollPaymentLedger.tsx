@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { ThemeContext, lightTheme, darkTheme } from '../../../contexts/ThemeContext';
+import { useTheme } from '../../../components/Layout/contexts/ThemeContext';
+import { lightTheme, darkTheme } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../components/useToast';
 import { supabase } from '../../../supabaseClient';
 import { newPayrollService, NewPayrollGeneration } from '../services/newPayrollService';
 import { usePayrollDisplaySettings } from '../PayrollDisplaySettingsContext';
 import { usePageFooter } from '../../../components/Layout/contexts/PageFooterContext';
-import PayslipModal from './PayslipModal';
+import SalaryStatementDialog from './SalaryStatementDialog';
 import {
   Payment as PaymentIcon,
   CalendarMonth as CalendarIcon,
@@ -30,21 +31,19 @@ import {
   IconButton,
 } from '@mui/material';
 
+import { clayCardStyle } from '../../../styles/DesignSystem';
+
 /* ── Styled Components ── */
 
 const Container = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
 `;
 
 const Card = styled.div<{ theme: any }>`
-  background: ${({ theme }) =>
-    theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.03)' : '#ffffff'};
-  border: 1px solid ${({ theme }) => theme.BORDER};
-  border-radius: 12px;
-  padding: 1.25rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  ${clayCardStyle}
+  padding: 0.85rem;
 `;
 
 const SectionTitle = styled.div<{ theme: any }>`
@@ -187,7 +186,7 @@ const MONTHS = [
 ];
 
 const PayrollPaymentLedger: React.FC = () => {
-  const { theme: themeMode } = useContext(ThemeContext);
+  const { theme: themeMode } = useTheme();
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
   const { user } = useAuth() as any;
   const { showToast } = useToast();
@@ -709,9 +708,12 @@ const PayrollPaymentLedger: React.FC = () => {
         </Card>
       )}
 
-      {selectedSlipGen && (
-        <PayslipModal generation={selectedSlipGen} onClose={() => setSelectedSlipGen(null)} />
-      )}
+      {/* Salary Statement Dialog */}
+      <SalaryStatementDialog
+        open={!!selectedSlipGen}
+        generation={selectedSlipGen}
+        onClose={() => setSelectedSlipGen(null)}
+      />
     </Container>
   );
 };

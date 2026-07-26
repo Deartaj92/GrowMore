@@ -6,6 +6,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './components/useToast';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout, { ProgressProvider } from './components/Layout';
+import Loader from './components/Loader';
 import UpdateNotification, { UpdateNotificationRef } from './components/UpdateNotification';
 import { ensurePermissionsSynced } from './services/permissionService';
 import Login from './pages/Login';
@@ -38,6 +39,7 @@ import StudentStatusManager from './pages/StudentStatusManager';
 import BulkPromoteDemote from './pages/BulkPromoteDemote';
 import UserManagement from './pages/UserManagement';
 import GeneralSettings from './pages/GeneralSettings';
+import LmsControlPanel from './pages/LmsControlPanel';
 import UserAnnouncements from './pages/UserAnnouncements';
 import NotificationSettings from './pages/NotificationSettings';
 import RenderSettings from './pages/RenderSettings';
@@ -60,8 +62,15 @@ import { Reports } from './pages/Reports';
 import { EmployeeReports } from './pages/EmployeeReports';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { StudentProfile } from './pages/StudentProfile';
-import { TeacherProfile } from './pages/TeacherProfile';
+
+// Lazy-loaded heavy pages for performance optimization
+const StudentProfile = React.lazy(() =>
+  import('./pages/StudentProfile').then((module) => ({ default: module.StudentProfile }))
+);
+const TeacherProfile = React.lazy(() =>
+  import('./pages/TeacherProfile').then((module) => ({ default: module.TeacherProfile }))
+);
+
 import SchoolsManagement from './pages/SchoolsManagement';
 import SchoolWelcomeScreen from './pages/SchoolWelcomeScreen';
 import FeeStructureManager from './pages/FeeStructureManager';
@@ -107,6 +116,7 @@ import DiaryAnalytics from './components/DiaryAnalytics';
 import GeneralMessagePage from './pages/GeneralMessagePage';
 import StudentCardsPage from './pages/StudentCardsPage';
 import NotebookTagGenerator from './pages/NotebookTagGenerator';
+import StudentCertificateGenerator from './components/StudentCertificateGenerator';
 // Fine Management Components
 import FineDashboard from './components/FineDashboard';
 // Attendance Management Components
@@ -214,12 +224,12 @@ const App: React.FC = () => {
                       <GlobalNFCListener />
                       <GlobalSyncManager />
                       <GlobalAttendanceAutomationNotifier />
-                      <Routes>
-                        {/* Public Routes */}
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/landing" element={<PublicLandingPage />} />
-                        <Route path="/unauthorized" element={<UnauthorizedPage />} />
-
+                      <React.Suspense fallback={<Loader />}>
+                        <Routes>
+                          {/* Public Routes */}
+                          <Route path="/login" element={<Login />} />
+                          <Route path="/landing" element={<PublicLandingPage />} />
+                          <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
                         {/* School Welcome Screen - Shows after login */}
                         <Route
@@ -381,6 +391,17 @@ const App: React.FC = () => {
                                 requiredPermission="withdrawal-register"
                               >
                                 <WithdrawalRegister />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="students/certificates"
+                            element={
+                              <ProtectedRoute
+                                requiredPermission="students-certificates"
+                              >
+                                <StudentCertificateGenerator />
                               </ProtectedRoute>
                             }
                           />
@@ -560,6 +581,15 @@ const App: React.FC = () => {
                             element={
                               <ProtectedRoute requiredPermission="settings-classes">
                                 <GeneralSettings />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="settings/lms-control"
+                            element={
+                              <ProtectedRoute requiredPermission="settings-classes">
+                                <LmsControlPanel />
                               </ProtectedRoute>
                             }
                           />
@@ -974,7 +1004,7 @@ const App: React.FC = () => {
                             path="reports/employee-reports"
                             element={
                               <ProtectedRoute requiredPermission="reports-employees">
-                                <EmployeeReports />
+                                <Reports defaultTab="staff" />
                               </ProtectedRoute>
                             }
                           />
@@ -1286,6 +1316,7 @@ const App: React.FC = () => {
                           <Route path="*" element={<PageNotFound />} />
                         </Route>
                       </Routes>
+                      </React.Suspense>
                     </ToastProvider>
                     {/* Only render UpdateNotification on Electron/Capacitor, not on web */}
                     {!isWeb() && <UpdateNotification ref={updateNotificationRef} />}

@@ -16,43 +16,144 @@ import { sortClasses } from './classUtils';
 import { fetchAllRows } from './paginationHelper';
 
 export const reportService = {
-    // Categories
+    async createCategory(categoryData: { name: string; type: string; school_id?: number }): Promise<ReportCategory> {
+        const user = getUser();
+        const targetSchoolId = categoryData.school_id || user?.school_id || 2;
+
+        const { data, error } = await supabase
+            .from('report_categories')
+            .insert([{
+                name: categoryData.name.trim(),
+                type: categoryData.type,
+                school_id: targetSchoolId
+            }])
+            .select('*')
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    async updateCategory(id: number, categoryData: { name?: string; type?: string }): Promise<ReportCategory> {
+        const { data, error } = await supabase
+            .from('report_categories')
+            .update(categoryData)
+            .eq('id', id)
+            .select('*')
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    async deleteCategory(id: number): Promise<void> {
+        const { error } = await supabase
+            .from('report_categories')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+    },
+
+    async seedDefaultCategories(schoolId?: number): Promise<ReportCategory[]> {
+        const user = getUser();
+        const targetSchoolId = schoolId || user?.school_id || 2;
+
+        const defaultCategories = [
+            // --- 5 SIMPLIFIED STUDENT CATEGORIES ---
+            { name: 'Behavior & Discipline', type: 'student', school_id: targetSchoolId },
+            { name: 'Academic & Homework', type: 'student', school_id: targetSchoolId },
+            { name: 'Attendance & Tardiness', type: 'student', school_id: targetSchoolId },
+            { name: 'Bullying & Misconduct', type: 'student', school_id: targetSchoolId },
+            { name: 'General Student Issue', type: 'student', school_id: targetSchoolId },
+
+            // --- 5 SIMPLIFIED STAFF CATEGORIES ---
+            { name: 'Attendance & Tardiness', type: 'staff', school_id: targetSchoolId },
+            { name: 'Teaching & Duty Performance', type: 'staff', school_id: targetSchoolId },
+            { name: 'Conduct & Professionalism', type: 'staff', school_id: targetSchoolId },
+            { name: 'Policy & Administration', type: 'staff', school_id: targetSchoolId },
+            { name: 'General Staff Issue', type: 'staff', school_id: targetSchoolId }
+        ];
+
+        try {
+            const { data, error } = await supabase
+                .from('report_categories')
+                .insert(defaultCategories)
+                .select('*');
+
+            if (error) {
+                console.error('Error seeding categories into Supabase:', error);
+                return [];
+            }
+            return data || [];
+        } catch (err) {
+            console.error('Failed to seed categories into Supabase:', err);
+            return [];
+        }
+    },
+
     async getCategories(type?: string, schoolId?: number): Promise<ReportCategory[]> {
-        const data = await fetchAllRows(async (from, to) => {
-            let query = supabase
+        try {
+            const { data, error } = await supabase
                 .from('report_categories')
                 .select('*');
-            
-            if (type) {
-                query = query.eq('type', type);
-            }
-            
-            if (schoolId) {
-                query = query.eq('school_id', schoolId);
-            }
-            
-            return await query.range(from, to);
-        });
-        
-        // If no categories found for the specific school_id, try to get default categories (school_id = 1)
-        if (data.length === 0 && schoolId && schoolId !== 1) {
-            const fallbackData = await fetchAllRows(async (from, to) => {
-                let fallbackQuery = supabase
-                    .from('report_categories')
-                    .select('*')
-                    .eq('school_id', 1);
-                
-                if (type) {
-                    fallbackQuery = fallbackQuery.eq('type', type);
-                }
-                
-                return await fallbackQuery.range(from, to);
-            });
-            
-            return fallbackData;
-        }
 
-        return data;
+            if (error) {
+                console.error('Error fetching report_categories:', error);
+            }
+
+            if (data && data.length > 0) {
+                let filtered = data;
+                if (type) {
+                    filtered = filtered.filter((c: any) => !c.type || c.type.toLowerCase() === type.toLowerCase());
+                }
+                if (schoolId) {
+                    const schoolFiltered = filtered.filter((c: any) => c.school_id === schoolId || c.school_id === null || c.school_id === undefined || c.school_id === 1);
+                    if (schoolFiltered.length > 0) {
+                        filtered = schoolFiltered;
+                    }
+                }
+                return filtered;
+            }
+
+            // If database table is empty in Supabase, auto-seed default categories into Supabase!
+            const seeded = await this.seedDefaultCategories(schoolId || 1);
+            if (seeded && seeded.length > 0) {
+                if (type) {
+                    return seeded.filter((c: any) => !c.type || c.type.toLowerCase() === type.toLowerCase());
+                }
+                return seeded;
+            }
+
+            const defaultCategories: ReportCategory[] = [
+                { id: 1, name: 'Behavior & Discipline', type: 'student' },
+                { id: 2, name: 'Academic & Homework', type: 'student' },
+                { id: 3, name: 'Attendance & Tardiness', type: 'student' },
+                { id: 4, name: 'Bullying & Misconduct', type: 'student' },
+                { id: 5, name: 'General Student Issue', type: 'student' },
+                { id: 6, name: 'Attendance & Tardiness', type: 'staff' },
+                { id: 7, name: 'Teaching & Duty Performance', type: 'staff' },
+                { id: 8, name: 'Conduct & Professionalism', type: 'staff' },
+                { id: 9, name: 'Policy & Administration', type: 'staff' },
+                { id: 10, name: 'General Staff Issue', type: 'staff' }
+            ];
+            return type ? defaultCategories.filter(c => c.type === type) : defaultCategories;
+        } catch (error) {
+            console.error('Error fetching report categories:', error);
+            const fallbackCategories: ReportCategory[] = [
+                { id: 1, name: 'Behavior & Discipline', type: 'student' },
+                { id: 2, name: 'Academic & Homework', type: 'student' },
+                { id: 3, name: 'Attendance & Tardiness', type: 'student' },
+                { id: 4, name: 'Bullying & Misconduct', type: 'student' },
+                { id: 5, name: 'General Student Issue', type: 'student' },
+                { id: 6, name: 'Attendance & Tardiness', type: 'staff' },
+                { id: 7, name: 'Teaching & Duty Performance', type: 'staff' },
+                { id: 8, name: 'Conduct & Professionalism', type: 'staff' },
+                { id: 9, name: 'Policy & Administration', type: 'staff' },
+                { id: 10, name: 'General Staff Issue', type: 'staff' }
+            ];
+            return type ? fallbackCategories.filter(c => c.type === type) : fallbackCategories;
+        }
     },
 
     // Helper function to get ordinal suffix
@@ -326,53 +427,84 @@ export const reportService = {
             query = query.eq('school_id', schoolId);
         }
 
-        const { data, error } = await query;
+        const [{ data, error }, categories] = await Promise.all([
+            query,
+            this.getCategories(undefined, schoolId).catch(() => [])
+        ]);
 
         if (error) throw error;
+
+        const categoryMap = new Map(categories.map(c => [String(c.id), c.name]));
+
         // Transform to match Report interface
-        return (data || []).map((report: any) => ({
-            ...report,
-            subject_type: 'student' as const,
-            staff_id: undefined
-        }));
+        return (data || []).map((report: any) => {
+            const catName = (report.category && report.category.name) 
+                ? report.category.name 
+                : (report.category_id ? categoryMap.get(String(report.category_id)) : undefined) || 'General Complaint';
+
+            return {
+                ...report,
+                subject_type: 'student' as const,
+                staff_id: undefined,
+                category: {
+                    id: report.category_id ? String(report.category_id) : (report.category?.id?.toString() || '1'),
+                    name: catName
+                }
+            };
+        });
     },
 
     // Employee Reports
     async getEmployeeReports(filters?: { category_id?: string; status?: string; subject_type?: string }, schoolId?: number): Promise<Report[]> {
-        const data = await fetchAllRows(async (from, to) => {
-            let query = supabase
-                .from('employee_reports')
-                .select(`
-                    *,
-                    category:report_categories(*),
-                    reporter:staff!employee_reports_reported_by_fkey(*),
-                    staff:staff!employee_reports_staff_id_fkey(*),
-                    updates:employee_reports_updates(
+        const [data, categories] = await Promise.all([
+            fetchAllRows(async (from, to) => {
+                let query = supabase
+                    .from('employee_reports')
+                    .select(`
                         *,
-                        staff:staff!employee_reports_updates_updated_by_fkey(*)
-                    )
-                `)
-                .order('created_at', { ascending: false });
+                        category:report_categories(*),
+                        reporter:staff!employee_reports_reported_by_fkey(*),
+                        staff:staff!employee_reports_staff_id_fkey(*),
+                        updates:employee_reports_updates(
+                            *,
+                            staff:staff!employee_reports_updates_updated_by_fkey(*)
+                        )
+                    `)
+                    .order('created_at', { ascending: false });
 
-            if (filters?.category_id) {
-                query = query.eq('category_id', filters.category_id);
-            }
-            if (filters?.status) {
-                query = query.eq('status', filters.status);
-            }
-            if (schoolId) {
-                query = query.eq('school_id', schoolId);
-            }
+                if (filters?.category_id) {
+                    query = query.eq('category_id', filters.category_id);
+                }
+                if (filters?.status) {
+                    query = query.eq('status', filters.status);
+                }
+                if (schoolId) {
+                    query = query.eq('school_id', schoolId);
+                }
 
-            return await query.range(from, to);
-        });
+                return await query.range(from, to);
+            }),
+            this.getCategories(undefined, schoolId).catch(() => [])
+        ]);
+
+        const categoryMap = new Map(categories.map(c => [String(c.id), c.name]));
 
         // Transform to match Report interface
-        return data.map((report: any) => ({
-            ...report,
-            subject_type: 'staff' as const,
-            student_id: undefined
-        }));
+        return data.map((report: any) => {
+            const catName = (report.category && report.category.name) 
+                ? report.category.name 
+                : (report.category_id ? categoryMap.get(String(report.category_id)) : undefined) || 'General Complaint';
+
+            return {
+                ...report,
+                subject_type: 'staff' as const,
+                student_id: undefined,
+                category: {
+                    id: report.category_id ? String(report.category_id) : (report.category?.id?.toString() || '1'),
+                    name: catName
+                }
+            };
+        });
     },
 
     // Legacy method - kept for backward compatibility, but should use getStudentReports or getEmployeeReports
@@ -386,6 +518,16 @@ export const reportService = {
         
         // Default to student reports for backward compatibility
         return this.getStudentReports(filters, schoolId);
+    },
+
+    async getAllReports(filters?: { category_id?: string; status?: string }, schoolId?: number): Promise<Report[]> {
+        const [studentReports, employeeReports] = await Promise.all([
+            this.getStudentReports(filters, schoolId).catch(() => []),
+            this.getEmployeeReports(filters, schoolId).catch(() => [])
+        ]);
+
+        const combined = [...studentReports, ...employeeReports];
+        return combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     },
 
     async getReportById(id: string, schoolId?: number): Promise<Report> {
@@ -825,26 +967,45 @@ export const reportService = {
     },
 
     updateStudentReportDetails: async (reportId: string, data: { 
+        category_id?: number;
         severity: ReportSeverity; 
         description: string; 
         created_at: string 
     }, schoolId?: number) => {
-        // Note: This function only updates severity, description, and created_at.
-        // The reported_by field is intentionally NOT updated to preserve the original creator.
+        const parsedId = isNaN(Number(reportId)) ? reportId : Number(reportId);
+
+        const updatePayload: any = {
+            severity: data.severity,
+            description: data.description,
+            created_at: data.created_at
+        };
+        if (data.category_id && !isNaN(Number(data.category_id))) {
+            updatePayload.category_id = Number(data.category_id);
+        }
+
         let query = supabase
             .from('student_reports')
-            .update({
-                severity: data.severity,
-                description: data.description,
-                created_at: data.created_at
-            })
-            .eq('id', reportId);
+            .update(updatePayload)
+            .eq('id', parsedId);
             
         if (schoolId) {
             query = query.eq('school_id', schoolId);
         }
         
-        const response = await query;
+        let response = await query;
+
+        // Fallback retry if foreign key constraint or 409 conflict occurs
+        if (response.error && (response.status === 409 || response.error.code === '23503' || response.error.message?.includes('409'))) {
+            delete updatePayload.category_id;
+            let retryQuery = supabase
+                .from('student_reports')
+                .update(updatePayload)
+                .eq('id', parsedId);
+            if (schoolId) {
+                retryQuery = retryQuery.eq('school_id', schoolId);
+            }
+            response = await retryQuery;
+        }
 
         if (response.error) {
             throw new Error(response.error.message);
@@ -854,26 +1015,45 @@ export const reportService = {
     },
 
     updateEmployeeReportDetails: async (reportId: string, data: { 
+        category_id?: number;
         severity: ReportSeverity; 
         description: string; 
         created_at: string 
     }, schoolId?: number) => {
-        // Note: This function only updates severity, description, and created_at.
-        // The reported_by field is intentionally NOT updated to preserve the original creator.
+        const parsedId = isNaN(Number(reportId)) ? reportId : Number(reportId);
+
+        const updatePayload: any = {
+            severity: data.severity,
+            description: data.description,
+            created_at: data.created_at
+        };
+        if (data.category_id && !isNaN(Number(data.category_id))) {
+            updatePayload.category_id = Number(data.category_id);
+        }
+
         let query = supabase
             .from('employee_reports')
-            .update({
-                severity: data.severity,
-                description: data.description,
-                created_at: data.created_at
-            })
-            .eq('id', reportId);
+            .update(updatePayload)
+            .eq('id', parsedId);
             
         if (schoolId) {
             query = query.eq('school_id', schoolId);
         }
         
-        const response = await query;
+        let response = await query;
+
+        // Fallback retry if foreign key constraint or 409 conflict occurs
+        if (response.error && (response.status === 409 || response.error.code === '23503' || response.error.message?.includes('409'))) {
+            delete updatePayload.category_id;
+            let retryQuery = supabase
+                .from('employee_reports')
+                .update(updatePayload)
+                .eq('id', parsedId);
+            if (schoolId) {
+                retryQuery = retryQuery.eq('school_id', schoolId);
+            }
+            response = await retryQuery;
+        }
 
         if (response.error) {
             throw new Error(response.error.message);

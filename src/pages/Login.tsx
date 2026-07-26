@@ -431,28 +431,25 @@ const Login: React.FC = () => {
           });
         }
 
-        // Redirect based on role and permissions
-        if (staffUser?.role === 'Super Admin') {
-          // Super Admin always goes to welcome page
-          navigate('/welcome', { replace: true });
-          return;
-        } else if ((staffUser?.role === 'School Admin' || staffUser?.role === 'school_admin') && staffUser?.school_id) {
-          // School Admin redirects to their dashboard
-          navigate('/dashboard', { replace: true });
-          return;
+        // Check dashboard permission before redirecting (regardless of previous page)
+        let hasDashboardPerm = false;
+        if (
+          staffUser?.is_super_admin ||
+          staffUser?.role === 'Super Admin' ||
+          staffUser?.role === 'School Admin' ||
+          staffUser?.role === 'school_admin'
+        ) {
+          hasDashboardPerm = true;
         } else if (staffUser?.id && staffUser?.school_id) {
-          // Check if user has dashboard permission
-          const hasDashboardPermission = await hasPermission(staffUser.id, 'dashboard', staffUser.school_id);
-          if (hasDashboardPermission) {
-            // User has dashboard permission, go to full dashboard
-            navigate('/dashboard', { replace: true });
-          } else {
-            // User doesn't have dashboard permission, go to user dashboard
-            navigate('/user', { replace: true });
-          }
-          return;
+          hasDashboardPerm = await hasPermission(staffUser.id, 'dashboard', staffUser.school_id);
         }
-        // For other cases, let InitialRouteHandler handle the redirect
+
+        if (hasDashboardPerm) {
+          navigate('/dashboard', { replace: true });
+        } else {
+          navigate('/user', { replace: true });
+        }
+        return;
       } else if (currentMode === 'parent') {
         // Parent authentication: lookup by family id and password
         let familyLookup = null;

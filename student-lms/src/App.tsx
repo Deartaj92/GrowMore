@@ -1,6 +1,8 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { SessionProvider } from './contexts/SessionContext';
+import { LmsSettingsProvider } from './contexts/LmsSettingsContext';
 import { GrowMoreLoader } from './components/GrowMoreLoader';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
@@ -22,7 +24,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <Navigate to="/login" replace />;
   }
 
-  return <Layout>{children}</Layout>;
+  return (
+    <SessionProvider>
+      <Layout>{children}</Layout>
+    </SessionProvider>
+  );
 };
 
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -42,7 +48,8 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <LmsSettingsProvider>
+        <HashRouter>
         <Routes>
           <Route
             path="/login"
@@ -109,8 +116,9 @@ function App() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+      </HashRouter>
+    </LmsSettingsProvider>
+  </AuthProvider>
   );
 }
 

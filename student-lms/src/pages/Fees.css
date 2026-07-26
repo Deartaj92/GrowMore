@@ -351,3 +351,66 @@
     color: black !important;
   }
 }
+
+/* ── Mobile Responsiveness for Fees Page ───────────────────── */
+@media (max-width: 640px) {
+  .challan-card {
+    padding: 0.9rem 1rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+  }
+
+  .challan-header-right {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+
+  .challan-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .challan-actions button,
+  .challan-actions a {
+    flex: 1;
+  }
+
+  .fee-modal-content {
+    width: 95vw;
+    max-height: 90vh;
+    padding: 1rem;
+  }
+
+  .invoice-print-container {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .invoice-print-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .invoice-no-date {
+    text-align: left;
+    align-items: flex-start;
+  }
+
+  .invoice-status-text {
+    align-self: flex-start;
+  }
+
+  .invoice-bill-to {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .text-right {
+    text-align: left;
+    align-items: flex-start;
+  }
+}

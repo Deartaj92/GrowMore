@@ -18,11 +18,12 @@ import {
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-import { Report, ReportSeverity } from '../../types/reports';
+import { Report, ReportSeverity, ReportCategory } from '../../types/reports';
+import { reportService } from '../../utils/reportService';
 import dayjs, { Dayjs } from 'dayjs';
 import { Theme } from '@mui/material/styles';
 
-// Styled components (reusing the same styling as CreateReportForm)
+// Styled components
 const StyledDialog = styled(Dialog)(({ theme }) => ({
     zIndex: 1300,
     '& .MuiDialog-paper': {
@@ -127,20 +128,36 @@ const FormActions = styled(Box)(({ theme }) => ({
 interface EditReportFormProps {
     open: boolean;
     onClose: () => void;
-    onSubmit: (data: { severity: ReportSeverity; description: string; created_at: string }) => Promise<void>;
+    onSubmit: (data: { category_id?: number; severity: ReportSeverity; description: string; created_at: string }) => Promise<void>;
     report: Report;
+    categories?: ReportCategory[];
 }
 
 export const EditReportForm: React.FC<EditReportFormProps> = ({
     open,
     onClose,
     onSubmit,
-    report
+    report,
+    categories
 }) => {
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
+    const [categoriesList, setCategoriesList] = useState<ReportCategory[]>(categories || []);
+
+    useEffect(() => {
+        if (categories && categories.length > 0) {
+            setCategoriesList(categories);
+        } else {
+            const subjectType = report.subject_type || 'student';
+            reportService.getCategories(subjectType).then(cats => setCategoriesList(cats || []));
+        }
+    }, [categories, report.subject_type]);
+
+    const initialCatId = report.category_id ? parseInt(String(report.category_id)) : (report.category?.id ? parseInt(String(report.category.id)) : 1);
+
     const [formData, setFormData] = useState({
+        category_id: initialCatId,
         description: report.description,
         severity: report.severity,
         created_at: dayjs(report.created_at)
@@ -148,16 +165,17 @@ export const EditReportForm: React.FC<EditReportFormProps> = ({
     const [loading, setLoading] = useState(false);
 
     // Only initialize form data when modal opens, not when report prop changes
-    // This prevents the form from resetting while user is editing
     useEffect(() => {
         if (open) {
+            const currentCatId = report.category_id ? parseInt(String(report.category_id)) : (report.category?.id ? parseInt(String(report.category.id)) : 1);
             setFormData({
+                category_id: currentCatId,
                 description: report.description,
                 severity: report.severity,
                 created_at: dayjs(report.created_at)
             });
         }
-    }, [open, report.id]); // Only update when modal opens or report ID changes, not when report object reference changes
+    }, [open, report.id, report.category_id, report.category?.id]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -167,6 +185,7 @@ export const EditReportForm: React.FC<EditReportFormProps> = ({
         setLoading(true);
         try {
             await onSubmit({
+                category_id: Number(formData.category_id),
                 description: formData.description.trim(),
                 severity: formData.severity,
                 created_at: formData.created_at.toISOString()
@@ -198,6 +217,24 @@ export const EditReportForm: React.FC<EditReportFormProps> = ({
                 <Grid container spacing={2}>
                     <Grid item xs={12} sm={6}>
                         <FormControl fullWidth size="small">
+                            <InputLabel>Category</InputLabel>
+                            <Select
+                                value={formData.category_id}
+                                label="Category"
+                                onChange={(e) => setFormData({ ...formData, category_id: Number(e.target.value) })}
+                                required
+                            >
+                                {categoriesList.map((cat) => (
+                                    <MenuItem key={cat.id} value={cat.id}>
+                                        {cat.name}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Grid>
+
+                    <Grid item xs={12} sm={6}>
+                        <FormControl fullWidth size="small">
                             <InputLabel>Severity</InputLabel>
                             <Select
                                 value={formData.severity}
@@ -213,7 +250,7 @@ export const EditReportForm: React.FC<EditReportFormProps> = ({
                         </FormControl>
                     </Grid>
 
-                    <Grid item xs={12} sm={6}>
+                    <Grid item xs={12}>
                         <DateTimePicker
                             label="Created At"
                             value={formData.created_at}

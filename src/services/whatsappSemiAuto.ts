@@ -199,7 +199,9 @@ Thank you for informing us.
    * Format attendance message based on status and language
    */
   private formatAttendanceMessage(data: AttendanceNotificationData, schoolName: string, language: 'urdu' | 'english' = 'urdu'): string {
-    const template = this.MESSAGE_TEMPLATES.attendance[language][data.status.toLowerCase() as keyof typeof this.MESSAGE_TEMPLATES.attendance.urdu];
+    const statusKey = data.status.toLowerCase() as 'absent' | 'late' | 'leave';
+    const customAbsentTemplate = statusKey === 'absent' ? localStorage.getItem('whatsapp_absent_template') : null;
+    let template = customAbsentTemplate || (this.MESSAGE_TEMPLATES.attendance[language] && this.MESSAGE_TEMPLATES.attendance[language][statusKey]);
     
     if (!template) {
       if (language === 'urdu') {
@@ -222,11 +224,11 @@ ${data.school_short_name || schoolName}`;
     }
 
     return template
-      .replace('{studentName}', data.student_name)
-      .replace('{className}', data.section_name ? `${data.class_name} - ${data.section_name}` : data.class_name)
-      .replace('{date}', data.date)
-      .replace('{schoolName}', data.school_short_name || schoolName)
-      .replace('{remarks}', data.remarks || '');
+      .replace(/\{studentName\}/g, data.student_name)
+      .replace(/\{className\}/g, data.section_name ? `${data.class_name} - ${data.section_name}` : data.class_name)
+      .replace(/\{date\}/g, data.date)
+      .replace(/\{schoolName\}/g, data.school_short_name || schoolName)
+      .replace(/\{remarks\}/g, data.remarks || '');
   }
 
   /**

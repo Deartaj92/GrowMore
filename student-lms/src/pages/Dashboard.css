@@ -16,39 +16,28 @@
 
 /* Welcome Banner */
 .welcome-banner {
-  padding: 1.15rem 1.25rem;
+  padding: 1.25rem 1.5rem;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 0.75rem;
-  border-radius: var(--radius-xl) !important;
+  border-radius: var(--radius-lg) !important;
   position: relative;
   overflow: hidden;
 }
 
-.welcome-banner::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
-  pointer-events: none;
-}
-
 .welcome-main h2 {
-  font-size: 1.45rem;
+  font-size: 1.35rem;
   font-weight: 700;
   margin-bottom: 0.25rem;
   color: var(--text-primary);
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
 }
 
 .welcome-main p {
   color: var(--text-secondary);
-  font-size: 12.5px;
-  max-width: 550px;
+  font-size: 13px;
+  max-width: 600px;
   line-height: 1.45;
 }
 
@@ -62,14 +51,13 @@
 
 .session-tag {
   flex-shrink: 0;
-  padding: 0.28rem 0.6rem;
-  background: rgba(37, 99, 235, 0.1);
+  padding: 0.25rem 0.65rem;
+  background: var(--primary-glow);
   color: var(--primary);
-  border: 1px solid rgba(37, 99, 235, 0.18);
+  border: 1px solid rgba(59, 130, 246, 0.2);
   border-radius: var(--radius-full);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
-  letter-spacing: -0.01em;
   white-space: nowrap;
 }
 
@@ -79,11 +67,11 @@
   gap: 0.35rem;
   flex-shrink: 1;
   min-width: 0;
-  padding: 0.28rem 0.6rem;
-  background: rgba(71, 85, 105, 0.08);
-  border: 1px solid rgba(71, 85, 105, 0.12);
+  padding: 0.25rem 0.65rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-full);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -97,16 +85,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-[data-theme="dark"] .session-tag {
-  background: rgba(59, 130, 246, 0.18);
-  border-color: rgba(96, 165, 250, 0.22);
-}
-
-[data-theme="dark"] .welcome-date {
-  background: rgba(148, 163, 184, 0.12);
-  border-color: rgba(148, 163, 184, 0.15);
 }
 
 /* Dashboard Columns Layout */
@@ -125,23 +103,23 @@
 }
 
 .dashboard-section {
-  padding: 1.2rem 1.35rem;
-  border-radius: var(--radius-xl) !important;
+  padding: 1.25rem;
+  border-radius: var(--radius-lg) !important;
 }
 
 .section-header {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.6rem;
   margin-bottom: 1rem;
   border-bottom: 1px solid var(--glass-border);
   padding-bottom: 0.65rem;
 }
 
 .section-icon {
-  color: var(--text-secondary);
-  width: 16px;
-  height: 16px;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
 }
 
 .section-icon svg {
@@ -150,7 +128,7 @@
 }
 
 .section-header h3 {
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -162,35 +140,32 @@
 .homework-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.65rem;
 }
 
 .announcement-card {
-  padding: 0.9rem 1.05rem;
-  background: var(--glass-bg);
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  padding: 0.85rem 1rem;
+  background: var(--bg-secondary);
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-border-subtle);
-  box-shadow: var(--glass-highlight);
   transition: all var(--transition-fast);
 }
 
 .announcement-card:hover {
-  background: var(--glass-bg-elevated);
-  transform: scale(1.01);
+  background: var(--bg-accent);
+  transform: translateY(-1px);
 }
 
 .announcement-header {
   display: flex;
   justify-content: space-between;
-  align-items: start;
+  align-items: flex-start;
   gap: 1rem;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.3rem;
 }
 
 .announcement-header h4 {
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -209,21 +184,18 @@
 
 /* Homework List */
 .homework-card {
-  padding: 0.9rem 1.05rem;
-  background: var(--glass-bg);
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  padding: 0.85rem 1rem;
+  background: var(--bg-secondary);
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-border-subtle);
-  box-shadow: var(--glass-highlight);
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.4rem;
   transition: all var(--transition-fast);
 }
 
 .homework-card:hover {
-  background: var(--glass-bg-elevated);
+  background: var(--bg-accent);
 }
 
 .homework-meta {
@@ -239,7 +211,7 @@
   background-color: var(--primary-glow);
   padding: 0.15rem 0.5rem;
   border-radius: var(--radius-xs);
-  border: 1px solid rgba(79, 70, 229, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.15);
 }
 
 .homework-date {
@@ -259,7 +231,7 @@
   align-items: center;
   text-align: center;
   gap: 0.85rem;
-  padding: 0.75rem 0;
+  padding: 0.5rem 0;
 }
 
 .status-display {
@@ -273,16 +245,15 @@
   align-items: center;
   padding: 0.35rem 1.15rem;
   border-radius: var(--radius-full);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 700;
-  font-family: var(--font-title);
-  letter-spacing: 0.2px;
+  letter-spacing: 0.02em;
 }
 
-.status-badge.present { background-color: var(--status-present-bg); color: var(--status-present); border: 1.5px solid var(--status-present-border); }
-.status-badge.absent { background-color: var(--status-absent-bg); color: var(--status-absent); border: 1.5px solid var(--status-absent-border); }
-.status-badge.late { background-color: var(--status-late-bg); color: var(--status-late); border: 1.5px solid var(--status-late-border); }
-.status-badge.leave { background-color: var(--status-leave-bg); color: var(--status-leave); border: 1.5px solid var(--status-leave-border); }
+.status-badge.present { background-color: var(--status-present-bg); color: var(--status-present); border: 1px solid var(--status-present-border); }
+.status-badge.absent { background-color: var(--status-absent-bg); color: var(--status-absent); border: 1px solid var(--status-absent-border); }
+.status-badge.late { background-color: var(--status-late-bg); color: var(--status-late); border: 1px solid var(--status-late-border); }
+.status-badge.leave { background-color: var(--status-leave-bg); color: var(--status-leave); border: 1px solid var(--status-leave-border); }
 .status-badge.unmarked { background-color: var(--bg-secondary); color: var(--text-muted); border: 1px solid var(--glass-border); }
 
 .attendance-details {
@@ -316,7 +287,7 @@
 .alert-header {
   color: var(--status-absent);
   font-weight: 700;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.3rem;
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -351,13 +322,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.7rem 1rem;
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px) saturate(150%);
-  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  padding: 0.65rem 0.9rem;
+  background: var(--bg-secondary);
   border: 1px solid var(--glass-border-subtle);
   border-radius: var(--radius-md);
-  box-shadow: var(--glass-highlight);
   text-decoration: none;
   color: var(--text-secondary);
   font-weight: 600;
@@ -387,7 +355,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   padding: 1.5rem 0;
   text-align: center;
 }
@@ -405,3 +373,46 @@
   }
 }
 
+@media (max-width: 640px) {
+  .welcome-banner {
+    padding: 1.1rem 1.2rem;
+  }
+
+  .welcome-banner .welcome-main h2 {
+    font-size: 1.35rem;
+    margin-bottom: 0.35rem;
+  }
+
+  .welcome-banner .welcome-main p {
+    font-size: 12.5px;
+    margin-bottom: 0.65rem;
+  }
+
+  .welcome-meta {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .welcome-chip {
+    font-size: 11px;
+    padding: 0.25rem 0.6rem;
+  }
+
+  .section-header h3 {
+    font-size: 13.5px;
+  }
+
+  .announcement-card,
+  .homework-card {
+    padding: 0.75rem 0.85rem;
+  }
+
+  .announcement-header h4 {
+    font-size: 12.5px;
+  }
+
+  .announcement-content,
+  .homework-text {
+    font-size: 12px;
+  }
+}

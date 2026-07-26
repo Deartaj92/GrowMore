@@ -107,18 +107,12 @@ const InitialRouteHandler: React.FC = () => {
       }
 
       // User exists, redirect based on permissions
-      if (isSuperAdmin) {
-        // Super Admin always goes to welcome page
-        navigate('/welcome', { replace: true });
-      } else if (hasDashboardPerm) {
+      if (isSuperAdmin || hasDashboardPerm) {
         // User has dashboard permission, go to full dashboard
         navigate('/dashboard', { replace: true });
-      } else if (user.school_id) {
+      } else {
         // User doesn't have dashboard permission, go to user dashboard
         navigate('/user', { replace: true });
-      } else {
-        // No school_id, go to landing page
-        navigate('/home', { replace: true });
       }
     }
   }, [user, loading, navigate, permissionChecked, hasDashboardPerm, isSuperAdmin]);

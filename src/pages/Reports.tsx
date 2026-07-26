@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Box,
     Button,
     Card,
-    CardContent,
-    CardActions,
     Chip,
     Divider,
     FormControl,
@@ -22,8 +20,10 @@ import {
     styled,
     TextField,
     Collapse,
-    Theme,
-    Skeleton
+    Tooltip,
+    Tabs,
+    Tab,
+    Badge
 } from '@mui/material';
 import Loader from '../components/Loader';
 import { 
@@ -32,24 +32,24 @@ import {
     Edit as EditIcon,
     Delete as DeleteIcon,
     Person as PersonIcon,
-    Badge as BadgeIcon,
     School as SchoolIcon,
-    History as HistoryIcon,
-    ArrowForward as ArrowForwardIcon,
     KeyboardArrowDown as KeyboardArrowDownIcon,
-    KeyboardArrowRight as KeyboardArrowRightIcon,
     Assignment,
     Timer,
     Search,
     CheckCircle,
     Cancel,
-    Autorenew,
     AccessTime as TimeIcon,
     Warning as WarningIcon,
-    Update as UpdateIcon
+    Update as UpdateIcon,
+    GetApp as ExportIcon,
+    Clear as ClearIcon,
+    SupervisorAccount as StaffIcon,
+    TrendingUp as TrendingUpIcon,
+    ReportProblem as AlertIcon,
+    Category as CategoryIcon
 } from '@mui/icons-material';
-import { alpha, Theme as MuiTheme, PaletteColor } from '@mui/material/styles';
-import { css } from '@emotion/react';
+import { alpha, useTheme as useMuiTheme } from '@mui/material/styles';
 import { reportService } from '../utils/reportService';
 import { 
     ReportCategory, 
@@ -60,9 +60,11 @@ import {
 } from '../types/reports';
 import { useAuth } from '../contexts/AuthContext';
 import { CreateStudentReportForm } from '../components/reports/CreateStudentReportForm';
+import { CreateEmployeeReportForm } from '../components/reports/CreateEmployeeReportForm';
 import { ModifyReportModal } from '../components/reports/ModifyReportModal';
 import { EditReportForm } from '../components/reports/EditReportForm';
 import { EditUpdateForm } from '../components/reports/EditUpdateForm';
+import { ManageCategoriesModal } from '../components/reports/ManageCategoriesModal';
 import { useToast } from '../components/useToast';
 import NoStudentsFound from '../components/NoStudentsFound';
 import { supabase } from '../supabaseClient';
@@ -70,9 +72,8 @@ import { useProgress } from '../components/Layout';
 import { useActivityTracking } from '../hooks/useActivityTracking';
 import { formatAppDate } from '../utils/dateUtils';
 import { usePageFooter } from '../components/Layout/contexts/PageFooterContext';
-import { useTheme as useMuiTheme } from '@mui/material/styles';
 
-// Type definitions
+// Local Report Type definition
 interface Report extends Omit<ImportedReport, 'id' | 'category_id' | 'reported_by' | 'category'> {
     id: string;
     category_id: string;
@@ -81,11 +82,11 @@ interface Report extends Omit<ImportedReport, 'id' | 'category_id' | 'reported_b
     action_taken?: string;
     category?: {
         id: string;
-            name: string;
-        };
+        name: string;
+    };
 }
 
-// Utility functions
+// Utility Status Colors
 const statusColors: Record<string, string> = {
     'pending': '#ed6c02',    // Orange
     'in_review': '#2196f3',  // Blue
@@ -100,7 +101,7 @@ const formatStatus = (status: string | undefined) => {
 };
 
 const getSeverityColor = (severity: string) => {
-    switch (severity) {
+    switch (severity?.toLowerCase()) {
         case 'low': return '#4caf50';
         case 'medium': return '#ff9800';
         case 'high': return '#f44336';
@@ -109,312 +110,109 @@ const getSeverityColor = (severity: string) => {
     }
 };
 
-// Styled Components
-const SEGMENTED_HEIGHT = '32px';
+const getSeverityBgColor = (severity: string, themeMode: string) => {
+    const color = getSeverityColor(severity);
+    return themeMode === 'dark' ? alpha(color, 0.2) : alpha(color, 0.1);
+};
 
-const PageContainer = styled(Box)`
-  width: 100%;
-  margin: 0;
-  padding: 0 12px 6px 12px;
-  box-sizing: border-box;
-  background: ${({ theme }: { theme: any }) => theme.palette.mode === 'dark' ? '#252525' : '#f8fafc'};
-  max-width: 100vw;
-  overflow-x: hidden;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  transform: translateZ(0);
-  will-change: transform;
-`;
+// Dynamic Category Color Map
+const getCategoryColor = (categoryName?: string) => {
+    if (!categoryName) return '#2563eb';
+    const name = categoryName.toLowerCase();
 
-const Header = styled(Box)`
-  flex: 0 0 auto;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 6px 0 4px 0;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: ${({ theme }: { theme: any }) => theme.palette.mode === 'dark' ? '#252525' : '#f8fafc'};
-  box-shadow: 0 1px 6px rgba(0,0,0,0.1);
-  border-radius: 10px;
-  padding: 4px 8px 2px 8px;
-  min-height: 36px;
-`;
+    if (name.includes('discipline') || name.includes('behavior') || name.includes('misconduct')) return '#e11d48'; // Rose
+    if (name.includes('academic') || name.includes('grade') || name.includes('exam') || name.includes('test')) return '#2563eb'; // Blue
+    if (name.includes('attendance') || name.includes('tard') || name.includes('leave') || name.includes('late')) return '#d97706'; // Amber
+    if (name.includes('bullying') || name.includes('fight') || name.includes('harass') || name.includes('abuse')) return '#7c3aed'; // Purple
+    if (name.includes('staff') || name.includes('employee') || name.includes('teacher')) return '#0d9488'; // Teal
+    if (name.includes('property') || name.includes('damage') || name.includes('theft')) return '#c05621'; // Bronze
+    if (name.includes('general') || name.includes('other')) return '#059669'; // Emerald
 
-const HeaderFilters = styled(Box)`
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  background: ${({ theme }: { theme: any }) => theme.palette.mode === 'dark' ? '#2a2a2a' : '#ffffff'};
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-  padding: 6px 8px;
-`;
+    // String Hashing fallback for custom categories
+    let hash = 0;
+    for (let i = 0; i < categoryName.length; i++) {
+        hash = categoryName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 60%, 42%)`;
+};
 
-const Title = styled(Typography)`
-  font-size: 1.05rem;
-  font-weight: 800;
-  letter-spacing: 1px;
-  color: ${({ theme }: { theme: any }) => theme.palette.primary.main};
-  margin: 0;
-`;
+// Styled Components using MUI Theme design tokens
+const PageContainer = styled(Box)(({ theme }) => ({
+    width: '100%',
+    margin: 0,
+    padding: '0 16px 12px 16px',
+    boxSizing: 'border-box',
+    background: theme.palette.mode === 'dark' ? theme.palette.background.default : '#f8fafc',
+    maxWidth: '100vw',
+    overflowX: 'hidden',
+    height: '100%',
+    minHeight: 0,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+}));
 
-const MainContent = styled(Box)`
-  flex: 1;
-  min-height: 0;
-  max-height: none;
-  overflow-y: auto;
-  padding: 0 0 8px 0;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: y proximity;
-  will-change: scroll-position;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  perspective: 1000px;
-  
-  @media (max-width: 700px) {
-    scroll-behavior: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: ${({ theme }: { theme: any }) => theme.palette.mode === 'dark' ? '#555' : '#ccc'};
-    border-radius: 4px;
-  }
-  
-  &::-webkit-scrollbar-thumb:hover {
-    background: ${({ theme }: { theme: any }) => theme.palette.mode === 'dark' ? '#777' : '#999'};
-  }
-`;
+const Header = styled(Box)(({ theme }) => ({
+    flex: '0 0 auto',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    margin: '8px 0',
+    background: theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.8) : '#ffffff',
+    backdropFilter: 'blur(8px)',
+    boxShadow: theme.palette.mode === 'dark' ? '0 2px 10px rgba(0,0,0,0.4)' : '0 2px 10px rgba(0,0,0,0.05)',
+    borderRadius: 12,
+    padding: '12px 16px',
+    border: `1px solid ${theme.palette.divider}`,
+}));
 
-const Footer = styled(Box)`
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 4px 0 6px 0;
-  padding: 8px 12px;
-  background: ${({ theme }: { theme: any }) => theme.palette.mode === 'dark' ? '#2a2a2a' : '#ffffff'};
-  border-radius: 10px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-  min-height: 36px;
-  
-  @media (max-width: 900px) {
-    flex-direction: column;
-    gap: 4px;
-    padding: 6px 8px;
-    min-height: auto;
-    border-radius: 8px;
-  }
-`;
+const MainContent = styled(Box)(({ theme }) => ({
+    flex: 1,
+    minHeight: 0,
+    overflowY: 'auto',
+    padding: '4px 0 12px 0',
+    '&::-webkit-scrollbar': {
+        width: '6px',
+    },
+    '&::-webkit-scrollbar-track': {
+        background: 'transparent',
+    },
+    '&::-webkit-scrollbar-thumb': {
+        background: theme.palette.mode === 'dark' ? '#555' : '#ccc',
+        borderRadius: '3px',
+    },
+}));
 
-const SegmentedGroup = styled('div')`
-  display: flex;
-  align-items: center;
-  background: ${({ theme }: { theme: any }) => theme.palette.mode === 'dark' ? '#222' : '#f3f4f6'};
-  border-radius: 11px;
-  box-shadow: 1.4px 1.4px 4px rgba(0,0,0,0.1);
-  overflow: hidden;
-  @media (max-width: 700px) {
-    width: 100%;
-    justify-content: center;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    border-radius: 8px;
-  }
-`;
-
-const SegmentedInput = styled('input')`
-  font-family: inherit;
-  font-size: 0.77em;
-  font-weight: 400;
-  height: ${SEGMENTED_HEIGHT};
-  line-height: ${SEGMENTED_HEIGHT};
-  box-shadow: 1.4px 1.4px 4px rgba(0,0,0,0.1);
-  border: none;
-  outline: none;
-  transition: background 0.2s;
-  appearance: none;
-  background: ${({ theme }: { theme: any }) => theme.palette.mode === 'dark' ? '#444' : '#f3f4f6'};
-  color: ${({ theme }: { theme: any }) => theme.palette.mode === 'dark' ? '#C0C0C0' : '#444'};
-  padding: 0 0.84em;
-  min-width: 98px;
-  border-right: 1px solid ${({ theme }: { theme: any }) => theme.palette.mode === 'dark' ? '#555' : '#e5e7eb'};
-  border-top-left-radius: 11px;
-  border-bottom-left-radius: 11px;
-  @media (max-width: 700px) {
-    width: 100%;
-    border-radius: 8px !important;
-    border-right: none;
-    min-width: 0;
-  }
-`;
-
-const SegmentedButton = styled('button')<{ active?: boolean; first?: boolean; last?: boolean }>`
-  font-family: inherit;
-  font-size: 0.77em;
-  font-weight: 400;
-  height: ${SEGMENTED_HEIGHT};
-  line-height: ${SEGMENTED_HEIGHT};
-  box-shadow: 1.4px 1.4px 4px rgba(0,0,0,0.1);
-  border: none;
-  outline: none;
-  transition: background 0.2s;
-  appearance: none;
-  background: ${({ active, theme }: { active?: boolean; theme: any }) => active ? theme.palette.primary.main : theme.palette.mode === 'dark' ? '#444' : '#f3f4f6'};
-  color: ${({ active, theme }: { active?: boolean; theme: any }) => active ? '#fff' : theme.palette.mode === 'dark' ? '#C0C0C0' : '#444'};
-  padding: 0 1.12em;
-  display: flex;
-  align-items: center;
-  gap: 0.35em;
-  border-radius: 0;
-  ${({ first }: { first?: boolean }) => first && `
-    border-top-left-radius: 11px;
-    border-bottom-left-radius: 11px;
-  `}
-  ${({ last }: { last?: boolean }) => last && `
-    border-top-right-radius: 11px;
-    border-bottom-right-radius: 11px;
-  `}
-  cursor: pointer;
-  @media (max-width: 700px) {
-    width: 100%;
-    border-radius: 8px !important;
-    min-width: 0;
-  }
-`;
-
-const SegmentedSelect = styled('select')<{ first?: boolean; last?: boolean }>`
-  font-family: inherit;
-  font-size: 0.77em;
-  font-weight: 400;
-  height: ${SEGMENTED_HEIGHT};
-  line-height: ${SEGMENTED_HEIGHT};
-  box-shadow: 1.4px 1.4px 4px rgba(0,0,0,0.1);
-  border: none;
-  outline: none;
-  transition: background 0.2s;
-  appearance: none;
-  background: #444;
-  color: #C0C0C0;
-  padding: 0 2.2em 0 0.84em;
-  border-right: 1px solid #555;
-  &:last-child { border-right: none; }
-  ${({ first }) => first && `
-    border-top-left-radius: 11px;
-    border-bottom-left-radius: 11px;
-  `}
-  ${({ last }) => last && `
-    border-top-right-radius: 11px;
-    border-bottom-right-radius: 11px;
-  `}
-  &:not(:first-child) {
-    border-left: 1px solid #555;
-  }
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23C0C0C0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.8em center;
-  background-size: 1em 1em;
-  @media (max-width: 700px) {
-    width: 100%;
-    border-radius: 8px !important;
-    border-left: none;
-    border-right: none;
-    min-width: 0;
-    background-position: right 1em center;
-  }
-`;
-
-const HeaderRow = styled(Box)`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  @media (max-width: 700px) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-`;
+const KPICard = styled(Paper)<{ active?: boolean; accentcolor?: string }>(({ theme, active, accentcolor }) => ({
+    padding: '12px 16px',
+    borderRadius: 12,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease-in-out',
+    border: `1.5px solid ${active ? (accentcolor || theme.palette.primary.main) : alpha(theme.palette.divider, 0.8)}`,
+    background: active 
+        ? (theme.palette.mode === 'dark' ? alpha(accentcolor || theme.palette.primary.main, 0.15) : alpha(accentcolor || theme.palette.primary.main, 0.08))
+        : (theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.6) : '#ffffff'),
+    boxShadow: active ? `0 4px 14px ${alpha(accentcolor || theme.palette.primary.main, 0.25)}` : '0 1px 4px rgba(0,0,0,0.04)',
+    '&:hover': {
+        transform: 'translateY(-2px)',
+        boxShadow: `0 6px 16px ${alpha(accentcolor || theme.palette.primary.main, 0.2)}`,
+        borderColor: accentcolor || theme.palette.primary.main,
+    }
+}));
 
 const ReportCard = styled(Card)(({ theme }) => ({
-    height: '100%',
-    '& .report-header': {
-        padding: theme.spacing(2),
-        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-        display: 'flex',
-        alignItems: 'center',
-        gap: theme.spacing(2),
-    position: 'relative'
-    },
-    '& .report-content': {
-        padding: theme.spacing(2)
-    },
-    '& .report-footer': {
-        padding: theme.spacing(2),
-        borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-    display: 'flex',
-    alignItems: 'center',
-        justifyContent: 'space-between'
-    }
-}));
-
-const CategoryChip = styled(Chip)(({ theme }) => ({
-    backgroundColor: alpha(theme.palette.primary.main, 0.1),
-    color: theme.palette.primary.main,
-    fontWeight: 500,
+    borderRadius: 14,
+    boxShadow: theme.palette.mode === 'dark' ? '0 4px 20px rgba(0,0,0,0.3)' : '0 2px 12px rgba(0,0,0,0.06)',
+    border: `1px solid ${theme.palette.divider}`,
+    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+    overflow: 'hidden',
+    background: theme.palette.mode === 'dark' ? theme.palette.background.paper : '#ffffff',
     '&:hover': {
-        backgroundColor: alpha(theme.palette.primary.main, 0.2)
-    }
-}));
-
-const UpdateButton = styled(Button)(({ theme }) => ({
-    minWidth: 'auto',
-    padding: '4px 8px',
-    fontSize: '0.75rem',
-    color: theme.palette.primary.main,
-    '&:hover': {
-        backgroundColor: alpha(theme.palette.primary.main, 0.1)
-    }
-}));
-
-const ReportActionButton = styled(IconButton)(({ theme }) => ({
-    minWidth: 'auto',
-    padding: '4px',
-    fontSize: '0.875rem',
-    color: theme.palette.text.secondary,
-    '&:hover': {
-        backgroundColor: alpha(theme.palette.primary.main, 0.1),
-        color: theme.palette.primary.main
-    }
-}));
-
-const SectionDivider = styled(Box)(({ theme }) => ({
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(1),
-    margin: theme.spacing(2, 0),
-    '& .MuiDivider-root': {
-        flex: 1
+        boxShadow: theme.palette.mode === 'dark' ? '0 6px 24px rgba(0,0,0,0.45)' : '0 6px 20px rgba(0,0,0,0.1)',
     }
 }));
 
@@ -441,411 +239,387 @@ const WarningAvatar = styled(Avatar)(({ theme }) => ({
     height: 48
 }));
 
-// Skeleton component
+import { useLocation } from 'react-router-dom';
 
-// Footer components
-const FooterContainer = styled(Box)`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 0;
-  padding: 0.15rem 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background: #252525;
-  box-shadow: 0 -1px 6px rgba(0,0,0,0.1);
-  flex: 0 0 auto;
-  width: 100%;
-  @media (max-width: 700px) {
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border-top: none;
-    background: transparent;
-    box-shadow: none;
-  }
-`;
+interface ReportsProps {
+    defaultTab?: 'student' | 'staff' | 'all';
+}
 
-const FooterInfo = styled(Box)`
-  color: #b0b8d1;
-  font-size: 0.95rem;
-  
-  @media (max-width: 768px) {
-    text-align: center;
-    font-size: 0.8rem;
-    color: #8a8a8a;
-  }
-`;
-
-const FooterStats = styled(Box)`
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  @media (max-width: 700px) {
-    flex: 1;
-    margin: 0;
-    width: auto;
-    gap: 0.5rem;
-    justify-content: flex-end;
-  }
-`;
-
-const StatItem = styled(Box)<{ color?: string }>`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 6px;
-  background: ${({ color }) => color ? alpha(color, 0.1) : 'rgba(255, 255, 255, 0.05)'};
-  color: ${({ color }) => color || '#b0b8d1'};
-  font-size: 0.8rem;
-  font-weight: 600;
-  
-  @media (max-width: 700px) {
-    padding: 0.15rem 0.5rem;
-    font-size: 0.7rem;
-    gap: 0.25rem;
-  }
-`;
-
-// Icon-only Add button for mobile header
-const AddHeaderIconButton = styled('button')`
-  background: #23242a;
-  border: none;
-  border-radius: 8px;
-  padding: 8px;
-  margin-left: 8px;
-  cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-  display: flex;
-  align-items: center;
-  @media (min-width: 701px) {
-    display: none;
-  }
-`;
-
-export const Reports = (): JSX.Element => {
+export const Reports = ({ defaultTab }: ReportsProps = {}): JSX.Element => {
+    const location = useLocation();
     const { user } = useAuth();
     const { startProgress, setProgress, completeProgress } = useProgress();
     const { logReportActivity } = useActivityTracking();
     const { setFooterContent } = usePageFooter();
     const muiTheme = useMuiTheme();
+    const { showToast } = useToast();
+
+    // Core States
     const [loading, setLoading] = useState(true);
     const [reports, setReports] = useState<Report[]>([]);
     const [categories, setCategories] = useState<ReportCategory[]>([]);
+    
+    // Initial Tab State: 'student' | 'staff' | 'all'
+    const initialTab = useMemo(() => {
+        if (defaultTab) return defaultTab;
+        const path = location.pathname.toLowerCase();
+        const search = location.search.toLowerCase();
+        if (path.includes('employee') || path.includes('staff') || search.includes('staff') || search.includes('employee')) {
+            return 'staff';
+        }
+        return 'student';
+    }, [defaultTab, location]);
+
+    const [subjectTab, setSubjectTab] = useState<'student' | 'staff' | 'all'>(initialTab);
+
+    // Sync tab if route or defaultTab changes
+    useEffect(() => {
+        if (defaultTab) {
+            setSubjectTab(defaultTab);
+        } else {
+            const path = location.pathname.toLowerCase();
+            const search = location.search.toLowerCase();
+            if (path.includes('employee') || path.includes('staff') || search.includes('staff') || search.includes('employee')) {
+                setSubjectTab('staff');
+            }
+        }
+    }, [defaultTab, location.pathname, location.search]);
+
+    // Advanced Filters
     const [filters, setFilters] = useState({
         category_id: '',
         status: '',
+        class_id: '',
+        reported_by: '',
         searchQuery: ''
     });
-    const [showFilters, setShowFilters] = useState(false);
-    const [showMobileFilters, setShowMobileFilters] = useState(false);
-    const [createDialogOpen, setCreateDialogOpen] = useState(false);
+    const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+
+    // Classes & Staff for filtering
+    const [classList, setClassList] = useState<any[]>([]);
+    const [staffList, setStaffList] = useState<any[]>([]);
+
+    // Dialogs
+    const [createStudentDialogOpen, setCreateStudentDialogOpen] = useState(false);
+    const [createEmployeeDialogOpen, setCreateEmployeeDialogOpen] = useState(false);
+    const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
     const [editingReport, setEditingReport] = useState<Report | undefined>(undefined);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [reportToDelete, setReportToDelete] = useState<Report | undefined>(undefined);
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [modifyingReport, setModifyingReport] = useState<Report | undefined>(undefined);
     const [editingUpdate, setEditingUpdate] = useState<{ update: any; reportId: string } | undefined>(undefined);
-    const { showToast } = useToast();
     const [expandedUpdates, setExpandedUpdates] = useState<{ [key: string]: boolean }>({});
-    const [hasAnyStudents, setHasAnyStudents] = useState<boolean | null>(null);
-    const [loadingStudents, setLoadingStudents] = useState(true);
-    const [activeSession, setActiveSession] = useState<any>(null);
-    const [activeSessionStudents, setActiveSessionStudents] = useState<Set<number>>(new Set());
-    
+
     // Mobile detection
-    const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
-    
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+    // Permission check for viewing and creating staff/employee reports
+    const canViewStaffReports = useMemo(() => {
+        if (!user) return false;
+        // Super Admin, Admin, Principal, Director, Owner have full staff report access
+        const privilegedRoles = ['Super Admin', 'Admin', 'Principal', 'Director', 'Owner'];
+        if (privilegedRoles.includes(user.role || '')) return true;
+        
+        // Teachers and other restricted roles cannot view or manage staff complaints
+        return false;
+    }, [user]);
+
+    // Automatically restrict non-privileged roles to student complaints only
     useEffect(() => {
-        const handleResize = () => {
-            setIsMobile(window.innerWidth <= 700);
-        };
+        if (!canViewStaffReports && subjectTab !== 'student') {
+            setSubjectTab('student');
+        }
+    }, [canViewStaffReports, subjectTab]);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth <= 768);
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // Check if there are any students in the system and get active session
+    // Load available classes & staff for filtering
     useEffect(() => {
-        const initializeReportsPage = async () => {
-            if (!user?.school_id) return;
+        if (user?.school_id) {
+            reportService.getClasses(user.school_id)
+                .then(classes => setClassList(classes))
+                .catch(() => setClassList([]));
             
-            try {
-                setLoadingStudents(true);
-
-                // 1. Check if there are ANY students in the school
-                const { data: studentData, error: studentError } = await supabase
-                    .from('students')
-                    .select('id')
-                    .eq('school_id', user?.school_id)
-                    .limit(1);
-                
-                if (studentError) {
-                    console.error('Error checking for students:', studentError);
-                    setHasAnyStudents(false);
-                } else {
-                    setHasAnyStudents(studentData && studentData.length > 0);
-                }
-
-                // 2. Get active session
-                const { data: sessionsData, error: sessionsError } = await supabase
-                    .from('sessions')
-                    .select('id, is_active')
-                    .eq('school_id', user?.school_id)
-                    .eq('is_active', true)
-                    .limit(1);
-                
-                if (sessionsError) {
-                    console.error('Error fetching active session:', sessionsError);
-                } else if (sessionsData && sessionsData.length > 0) {
-                    setActiveSession(sessionsData[0]);
-                }
-                
-                setLoadingStudents(false);
-            } catch (err: any) {
-                console.error('Initialization error:', err);
-                setHasAnyStudents(false);
-                setLoadingStudents(false);
-            }
-        };
-        
-        initializeReportsPage();
+            reportService.getStaff(user.school_id)
+                .then(staff => setStaffList(staff))
+                .catch(() => setStaffList([]));
+        }
     }, [user?.school_id]);
 
-    // Define functions that will be used in useEffect
+    // Derive Unique Reporters List
+    const reportersList = useMemo(() => {
+        const map = new Map<string, string>();
+        staffList.forEach(s => {
+            if (s.id && s.name) map.set(s.id.toString(), s.name);
+        });
+        reports.forEach(r => {
+            if (r.reported_by && r.reporter?.name) {
+                map.set(r.reported_by.toString(), r.reporter.name);
+            }
+        });
+        return Array.from(map.entries())
+            .map(([id, name]) => ({ id, name }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }, [staffList, reports]);
+
+    // Load Reports and Categories whenever Tab or Filters change
     const loadReports = async () => {
         if (!user?.school_id) return;
-        
+
         try {
-            const data = await reportService.getStudentReports({
-                category_id: filters.category_id || undefined,
-                status: filters.status || undefined,
-                subject_type: 'student'
-            }, user?.school_id);
-            
-            // Apply search filter
-            const searchFilteredData = data.filter(report => {
-                const searchMatch = !filters.searchQuery || (
-                    (report.student?.name?.toLowerCase() || '').includes(filters.searchQuery.toLowerCase()) ||
-                    (report.student?.father_name?.toLowerCase() || '').includes(filters.searchQuery.toLowerCase())
-                );
-                return searchMatch;
-            });
-            
-            // Transform the data to match our local Report type
-            const transformedData = searchFilteredData.map(report => ({
-                ...report,
-                id: report.id.toString(),
-                category: {
-                    id: report.category?.id?.toString() || '',
-                    name: report.category?.name || ''
-                },
-                category_id: report.category_id.toString(),
-                reported_by: report.reported_by.toString(),
-                incident_date: report.created_at, // Use created_at as incident_date
-                action_taken: '' // Initialize empty action_taken
-            })) as unknown as Report[];
-            
-            setReports(transformedData);
-        } catch (error) {
+            let fetchedReports: ImportedReport[] = [];
+            if (subjectTab === 'student') {
+                fetchedReports = await reportService.getStudentReports({
+                    category_id: filters.category_id || undefined,
+                    status: filters.status || undefined,
+                    subject_type: 'student'
+                }, user.school_id);
+            } else if (subjectTab === 'staff') {
+                fetchedReports = await reportService.getEmployeeReports({
+                    category_id: filters.category_id || undefined,
+                    status: filters.status || undefined,
+                    subject_type: 'staff'
+                }, user.school_id);
+            } else {
+                fetchedReports = await reportService.getAllReports({
+                    category_id: filters.category_id || undefined,
+                    status: filters.status || undefined,
+                }, user.school_id);
+            }
+
+            // Transform raw payload to match component state structure
+            const formatted = fetchedReports.map((report: any) => {
+                const catName = report.category?.name 
+                    || categories.find(c => String(c.id) === String(report.category_id))?.name 
+                    || 'General Complaint';
+
+                return {
+                    ...report,
+                    id: report.id.toString(),
+                    category_id: report.category_id ? report.category_id.toString() : '',
+                    reported_by: report.reported_by ? report.reported_by.toString() : '',
+                    incident_date: report.created_at,
+                    action_taken: report.action_taken || '',
+                    category: {
+                        id: report.category_id ? report.category_id.toString() : (report.category?.id?.toString() || '1'),
+                        name: catName
+                    }
+                };
+            }) as unknown as Report[];
+
+            setReports(formatted);
+        } catch (err) {
+            console.error('Error loading reports:', err);
         }
     };
 
     const loadCategories = async () => {
         try {
-            // Only load student categories
-            const data = await reportService.getCategories('student', user?.school_id);
-            setCategories(data);
-        } catch (error) {
-            // TODO: Show error notification
+            const catType = subjectTab === 'all' ? undefined : subjectTab;
+            const data = await reportService.getCategories(catType, user?.school_id);
+            setCategories(data || []);
+            return data || [];
+        } catch (err) {
+            console.error('Error loading categories:', err);
+            return [];
         }
     };
 
     useEffect(() => {
-        if (!user?.school_id) return;
-        
         let isMounted = true;
+
         const loadAll = async () => {
             setLoading(true);
             startProgress(false);
-            setProgress(10);
-            const minDuration = 1500;
-            const start = Date.now();
-            await Promise.all([
-                loadReports(),
-                loadCategories()
-            ]);
-            setProgress(80);
-            const elapsed = Date.now() - start;
-            if (elapsed < minDuration) {
-                await new Promise(res => setTimeout(res, minDuration - elapsed));
-            }
+            setProgress(20);
+            await loadCategories();
+            await loadReports();
             setProgress(100);
             completeProgress();
             if (isMounted) setLoading(false);
         };
+
         loadAll();
         return () => { isMounted = false; };
-    }, [filters, user?.school_id, activeSession]);
+    }, [subjectTab, filters.category_id, filters.status, user?.school_id]);
 
+    // Compute Repeat Incident History Counts
+    const incidentCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        reports.forEach(r => {
+            const key = r.subject_type === 'student' 
+                ? `student_${r.student_id || r.student?.id}`
+                : `staff_${r.staff_id || r.staff?.id}`;
+            if (key && key !== 'student_undefined' && key !== 'staff_undefined') {
+                counts[key] = (counts[key] || 0) + 1;
+            }
+        });
+        return counts;
+    }, [reports]);
+
+    // Apply Client-Side Filtering (Search, Class, Reported By)
+    const filteredReports = useMemo(() => {
+        return reports.filter(report => {
+            // Search Query
+            if (filters.searchQuery.trim()) {
+                const query = filters.searchQuery.toLowerCase().trim();
+                const studentName = report.student?.name?.toLowerCase() || '';
+                const fatherName = report.student?.father_name?.toLowerCase() || '';
+                const staffName = report.staff?.name?.toLowerCase() || '';
+                const categoryName = (report.category?.name || categories.find(c => String(c.id) === String(report.category_id))?.name || '').toLowerCase();
+                const desc = report.description?.toLowerCase() || '';
+                const reportId = `#${report.id}`;
+
+                const matchesSearch = studentName.includes(query) ||
+                    fatherName.includes(query) ||
+                    staffName.includes(query) ||
+                    categoryName.includes(query) ||
+                    desc.includes(query) ||
+                    reportId.includes(query);
+
+                if (!matchesSearch) return false;
+            }
+
+            // Reported By Filter
+            if (filters.reported_by && report.reported_by?.toString() !== filters.reported_by.toString()) {
+                return false;
+            }
+
+            // Class Filter (For student reports)
+            if (filters.class_id && report.student) {
+                if (report.student.class?.id?.toString() !== filters.class_id.toString()) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+    }, [reports, filters, categories]);
+
+    // Categories that actually have reports logged
+    const categoriesWithReports = useMemo(() => {
+        const activeCategoryIds = new Set<string>();
+        const activeCategoryNames = new Set<string>();
+
+        reports.forEach(r => {
+            if (r.category_id) {
+                activeCategoryIds.add(String(r.category_id));
+            }
+            if (r.category?.id) {
+                activeCategoryIds.add(String(r.category.id));
+            }
+            if (r.category?.name) {
+                activeCategoryNames.add(r.category.name.toLowerCase().trim());
+            }
+        });
+
+        return categories.filter(c => 
+            activeCategoryIds.has(String(c.id)) || 
+            activeCategoryNames.has(c.name.toLowerCase().trim())
+        );
+    }, [categories, reports]);
+
+    // Split into Unresolved and Resolved
     const sortedReports = useMemo(() => {
-        // Split reports into unresolved and resolved first
-        const unresolved = reports.filter(r => ['pending', 'in_review'].includes(r.status));
-        const resolved = reports.filter(r => ['resolved', 'dismissed'].includes(r.status));
+        const unresolved = filteredReports.filter(r => ['pending', 'in_review'].includes(r.status));
+        const resolved = filteredReports.filter(r => ['resolved', 'dismissed'].includes(r.status));
 
-        // Sort each section by date (newest to oldest)
         const sortByDate = (a: Report, b: Report) => {
-            const dateA = a.incident_date ? new Date(a.incident_date).getTime() : new Date(a.created_at).getTime();
-            const dateB = b.incident_date ? new Date(b.incident_date).getTime() : new Date(b.created_at).getTime();
-            return dateB - dateA; // Descending order (newest first)
+            const dateA = new Date(a.incident_date || a.created_at).getTime();
+            const dateB = new Date(b.incident_date || b.created_at).getTime();
+            return dateB - dateA;
         };
 
         return {
             unresolved: unresolved.sort(sortByDate),
             resolved: resolved.sort(sortByDate)
         };
+    }, [filteredReports]);
+
+    // KPI Metrics calculation
+    const kpiMetrics = useMemo(() => {
+        const total = reports.length;
+        const pending = reports.filter(r => r.status === 'pending').length;
+        const urgentHigh = reports.filter(r => ['urgent', 'high'].includes(r.severity?.toLowerCase())).length;
+        const resolved = reports.filter(r => ['resolved', 'dismissed'].includes(r.status)).length;
+        const resRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
+
+        return { total, pending, urgentHigh, resRate };
     }, [reports]);
 
-    const getFilteredCategories = useMemo(() => {
-        if (!reports.length) return categories;
-
-        const usedCategoryIds = new Set(
-            reports
-                .map(report => report.category_id)
-                .filter(Boolean)
-        );
-
-        return categories.filter(category => 
-            category.id && usedCategoryIds.has(category.id.toString())
-        );
-    }, [categories, reports]);
-
-    // Set footer content for global footer - using interval pattern like Dashboard
+    // Footer Sync
     useEffect(() => {
-        // Don't set footer during loading
         if (loading) {
             setFooterContent(null);
             return;
         }
 
-        const updateFooter = () => {
-            if (reports.length > 0) {
-                const totalCount = reports.length;
-                const pendingCount = reports.filter(r => r.status === 'pending').length;
-                const inReviewCount = reports.filter(r => r.status === 'in_review').length;
-                const resolvedCount = reports.filter(r => r.status === 'resolved').length;
-                const dismissedCount = reports.filter(r => r.status === 'dismissed').length;
-                const isDark = muiTheme.palette.mode === 'dark';
-
-                setFooterContent({
-                    visible: true,
-                    content: (
-                        <div style={{
-                            display: 'flex',
-                            flexDirection: isMobile ? 'column' : 'row',
-                            alignItems: isMobile ? 'center' : 'center',
-                            justifyContent: isMobile ? 'center' : 'space-between',
-                            width: '100%',
-                            gap: isMobile ? '0.5rem' : '1rem',
-                            flexWrap: isMobile ? 'nowrap' : 'wrap'
-                        }}>
-                            <div style={{
-                                fontSize: isMobile ? '0.75rem' : '0.95rem',
-                                color: isDark ? '#b0b8d1' : '#8a8a8a',
-                                fontWeight: 500
-                            }}>
-                                Showing {totalCount} reports
-                            </div>
-                            <div style={{
-                                display: 'flex',
-                                gap: isMobile ? '0.5rem' : '1rem',
-                                alignItems: 'center',
-                                flexWrap: 'wrap',
-                                justifyContent: isMobile ? 'center' : 'flex-end'
-                            }}>
-                                <StatItem color="#ed6c02" theme={muiTheme}>
-                                    <Timer style={{ fontSize: 16 }} />
-                                    {pendingCount} Pending
-                                </StatItem>
-                                <StatItem color="#2196f3" theme={muiTheme}>
-                                    <Search style={{ fontSize: 16 }} />
-                                    {inReviewCount} In Review
-                                </StatItem>
-                                {!isMobile && (
-                                    <>
-                                        <StatItem color="#2e7d32" theme={muiTheme}>
-                                            <CheckCircle style={{ fontSize: 16 }} />
-                                            {resolvedCount} Resolved
-                                        </StatItem>
-                                        <StatItem color="#757575" theme={muiTheme}>
-                                            <Cancel style={{ fontSize: 16 }} />
-                                            {dismissedCount} Dismissed
-                                        </StatItem>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    )
-                });
-            } else {
-                setFooterContent(null);
-            }
-        };
-
-        // Update immediately
-        updateFooter();
-
-        // Update periodically (every 2 seconds) to catch data changes
-        // This pattern avoids dependency array issues while staying reactive
-        const interval = setInterval(updateFooter, 2000);
-
-        // Cleanup on unmount
-        return () => {
-            clearInterval(interval);
-            setFooterContent(null);
-        };
-    }, [loading, setFooterContent]);
-
-    // Check if user has school_id - MUST be after all hooks
-    if (!user?.school_id) {
-        return (
-            <Box sx={{ p: 3 }}>
-                <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    padding: '2rem', 
-                    gap: 2,
-                    color: 'text.secondary',
-                    fontSize: '1.1rem',
-                    fontWeight: 600
-                }}>
-                    <WarningIcon sx={{ fontSize: '1.5rem' }} />
-                    No school context found. Please contact your administrator.
+        setFooterContent({
+            visible: true,
+            content: (
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', px: 1 }}>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                        Showing {filteredReports.length} of {reports.length} reports
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                        <Chip size="small" icon={<Timer style={{ fontSize: 14 }} />} label={`${kpiMetrics.pending} Pending`} sx={{ bgcolor: alpha('#ed6c02', 0.1), color: '#ed6c02', fontWeight: 600 }} />
+                        <Chip size="small" icon={<CheckCircle style={{ fontSize: 14 }} />} label={`${kpiMetrics.resRate}% Resolved`} sx={{ bgcolor: alpha('#2e7d32', 0.1), color: '#2e7d32', fontWeight: 600 }} />
+                    </Box>
                 </Box>
-            </Box>
-        );
-    }
+            )
+        });
 
-    // Helper function to check if user can edit/delete a report
-    const canEditOrDeleteReport = (report: Report): boolean => {
-        // If user is not a teacher, allow (Principal, Admin, etc.)
-        if (user?.role !== 'Teacher') {
-            return true;
+        return () => setFooterContent(null);
+    }, [loading, filteredReports.length, reports.length, kpiMetrics, setFooterContent]);
+
+    // CSV Export Utility
+    const handleExportCSV = () => {
+        if (filteredReports.length === 0) {
+            showToast('No reports available to export', 'error');
+            return;
         }
-        
-        // For teachers, only allow if they are the creator
+
+        const headers = ['Report ID', 'Subject Type', 'Subject Name', 'Class / Role', 'Category', 'Severity', 'Status', 'Date', 'Reported By', 'Description'];
+        const rows = filteredReports.map(r => [
+            `"${r.id}"`,
+            `"${r.subject_type || 'student'}"`,
+            `"${(r.subject_type === 'staff' ? r.staff?.name : r.student?.name) || 'N/A'}"`,
+            `"${r.subject_type === 'staff' ? (r.staff?.role || 'N/A') : (`${r.student?.class?.name || ''} ${r.student?.section?.name || ''}`.trim() || 'N/A')}"`,
+            `"${r.category?.name || 'N/A'}"`,
+            `"${r.severity}"`,
+            `"${r.status}"`,
+            `"${formatAppDate(r.created_at)}"`,
+            `"${r.reporter?.name || 'Staff'}"`,
+            `"${(r.description || '').replace(/"/g, '""')}"`
+        ]);
+
+        const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `Complaints_Export_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast('Exported reports to CSV successfully', 'success');
+    };
+
+    // Helper permissions
+    const canEditOrDeleteReport = (report: Report): boolean => {
+        if (user?.role !== 'Teacher') return true;
         if (user?.role === 'Teacher' && user?.staff_id) {
             return report.reported_by === user.staff_id.toString();
         }
-        
         return false;
     };
 
     const handleEditReport = (report: Report) => {
-        // Check permissions before allowing edit
         if (!canEditOrDeleteReport(report)) {
             showToast('You can only edit reports that you created', 'error');
             return;
@@ -854,7 +628,6 @@ export const Reports = (): JSX.Element => {
     };
 
     const handleDeleteClick = (report: Report) => {
-        // Check permissions before allowing delete
         if (!canEditOrDeleteReport(report)) {
             showToast('You can only delete reports that you created', 'error');
             return;
@@ -865,50 +638,13 @@ export const Reports = (): JSX.Element => {
 
     const handleDeleteConfirm = async () => {
         if (!reportToDelete?.id || deleteLoading) return;
-        
         setDeleteLoading(true);
         try {
-            // Log activity FIRST, BEFORE deleting the report
-            // This ensures the activity log is created with the report ID while it still exists
-            if (reportToDelete.category?.name && user?.staff_id) {
-                const subjectName = reportToDelete.student?.name || 'Unknown Student';
-                
-                try {
-                    console.log('[Reports] Logging report delete activity:', {
-                        reportId: reportToDelete.id,
-                        category: reportToDelete.category.name,
-                        subjectName,
-                        subjectType: 'student',
-                        severity: reportToDelete.severity
-                    });
-                    
-                    const activityLogId = await logReportActivity(
-                        'delete',
-                        reportToDelete.category.name,
-                        subjectName,
-                        'student',
-                        reportToDelete.severity,
-                        {
-                            entityId: parseInt(reportToDelete.id),
-                            entityName: `Report #${reportToDelete.id}`,
-                            createNotification: true, // Show delete activity in notifications
-                            studentId: reportToDelete.student?.id,
-                            staffId: undefined
-                        }
-                    );
-                    
-                    console.log('[Reports] Report delete activity logged successfully:', {
-                        activityLogId,
-                        reportId: reportToDelete.id
-                    });
-                } catch (activityError) {
-                    // Log error but don't fail the delete operation
-                    console.error('[Reports] Failed to log report delete activity:', activityError);
-                }
+            if (reportToDelete.subject_type === 'staff') {
+                await reportService.deleteEmployeeReport(parseInt(reportToDelete.id), user?.school_id);
+            } else {
+                await reportService.deleteStudentReport(parseInt(reportToDelete.id), user?.school_id);
             }
-            
-            // Now delete the report
-            await reportService.deleteStudentReport(parseInt(reportToDelete.id), user?.school_id);
             
             await loadReports();
             setDeleteDialogOpen(false);
@@ -921,42 +657,17 @@ export const Reports = (): JSX.Element => {
         }
     };
 
-    const handleDeleteCancel = () => {
-        setDeleteDialogOpen(false);
-        setReportToDelete(undefined);
-    };
-
     const handleCreateReport = async (reportData: CreateReportDTO) => {
         try {
-            const createdReport = await reportService.createStudentReport({ ...reportData, subject_type: 'student' }, user?.school_id);
-            
-            // Log activity - this will create high-priority notification for admins
-            if (createdReport && user?.staff_id) {
-                // Get category name from created report or categories list
-                const categoryName = createdReport.category?.name || categories.find(c => c.id === reportData.category_id)?.name || 'Report';
-                
-                // Get subject name from created report data
-                const subjectName = createdReport.student?.name || 'Unknown Student';
-                
-                await logReportActivity(
-                    'create',
-                    categoryName,
-                    subjectName,
-                    'student',
-                    reportData.severity,
-                    {
-                        entityId: createdReport.id,
-                        entityName: `Report #${createdReport.id}`,
-                        createNotification: true, // Create high-priority notification
-                        studentId: reportData.student_id,
-                        staffId: undefined
-                    }
-                );
+            if (reportData.subject_type === 'staff') {
+                await reportService.createEmployeeReport(reportData, user?.school_id);
+            } else {
+                await reportService.createStudentReport(reportData, user?.school_id);
             }
-            
-            loadReports();
-            setCreateDialogOpen(false);
-            showToast('Report created successfully', 'success');
+            await loadReports();
+            setCreateStudentDialogOpen(false);
+            setCreateEmployeeDialogOpen(false);
+            showToast('Report logged successfully', 'success');
         } catch (error) {
             showToast('Failed to create report', 'error');
             throw error;
@@ -965,1441 +676,935 @@ export const Reports = (): JSX.Element => {
 
     const handleModifyReport = async (reportId: string, status: ReportStatus, notes: string) => {
         if (!reportId) return;
-        
         try {
-            const updateData: { status?: ReportStatus; update_note?: string } = {
-                status,
-                update_note: notes
-            };
-            
-            await reportService.updateStudentReport(reportId, updateData, user?.school_id);
-            
-            // Log activity for report status modification
-            if (user?.staff_id) {
-                // Find the report to get its details
-                const report = reports.find(r => r.id === reportId);
-                if (report && report.category?.name) {
-                    const subjectName = report.student?.name || 'Unknown Student';
-                    
-                    await logReportActivity(
-                        'update',
-                        report.category.name,
-                        subjectName,
-                        'student',
-                        report.severity,
-                        {
-                            entityId: parseInt(reportId),
-                            entityName: `Report #${reportId}`,
-                            createNotification: false // Don't notify on status update
-                        }
-                    );
-                }
+            const report = reports.find(r => r.id === reportId);
+            if (report?.subject_type === 'staff') {
+                await reportService.updateEmployeeReport(reportId, { status, update_note: notes }, user?.school_id);
+            } else {
+                await reportService.updateStudentReport(reportId, { status, update_note: notes }, user?.school_id);
             }
-            
             await loadReports();
             setModifyingReport(undefined);
+            showToast('Status updated successfully', 'success');
         } catch (error) {
+            showToast('Failed to update status', 'error');
         }
     };
 
-    const handleEditSubmit = async (data: { severity: ReportSeverity; description: string; created_at: string }) => {
+    const handleEditSubmit = async (data: { category_id?: number; severity: ReportSeverity; description: string; created_at: string }) => {
         if (!editingReport?.id) return;
         try {
-            await reportService.updateStudentReportDetails(editingReport.id, data, user?.school_id);
-            
-            // Log activity
-            if (editingReport.category?.name && user?.staff_id) {
-                const subjectName = editingReport.student?.name || 'Unknown Student';
-                
-                await logReportActivity(
-                    'update',
-                    editingReport.category.name,
-                    subjectName,
-                    'student',
-                    data.severity,
-                    {
-                        entityId: parseInt(editingReport.id),
-                        entityName: `Report #${editingReport.id}`,
-                        createNotification: false // Don't notify on update
-                    }
-                );
+            if (editingReport.subject_type === 'staff') {
+                await reportService.updateEmployeeReportDetails(editingReport.id, data, user?.school_id);
+            } else {
+                await reportService.updateStudentReportDetails(editingReport.id, data, user?.school_id);
             }
-            
             await loadReports();
             setEditingReport(undefined);
-            showToast('Report updated successfully', 'success');
+            showToast('Report details updated', 'success');
         } catch (error) {
             showToast('Failed to update report', 'error');
         }
     };
 
     const toggleUpdates = (reportId: string) => {
-        if (!reportId) return;
-        
-        setExpandedUpdates(prev => ({
-            ...prev,
-            [reportId]: !prev[reportId]
-        }));
+        setExpandedUpdates(prev => ({ ...prev, [reportId]: !prev[reportId] }));
     };
 
-    const handleEditUpdate = (update: any, reportId: string) => {
-        // Check if current user is the creator of this update
-        if (user?.staff_id && update.updated_by === user.staff_id) {
-            setEditingUpdate({ update, reportId });
-        } else {
-            showToast('You can only edit updates that you created', 'error');
-        }
+    const resetFilters = () => {
+        setFilters({
+            category_id: '',
+            status: '',
+            class_id: '',
+            reported_by: '',
+            searchQuery: ''
+        });
     };
 
-    const handleEditUpdateSubmit = async (updateId: string, updateNote: string) => {
-        try {
-            await reportService.updateStudentReportUpdate(updateId, updateNote, user?.school_id);
-            await loadReports();
-            setEditingUpdate(undefined);
-            showToast('Update note updated successfully', 'success');
-        } catch (error) {
-            showToast('Failed to update update note', 'error');
-            throw error;
-        }
-    };
+    const hasActiveFilters = Boolean(
+        filters.category_id || filters.status || filters.class_id || filters.reported_by || filters.searchQuery
+    );
 
-    // Update the status icon rendering
-    const getStatusIcon = (status: ReportStatus) => {
-        switch (status) {
-            case 'pending':
-                return <Timer className="status-icon" />;
-            case 'in_review':
-                return <Search className="status-icon" />;
-            case 'resolved':
-                return <CheckCircle />;
-            case 'dismissed':
-                return <Cancel className="status-icon" />;
-            default:
-                return null;
-        }
-    };
-
-    // Top-level check for no active students in student_class_history for active session
-    if (!loadingStudents && hasAnyStudents === false) {
-        return <NoStudentsFound />;
-    }
-
-    if (loading) {
-        return <Loader />;
-    }
-
-    if (sortedReports.unresolved.length === 0 && sortedReports.resolved.length === 0) {
+    if (!user?.school_id) {
         return (
-            <Box sx={{ p: 3 }}>
-                <Box sx={{ 
-                    display: 'flex', 
-                    flexDirection: 'row',
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    mb: 4,
-                    gap: 2
-                }}>
-                    <Typography 
-                        variant="h4" 
-                        sx={{ 
-                            fontWeight: 600,
-                            color: (theme) => theme.palette.primary.main,
-                            fontSize: { xs: '1.25rem', sm: '1.5rem' },
-                            flex: 1
-                        }}
-                    >
-                        Student Reports
-                    </Typography>
-                    <Box sx={{ 
-                        display: 'flex',
-                        gap: 1,
-                        alignItems: 'center'
-                    }}>
-                        <IconButton 
-                            onClick={() => setShowFilters(!showFilters)} 
-                            size="small"
-                            sx={{ 
-                                bgcolor: (theme) => theme.palette.action.hover,
-                                borderRadius: 1
-                            }}
-                        >
-                            <FilterIcon fontSize="small" />
-                        </IconButton>
-                        <Button
-                            variant="contained"
-                            size="small"
-                            startIcon={<AddIcon />}
-                            onClick={() => setCreateDialogOpen(true)}
-                            sx={{
-                                minWidth: { xs: 32, md: 'auto' },
-                                width: { xs: 32, md: 'auto' },
-                                height: 32,
-                                p: { xs: '4px', md: '4px 12px' },
-                                borderRadius: { xs: '50%', md: 1 },
-                                '& .MuiButton-startIcon': {
-                                    m: { xs: 0, md: '0 4px 0 -4px' },
-                                },
-                                '& .MuiSvgIcon-root': {
-                                    fontSize: { xs: 18, md: 16 }
-                                },
-                                fontSize: '0.813rem',
-                                boxShadow: 'none',
-                                '&:hover': {
-                                    boxShadow: 'none'
-                                }
-                            }}
-                        >
-                            <Box sx={{ display: { xs: 'none', md: 'block' } }}>New Report</Box>
-                        </Button>
-                    </Box>
-                </Box>
-
-                <Grid container spacing={3}>
-                    <Grid item xs={12}>
-                        <Box sx={{ 
-                            display: 'flex', 
-                            flexDirection: 'column',
-                            alignItems: 'center', 
-                            justifyContent: 'center', 
-                            padding: '4rem 2rem',
-                            textAlign: 'center',
-                            minHeight: '400px'
-                        }}>
-                            <Box sx={{ 
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: 80,
-                                height: 80,
-                                borderRadius: '50%',
-                                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
-                                color: 'primary.main',
-                                mb: 3
-                            }}>
-                                <Assignment sx={{ fontSize: '2.5rem' }} />
-                            </Box>
-                            <Typography 
-                                variant="h5" 
-                                sx={{ 
-                                    fontWeight: 600,
-                                    color: 'text.primary',
-                                    mb: 1
-                                }}
-                            >
-                                No Reports Created
-                            </Typography>
-                            <Typography 
-                                variant="body1" 
-                                sx={{ 
-                                    color: 'text.secondary',
-                                    mb: 3,
-                                    maxWidth: '400px'
-                                }}
-                            >
-                                Get started by creating your first report to track incidents and manage student/staff behavior.
-                            </Typography>
-                            <Button
-                                variant="contained"
-                                size="large"
-                                startIcon={<AddIcon />}
-                                onClick={() => setCreateDialogOpen(true)}
-                                sx={{
-                                    px: 3,
-                                    py: 1.5,
-                                    borderRadius: 2,
-                                    fontSize: '1rem',
-                                    fontWeight: 600,
-                                    textTransform: 'none',
-                                    boxShadow: (theme) => `0 4px 20px ${alpha(theme.palette.primary.main, 0.3)}`,
-                                    '&:hover': {
-                                        boxShadow: (theme) => `0 6px 25px ${alpha(theme.palette.primary.main, 0.4)}`,
-                                        transform: 'translateY(-1px)'
-                                    },
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                Create Your First Report
-                            </Button>
-                        </Box>
-                    </Grid>
-                </Grid>
-
-                <CreateStudentReportForm
-                    onSubmit={handleCreateReport}
-                    onCancel={() => setCreateDialogOpen(false)}
-                    open={createDialogOpen}
-                />
+            <Box sx={{ p: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                <WarningIcon sx={{ fontSize: '1.5rem', color: 'warning.main' }} />
+                <Typography variant="body1">No school context found. Please contact your administrator.</Typography>
             </Box>
         );
     }
 
-    return (
-        <PageContainer>
-            <Header>
-                {/* Header row: always flex row, header left, toggle right */}
-                <div
-                    style={{
-                display: 'flex', 
-                flexDirection: 'row',
-                alignItems: 'center',
-                        justifyContent: 'space-between',
-                        width: '100%',
-                        gap: 8,
-                        marginBottom: window.innerWidth <= 700 ? 4 : 0,
-                    }}
-                >
-                    <Title>
-                        Student Reports <span style={{fontWeight:400, fontSize:'1rem', color: '#b0b8d1'}}>({reports.length})</span>
-                    </Title>
-                    {/* Mobile filter toggle button and add button */}
-                    <div style={{ display: window.innerWidth > 700 ? 'none' : 'flex', alignItems: 'center' }}>
-                        <button
-                            aria-label="Show/hide filters"
-                            style={{
-                                background: '#23242a',
-                                border: 'none',
-                                borderRadius: 8,
-                                padding: 8,
-                                marginLeft: 8,
-                                cursor: 'pointer',
-                                boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-                    display: 'flex',
-                                alignItems: 'center',
-                            }}
-                            onClick={() => setShowMobileFilters(v => !v)}
-                        >
-                            <FilterIcon style={{ fontSize: 24, color: '#C0C0C0' }} />
-                        </button>
-                        <AddHeaderIconButton
-                            aria-label="Add Report"
-                        onClick={() => setCreateDialogOpen(true)}
-                        >
-                            <AddIcon style={{ fontSize: 24, color: '#C0C0C0' }} />
-                        </AddHeaderIconButton>
-                    </div>
-                    {/* Desktop filters */}
-                    <HeaderFilters style={{ display: window.innerWidth > 700 ? 'flex' : 'none' }}>
-                        <SegmentedGroup>
-                            <SegmentedInput
-                                type="text"
-                                placeholder="Search Reports..."
-                                value={filters.searchQuery}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilters({ ...filters, searchQuery: e.target.value })}
-                                style={{ minWidth: 220, maxWidth: 320, width: '100%' }}
-                            />
-                            <SegmentedSelect
-                                    value={filters.category_id}
-                                onChange={e => setFilters({ ...filters, category_id: e.target.value })}
-                                style={{ borderRadius: 0 }}
-                            >
-                                <option value="">All Categories</option>
-                                {categories.map((category) => (
-                                    <option key={category.id} value={category.id}>
-                                            {category.name}
-                                    </option>
-                                ))}
-                            </SegmentedSelect>
-                            <SegmentedSelect
-                                    value={filters.status}
-                                onChange={e => setFilters({ ...filters, status: e.target.value })}
-                                style={{ borderRadius: 0 }}
-                            >
-                                <option value="">All Status</option>
-                                <option value="pending">Pending</option>
-                                <option value="in_review">In Review</option>
-                                <option value="resolved">Resolved</option>
-                                <option value="dismissed">Dismissed</option>
-                            </SegmentedSelect>
-                            <SegmentedButton
-                                onClick={() => setCreateDialogOpen(true)}
-                                title="Create New Report"
-                                style={{
-                                    minWidth: 110,
-                                    maxWidth: 130,
-                                    width: '100%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: 6,
-                                    background: '#444',
-                                    border: '1.5px solid #555',
-                                    color: '#C0C0C0',
-                                    fontWeight: 700
-                                }}
-                            >
-                                <AddIcon style={{ fontSize: 15 }} />
-                                <span style={{ fontWeight: 700, display: 'inline-block' }}>New Report</span>
-                            </SegmentedButton>
-                        </SegmentedGroup>
-                    </HeaderFilters>
-                </div>
-                {/* Mobile filters: 2 columns, only if showMobileFilters is true */}
-                {window.innerWidth <= 700 && showMobileFilters && (
-                    <div
-                        style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr 1fr',
-                            gap: 10,
-                            width: '100%',
-                            marginTop: 8,
-                            marginBottom: 8,
-                        }}
-                    >
-                        <SegmentedInput
-                            type="text"
-                            placeholder="Search Reports..."
-                            value={filters.searchQuery}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilters({ ...filters, searchQuery: e.target.value })}
-                            style={{ width: '100%' }}
-                        />
-                        <SegmentedSelect
-                            value={filters.category_id}
-                            onChange={e => setFilters({ ...filters, category_id: e.target.value })}
-                            style={{ width: '100%' }}
-                        >
-                            <option value="">All Categories</option>
-                            {categories.map((category) => (
-                                <option key={category.id} value={category.id}>
-                                    {category.name}
-                                </option>
-                            ))}
-                        </SegmentedSelect>
-                        <SegmentedSelect
-                            value={filters.status}
-                            onChange={e => setFilters({ ...filters, status: e.target.value })}
-                            style={{ width: '100%' }}
-                        >
-                            <option value="">All Status</option>
-                            <option value="pending">Pending</option>
-                            <option value="in_review">In Review</option>
-                            <option value="resolved">Resolved</option>
-                            <option value="dismissed">Dismissed</option>
-                        </SegmentedSelect>
-                        <SegmentedButton
-                            onClick={() => setCreateDialogOpen(true)}
-                            title="Create New Report"
-                            style={{ width: '100%' }}
-                        >
-                            <AddIcon style={{ fontSize: 15 }} />
-                            <span style={{ fontWeight: 700 }}>New Report</span>
-                        </SegmentedButton>
-                    </div>
-                )}
-            </Header>
-            <MainContent>
+    // Render Component Card
+    const renderReportCard = (report: Report) => {
+        const isStudent = report.subject_type !== 'staff';
+        const subjectName = isStudent ? report.student?.name : report.staff?.name;
+        const classNameSection = isStudent ? `${report.student?.class?.name || ''} ${report.student?.section?.name || ''}`.trim() : '';
+        const fatherName = isStudent ? report.student?.father_name : undefined;
 
+        const subjectSubtext = isStudent
+            ? [fatherName, classNameSection].filter(Boolean).join(' • ') || 'Student'
+            : report.staff?.role || 'Staff';
 
+        const subjectPicture = isStudent ? report.student?.picture_url : report.staff?.picture_url;
+        
+        const subjectKey = isStudent ? `student_${report.student_id || report.student?.id}` : `staff_${report.staff_id || report.staff?.id}`;
+        const totalIncidentsForSubject = incidentCounts[subjectKey] || 1;
 
-            <Grid container spacing={3}>
-                {sortedReports.unresolved.length === 0 && sortedReports.resolved.length === 0 ? (
-                    <Grid item xs={12}>
+        const categoryName = report.category?.name || categories.find(c => String(c.id) === String(report.category_id))?.name || 'General Complaint';
+        const categoryColor = getCategoryColor(categoryName);
+
+        return (
+            <Grid item xs={12} key={report.id}>
+                <ReportCard sx={{
+                    p: { xs: 1.8, sm: 2 },
+                    borderRadius: 3,
+                    border: '1px solid',
+                    borderColor: (theme) => theme.palette.mode === 'dark' ? alpha(theme.palette.divider, 0.6) : '#e2e8f0',
+                    borderLeft: `5px solid ${categoryColor}`,
+                    bgcolor: (theme) => theme.palette.mode === 'dark' ? theme.palette.background.paper : '#ffffff',
+                    boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 2px 10px rgba(0,0,0,0.3)' : '0 2px 10px rgba(0,0,0,0.03)',
+                    transition: 'all 0.2s ease-in-out',
+                    '&:hover': {
+                        borderColor: categoryColor,
+                        boxShadow: (theme) => theme.palette.mode === 'dark'
+                            ? `0 6px 24px ${alpha(categoryColor, 0.25)}`
+                            : `0 6px 24px ${alpha(categoryColor, 0.12)}`,
+                    }
+                }}>
+                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'stretch', md: 'center' }, justifyContent: 'space-between', gap: { xs: 1.2, md: 2 } }}>
+                        
+                        {/* 1. Subject Header Column */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: { xs: '100%', md: 'auto' }, minWidth: { md: 240 } }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                <Avatar 
+                                    src={subjectPicture} 
+                                    sx={{ 
+                                        width: { xs: 42, sm: 46 }, 
+                                        height: { xs: 42, sm: 46 }, 
+                                        bgcolor: alpha(categoryColor, 0.15), 
+                                        color: categoryColor, 
+                                        fontWeight: 800,
+                                        fontSize: '1rem',
+                                        border: `1.5px solid ${alpha(categoryColor, 0.4)}`
+                                    }}
+                                >
+                                    {!subjectPicture && (subjectName?.[0] || '?')}
+                                </Avatar>
+                                <Box sx={{ minWidth: 0 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                                        <Typography variant="subtitle1" sx={{ fontWeight: 800, fontSize: { xs: '0.92rem', sm: '0.98rem' }, lineHeight: 1.2 }} noWrap>
+                                            {subjectName || 'Unknown Subject'}
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.7rem' }}>
+                                            #{report.id}
+                                        </Typography>
+                                    </Box>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.2, fontWeight: 600 }}>
+                                        {subjectSubtext}
+                                    </Typography>
+                                </Box>
+                            </Box>
+
+                            {/* Mobile Top Right Corner: Severity, Status and Category on the same line */}
+                            <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 0.5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                <Chip 
+                                    label={report.severity?.toUpperCase()} 
+                                    size="small" 
+                                    sx={{ 
+                                        fontWeight: 900, 
+                                        fontSize: '0.65rem', 
+                                        height: 20,
+                                        color: getSeverityColor(report.severity),
+                                        bgcolor: (theme) => getSeverityBgColor(report.severity, theme.palette.mode)
+                                    }} 
+                                />
+                                <Chip 
+                                    label={formatStatus(report.status)} 
+                                    size="small" 
+                                    icon={report.status === 'resolved' ? <CheckCircle style={{ fontSize: 13, color: '#2e7d32' }} /> : undefined}
+                                    sx={{ 
+                                        fontWeight: 800, 
+                                        fontSize: '0.68rem', 
+                                        height: 20,
+                                        color: report.status === 'resolved' ? '#2e7d32' : (statusColors[report.status] || '#757575'),
+                                        bgcolor: report.status === 'resolved' ? alpha('#2e7d32', 0.18) : alpha(statusColors[report.status] || '#757575', 0.12),
+                                        border: report.status === 'resolved' ? `1px solid ${alpha('#2e7d32', 0.4)}` : 'none'
+                                    }} 
+                                />
+                                <Chip 
+                                    label={categoryName} 
+                                    size="small" 
+                                    sx={{ 
+                                        height: 20, 
+                                        fontSize: '0.68rem', 
+                                        fontWeight: 800, 
+                                        bgcolor: alpha(categoryColor, 0.12), 
+                                        color: categoryColor,
+                                        border: `1px solid ${alpha(categoryColor, 0.3)}`
+                                    }} 
+                                />
+                            </Box>
+                        </Box>
+
+                        {/* 2. Main Content Column */}
+                        <Box sx={{ 
+                            flex: 1, 
+                            minWidth: 0, 
+                            px: { xs: 0, md: 2 }, 
+                            py: { xs: 0.5, md: 0 },
+                            borderLeft: { xs: 'none', md: `1px solid ${alpha(muiTheme.palette.divider, 0.6)}` },
+                            borderRight: { xs: 'none', md: `1px solid ${alpha(muiTheme.palette.divider, 0.6)}` }
+                        }}>
+                            {/* Desktop Header Row: Left (Severity, Status, Incidents), Right (Category) */}
+                            <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 0.8 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                                    <Chip 
+                                        label={report.severity?.toUpperCase()} 
+                                        size="small" 
+                                        sx={{ 
+                                            fontWeight: 900, 
+                                            fontSize: '0.68rem', 
+                                            height: 22,
+                                            color: getSeverityColor(report.severity),
+                                            bgcolor: (theme) => getSeverityBgColor(report.severity, theme.palette.mode)
+                                        }} 
+                                    />
+                                    <Chip 
+                                        label={formatStatus(report.status)} 
+                                        size="small" 
+                                        icon={report.status === 'resolved' ? <CheckCircle style={{ fontSize: 14, color: '#2e7d32' }} /> : undefined}
+                                        sx={{ 
+                                            fontWeight: 800, 
+                                            fontSize: '0.72rem', 
+                                            height: 22,
+                                            color: report.status === 'resolved' ? '#2e7d32' : (statusColors[report.status] || '#757575'),
+                                            bgcolor: report.status === 'resolved' ? alpha('#2e7d32', 0.18) : alpha(statusColors[report.status] || '#757575', 0.12),
+                                            border: report.status === 'resolved' ? `1px solid ${alpha('#2e7d32', 0.4)}` : 'none'
+                                        }} 
+                                    />
+                                    {totalIncidentsForSubject > 1 && (
+                                        <Chip 
+                                            label={`${totalIncidentsForSubject} Incidents`} 
+                                            size="small" 
+                                            color="error" 
+                                            variant="outlined" 
+                                            sx={{ height: 20, fontSize: '0.68rem', fontWeight: 800 }} 
+                                        />
+                                    )}
+                                </Box>
+
+                                <Chip 
+                                    label={categoryName} 
+                                    size="small" 
+                                    sx={{ 
+                                        height: 22, 
+                                        fontSize: '0.72rem', 
+                                        fontWeight: 800, 
+                                        bgcolor: alpha(categoryColor, 0.12), 
+                                        color: categoryColor,
+                                        border: `1px solid ${alpha(categoryColor, 0.3)}`
+                                    }} 
+                                />
+                            </Box>
+
+                            {/* Mobile Repeat Incidents Badge */}
+                            {totalIncidentsForSubject > 1 && (
+                                <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 0.5 }}>
+                                    <Chip 
+                                        label={`${totalIncidentsForSubject} Incidents`} 
+                                        size="small" 
+                                        color="error" 
+                                        variant="outlined" 
+                                        sx={{ height: 20, fontSize: '0.68rem', fontWeight: 800 }} 
+                                    />
+                                </Box>
+                            )}
+
+                            <Typography variant="body2" sx={{ color: 'text.primary', lineHeight: 1.5, fontSize: { xs: '0.85rem', sm: '0.9rem' } }}>
+                                {report.description}
+                            </Typography>
+
+                            {report.action_taken && (
+                                <Typography variant="caption" sx={{ display: 'block', mt: 0.8, color: 'success.main', fontWeight: 700 }}>
+                                    ✓ Resolution: {report.action_taken}
+                                </Typography>
+                            )}
+                        </Box>
+
+                        {/* 3. Actions & Reporter Footer Column */}
                         <Box sx={{ 
                             display: 'flex', 
-                            flexDirection: 'column',
-                            alignItems: 'center', 
-                            justifyContent: 'center', 
-                            padding: '4rem 2rem',
-                            textAlign: 'center',
-                            minHeight: '400px'
+                            flexDirection: { xs: 'row', md: 'column' }, 
+                            alignItems: { xs: 'center', md: 'flex-end' }, 
+                            justifyContent: { xs: 'space-between', md: 'center' },
+                            alignSelf: { xs: 'stretch', md: 'center' },
+                            gap: { xs: 1.5, md: 1 }, 
+                            pt: { xs: 1.2, md: 0 },
+                            mt: { xs: 0.8, md: 0 },
+                            borderTop: { xs: `1px solid ${alpha(muiTheme.palette.divider, 0.4)}`, md: 'none' },
+                            minWidth: { md: 150 }
                         }}>
-                            <Box sx={{ 
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: 80,
-                                height: 80,
-                                borderRadius: '50%',
-                                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
-                                color: 'primary.main',
-                                mb: 3
-                            }}>
-                                <Assignment sx={{ fontSize: '2.5rem' }} />
+                            {/* Left Side (Mobile) / Top (Desktop): Single Line for Reporter & Date */}
+                            <Box sx={{ minWidth: 0, textAlign: { xs: 'left', md: 'right' } }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600, fontSize: '0.75rem', lineHeight: 1.3 }} noWrap>
+                                    By <strong>{report.reporter?.name || 'Staff'}</strong> • {formatAppDate(report.incident_date || report.created_at)}
+                                </Typography>
                             </Box>
-                            <Typography 
-                                variant="h5" 
+
+                            {/* Right Side (Mobile) / Bottom (Desktop): Action Buttons */}
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                                {report.status !== 'resolved' && report.status !== 'dismissed' && (
+                                    <Button
+                                        size="small"
+                                        variant="contained"
+                                        disableElevation
+                                        onClick={() => setModifyingReport(report)}
+                                        sx={{ textTransform: 'none', fontWeight: 700, fontSize: '0.75rem', py: 0.3, px: 1.5, borderRadius: 1.5 }}
+                                    >
+                                        Update Status
+                                    </Button>
+                                )}
+                                {canEditOrDeleteReport(report) && (
+                                    <>
+                                        <Tooltip title="Edit Report">
+                                            <IconButton size="small" onClick={() => handleEditReport(report)}>
+                                                <EditIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                        <Tooltip title="Delete Report">
+                                            <IconButton size="small" color="error" onClick={() => handleDeleteClick(report)}>
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                    </>
+                                )}
+                            </Box>
+                        </Box>
+
+                    </Box>
+
+                    {/* Collapsible Updates Bar */}
+                    {report.updates && report.updates.length > 0 && (
+                        <>
+                            <Box 
+                                onClick={() => toggleUpdates(report.id)}
                                 sx={{ 
-                                    fontWeight: 600,
-                                    color: 'text.primary',
-                                    mb: 1
+                                    mt: 1.5,
+                                    pt: 1,
+                                    borderTop: '1px solid',
+                                    borderColor: 'divider',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    cursor: 'pointer',
+                                    color: 'primary.main'
                                 }}
                             >
-                                No Reports Created
-                            </Typography>
-                            <Typography 
-                                variant="body1" 
-                                sx={{ 
-                                    color: 'text.secondary',
-                                    mb: 3,
-                                    maxWidth: '400px'
-                                }}
-                            >
-                                Get started by creating your first report to track incidents and manage student/staff behavior.
-                            </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <KeyboardArrowDownIcon sx={{ 
+                                        transform: expandedUpdates[report.id] ? 'rotate(180deg)' : 'none', 
+                                        transition: 'transform 0.2s',
+                                        fontSize: 18
+                                    }} />
+                                    <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.78rem' }}>
+                                        {report.updates.length} Updates Logged
+                                    </Typography>
+                                </Box>
+                                <Typography variant="caption" color="text.secondary">
+                                    Last: {formatAppDate(report.updates[0].created_at)}
+                                </Typography>
+                            </Box>
+
+                            <Collapse in={expandedUpdates[report.id]}>
+                                <Box sx={{ pt: 1.5 }}>
+                                    {report.updates.map((update) => (
+                                        <Box key={update.id} sx={{ py: 0.8, borderBottom: '1px dashed', borderColor: 'divider' }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                                                    Status changed to <Chip label={formatStatus(update.new_status)} size="small" sx={{ height: 18, fontSize: '0.68rem' }} />
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    by {update.staff?.name || 'Staff'} • {formatAppDate(update.created_at)}
+                                                </Typography>
+                                            </Box>
+                                            {update.update_note && (
+                                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.3 }}>
+                                                    "{update.update_note}"
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                    ))}
+                                </Box>
+                            </Collapse>
+                        </>
+                    )}
+                </ReportCard>
+            </Grid>
+        );
+    };
+
+    if (loading) return <Loader />;
+
+    return (
+        <PageContainer>
+            {/* Header Control Section */}
+            <Header>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Typography variant="h5" sx={{ fontWeight: 800, color: 'primary.main', letterSpacing: '0.5px' }}>
+                            Complaints & Reports
+                        </Typography>
+                        <Chip label={`${reports.length} Records`} size="small" color="primary" sx={{ fontWeight: 700 }} />
+                    </Box>
+
+                    {/* Mode Switcher Tabs - Only visible to authorized management roles */}
+                    {canViewStaffReports && (
+                        <Tabs
+                            value={subjectTab}
+                            onChange={(_, val) => setSubjectTab(val)}
+                            textColor="primary"
+                            indicatorColor="primary"
+                            variant="scrollable"
+                            scrollButtons="auto"
+                            allowScrollButtonsMobile
+                            sx={{
+                                minHeight: 36,
+                                width: { xs: '100%', md: 'auto' },
+                                '& .MuiTab-root': {
+                                    minHeight: 36,
+                                    textTransform: 'none',
+                                    fontWeight: 700,
+                                    fontSize: '0.88rem',
+                                    px: 2,
+                                    py: 0.5
+                                }
+                            }}
+                        >
+                            <Tab label="🎓 Student Complaints" value="student" />
+                            <Tab label="👨‍🏫 Staff Complaints" value="staff" />
+                            <Tab label="📋 All Reports" value="all" />
+                        </Tabs>
+                    )}
+
+                    {/* Action Buttons */}
+                    <Box sx={{ display: 'flex', gap: 1, ml: { xs: 0, md: 'auto' }, width: { xs: '100%', md: 'auto' }, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<CategoryIcon />}
+                            onClick={() => setManageCategoriesOpen(true)}
+                            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700, px: { xs: 1.2, sm: 2 } }}
+                        >
+                            Manage Categories
+                        </Button>
+
+                        <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<ExportIcon />}
+                            onClick={handleExportCSV}
+                            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700, px: { xs: 1.2, sm: 2 } }}
+                        >
+                            Export CSV
+                        </Button>
+
+                        {(subjectTab === 'student' || subjectTab === 'all') && (
                             <Button
                                 variant="contained"
-                                size="large"
+                                size="small"
                                 startIcon={<AddIcon />}
-                                onClick={() => setCreateDialogOpen(true)}
-                                sx={{
-                                    px: 3,
-                                    py: 1.5,
-                                    borderRadius: 2,
-                                    fontSize: '1rem',
-                                    fontWeight: 600,
-                                    textTransform: 'none',
-                                    boxShadow: (theme) => `0 4px 20px ${alpha(theme.palette.primary.main, 0.3)}`,
-                                    '&:hover': {
-                                        boxShadow: (theme) => `0 6px 25px ${alpha(theme.palette.primary.main, 0.4)}`,
-                                        transform: 'translateY(-1px)'
-                                    },
-                                    transition: 'all 0.2s ease'
-                                }}
+                                onClick={() => setCreateStudentDialogOpen(true)}
+                                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
                             >
-                                Create Your First Report
+                                New Student Report
                             </Button>
-                        </Box>
+                        )}
+
+                        {canViewStaffReports && (subjectTab === 'staff' || subjectTab === 'all') && (
+                            <Button
+                                variant="contained"
+                                color="secondary"
+                                size="small"
+                                startIcon={<AddIcon />}
+                                onClick={() => setCreateEmployeeDialogOpen(true)}
+                                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
+                            >
+                                New Staff Report
+                            </Button>
+                        )}
+                    </Box>
+                </Box>
+
+                {/* Mobile Compact Horizontal KPI Strip (Visible on Mobile Only) */}
+                <Box sx={{ display: { xs: 'flex', sm: 'none' }, gap: 1, overflowX: 'auto', py: 1, my: 0.5, px: 0.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+                    <Chip 
+                        label={`Total: ${kpiMetrics.total}`} 
+                        size="small" 
+                        onClick={resetFilters} 
+                        color="primary" 
+                        variant={!hasActiveFilters ? "filled" : "outlined"} 
+                        sx={{ fontWeight: 800, fontSize: '0.75rem', flexShrink: 0 }} 
+                    />
+                    <Chip 
+                        label={`Pending: ${kpiMetrics.pending}`} 
+                        size="small" 
+                        onClick={() => setFilters(f => ({ ...f, status: f.status === 'pending' ? '' : 'pending' }))} 
+                        sx={{ bgcolor: alpha('#ed6c02', 0.15), color: '#ed6c02', fontWeight: 800, fontSize: '0.75rem', flexShrink: 0 }} 
+                    />
+                    <Chip 
+                        label={`Urgent: ${kpiMetrics.urgentHigh}`} 
+                        size="small" 
+                        sx={{ bgcolor: alpha('#f44336', 0.15), color: '#f44336', fontWeight: 800, fontSize: '0.75rem', flexShrink: 0 }} 
+                    />
+                    <Chip 
+                        label={`Resolved: ${kpiMetrics.resRate}%`} 
+                        size="small" 
+                        onClick={() => setFilters(f => ({ ...f, status: f.status === 'resolved' ? '' : 'resolved' }))} 
+                        sx={{ bgcolor: alpha('#2e7d32', 0.15), color: '#2e7d32', fontWeight: 800, fontSize: '0.75rem', flexShrink: 0 }} 
+                    />
+                </Box>
+
+                {/* Desktop KPI Metrics Cards Banner (Visible on Desktop Only) */}
+                <Grid container spacing={2} sx={{ mt: 0.5, display: { xs: 'none', sm: 'flex' } }}>
+                    <Grid item xs={6} sm={3}>
+                        <KPICard 
+                            accentcolor={muiTheme.palette.primary.main} 
+                            active={!hasActiveFilters}
+                            onClick={resetFilters}
+                        >
+                            <Box>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase' }}>
+                                    Total Logged
+                                </Typography>
+                                <Typography variant="h4" sx={{ fontWeight: 800, mt: 0.2 }}>
+                                    {kpiMetrics.total}
+                                </Typography>
+                            </Box>
+                            <Avatar sx={{ bgcolor: alpha(muiTheme.palette.primary.main, 0.12), color: muiTheme.palette.primary.main }}>
+                                <Assignment />
+                            </Avatar>
+                        </KPICard>
                     </Grid>
-                ) : (
-                    <>
-                        {sortedReports.unresolved.length > 0 && (
-                            <>
-                                <Grid item xs={12}>
-                                    <SectionDivider>
-                                        <Divider />
-                                        <Typography>Unresolved</Typography>
-                                        <Divider />
-                                    </SectionDivider>
-                                </Grid>
-                                {sortedReports.unresolved.map((report) => (
-                                    <Grid item xs={12} key={report.id}>
-                                        <ReportCard>
-                                            <Box
-                                                className="report-header"
-                                                sx={{
-                                                    display: { xs: 'flex', md: 'flex' },
-                                                    flexDirection: { xs: 'row', md: 'row' },
-                                                    alignItems: { xs: 'flex-start', md: 'center' },
-                                                    justifyContent: 'space-between',
-                                                    p: 0,
-                                                    gap: 2,
-                                                    position: 'relative',
-                                                }}
-                                            >
-                                                <Box
-                                                    sx={{
-                                                        flex: 1,
-                                                        display: 'flex',
-                                                        flexDirection: { xs: 'column', md: 'row' },
-                                                        alignItems: { xs: 'flex-start', md: 'center' },
-                                                        gap: { xs: 0.5, md: 1 },
-                                                        minWidth: 0,
-                                                    }}
-                                                >
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                    <Typography 
-                                                        variant="subtitle2" 
-                                                            sx={{
-                                                            color: 'text.secondary',
-                                                            minWidth: 'auto',
-                                                                fontWeight: 600,
-                                                                mr: 1,
-                                                                fontSize: { xs: '1rem', md: '1rem' },
-                                                            }}
-                                                        >
-                                                        #{report.id}
-                                                    </Typography>
-                                                    <CategoryChip
-                                                        label={report.category?.name}
-                                                        size="small"
-                                                        icon={<Assignment fontSize="small" />}
-                                                            sx={{ fontSize: { xs: '0.8rem', md: '0.75rem' } }}
-                                                    />
-                                                        </Box>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            {formatAppDate(report.incident_date || report.created_at)}
-                                                        </Typography>
-                                                        <Typography variant="caption" color="text.secondary">|</Typography>
-                                                        <Typography 
-                                                            variant="caption" 
-                                                            sx={{ 
-                                                                color: statusColors[report.status],
-                                                                fontWeight: 500
-                                                            }}
-                                                        >
-                                                        {formatStatus(report.status)}
-                                                        </Typography>
-                                                        <Typography variant="caption" color="text.secondary">|</Typography>
-                                                        <Typography 
-                                                            variant="caption" 
-                                                            sx={{ 
-                                                                color: getSeverityColor(report.severity),
-                                                                fontWeight: 500,
-                                                                textTransform: 'capitalize'
-                                                            }}
-                                                        >
-                                                            {report.severity}
-                                                        </Typography>
-                                                    </Box>
-                                                </Box>
-                                                <Box
-                                                    sx={{
-                                                        display: 'flex',
-                                                        gap: { xs: 0.5, md: 1 },
-                                                        alignItems: 'center',
-                                                        justifyContent: 'flex-end'
-                                                    }}
-                                                >
-                                                    {report.status !== 'resolved' && report.status !== 'dismissed' && (
-                                                        <UpdateButton
-                                                            onClick={() => setModifyingReport(report)}
-                                                            title="Add Update to Report"
-                                                            variant="text"
-                                                            color="primary"
-                                                            sx={{
-                                                                width: { xs: 'auto', md: 'auto' },
-                                                                height: { xs: 24, md: 32 },
-                                                                minWidth: { xs: 'auto', md: 0 },
-                                                                fontSize: { xs: '0.7rem', md: '0.95rem' },
-                                                                p: { xs: '0 6px', md: '0 12px' },
-                                                                justifyContent: 'center',
-                                                                alignItems: 'center',
-                                                                display: 'flex',
-                                                                boxSizing: 'border-box',
-                                                                opacity: { xs: 1, md: 1 },
-                                                                visibility: { xs: 'visible', md: 'visible' }
-                                                            }}
-                                                        >
-                                                            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.5 }}>
-                                                                <UpdateIcon sx={{ fontSize: { xs: '0.8rem', md: '1rem' } }} />
-                                                                <Box sx={{ display: { xs: 'block', md: 'block' } }}>
-                                                            Update
-                                                                </Box>
-                                                            </Box>
-                                                        </UpdateButton>
-                                                    )}
-                                                    {canEditOrDeleteReport(report) && (
-                                                        <>
-                                                    <ReportActionButton
-                                                        onClick={() => handleEditReport(report)}
-                                                        size="small"
-                                                        title="Edit Report"
-                                                        sx={{ 
-                                                            width: { xs: 24, md: 32 }, 
-                                                            height: { xs: 24, md: 32 }, 
-                                                            fontSize: { xs: '0.8rem', md: '1.25rem' },
-                                                            display: 'flex',
-                                                            opacity: { xs: 1, md: 1 },
-                                                            visibility: { xs: 'visible', md: 'visible' }
-                                                        }}
-                                                    >
-                                                        <EditIcon fontSize="inherit" />
-                                                    </ReportActionButton>
-                                                    <ReportActionButton
-                                                        onClick={() => handleDeleteClick(report)}
-                                                        size="small"
-                                                        title="Delete Report"
-                                                            sx={{
-                                                            width: { xs: 24, md: 32 },
-                                                            height: { xs: 24, md: 32 },
-                                                            fontSize: { xs: '0.8rem', md: '1.25rem' },
-                                                            display: 'flex',
-                                                            opacity: { xs: 1, md: 1 },
-                                                            visibility: { xs: 'visible', md: 'visible' },
-                                                            '&:hover': {
-                                                                backgroundColor: (theme: any) => theme.palette.mode === 'dark'
-                                                                    ? alpha(theme.palette.error.main, 0.1)
-                                                                    : alpha(theme.palette.error.main, 0.05),
-                                                                borderColor: (theme: any) => alpha(theme.palette.error.main, 0.1),
-                                                            },
-                                                        }}
-                                                    >
-                                                        <DeleteIcon fontSize="inherit" sx={{ color: 'error.main' }} />
-                                                    </ReportActionButton>
-                                                        </>
-                                                    )}
-                                                        </Box>
-                                            </Box>
 
-                                            <Box sx={{ p: 2, display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-                                                <Avatar 
-                                                    src={report.student?.picture_url} 
-                                                                                    sx={{ 
-                                                        width: 48, 
-                                                        height: 48,
-                                                        bgcolor: (theme: any) => alpha(theme.palette.primary.main, 0.1),
-                                                        color: 'primary.main'
-                                                                                    }}
-                                                                                >
-                                                    {!report.student?.picture_url && report.student?.name?.[0]}
-                                                </Avatar>
-                                                <Box sx={{ flex: 1 }}>
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
-                                                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                                                            {report.student?.name}
-                                                                                    </Typography>
-                                                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                                            • {report.student?.class?.name} {report.student?.section?.name ? report.student.section.name : ''}
-                                                                                    </Typography>
-                                                        {report.reporter?.name && (
-                                                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                                                • by {report.reporter.name}
-                                                                                    </Typography>
-                                                        )}
-                                                    </Box>
-                                                    <Typography variant="body1" sx={{ mb: 1 }}>
-                                                        {report.description}
-                                                                                    </Typography>
-                                                    {report.action_taken && (
-                                                        <Box sx={{ 
-                                                            mt: 2,
-                                                            p: 1.5,
-                                                            borderRadius: 1,
-                                                            bgcolor: (theme: any) => alpha(theme.palette.background.default, 0.5),
-                                                            border: '1px solid',
-                                                            borderColor: 'divider'
-                                                        }}>
-                                                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                                                                Action Taken:
-                                                                        </Typography>
-                                                            <Typography variant="body2">
-                                                                {report.action_taken}
-                                                                        </Typography>
-                                                        </Box>
-                                                    )}
-                                                </Box>
-                                            </Box>
+                    <Grid item xs={6} sm={3}>
+                        <KPICard 
+                            accentcolor="#ed6c02" 
+                            active={filters.status === 'pending'}
+                            onClick={() => setFilters(f => ({ ...f, status: f.status === 'pending' ? '' : 'pending' }))}
+                        >
+                            <Box>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase' }}>
+                                    Pending Review
+                                </Typography>
+                                <Typography variant="h4" sx={{ fontWeight: 800, color: '#ed6c02', mt: 0.2 }}>
+                                    {kpiMetrics.pending}
+                                </Typography>
+                            </Box>
+                            <Avatar sx={{ bgcolor: alpha('#ed6c02', 0.12), color: '#ed6c02' }}>
+                                <Timer />
+                            </Avatar>
+                        </KPICard>
+                    </Grid>
 
-                                            <Box 
-                                                onClick={() => report.updates && report.updates.length > 0 && toggleUpdates(report.id)}
-                                                                                    sx={{ 
-                                                        p: 2,
-                                                                                        display: 'flex',
-                                                                                        alignItems: 'center',
-                                                        gap: 1,
-                                                        cursor: report.updates?.length ? 'pointer' : 'default',
-                                                        borderTop: '1px solid',
-                                                        borderColor: 'divider',
-                                                        bgcolor: (theme: any) => alpha(theme.palette.background.default, 0.5),
-                                                        transition: 'all 0.2s ease',
-                                                        '&:hover': {
-                                                            bgcolor: (theme: any) => report.updates?.length ? alpha(theme.palette.primary.main, 0.05) : 'inherit'
-                                                        },
-                                                        borderBottomLeftRadius: expandedUpdates[report.id] ? 0 : 'inherit',
-                                                        borderBottomRightRadius: expandedUpdates[report.id] ? 0 : 'inherit'
-                                                    }}
-                                            >
-                                                <Box sx={{ 
-                                                                                        display: 'flex',
-                                                                                        alignItems: 'center',
-                                                        gap: 1,
-                                                        flex: 1
-                                                                    }}>
-                                                    {report.updates && report.updates.length > 0 && (
-                                                        <KeyboardArrowDownIcon
-                                                                                            sx={{ 
-                                                                transform: expandedUpdates[report.id] ? 'rotate(180deg)' : 'none',
-                                                                transition: 'transform 0.2s ease',
-                                                                color: 'primary.main'
-                                                                                            }}
-                                                        />
-                                                    )}
-                                                    <Typography 
-                                                        variant="subtitle2" 
-                                                        color="primary.main"
-                                                        sx={{ fontSize: { xs: '0.95rem', md: '1.1rem' } }}
-                                                    >
-                                                        Report Updates
-                                                                                    </Typography>
-                                                    <Chip 
-                                                        size="small"
-                                                        label={report.updates?.length || 0}
-                                                                                        sx={{ 
-                                                            ml: 1,
-                                                            bgcolor: (theme: any) => alpha(theme.palette.primary.main, 0.1),
-                                                            color: 'primary.main'
-                                                        }}
-                                                    />
-                                                </Box>
-                                                {report.updates && report.updates.length > 0 && (
-                                                    <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1 }}>
-                                                        <TimeIcon sx={{ color: 'text.secondary', opacity: 0.7 }} />
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            Last updated: {report.updates[0] && formatAppDate(report.updates[0].created_at)}
-                                                                                        </Typography>
-                                                    </Box>
-                                                )}
-                                                    </Box>
+                    <Grid item xs={6} sm={3}>
+                        <KPICard 
+                            accentcolor="#f44336" 
+                            active={false}
+                        >
+                            <Box>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase' }}>
+                                    Urgent & High
+                                </Typography>
+                                <Typography variant="h4" sx={{ fontWeight: 800, color: '#f44336', mt: 0.2 }}>
+                                    {kpiMetrics.urgentHigh}
+                                </Typography>
+                            </Box>
+                            <Avatar sx={{ bgcolor: alpha('#f44336', 0.12), color: '#f44336' }}>
+                                <AlertIcon />
+                            </Avatar>
+                        </KPICard>
+                    </Grid>
 
-                                                    {report.updates && report.updates.length > 0 && (
-                                                <Collapse in={expandedUpdates[report.id]}>
-                                                    <Box sx={{ 
-                                                        position: 'relative',
-                                                        p: 2,
-                                                        bgcolor: (theme: any) => alpha(theme.palette.background.default, 0.5)
-                                                    }}>
-                                                        {report.updates.map((update, index, updates) => (
-                                                            <Box
-                                                                key={update.id}
-                                                                sx={{
-                                                                    position: 'relative',
-                                                                    pl: 6,
-                                                                    pb: index === updates.length - 1 ? 0 : 3,
-                                                                    '&::before': {
-                                                                        content: '""',
-                                                                        position: 'absolute',
-                                                                        left: 24,
-                                                                        top: 6,
-                                                                        width: 12,
-                                                                        height: 12,
-                                                                        borderRadius: '50%',
-                                                                        bgcolor: 'primary.main',
-                                                                        boxShadow: theme => `0 0 0 4px ${alpha(theme.palette.primary.main, 0.1)}`,
-                                                                        zIndex: 1
-                                                                    },
-                                                                    '&::after': index !== updates.length - 1 ? {
-                                                                        content: '""',
-                                                                        position: 'absolute',
-                                                                        left: 29,
-                                                                        top: 18,
-                                                                        width: 2,
-                                                                        height: 'calc(100% - 6px)',
-                                                                        background: theme => `linear-gradient(180deg, 
-                                                                            ${alpha(theme.palette.primary.main, 0.3)} 0%, 
-                                                                            ${alpha(theme.palette.primary.main, 0.1)} 100%
-                                                                        )`,
-                                                                        borderRadius: '4px'
-                                                                    } : {}
-                                                                }}
-                                                            >
-                                                                <Box sx={{ mb: 1 }}>
-                                                                    <Typography variant="subtitle2">
-                                                                        <Box sx={{ display: { xs: 'none', md: 'inline' } }}>
-                                                                        Status changed from{' '}
-                                                                        </Box>
-                                                                        <Box
-                                                                        component="span" 
-                                                                        sx={{ 
-                                                                            display: 'inline-flex',
-                                                                                            alignItems: 'center', 
-                                                                            px: 1,
-                                                                            py: 0.5,
-                                                                            borderRadius: 1,
-                                                                            bgcolor: (theme: any) => alpha(theme.palette.grey[500], 0.1),
-                                                                                            color: 'text.secondary',
-                                                        fontSize: '0.75rem',
-                                                                            fontWeight: 600
-                                        }}
+                    <Grid item xs={6} sm={3}>
+                        <KPICard 
+                            accentcolor="#2e7d32" 
+                            active={filters.status === 'resolved'}
+                            onClick={() => setFilters(f => ({ ...f, status: f.status === 'resolved' ? '' : 'resolved' }))}
+                        >
+                            <Box>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase' }}>
+                                    Resolution Rate
+                                </Typography>
+                                <Typography variant="h4" sx={{ fontWeight: 800, color: '#2e7d32', mt: 0.2 }}>
+                                    {kpiMetrics.resRate}%
+                                </Typography>
+                            </Box>
+                            <Avatar sx={{ bgcolor: alpha('#2e7d32', 0.12), color: '#2e7d32' }}>
+                                <CheckCircle />
+                            </Avatar>
+                        </KPICard>
+                    </Grid>
+                </Grid>
+
+                {/* Filter Toolbar Inputs */}
+                <Box sx={{ mt: 1 }}>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <TextField
+                            fullWidth
+                            size="small"
+                            placeholder="Search by name, father name, text or category..."
+                            value={filters.searchQuery}
+                            onChange={(e) => setFilters(f => ({ ...f, searchQuery: e.target.value }))}
+                            InputProps={{
+                                startAdornment: <Search sx={{ color: 'text.secondary', mr: 1, fontSize: 20 }} />,
+                                endAdornment: filters.searchQuery ? (
+                                    <IconButton size="small" onClick={() => setFilters(f => ({ ...f, searchQuery: '' }))}>
+                                        <ClearIcon fontSize="small" />
+                                    </IconButton>
+                                ) : null
+                            }}
+                        />
+
+                        {/* Mobile Toggle Filters Button */}
+                        <Button
+                            size="small"
+                            variant={hasActiveFilters ? "contained" : "outlined"}
+                            onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+                            sx={{ display: { xs: 'flex', sm: 'none' }, whiteSpace: 'nowrap', textTransform: 'none', fontWeight: 700, minWidth: 90 }}
+                        >
+                            {hasActiveFilters ? 'Filters *' : 'Filters'}
+                        </Button>
+                    </Box>
+
+                    {/* Filter Dropdowns (Collapsible on Mobile, Always Visible on Desktop) */}
+                    <Collapse in={mobileFiltersOpen} sx={{ display: { xs: 'block', sm: 'none' }, mt: 1 }}>
+                        <Grid container spacing={1.5}>
+                            <Grid item xs={6}>
+                                <FormControl fullWidth size="small">
+                                    <InputLabel>Category</InputLabel>
+                                    <Select
+                                        label="Category"
+                                        value={filters.category_id}
+                                        onChange={(e) => setFilters(f => ({ ...f, category_id: e.target.value }))}
                                     >
-                                                                        {formatStatus(update.previous_status)}
-                                                                    </Box>
-                                                                    <Box sx={{ display: 'inline', mx: 0.5, color: 'text.secondary' }}>
-                                                                        to
-                                                                    </Box>
-                                                                    <Box
-                                                                        component="span"
-                                        sx={{ 
-                                                                            display: 'inline-flex',
-                                                                            alignItems: 'center',
-                                                                            px: 1,
-                                                                            py: 0.5,
-                                                                            borderRadius: 1,
-                                                                            bgcolor: (theme: any) => alpha(theme.palette.primary.main, 0.1),
-                                                                            color: 'primary.main',
-                                                        fontSize: '0.75rem',
-                                                                            fontWeight: 600
-                                                                        }}
-                                                                    >
-                                                                        {formatStatus(update.new_status)}
-                                                                    </Box>
-                                                                </Typography>
-                                                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', mt: 0.5 }}>
-                                                                    <Typography variant="caption" color="text.secondary">
-                                                                        by {update.staff?.name} • {formatAppDate(update.created_at)}
-                                                                    </Typography>
-                                                                    {user?.staff_id && update.updated_by === user.staff_id && (
-                                                                        <IconButton
-                                                                            onClick={() => handleEditUpdate(update, report.id)}
-                                                                            size="small"
-                                                                            sx={{ 
-                                                                                ml: 1,
-                                                                                width: 24,
-                                                                                height: 24,
-                                                                                color: 'primary.main',
-                                                                                '&:hover': {
-                                                                                    backgroundColor: (theme: any) => alpha(theme.palette.primary.main, 0.1)
-                                                                                }
-                                                                            }}
-                                                                            title="Edit update note"
-                                                                        >
-                                                                            <EditIcon fontSize="small" />
-                                                                        </IconButton>
-                                                                    )}
-                                                                </Box>
-                                                            </Box>
-                                                            {update.update_note && (
-                                                                <Typography 
-                                                                    variant="body2" 
-                                        sx={{ 
-                                                                            color: 'text.secondary',
-                                                                                        bgcolor: (theme: any) => alpha(theme.palette.background.paper, 0.5),
-                                                                                        p: 1.5,
-                                                                                        borderRadius: 1,
-                                                                                        border: '1px solid',
-                                                                                        borderColor: 'divider'
-                                                                    }}
-                                                                >
-                                                                    {update.update_note}
-                                                                </Typography>
-                                                            )}
-                                        </Box>
-                                                        ))}
-                                                </Box>
-                                                </Collapse>
-                                            )}
-                                        </ReportCard>
-                                    </Grid>
-                                ))}
-                            </>
+                                        <MenuItem value="">All Active Categories</MenuItem>
+                                        {categoriesWithReports.map(c => (
+                                            <MenuItem key={c.id} value={c.id.toString()}>{c.name}</MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+
+                            <Grid item xs={6}>
+                                <FormControl fullWidth size="small">
+                                    <InputLabel>Status</InputLabel>
+                                    <Select
+                                        label="Status"
+                                        value={filters.status}
+                                        onChange={(e) => setFilters(f => ({ ...f, status: e.target.value }))}
+                                    >
+                                        <MenuItem value="">All Statuses</MenuItem>
+                                        <MenuItem value="pending">Pending</MenuItem>
+                                        <MenuItem value="in_review">In Review</MenuItem>
+                                        <MenuItem value="resolved">Resolved</MenuItem>
+                                        <MenuItem value="dismissed">Dismissed</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+
+                            <Grid item xs={6}>
+                                <FormControl fullWidth size="small">
+                                    <InputLabel>Reported By</InputLabel>
+                                    <Select
+                                        label="Reported By"
+                                        value={filters.reported_by}
+                                        onChange={(e) => setFilters(f => ({ ...f, reported_by: e.target.value }))}
+                                    >
+                                        <MenuItem value="">All Reporters</MenuItem>
+                                        {reportersList.map(r => (
+                                            <MenuItem key={r.id} value={r.id.toString()}>{r.name}</MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+
+                            {(subjectTab === 'student' || subjectTab === 'all') && (
+                                <Grid item xs={6}>
+                                    <FormControl fullWidth size="small">
+                                        <InputLabel>Class</InputLabel>
+                                        <Select
+                                            label="Class"
+                                            value={filters.class_id}
+                                            onChange={(e) => setFilters(f => ({ ...f, class_id: e.target.value }))}
+                                        >
+                                            <MenuItem value="">All Classes</MenuItem>
+                                            {classList.map(cls => (
+                                                <MenuItem key={cls.id} value={cls.id.toString()}>{cls.name}</MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+                            )}
+
+                            {hasActiveFilters && (
+                                <Grid item xs={12}>
+                                    <Button 
+                                        size="small" 
+                                        color="error" 
+                                        startIcon={<ClearIcon />} 
+                                        onClick={resetFilters}
+                                        sx={{ textTransform: 'none', fontWeight: 600 }}
+                                    >
+                                        Reset Filters
+                                    </Button>
+                                </Grid>
+                            )}
+                        </Grid>
+                    </Collapse>
+
+                    {/* Desktop Always Visible Filter Dropdowns */}
+                    <Grid container spacing={1.5} alignItems="center" sx={{ mt: 0.5, display: { xs: 'none', sm: 'flex' } }}>
+                        <Grid item sm={3}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel>Category</InputLabel>
+                                <Select
+                                    label="Category"
+                                    value={filters.category_id}
+                                    onChange={(e) => setFilters(f => ({ ...f, category_id: e.target.value }))}
+                                >
+                                    <MenuItem value="">All Active Categories</MenuItem>
+                                    {categoriesWithReports.map(c => (
+                                        <MenuItem key={c.id} value={c.id.toString()}>{c.name}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+
+                        <Grid item sm={2.5}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel>Status</InputLabel>
+                                <Select
+                                    label="Status"
+                                    value={filters.status}
+                                    onChange={(e) => setFilters(f => ({ ...f, status: e.target.value }))}
+                                >
+                                    <MenuItem value="">All Statuses</MenuItem>
+                                    <MenuItem value="pending">Pending</MenuItem>
+                                    <MenuItem value="in_review">In Review</MenuItem>
+                                    <MenuItem value="resolved">Resolved</MenuItem>
+                                    <MenuItem value="dismissed">Dismissed</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
+
+                        <Grid item sm={3}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel>Reported By</InputLabel>
+                                <Select
+                                    label="Reported By"
+                                    value={filters.reported_by}
+                                    onChange={(e) => setFilters(f => ({ ...f, reported_by: e.target.value }))}
+                                >
+                                    <MenuItem value="">All Reporters</MenuItem>
+                                    {reportersList.map(r => (
+                                        <MenuItem key={r.id} value={r.id.toString()}>{r.name}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+
+                        {(subjectTab === 'student' || subjectTab === 'all') && (
+                            <Grid item sm={2.5}>
+                                <FormControl fullWidth size="small">
+                                    <InputLabel>Class</InputLabel>
+                                    <Select
+                                        label="Class"
+                                        value={filters.class_id}
+                                        onChange={(e) => setFilters(f => ({ ...f, class_id: e.target.value }))}
+                                    >
+                                        <MenuItem value="">All Classes</MenuItem>
+                                        {classList.map(cls => (
+                                            <MenuItem key={cls.id} value={cls.id.toString()}>{cls.name}</MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
                         )}
 
-                        {sortedReports.resolved.length > 0 && (
-                            <>
-                                <Grid item xs={12}>
-                                    <SectionDivider>
-                                        <Divider />
-                                        <Typography>Resolved</Typography>
-                                        <Divider />
-                                    </SectionDivider>
-                                </Grid>
-                                {sortedReports.resolved.map((report) => (
-                                    <Grid item xs={12} key={report.id}>
-                                        <ReportCard>
-                                            <Box
-                                                className="report-header"
-                                                sx={{
-                                                    display: { xs: 'flex', md: 'flex' },
-                                                    flexDirection: { xs: 'row', md: 'row' },
-                                                    alignItems: { xs: 'flex-start', md: 'center' },
-                                                    justifyContent: 'space-between',
-                                                    p: 0,
-                                                    gap: 2,
-                                                    position: 'relative',
-                                                }}
-                                            >
-                                                <Box
-                                                    sx={{
-                                                        flex: 1,
-                                                        display: 'flex',
-                                                        flexDirection: { xs: 'column', md: 'row' },
-                                                        alignItems: { xs: 'flex-start', md: 'center' },
-                                                        gap: { xs: 0.5, md: 1 },
-                                                        minWidth: 0,
-                                                    }}
-                                                >
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                    <Typography 
-                                                        variant="subtitle2" 
-                                                            sx={{
-                                                            color: 'text.secondary',
-                                                            minWidth: 'auto',
-                                                                fontWeight: 600,
-                                                                mr: 1,
-                                                                fontSize: { xs: '1rem', md: '1rem' },
-                                                            }}
-                                                        >
-                                                        #{report.id}
-                                                    </Typography>
-                                                    <CategoryChip
-                                                        label={report.category?.name}
-                                                        size="small"
-                                                        icon={<Assignment fontSize="small" />}
-                                                            sx={{ fontSize: { xs: '0.8rem', md: '0.75rem' } }}
-                                                    />
-                                                        </Box>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            {formatAppDate(report.incident_date || report.created_at)}
-                                                        </Typography>
-                                                        <Typography variant="caption" color="text.secondary">|</Typography>
-                                                        <Typography 
-                                                            variant="caption" 
-                                                            sx={{ 
-                                                                color: statusColors[report.status],
-                                                                fontWeight: 500
-                                                            }}
-                                                        >
-                                                        {formatStatus(report.status)}
-                                                        </Typography>
-                                                        <Typography variant="caption" color="text.secondary">|</Typography>
-                                                        <Typography 
-                                                            variant="caption" 
-                                                            sx={{ 
-                                                                color: getSeverityColor(report.severity),
-                                                                fontWeight: 500,
-                                                                textTransform: 'capitalize'
-                                                            }}
-                                                        >
-                                                            {report.severity}
-                                                        </Typography>
-                                                    </Box>
-                                                </Box>
-                                                <Box
-                                                    sx={{
-                                                        display: 'flex',
-                                                        gap: { xs: 0.5, md: 1 },
-                                                        alignItems: 'center',
-                                                        justifyContent: 'flex-end'
-                                                    }}
-                                                >
-                                                    {report.status !== 'resolved' && report.status !== 'dismissed' && (
-                                                        <UpdateButton
-                                                            onClick={() => setModifyingReport(report)}
-                                                            title="Add Update to Report"
-                                                            variant="text"
-                                                            color="primary"
-                                                            sx={{
-                                                                width: { xs: 'auto', md: 'auto' },
-                                                                height: { xs: 24, md: 32 },
-                                                                minWidth: { xs: 'auto', md: 0 },
-                                                                fontSize: { xs: '0.7rem', md: '0.95rem' },
-                                                                p: { xs: '0 6px', md: '0 12px' },
-                                                                justifyContent: 'center',
-                                                                alignItems: 'center',
-                                                                display: 'flex',
-                                                                boxSizing: 'border-box',
-                                                                opacity: { xs: 1, md: 1 },
-                                                                visibility: { xs: 'visible', md: 'visible' }
-                                                            }}
-                                                        >
-                                                            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.5 }}>
-                                                                <UpdateIcon sx={{ fontSize: { xs: '0.8rem', md: '1rem' } }} />
-                                                                <Box sx={{ display: { xs: 'block', md: 'block' } }}>
-                                                            Update
-                                                                </Box>
-                                                            </Box>
-                                                        </UpdateButton>
-                                                    )}
-                                                    {canEditOrDeleteReport(report) && (
-                                                        <>
-                                                    <ReportActionButton
-                                                        onClick={() => handleEditReport(report)}
-                                                        size="small"
-                                                        title="Edit Report"
-                                                        sx={{ 
-                                                            width: { xs: 24, md: 32 }, 
-                                                            height: { xs: 24, md: 32 }, 
-                                                            fontSize: { xs: '0.8rem', md: '1.25rem' },
-                                                            display: 'flex',
-                                                            opacity: { xs: 1, md: 1 },
-                                                            visibility: { xs: 'visible', md: 'visible' }
-                                                        }}
-                                                    >
-                                                        <EditIcon fontSize="inherit" />
-                                                    </ReportActionButton>
-                                                    <ReportActionButton
-                                                        onClick={() => handleDeleteClick(report)}
-                                                        size="small"
-                                                        title="Delete Report"
-                                                            sx={{
-                                                            width: { xs: 24, md: 32 },
-                                                            height: { xs: 24, md: 32 },
-                                                            fontSize: { xs: '0.8rem', md: '1.25rem' },
-                                                            display: 'flex',
-                                                            opacity: { xs: 1, md: 1 },
-                                                            visibility: { xs: 'visible', md: 'visible' },
-                                                            '&:hover': {
-                                                                backgroundColor: (theme: any) => theme.palette.mode === 'dark'
-                                                                    ? alpha(theme.palette.error.main, 0.1)
-                                                                    : alpha(theme.palette.error.main, 0.05),
-                                                                borderColor: (theme: any) => alpha(theme.palette.error.main, 0.1),
-                                                            },
-                                                        }}
-                                                    >
-                                                        <DeleteIcon fontSize="inherit" sx={{ color: 'error.main' }} />
-                                                    </ReportActionButton>
-                                                        </>
-                                                    )}
-                                                        </Box>
-                                            </Box>
-
-                                            <Box sx={{ p: 2, display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-                                                <Avatar 
-                                                    src={report.student?.picture_url} 
-                                                                                    sx={{ 
-                                                        width: 48, 
-                                                        height: 48,
-                                                        bgcolor: (theme: any) => alpha(theme.palette.primary.main, 0.1),
-                                                        color: 'primary.main'
-                                                                                    }}
-                                                                                >
-                                                    {!report.student?.picture_url && report.student?.name?.[0]}
-                                                </Avatar>
-                                                <Box sx={{ flex: 1 }}>
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
-                                                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                                                            {report.student?.name}
-                                                                                    </Typography>
-                                                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                                            • {report.student?.class?.name} {report.student?.section?.name ? report.student.section.name : ''}
-                                                                                    </Typography>
-                                                        {report.reporter?.name && (
-                                                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                                                • by {report.reporter.name}
-                                                                                    </Typography>
-                                                        )}
-                                                    </Box>
-                                                    <Typography variant="body1" sx={{ mb: 1 }}>
-                                                        {report.description}
-                                                                                    </Typography>
-                                                    {report.action_taken && (
-                                                        <Box sx={{ 
-                                                            mt: 2,
-                                                            p: 1.5,
-                                                            borderRadius: 1,
-                                                            bgcolor: (theme: any) => alpha(theme.palette.background.default, 0.5),
-                                                            border: '1px solid',
-                                                            borderColor: 'divider'
-                                                        }}>
-                                                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                                                                Action Taken:
-                                                                        </Typography>
-                                                            <Typography variant="body2">
-                                                                {report.action_taken}
-                                                                        </Typography>
-                                                        </Box>
-                                                    )}
-                                                </Box>
-                                            </Box>
-
-                                            <Box 
-                                                onClick={() => report.updates && report.updates.length > 0 && toggleUpdates(report.id)}
-                                                                                    sx={{ 
-                                                        p: 2,
-                                                                                        display: 'flex',
-                                                                                        alignItems: 'center',
-                                                        gap: 1,
-                                                        cursor: report.updates?.length ? 'pointer' : 'default',
-                                                        borderTop: '1px solid',
-                                                        borderColor: 'divider',
-                                                        bgcolor: (theme: any) => alpha(theme.palette.background.default, 0.5),
-                                                        transition: 'all 0.2s ease',
-                                                        '&:hover': {
-                                                            bgcolor: (theme: any) => report.updates?.length ? alpha(theme.palette.primary.main, 0.05) : 'inherit'
-                                                        },
-                                                        borderBottomLeftRadius: expandedUpdates[report.id] ? 0 : 'inherit',
-                                                        borderBottomRightRadius: expandedUpdates[report.id] ? 0 : 'inherit'
-                                                    }}
-                                            >
-                                                <Box sx={{ 
-                                                                                        display: 'flex',
-                                                                                        alignItems: 'center',
-                                                        gap: 1,
-                                                        flex: 1
-                                                                    }}>
-                                                    {report.updates && report.updates.length > 0 && (
-                                                        <KeyboardArrowDownIcon
-                                                                                            sx={{ 
-                                                                transform: expandedUpdates[report.id] ? 'rotate(180deg)' : 'none',
-                                                                transition: 'transform 0.2s ease',
-                                                                color: 'primary.main'
-                                                                                            }}
-                                                        />
-                                                    )}
-                                                    <Typography 
-                                                        variant="subtitle2" 
-                                                        color="primary.main"
-                                                        sx={{ fontSize: { xs: '0.95rem', md: '1.1rem' } }}
-                                                    >
-                                                        Report Updates
-                                                                                    </Typography>
-                                                    <Chip 
-                                                        size="small"
-                                                        label={report.updates?.length || 0}
-                                                                                        sx={{ 
-                                                            ml: 1,
-                                                            bgcolor: (theme: any) => alpha(theme.palette.primary.main, 0.1),
-                                                            color: 'primary.main'
-                                                        }}
-                                                    />
-                                                </Box>
-                                                {report.updates && report.updates.length > 0 && (
-                                                    <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1 }}>
-                                                        <TimeIcon sx={{ color: 'text.secondary', opacity: 0.7 }} />
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            Last updated: {report.updates[0] && formatAppDate(report.updates[0].created_at)}
-                                                                                        </Typography>
-                                                    </Box>
-                                                )}
-                                                    </Box>
-
-                                                    {report.updates && report.updates.length > 0 && (
-                                                <Collapse in={expandedUpdates[report.id]}>
-                                                    <Box sx={{ 
-                                                        position: 'relative',
-                                                        p: 2,
-                                                        bgcolor: (theme: any) => alpha(theme.palette.background.default, 0.5)
-                                                    }}>
-                                                        {report.updates.map((update, index, updates) => (
-                                                            <Box
-                                                                key={update.id}
-                                                                sx={{
-                                                                    position: 'relative',
-                                                                    pl: 6,
-                                                                    pb: index === updates.length - 1 ? 0 : 3,
-                                                                    '&::before': {
-                                                                        content: '""',
-                                                                        position: 'absolute',
-                                                                        left: 24,
-                                                                        top: 6,
-                                                                        width: 12,
-                                                                        height: 12,
-                                                                        borderRadius: '50%',
-                                                                        bgcolor: 'primary.main',
-                                                                        boxShadow: theme => `0 0 0 4px ${alpha(theme.palette.primary.main, 0.1)}`,
-                                                                        zIndex: 1
-                                                                    },
-                                                                    '&::after': index !== updates.length - 1 ? {
-                                                                        content: '""',
-                                                                        position: 'absolute',
-                                                                        left: 29,
-                                                                        top: 18,
-                                                                        width: 2,
-                                                                        height: 'calc(100% - 6px)',
-                                                                        background: theme => `linear-gradient(180deg, 
-                                                                            ${alpha(theme.palette.primary.main, 0.3)} 0%, 
-                                                                            ${alpha(theme.palette.primary.main, 0.1)} 100%
-                                                                        )`,
-                                                                        borderRadius: '4px'
-                                                                    } : {}
-                                                                }}
-                                                            >
-                                                                <Box sx={{ mb: 1 }}>
-                                                                    <Typography variant="subtitle2">
-                                                                        <Box sx={{ display: { xs: 'none', md: 'inline' } }}>
-                                                                        Status changed from{' '}
-                                                                        </Box>
-                                                                        <Box
-                                                                        component="span" 
-                                                                        sx={{ 
-                                                                            display: 'inline-flex',
-                                                                                            alignItems: 'center', 
-                                                                            px: 1,
-                                                                            py: 0.5,
-                                                                            borderRadius: 1,
-                                                                            bgcolor: (theme: any) => alpha(theme.palette.grey[500], 0.1),
-                                                                                            color: 'text.secondary',
-                                                        fontSize: '0.75rem',
-                                                                            fontWeight: 600
-                                        }}
-                                    >
-                                                                        {formatStatus(update.previous_status)}
-                                                                    </Box>
-                                                                    <Box sx={{ display: 'inline', mx: 0.5, color: 'text.secondary' }}>
-                                                                        to
-                                                                    </Box>
-                                                                    <Box
-                                                                        component="span"
-                                        sx={{ 
-                                                                            display: 'inline-flex',
-                                                                            alignItems: 'center',
-                                                                            px: 1,
-                                                                            py: 0.5,
-                                                                            borderRadius: 1,
-                                                                            bgcolor: (theme: any) => alpha(theme.palette.primary.main, 0.1),
-                                                                            color: 'primary.main',
-                                                        fontSize: '0.75rem',
-                                                                            fontWeight: 600
-                                                                        }}
-                                                                    >
-                                                                        {formatStatus(update.new_status)}
-                                                                    </Box>
-                                                                </Typography>
-                                                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', mt: 0.5 }}>
-                                                                    <Typography variant="caption" color="text.secondary">
-                                                                        by {update.staff?.name} • {formatAppDate(update.created_at)}
-                                                                    </Typography>
-                                                                    {user?.staff_id && update.updated_by === user.staff_id && (
-                                                                        <IconButton
-                                                                            onClick={() => handleEditUpdate(update, report.id)}
-                                                                            size="small"
-                                                                            sx={{ 
-                                                                                ml: 1,
-                                                                                width: 24,
-                                                                                height: 24,
-                                                                                color: 'primary.main',
-                                                                                '&:hover': {
-                                                                                    backgroundColor: (theme: any) => alpha(theme.palette.primary.main, 0.1)
-                                                                                }
-                                                                            }}
-                                                                            title="Edit update note"
-                                                                        >
-                                                                            <EditIcon fontSize="small" />
-                                                                        </IconButton>
-                                                                    )}
-                                                                </Box>
-                                                            </Box>
-                                                            {update.update_note && (
-                                                                <Typography 
-                                                                    variant="body2" 
-                                        sx={{ 
-                                                                            color: 'text.secondary',
-                                                                                        bgcolor: (theme: any) => alpha(theme.palette.background.paper, 0.5),
-                                                                                        p: 1.5,
-                                                                                        borderRadius: 1,
-                                                                                        border: '1px solid',
-                                                                                        borderColor: 'divider'
-                                                                    }}
-                                                                >
-                                                                    {update.update_note}
-                                                                </Typography>
-                                                            )}
-                                        </Box>
-                                                        ))}
-                                                </Box>
-                                                </Collapse>
-                                            )}
-                                        </ReportCard>
-                                    </Grid>
-                                ))}
-                            </>
+                        {hasActiveFilters && (
+                            <Grid item sm="auto">
+                                <Button 
+                                    size="small" 
+                                    color="error" 
+                                    startIcon={<ClearIcon />} 
+                                    onClick={resetFilters}
+                                    sx={{ textTransform: 'none', fontWeight: 600 }}
+                                >
+                                    Reset Filters
+                                </Button>
+                            </Grid>
                         )}
-                    </>
-                )}
-            </Grid>
+                    </Grid>
+                </Box>
+            </Header>
 
-            {/* Delete Confirmation Modal */}
-            <StyledDialog
-                open={deleteDialogOpen}
-                onClose={handleDeleteCancel}
-                maxWidth="sm"
-            >
-                <DialogHeader>
-                    <WarningAvatar>
-                        <WarningIcon />
-                    </WarningAvatar>
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                        Confirm Delete
-                    </Typography>
-                </DialogHeader>
-
-                <DialogContent sx={{ pt: 3, pb: 3 }}>
-                    <Typography variant="body1" sx={{ mb: 2 }}>
-                        Are you sure you want to delete this report? This action cannot be undone.
-                    </Typography>
-                    {reportToDelete && (
-                        <Box sx={{ 
-                            mt: 2, 
-                            p: 2, 
-                            bgcolor: (theme) => theme.palette.mode === 'dark' 
-                                ? 'rgba(255, 255, 255, 0.03)' 
-                                : 'rgba(0, 0, 0, 0.03)',
-                            borderRadius: 1
-                        }}>
-                            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                                Report Details:
-                            </Typography>
-                            <Typography variant="body2">
-                                <strong>Category:</strong> {reportToDelete.category?.name}
-                            </Typography>
-                            <Typography variant="body2">
-                                <strong>Subject:</strong> {reportToDelete.student?.name}
-                            </Typography>
-                            <Typography variant="body2" sx={{ 
-                                mt: 1,
-                                color: 'text.secondary',
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                                overflow: 'hidden'
+            {/* Main Content Area */}
+            <MainContent>
+                <Grid container spacing={2.5}>
+                    {sortedReports.unresolved.length === 0 && sortedReports.resolved.length === 0 ? (
+                        <Grid item xs={12}>
+                            <Paper sx={{ 
+                                p: 6, 
+                                textAlign: 'center', 
+                                borderRadius: 4, 
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                bgcolor: (theme) => theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.4) : '#ffffff'
                             }}>
-                                {reportToDelete.description}
-                            </Typography>
-                        </Box>
+                                <Avatar sx={{ width: 72, height: 72, bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1), color: 'primary.main', mb: 2 }}>
+                                    <Assignment sx={{ fontSize: 36 }} />
+                                </Avatar>
+                                <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                                    No Complaints Found
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400, mb: 3 }}>
+                                    {hasActiveFilters 
+                                        ? 'No complaint records match your active search or filter criteria. Try resetting your filters.' 
+                                        : 'No complaint reports logged yet. Get started by creating a new complaint report.'}
+                                </Typography>
+                                {hasActiveFilters ? (
+                                    <Button variant="outlined" onClick={resetFilters} startIcon={<ClearIcon />}>
+                                        Clear Active Filters
+                                    </Button>
+                                ) : (
+                                    <Button 
+                                        variant="contained" 
+                                        onClick={() => subjectTab === 'staff' ? setCreateEmployeeDialogOpen(true) : setCreateStudentDialogOpen(true)} 
+                                        startIcon={<AddIcon />}
+                                    >
+                                        Log New Complaint
+                                    </Button>
+                                )}
+                            </Paper>
+                        </Grid>
+                    ) : (
+                        <>
+                            {/* Unresolved Complaints Section */}
+                            {sortedReports.unresolved.length > 0 && (
+                                <>
+                                    <Grid item xs={12}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, my: 1 }}>
+                                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'warning.main', letterSpacing: '0.5px' }}>
+                                                UNRESOLVED COMPLAINTS ({sortedReports.unresolved.length})
+                                            </Typography>
+                                            <Divider sx={{ flex: 1 }} />
+                                        </Box>
+                                    </Grid>
+                                    {sortedReports.unresolved.map(renderReportCard)}
+                                </>
+                            )}
+
+                            {/* Resolved Complaints Section */}
+                            {sortedReports.resolved.length > 0 && (
+                                <>
+                                    <Grid item xs={12}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 3, mb: 1 }}>
+                                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'success.main', letterSpacing: '0.5px' }}>
+                                                RESOLVED / DISMISSED ({sortedReports.resolved.length})
+                                            </Typography>
+                                            <Divider sx={{ flex: 1 }} />
+                                        </Box>
+                                    </Grid>
+                                    {sortedReports.resolved.map(renderReportCard)}
+                                </>
+                            )}
+                        </>
                     )}
-                </DialogContent>
+                </Grid>
 
-                <DialogActions sx={{ 
-                    p: 2, 
-                    gap: 1,
-                    borderTop: '1px solid',
-                    borderColor: 'divider'
-                }}>
-                    <Button 
-                        onClick={handleDeleteCancel}
-                        variant="outlined"
-                        size="small"
-                        sx={{ 
-                            borderRadius: '8px',
-                            textTransform: 'none'
-                        }}
-                    >
-                        Cancel
-                    </Button>
-                    <Button 
-                        onClick={handleDeleteConfirm}
-                        variant="contained"
-                        color="error"
-                        size="small"
-                        disabled={deleteLoading}
-                        sx={{ 
-                            borderRadius: '8px',
-                            textTransform: 'none'
-                        }}
-                    >
-                        {deleteLoading ? 'Deleting...' : 'Delete Report'}
-                    </Button>
-                </DialogActions>
-            </StyledDialog>
+                {/* Dialogs */}
+                {/* Delete Dialog */}
+                <StyledDialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="sm">
+                    <DialogHeader>
+                        <WarningAvatar><WarningIcon /></WarningAvatar>
+                        <Typography variant="h6" sx={{ fontWeight: 700 }}>Confirm Delete</Typography>
+                    </DialogHeader>
+                    <DialogContent sx={{ pt: 2, pb: 2 }}>
+                        <Typography variant="body1">
+                            Are you sure you want to delete Report #{reportToDelete?.id}? This action cannot be undone.
+                        </Typography>
+                    </DialogContent>
+                    <DialogActions sx={{ p: 2, gap: 1 }}>
+                        <Button onClick={() => setDeleteDialogOpen(false)} variant="outlined">Cancel</Button>
+                        <Button onClick={handleDeleteConfirm} variant="contained" color="error" disabled={deleteLoading}>
+                            {deleteLoading ? 'Deleting...' : 'Delete Report'}
+                        </Button>
+                    </DialogActions>
+                </StyledDialog>
 
-            <CreateStudentReportForm
-                onSubmit={handleCreateReport}
-                onCancel={() => setCreateDialogOpen(false)}
-                open={createDialogOpen}
-            />
-
-            {editingReport?.id && (
-                <EditReportForm
-                    open={true}
-                    onClose={() => setEditingReport(undefined)}
-                    onSubmit={handleEditSubmit}
-                    report={{
-                        ...editingReport,
-                        id: parseInt(editingReport.id),
-                        category_id: parseInt(editingReport.category_id),
-                        category: {
-                            ...editingReport.category,
-                            type: editingReport.subject_type
-                        }
-                    } as unknown as ImportedReport}
+                {/* Create Student Report Form Modal */}
+                <CreateStudentReportForm
+                    open={createStudentDialogOpen}
+                    onCancel={() => setCreateStudentDialogOpen(false)}
+                    onSubmit={handleCreateReport}
                 />
-            )}
 
-            {modifyingReport?.id && (
-                <ModifyReportModal
-                    open={true}
-                    onClose={() => setModifyingReport(undefined)}
-                    report={{
-                        ...modifyingReport,
-                        id: parseInt(modifyingReport.id),
-                        category_id: parseInt(modifyingReport.category_id),
-                        category: {
-                            ...modifyingReport.category,
-                            type: modifyingReport.subject_type
-                        }
-                    } as unknown as ImportedReport}
-                    onSubmit={handleModifyReport}
+                {/* Create Employee Report Form Modal */}
+                <CreateEmployeeReportForm
+                    open={createEmployeeDialogOpen}
+                    onCancel={() => setCreateEmployeeDialogOpen(false)}
+                    onSubmit={handleCreateReport}
                 />
-            )}
 
-            {editingUpdate && (
-                <EditUpdateForm
-                    open={true}
-                    onClose={() => setEditingUpdate(undefined)}
-                    onSubmit={handleEditUpdateSubmit}
-                    update={editingUpdate.update}
+                {/* Edit Report Details Form Modal */}
+                {editingReport?.id && (
+                    <EditReportForm
+                        open={true}
+                        onClose={() => setEditingReport(undefined)}
+                        onSubmit={handleEditSubmit}
+                        categories={categories}
+                        report={{
+                            ...editingReport,
+                            id: parseInt(editingReport.id),
+                            category_id: parseInt(editingReport.category_id),
+                            category: {
+                                ...editingReport.category,
+                                type: editingReport.subject_type
+                            }
+                        } as unknown as ImportedReport}
+                    />
+                )}
+
+                {/* Modify Report Status Modal */}
+                {modifyingReport?.id && (
+                    <ModifyReportModal
+                        open={true}
+                        onClose={() => setModifyingReport(undefined)}
+                        report={{
+                            ...modifyingReport,
+                            id: parseInt(modifyingReport.id),
+                            category_id: parseInt(modifyingReport.category_id),
+                            category: {
+                                ...modifyingReport.category,
+                                type: modifyingReport.subject_type
+                            }
+                        } as unknown as ImportedReport}
+                        onSubmit={handleModifyReport}
+                    />
+                )}
+
+                {/* Manage Categories Modal */}
+                <ManageCategoriesModal
+                    open={manageCategoriesOpen}
+                    onClose={() => setManageCategoriesOpen(false)}
+                    categories={categories}
+                    onRefreshCategories={async () => {
+                        await loadCategories();
+                        await loadReports();
+                    }}
                 />
-            )}
             </MainContent>
         </PageContainer>
     );

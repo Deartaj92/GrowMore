@@ -127,6 +127,13 @@ export const studentSecondaryMenuItems: MenuItem[] = [
     color: '#14b8a6'
   },
   {
+    title: 'Student Certificates',
+    description: 'Generate SLC, Character, and Bonafide Certificates',
+    icon: React.createElement(DescriptionIcon),
+    path: '/students/certificates',
+    color: '#ec4899'
+  },
+  {
     title: 'Student Reports',
     description: 'Generate comprehensive student reports',
     icon: React.createElement(BarChartIcon),
@@ -789,6 +796,13 @@ export const settingsColumn1Items: MenuItem[] = [
     icon: React.createElement(CalendarMonthIcon),
     path: '/settings/sessions',
     color: '#f59e0b'
+  },
+  {
+    title: 'Student LMS Control',
+    description: 'Configure student LMS tabs, feature toggles and maintenance mode',
+    icon: React.createElement(SettingsIcon),
+    path: '/settings/lms-control',
+    color: '#3b82f6'
   }
 ];
 
