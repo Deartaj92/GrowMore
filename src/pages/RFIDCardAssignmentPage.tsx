@@ -536,14 +536,13 @@ const RFIDCardAssignmentPage: React.FC = () => {
     const [enrollCameras, setEnrollCameras] = useState<MediaDeviceInfo[]>([]);
     const [stableFrameCount, setStableFrameCount] = useState(0);
     const enrollVideoRef = useRef<HTMLVideoElement | null>(null);
+    const enrollCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const enrollStreamRef = useRef<MediaStream | null>(null);
     const enrollLoopRef = useRef<any>(null);
     const stableFrameCountRef = useRef(0);
     const accumulatedDescriptorsRef = useRef<Float32Array[]>([]);
-    const allEnrolledCacheRef = useRef<{ id: number; name: string; table: 'students' | 'staff'; descriptor: Float32Array }[]>([]);
+    const allEnrolledCacheRef = useRef<{ id: number; name: string; type: 'student' | 'employee'; descriptor: Float32Array }[]>([]);
     const [dupMatchName, setDupMatchName] = useState<string | null>(null);
-    const enrollSocketRef = useRef<WebSocket | null>(null);
-    const [nativeEnrollFrame, setNativeEnrollFrame] = useState<string | null>(null);
 
     const [isNfcSupported, setIsNfcSupported] = useState(false);
     const [isNfcScanning, setIsNfcScanning] = useState(false);
@@ -590,25 +589,27 @@ const RFIDCardAssignmentPage: React.FC = () => {
 
     const stopEnrollCamera = useCallback(() => {
         setIsEnrollCameraActive(false);
-        setNativeEnrollFrame(null);
         setDetectedEnrollDescriptor(null);
         setEnrollFaceBox(null);
         setDupMatchName(null);
         setStableFrameCount(0);
         stableFrameCountRef.current = 0;
         accumulatedDescriptorsRef.current = [];
-        if (enrollSocketRef.current) {
-            try {
-                enrollSocketRef.current.send(JSON.stringify({ action: 'stop_camera' }));
-            } catch (e) {}
-            try {
-                enrollSocketRef.current.close();
-            } catch (e) {}
-            enrollSocketRef.current = null;
-        }
         if (enrollLoopRef.current) {
             clearTimeout(enrollLoopRef.current);
+            cancelAnimationFrame(enrollLoopRef.current);
             enrollLoopRef.current = null;
+        }
+        if (enrollStreamRef.current) {
+            enrollStreamRef.current.getTracks().forEach(t => t.stop());
+            enrollStreamRef.current = null;
+        }
+        if (enrollVideoRef.current) {
+            enrollVideoRef.current.srcObject = null;
+        }
+        if (enrollCanvasRef.current) {
+            const ctx = enrollCanvasRef.current.getContext('2d');
+            if (ctx) ctx.clearRect(0, 0, enrollCanvasRef.current.width, enrollCanvasRef.current.height);
         }
     }, []);
 
@@ -616,188 +617,182 @@ const RFIDCardAssignmentPage: React.FC = () => {
         setEnrollCameraError('');
         setEnrollModelsLoading(true);
         setDupMatchName(null);
-        setNativeEnrollFrame(null);
 
-        // Stop any running camera first
-        if (enrollSocketRef.current) {
-            try { enrollSocketRef.current.close(); } catch (e) {}
-            enrollSocketRef.current = null;
-        }
+        stopEnrollCamera();
 
-        // Enumerate video devices so we have camera labels and indices
         try {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = devices.filter(d => d.kind === 'videoinput');
-            setEnrollCameras(videoDevices);
-        } catch (e) {
-            console.warn('Could not enumerate cameras in browser:', e);
-        }
-
-        const ws = new WebSocket('ws://localhost:8000');
-        enrollSocketRef.current = ws;
-
-        ws.onopen = async () => {
-            console.log('Connected to native face server for enrollment.');
+            await loadFaceRecognitionModels();
             setEnrollModelsLoading(false);
-            setIsEnrollCameraActive(true);
 
-            // Pre-load all enrolled embeddings into cache for live duplicate check (completely offline)
             if (user?.school_id) {
                 const localMappings = await rfidOfflineService.getAllMappings();
-                allEnrolledCacheRef.current = localMappings
-                    .filter(m => m.face_embedding)
-                    .map(m => {
-                        const d = parseFaceEmbedding(m.face_embedding);
-                        return d ? {
-                            id: m.person_id as number,
+                const uniqueMap = new Map<string, { id: number; name: string; type: 'student' | 'employee'; descriptor: Float32Array }>();
+                for (const m of localMappings) {
+                    if (!m.face_embedding) continue;
+                    const d = parseFaceEmbedding(m.face_embedding);
+                    if (!d) continue;
+                    const pType = m.type === 'student' ? 'student' : 'employee';
+                    const key = `${pType}_${m.person_id}`;
+                    if (!uniqueMap.has(key)) {
+                        uniqueMap.set(key, {
+                            id: Number(m.person_id),
                             name: m.name,
-                            table: (m.type === 'student' ? 'students' : 'staff') as 'students' | 'staff',
+                            type: pType,
                             descriptor: d
-                        } : null;
-                    })
-                    .filter((item): item is NonNullable<typeof item> => item !== null);
+                        });
+                    }
+                }
+                allEnrolledCacheRef.current = Array.from(uniqueMap.values());
             }
 
-            // Sync face mapping embeddings to python server
-            const formattedMappings = allEnrolledCacheRef.current.map(item => ({
-                person_id: item.id,
-                name: item.name,
-                type: item.table === 'students' ? 'student' : 'employee',
-                face_embedding: Array.from(item.descriptor)
-            }));
-
-            ws.send(JSON.stringify({
-                action: 'update_mappings',
-                mappings: formattedMappings,
-                threshold: 0.50
-            }));
-
-            // Determine index of chosen camera input
-            let camIdx = 0;
-            const targetId = deviceId || selectedEnrollCameraId;
-            if (targetId) {
-                const idx = enrollCameras.findIndex(c => c.deviceId === targetId);
-                if (idx >= 0) camIdx = idx;
-            }
-            ws.send(JSON.stringify({
-                action: 'start_camera',
-                camera_index: camIdx
-            }));
-        };
-
-        ws.onmessage = (event) => {
             try {
-                const data = JSON.parse(event.data);
-                if (data.event === 'frame') {
-                    setNativeEnrollFrame(data.image);
-                } else if (data.event === 'faces_detected' && data.faces && data.faces.length > 0) {
-                    // Extract the first detected face
-                    const face = data.faces[0];
-                    const descriptor = new Float32Array(face.descriptor);
-                    setEnrollFaceBox(face.box);
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(d => d.kind === 'videoinput');
+                setEnrollCameras(videoDevices);
+            } catch (e) {
+                console.warn('Could not enumerate cameras in browser:', e);
+            }
 
-                    if (stableFrameCountRef.current >= ENROLL_REQUIRED_FRAMES) {
-                        // Already locked! Skip further stability checks to prevent flickering resets
-                        if (enrollLoopRef.current) clearTimeout(enrollLoopRef.current);
-                        enrollLoopRef.current = setTimeout(() => {
-                            setEnrollFaceBox(null);
-                            stableFrameCountRef.current = 0;
-                            accumulatedDescriptorsRef.current = [];
-                            setStableFrameCount(0);
-                            setDetectedEnrollDescriptor(null);
-                        }, 1200);
-                        return;
-                    }
+            const constraints: MediaStreamConstraints = {
+                video: deviceId
+                    ? { deviceId: { exact: deviceId } }
+                    : { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+            };
 
-                    // Multi-frame stability check using normalized vectors on-the-fly
-                    const prev = accumulatedDescriptorsRef.current;
-                    const STABILITY_THRESHOLD = 0.15; // Strict and robust for normalized vectors
-                    let isStable = true;
-                    if (prev.length > 0) {
-                        const lastDesc = prev[prev.length - 1];
-                        const dist = calculateEuclideanDistance(
-                            normalizeDescriptor(descriptor),
-                            normalizeDescriptor(lastDesc)
-                        );
-                        console.log('[SFace Enrollment] Normalized consecutive L2 distance:', dist);
-                        if (dist > STABILITY_THRESHOLD) {
-                            isStable = false;
-                            stableFrameCountRef.current = 0;
-                            accumulatedDescriptorsRef.current = [];
-                            setStableFrameCount(0);
-                            setDetectedEnrollDescriptor(null);
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            enrollStreamRef.current = stream;
+
+            if (enrollVideoRef.current) {
+                enrollVideoRef.current.srcObject = stream;
+                await enrollVideoRef.current.play().catch(() => {});
+            }
+
+            setIsEnrollCameraActive(true);
+
+            let isProcessingFrame = false;
+            const runEnrollDetection = async () => {
+                if (!enrollVideoRef.current || !enrollStreamRef.current || !enrollStreamRef.current.active) return;
+                const video = enrollVideoRef.current;
+                if (video.readyState < 2 || video.paused || video.ended) {
+                    enrollLoopRef.current = setTimeout(runEnrollDetection, 150);
+                    return;
+                }
+
+                if (isProcessingFrame) {
+                    enrollLoopRef.current = setTimeout(runEnrollDetection, 100);
+                    return;
+                }
+
+                isProcessingFrame = true;
+                try {
+                    const detection = await faceapi.detectSingleFace(
+                        video,
+                        new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 })
+                    )
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
+
+                    if (detection) {
+                        const descriptor = detection.descriptor;
+                        const canvas = enrollCanvasRef.current;
+
+                        if (canvas && video.videoWidth && video.videoHeight) {
+                            if (canvas.width !== video.clientWidth || canvas.height !== video.clientHeight) {
+                                canvas.width = video.clientWidth;
+                                canvas.height = video.clientHeight;
+                            }
+                            const ctx = canvas.getContext('2d');
+                            if (ctx) {
+                                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                const scaleX = canvas.width / video.videoWidth;
+                                const scaleY = canvas.height / video.videoHeight;
+                                const box = detection.detection.box;
+                                const mirroredX = canvas.width - (box.x + box.width) * scaleX;
+                                ctx.strokeStyle = dupMatchName ? '#ef4444' : '#22c55e';
+                                ctx.lineWidth = 3;
+                                ctx.strokeRect(mirroredX, box.y * scaleY, box.width * scaleX, box.height * scaleY);
+                            }
                         }
-                    }
 
-                    if (isStable) {
-                        accumulatedDescriptorsRef.current = [...prev, descriptor];
-                        stableFrameCountRef.current += 1;
-                        setStableFrameCount(stableFrameCountRef.current);
+                        if (stableFrameCountRef.current < ENROLL_REQUIRED_FRAMES) {
+                            const prev = accumulatedDescriptorsRef.current;
+                            const STABILITY_THRESHOLD = 0.25;
+                            let isStable = true;
+                            if (prev.length > 0) {
+                                const lastDesc = prev[prev.length - 1];
+                                const dist = calculateEuclideanDistance(
+                                    normalizeDescriptor(descriptor),
+                                    normalizeDescriptor(lastDesc)
+                                );
+                                if (dist > STABILITY_THRESHOLD) {
+                                    isStable = false;
+                                    stableFrameCountRef.current = 0;
+                                    accumulatedDescriptorsRef.current = [];
+                                    setStableFrameCount(0);
+                                    setDetectedEnrollDescriptor(null);
+                                }
+                            }
+
+                            if (isStable) {
+                                accumulatedDescriptorsRef.current = [...prev, descriptor];
+                                stableFrameCountRef.current += 1;
+                                setStableFrameCount(stableFrameCountRef.current);
+
+                                if (stableFrameCountRef.current >= ENROLL_REQUIRED_FRAMES) {
+                                    const all = accumulatedDescriptorsRef.current;
+                                    const averaged = new Float32Array(descriptor.length);
+                                    for (let i = 0; i < descriptor.length; i++) {
+                                        averaged[i] = all.reduce((sum, d) => sum + d[i], 0) / all.length;
+                                    }
+                                    setDetectedEnrollDescriptor(averaged);
+                                }
+                            }
+                        }
 
                         if (stableFrameCountRef.current >= ENROLL_REQUIRED_FRAMES) {
-                            const all = accumulatedDescriptorsRef.current;
-                            const averaged = new Float32Array(descriptor.length);
-                            for (let i = 0; i < descriptor.length; i++) {
-                                averaged[i] = all.reduce((sum, d) => sum + d[i], 0) / all.length;
+                            let foundDupe: string | null = null;
+                            const targetPersonId = Number(personId ?? selectedEnrollPerson?.person_id ?? 0);
+                            const targetPersonType = (personType ?? (mode === 'students' ? 'student' : 'employee')) === 'student' ? 'student' : 'employee';
+
+                            for (const enrolled of allEnrolledCacheRef.current) {
+                                const isSelf = enrolled.type === targetPersonType && Number(enrolled.id) === targetPersonId;
+                                if (isSelf) continue;
+
+                                const dist = calculateEuclideanDistance(descriptor, enrolled.descriptor);
+                                if (dist < 0.35) {
+                                    foundDupe = enrolled.name;
+                                    break;
+                                }
                             }
-                            setDetectedEnrollDescriptor(averaged);
+                            setDupMatchName(foundDupe);
+                        } else {
+                            setDupMatchName(null);
                         }
-                    }
-
-                    // Live duplicate check using normalized vectors on-the-fly
-                    if (stableFrameCountRef.current >= ENROLL_REQUIRED_FRAMES) {
-                        let foundDupe: string | null = null;
-                        const currentPersonId = personId ?? 0;
-                        const currentPersonType = personType ?? 'student';
-                        for (const enrolled of allEnrolledCacheRef.current) {
-                            const isSelf =
-                                (currentPersonType === 'student' && enrolled.table === 'students' && enrolled.id === currentPersonId) ||
-                                (currentPersonType !== 'student' && enrolled.table === 'staff' && enrolled.id === currentPersonId);
-                            if (isSelf) continue;
-                            const dist = calculateEuclideanDistance(
-                                normalizeDescriptor(descriptor),
-                                normalizeDescriptor(enrolled.descriptor)
-                            );
-                            if (dist < 0.45) { foundDupe = enrolled.name; break; }
-                        }
-                        setDupMatchName(foundDupe);
                     } else {
-                        setDupMatchName(null);
+                        if (enrollCanvasRef.current) {
+                            const ctx = enrollCanvasRef.current.getContext('2d');
+                            if (ctx) ctx.clearRect(0, 0, enrollCanvasRef.current.width, enrollCanvasRef.current.height);
+                        }
                     }
-
-                    // Reset fadeout timer
-                    if (enrollLoopRef.current) clearTimeout(enrollLoopRef.current);
-                    enrollLoopRef.current = setTimeout(() => {
-                        // Clear box and stability if no faces seen for 1.2 seconds
-                        setEnrollFaceBox(null);
-                        stableFrameCountRef.current = 0;
-                        accumulatedDescriptorsRef.current = [];
-                        setStableFrameCount(0);
-                        setDetectedEnrollDescriptor(null);
-                    }, 1200);
-
-                } else if (data.event === 'camera_error') {
-                    setEnrollCameraError(data.message || 'Local camera device could not be opened.');
-                    setIsEnrollCameraActive(false);
+                } catch (e) {
+                    // Ignore detection errors in loop
+                } finally {
+                    isProcessingFrame = false;
                 }
-            } catch (err) {
-                console.error('Error parsing native message during enrollment:', err);
-            }
-        };
 
-        ws.onerror = (err) => {
-            console.error('WebSocket error during enrollment:', err);
-            setEnrollCameraError('Native server connection failed. Please ensure the local server script "python face_scanner_server.py" is running on your machine.');
+                if (enrollStreamRef.current && enrollStreamRef.current.active) {
+                    enrollLoopRef.current = setTimeout(runEnrollDetection, 150);
+                }
+            };
+
+            enrollLoopRef.current = setTimeout(runEnrollDetection, 200);
+        } catch (err: any) {
+            console.error('Failed to start face enrollment camera:', err);
+            setEnrollCameraError(err?.message || 'Unable to access camera or load face models.');
             setEnrollModelsLoading(false);
             setIsEnrollCameraActive(false);
-        };
-
-        ws.onclose = () => {
-            console.log('Enrollment WebSocket closed.');
-            setIsEnrollCameraActive(false);
-            setNativeEnrollFrame(null);
-        };
-    }, [selectedEnrollCameraId, user?.school_id, enrollCameras]);
+        }
+    }, [user?.school_id, stopEnrollCamera, ENROLL_REQUIRED_FRAMES]);
 
     const saveEnrolledFace = useCallback(async () => {
         if (!selectedEnrollPerson || !detectedEnrollDescriptor || !user?.school_id || dupMatchName) return;
@@ -1890,15 +1885,8 @@ const RFIDCardAssignmentPage: React.FC = () => {
                             {enrollCameraError && (
                                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', fontSize: '0.85rem', fontWeight: 700, padding: '1rem', textAlign: 'center', zIndex: 6 }}>{enrollCameraError}</div>
                             )}
-                            {nativeEnrollFrame ? (
-                                <img
-                                    src={nativeEnrollFrame}
-                                    alt="Native Face Enroll"
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                />
-                            ) : (
-                                <video ref={enrollVideoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: 'none' }} />
-                            )}
+                            <video ref={enrollVideoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+                            <canvas ref={enrollCanvasRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 3 }} />
                             {/* Circular FaceID Guideline Overlay */}
                             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 4 }}>
                                 <div style={{

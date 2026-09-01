@@ -1540,7 +1540,7 @@ const QRAttendancePage: React.FC = () => {
     const lastCameraScanRef = useRef<{ value: string; time: number } | null>(null);
 
     // ─── Face Recognition States ────────────────────────────────────────────────
-    const [scannerMode, setScannerMode] = useState<'qr' | 'face'>('qr');
+    const [scannerMode, setScannerMode] = useState<'qr' | 'face'>('face');
     const [isFaceScanning, setIsFaceScanning] = useState(false);
     const [faceCameraError, setFaceCameraError] = useState('');
     const [selectedFaceCameraId, setSelectedFaceCameraId] = useState<string>('');
@@ -1552,14 +1552,14 @@ const QRAttendancePage: React.FC = () => {
     const [faceMatchThreshold, setFaceMatchThreshold] = useState<number>(0.45);
 
     const faceVideoRef = useRef<HTMLVideoElement | null>(null);
+    const faceCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const faceStreamRef = useRef<MediaStream | null>(null);
     const faceLoopRef = useRef<any>(null);
     const faceCooldownRef = useRef<Map<number | string, number>>(new Map());
     const markedPersonsRef = useRef<Set<number>>(new Set());
     const faceLastSeenRef = useRef<Map<number, number>>(new Map());
+    const pendingMatchRef = useRef<{ personId: number; count: number } | null>(null);
     const mappingsRef = useRef<RFIDMapping[]>([]);
-    const faceSocketRef = useRef<WebSocket | null>(null);
-    const [nativeFaceFrame, setNativeFaceFrame] = useState<string | null>(null);
 
 
 
@@ -2220,23 +2220,7 @@ const QRAttendancePage: React.FC = () => {
                 setStatusMsg(isAlreadyOut ? `✓ Already Left: ${p.name}` : `✓ Already Marked: ${p.name}`);
                 speak(`${p.name}, Already Marked`);
                 setDupCount(c => c + 1);
-                addFeedItem({
-                    type: 'warn',
-                    name: p.name,
-                    sub: isAlreadyOut ? `Already checked out for today` : `Already marked ${status.toUpperCase()}`,
-                    time,
-                    personType,
-                    isOffline,
-                    personId: p.person_id,
-                    attendanceStatus: status
-                });
-                triggerPopup({
-                    name: p.name,
-                    subInfo: isAlreadyOut ? `Already checked out` : `Already marked ${status.toUpperCase()}`,
-                    status: status,
-                    time,
-                    picture_url: p.picture_url
-                });
+                // Already marked scan: Feed entry and popup suppressed. Shown in live status/feed overlay only.
             } else {
                 const isOffline = result.type === 'offline_present' || result.type === 'offline_late' || result.type === 'offline_checkout';
                 const isLate = result.attendance_status === 'late';
@@ -2476,23 +2460,7 @@ const QRAttendancePage: React.FC = () => {
                 setStatusMsg(isAlreadyOut ? `✓ Already Left: ${p.name}` : `✓ Already Marked: ${p.name}`);
                 speak(`${p.name}, Already Marked`);
                 setDupCount(c => c + 1);
-                addFeedItem({
-                    type: 'warn',
-                    name: p.name,
-                    sub: isAlreadyOut ? `Already checked out for today` : `Already marked ${status.toUpperCase()}`,
-                    time,
-                    personType,
-                    isOffline,
-                    personId: p.person_id,
-                    attendanceStatus: status
-                });
-                triggerPopup({
-                    name: p.name,
-                    subInfo: isAlreadyOut ? `Already checked out` : `Already marked ${status.toUpperCase()}`,
-                    status: status,
-                    time,
-                    picture_url: p.picture_url
-                });
+                // Already marked scan: Feed entry and popup suppressed. Shown in live status/camera feed overlay only.
             } else {
                 const isOffline = result.type === 'offline_present' || result.type === 'offline_late' || result.type === 'offline_checkout';
                 const isLate = result.attendance_status === 'late';
@@ -2544,222 +2512,211 @@ const QRAttendancePage: React.FC = () => {
     const startFaceLoop = useCallback(() => {
         if (faceLoopRef.current) {
             clearTimeout(faceLoopRef.current);
+            cancelAnimationFrame(faceLoopRef.current);
+            faceLoopRef.current = null;
         }
 
+        let isProcessingFrame = false;
+
         const runDetection = async () => {
-            if (!faceVideoRef.current || !faceStreamRef.current || !faceVideoRef.current.srcObject) {
+            if (!faceVideoRef.current || !faceStreamRef.current || !faceStreamRef.current.active) {
                 return;
             }
 
-            // Ensure video has loaded current frame data before passing to faceapi
-            if (faceVideoRef.current.readyState < 2) {
-                if (faceStreamRef.current && faceStreamRef.current.active) {
-                    faceLoopRef.current = setTimeout(runDetection, 200);
-                }
+            const video = faceVideoRef.current;
+            if (video.readyState < 2 || video.paused || video.ended) {
+                faceLoopRef.current = setTimeout(runDetection, 80);
                 return;
             }
 
-            const startTime = Date.now();
+            if (isProcessingFrame) {
+                faceLoopRef.current = setTimeout(runDetection, 50);
+                return;
+            }
+
+            isProcessingFrame = true;
             try {
                 const detection = await faceapi.detectSingleFace(
-                    faceVideoRef.current,
-                    new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.5 })
+                    video,
+                    new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.45 })
                 )
                 .withFaceLandmarks()
                 .withFaceDescriptor();
 
-                const detections = detection ? [detection] : [];
-
-                // Clear marked persons who haven't been seen in the last 1.5 seconds (walked away) to allow scanning again later
                 const now = Date.now();
                 for (const pid of Array.from(markedPersonsRef.current)) {
                     const lastSeen = faceLastSeenRef.current.get(pid);
-                    if (!lastSeen) {
-                        faceLastSeenRef.current.set(pid, now);
-                        continue;
-                    }
-                    if (now - lastSeen > 1500) {
+                    if (!lastSeen || now - lastSeen > 5000) {
                         markedPersonsRef.current.delete(pid);
                         faceLastSeenRef.current.delete(pid);
                     }
                 }
 
-                const rects = [];
+                const canvas = faceCanvasRef.current;
+                if (canvas && video.videoWidth && video.videoHeight) {
+                    if (canvas.width !== video.clientWidth || canvas.height !== video.clientHeight) {
+                        canvas.width = video.clientWidth;
+                        canvas.height = video.clientHeight;
+                    }
 
-                if (detections && detections.length > 0) {
-                    const vWidth = faceVideoRef.current.videoWidth || 640;
-                    const vHeight = faceVideoRef.current.videoHeight || 480;
-                    const dWidth = faceVideoRef.current.clientWidth || 320;
-                    const dHeight = faceVideoRef.current.clientHeight || 240;
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                    const scaleX = dWidth / vWidth;
-                    const scaleY = dHeight / vHeight;
+                        if (detection) {
+                            const vWidth = video.videoWidth;
+                            const vHeight = video.videoHeight;
+                            const dWidth = canvas.width;
+                            const dHeight = canvas.height;
 
-                    for (const det of detections) {
-                        const box = det.detection.box;
-                        const matched = matchFace(det.descriptor, mappingsRef.current, faceMatchThreshold);
-                        
-                        // Mirrored X coordinate computation
-                        const mirroredX = dWidth - (box.x + box.width) * scaleX;
+                            const scaleX = dWidth / vWidth;
+                            const scaleY = dHeight / vHeight;
 
-                        if (matched) {
-                            const personId = matched.person.person_id;
-                            faceLastSeenRef.current.set(personId, now);
-                            const isAlreadyMarked = markedPersonsRef.current.has(personId);
+                            const box = detection.detection.box;
+                            const mirroredX = dWidth - (box.x + box.width) * scaleX;
+                            const y = box.y * scaleY;
+                            const w = box.width * scaleX;
+                            const h = box.height * scaleY;
 
-                            rects.push({
-                                x: mirroredX,
-                                y: box.y * scaleY,
-                                width: box.width * scaleX,
-                                height: box.height * scaleY,
-                                name: matched.person.name,
-                                status: (isAlreadyMarked ? 'already' : 'new') as 'new' | 'already'
-                            });
+                            const matched = matchFace(detection.descriptor, mappingsRef.current, faceMatchThreshold);
 
-                            if (!isAlreadyMarked) {
-                                void executeFaceProcess(matched.person);
+                            let color = '#94a3b8';
+                            let labelText = 'Scanning Face...';
+
+                            if (matched) {
+                                const personId = matched.person.person_id;
+                                faceLastSeenRef.current.set(personId, now);
+                                const isAlreadyMarked = markedPersonsRef.current.has(personId);
+
+                                if (isAlreadyMarked) {
+                                    color = '#f59e0b';
+                                    labelText = `${matched.person.name} (Already Marked)`;
+                                    pendingMatchRef.current = null;
+                                } else {
+                                    // High-confidence instant match vs dual-frame verification for borderline distance
+                                    const isInstantMatch = matched.distance <= 0.38;
+                                    let isConfirmed = isInstantMatch;
+
+                                    if (!isInstantMatch) {
+                                        if (pendingMatchRef.current && pendingMatchRef.current.personId === personId) {
+                                            pendingMatchRef.current.count += 1;
+                                            if (pendingMatchRef.current.count >= 2) {
+                                                isConfirmed = true;
+                                            }
+                                        } else {
+                                            pendingMatchRef.current = { personId, count: 1 };
+                                        }
+                                    }
+
+                                    if (isConfirmed) {
+                                        color = '#22c55e';
+                                        labelText = matched.person.name;
+                                        pendingMatchRef.current = null;
+                                        void executeFaceProcess(matched.person);
+                                    } else {
+                                        color = '#3b82f6';
+                                        labelText = `Verifying ${matched.person.name}...`;
+                                    }
+                                }
+                            } else {
+                                pendingMatchRef.current = null;
                             }
+
+                            ctx.strokeStyle = color;
+                            ctx.lineWidth = 3;
+                            ctx.strokeRect(mirroredX, y, w, h);
+
+                            ctx.fillStyle = color;
+                            ctx.font = 'bold 13px sans-serif';
+                            const textWidth = ctx.measureText(labelText).width;
+                            ctx.fillRect(mirroredX, Math.max(0, y - 24), textWidth + 16, 24);
+
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillText(labelText, mirroredX + 8, Math.max(16, y - 7));
                         } else {
-                            rects.push({
-                                x: mirroredX,
-                                y: box.y * scaleY,
-                                width: box.width * scaleX,
-                                height: box.height * scaleY,
-                                name: undefined
-                            });
+                            pendingMatchRef.current = null;
                         }
                     }
                 }
-                setFaceMatchRects(rects);
             } catch (e) {
                 // Ignore detection errors in loop
+            } finally {
+                isProcessingFrame = false;
             }
 
-            const elapsed = Date.now() - startTime;
-            const delay = Math.max(300 - elapsed, 0);
-
             if (faceStreamRef.current && faceStreamRef.current.active) {
-                faceLoopRef.current = setTimeout(runDetection, delay);
+                faceLoopRef.current = setTimeout(runDetection, 60);
             }
         };
 
-        faceLoopRef.current = setTimeout(runDetection, 300);
+        faceLoopRef.current = setTimeout(runDetection, 100);
     }, [executeFaceProcess, faceMatchThreshold]);
+
+    const stopFaceRecognition = useCallback(() => {
+        setIsFaceScanning(false);
+        if (faceLoopRef.current) {
+            clearTimeout(faceLoopRef.current);
+            cancelAnimationFrame(faceLoopRef.current);
+            faceLoopRef.current = null;
+        }
+        if (faceStreamRef.current) {
+            faceStreamRef.current.getTracks().forEach(track => track.stop());
+            faceStreamRef.current = null;
+        }
+        if (faceVideoRef.current) {
+            faceVideoRef.current.srcObject = null;
+        }
+        if (faceCanvasRef.current) {
+            const ctx = faceCanvasRef.current.getContext('2d');
+            if (ctx) ctx.clearRect(0, 0, faceCanvasRef.current.width, faceCanvasRef.current.height);
+        }
+    }, []);
 
     const startFaceRecognition = useCallback(async (deviceId?: string) => {
         setFaceCameraError('');
         setModelsLoading(true);
-        setModelsStatus('Connecting to native face server (ws://localhost:8000)...');
-        setNativeFaceFrame(null);
+        setModelsStatus('Initializing face models...');
 
-        // Stop any running socket first
-        if (faceSocketRef.current) {
-            try { faceSocketRef.current.close(); } catch (e) {}
-            faceSocketRef.current = null;
-        }
-
-        // Enumerate video devices so we have camera labels and indices
         try {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = devices.filter(d => d.kind === 'videoinput');
-            setFaceCameras(videoDevices);
-        } catch (e) {
-            console.warn('Could not enumerate cameras in browser:', e);
-        }
-
-        const ws = new WebSocket('ws://localhost:8000');
-        faceSocketRef.current = ws;
-
-        ws.onopen = async () => {
-            console.log('Connected to face recognition native server.');
-            setModelsStatus('Server connected. Syncing face data...');
+            await loadFaceRecognitionModels((status) => setModelsStatus(status));
             setModelsLoadedState(true);
             setModelsLoading(false);
-            setIsFaceScanning(true);
 
-            // Re-load mappings from memory/local DB and format embeddings
             const list = mappingsRef.current.length > 0 ? mappingsRef.current : await rfidOfflineService.getAllMappings();
             mappingsRef.current = list;
-            const formattedMappings = list.map(m => {
-                const parsed = parseFaceEmbedding(m.face_embedding);
-                return {
-                    person_id: m.person_id,
-                    name: m.name,
-                    type: m.type,
-                    face_embedding: parsed ? Array.from(parsed) : null
-                };
-            }).filter(m => m.face_embedding !== null);
 
-            ws.send(JSON.stringify({
-                action: 'update_mappings',
-                mappings: formattedMappings,
-                threshold: faceMatchThreshold
-            }));
-
-            // Determine index of chosen camera input
-            let camIdx = 0;
-            if (deviceId) {
-                const idx = faceCameras.findIndex(c => c.deviceId === deviceId);
-                if (idx >= 0) camIdx = idx;
-            }
-            ws.send(JSON.stringify({
-                action: 'start_camera',
-                camera_index: camIdx
-            }));
-        };
-
-        ws.onmessage = (event) => {
             try {
-                const data = jsonParse(event.data);
-                if (data.event === 'frame') {
-                    setNativeFaceFrame(data.image);
-                } else if (data.event === 'face_matched') {
-                    // Match person in our mappings
-                    const matchedPerson = mappingsRef.current.find(m => m.person_id === data.person_id && m.type === data.type);
-                    if (matchedPerson) {
-                        void executeFaceProcess(matchedPerson);
-                    }
-                } else if (data.event === 'camera_error') {
-                    setFaceCameraError(data.message || 'Local camera device could not be opened.');
-                    setIsFaceScanning(false);
-                }
-            } catch (err) {
-                console.error('Error parsing native server message:', err);
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(d => d.kind === 'videoinput');
+                setFaceCameras(videoDevices);
+            } catch (e) {
+                console.warn('Could not enumerate cameras in browser:', e);
             }
-        };
 
-        // Local helper to parse JSON safely
-        function jsonParse(str: string) {
-            return JSON.parse(str);
-        }
+            const constraints: MediaStreamConstraints = {
+                video: deviceId
+                    ? { deviceId: { exact: deviceId } }
+                    : { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+            };
 
-        ws.onerror = (err) => {
-            console.error('Face server socket error:', err);
-            setFaceCameraError('Native server connection failed. Please ensure the local server script "python face_scanner_server.py" is running on your machine.');
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            faceStreamRef.current = stream;
+
+            if (faceVideoRef.current) {
+                faceVideoRef.current.srcObject = stream;
+                await faceVideoRef.current.play().catch(() => {});
+            }
+
+            setIsFaceScanning(true);
+            setStatusMsg('Waiting for face scan...');
+            startFaceLoop();
+        } catch (err: any) {
+            console.error('Failed to start face recognition:', err);
+            setFaceCameraError(err?.message || 'Unable to access camera or load face models.');
             setModelsLoading(false);
             setIsFaceScanning(false);
-        };
-
-        ws.onclose = () => {
-            console.log('Face server connection closed.');
-            setIsFaceScanning(false);
-            setNativeFaceFrame(null);
-        };
-    }, [faceCameras, executeFaceProcess]);
-
-    const stopFaceRecognition = useCallback(() => {
-        setIsFaceScanning(false);
-        setNativeFaceFrame(null);
-        if (faceSocketRef.current) {
-            try {
-                faceSocketRef.current.send(JSON.stringify({ action: 'stop_camera' }));
-            } catch (e) {}
-            try {
-                faceSocketRef.current.close();
-            } catch (e) {}
-            faceSocketRef.current = null;
         }
-    }, []);
+    }, [startFaceLoop]);
 
     const stopCameraScanner = useCallback(async (opts?: { persistUserPreferenceOff?: boolean }) => {
         const scanner = cameraScannerRef.current;
@@ -3358,6 +3315,15 @@ const QRAttendancePage: React.FC = () => {
                 </Title>
 
                 <TopBarActions>
+                    <HeaderBtn
+                        theme={themeObj}
+                        style={{ background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)', fontWeight: 700 }}
+                        onClick={() => navigate('/attendance/rfid-scanner')}
+                        title="Switch to RFID Attendance Page"
+                    >
+                        <Scan style={{ fontSize: 16 }} /> Switch to RFID Page
+                    </HeaderBtn>
+
                     <ModeToggle theme={themeObj}>
                         <ModeBtn
                             $active={scannerMode === 'qr'}
@@ -3543,8 +3509,8 @@ const QRAttendancePage: React.FC = () => {
                                 <TimeInput
                                     theme={themeObj}
                                     type="time"
-                                    value={attnSettings.student_start_time || '08:00'}
-                                    onChange={e => setAttnSettings({ ...attnSettings, student_start_time: e.target.value })}
+                                    value={attnSettings?.student_start_time || '08:00'}
+                                    onChange={e => setAttnSettings(prev => prev ? ({ ...prev, student_start_time: e.target.value }) : prev)}
                                 />
                                 <InputHint theme={themeObj}>Base arrival time.</InputHint>
                             </FormGroup>
@@ -3554,8 +3520,8 @@ const QRAttendancePage: React.FC = () => {
                                 <TimeInput
                                     theme={themeObj}
                                     type="time"
-                                    value={attnSettings.staff_start_time || '08:00'}
-                                    onChange={e => setAttnSettings({ ...attnSettings, staff_start_time: e.target.value })}
+                                    value={attnSettings?.staff_start_time || '08:00'}
+                                    onChange={e => setAttnSettings(prev => prev ? ({ ...prev, staff_start_time: e.target.value }) : prev)}
                                 />
                                 <InputHint theme={themeObj}>Base arrival time.</InputHint>
                             </FormGroup>
@@ -3565,8 +3531,8 @@ const QRAttendancePage: React.FC = () => {
                                 <TimeInput
                                     theme={themeObj}
                                     type="time"
-                                    value={attnSettings.staff_end_time || '14:00'}
-                                    onChange={e => setAttnSettings({ ...attnSettings, staff_end_time: e.target.value })}
+                                    value={attnSettings?.staff_end_time || '14:00'}
+                                    onChange={e => setAttnSettings(prev => prev ? ({ ...prev, staff_end_time: e.target.value }) : prev)}
                                 />
                                 <InputHint theme={themeObj}>Blocks early check-out.</InputHint>
                             </FormGroup>
@@ -3576,8 +3542,8 @@ const QRAttendancePage: React.FC = () => {
                                 <TimeInput
                                     theme={themeObj}
                                     type="number"
-                                    value={attnSettings.grace_period_minutes}
-                                    onChange={e => setAttnSettings({ ...attnSettings, grace_period_minutes: parseInt(e.target.value) || 0 })}
+                                    value={attnSettings?.grace_period_minutes || 0}
+                                    onChange={e => setAttnSettings(prev => prev ? ({ ...prev, grace_period_minutes: parseInt(e.target.value) || 0 }) : prev)}
                                 />
                                 <InputHint theme={themeObj}>Applied to both.</InputHint>
                             </FormGroup>
@@ -3587,8 +3553,8 @@ const QRAttendancePage: React.FC = () => {
                                 <TimeInput
                                     theme={themeObj}
                                     type="time"
-                                    value={attnSettings.student_cutoff_time || '08:15'}
-                                    onChange={e => setAttnSettings({ ...attnSettings, student_cutoff_time: e.target.value })}
+                                    value={attnSettings?.student_cutoff_time || '08:15'}
+                                    onChange={e => setAttnSettings(prev => prev ? ({ ...prev, student_cutoff_time: e.target.value }) : prev)}
                                 />
                                 <InputHint theme={themeObj}>Auto-absent after this time.</InputHint>
                             </FormGroup>
@@ -3598,8 +3564,8 @@ const QRAttendancePage: React.FC = () => {
                                 <TimeInput
                                     theme={themeObj}
                                     type="time"
-                                    value={attnSettings.staff_cutoff_time || '08:15'}
-                                    onChange={e => setAttnSettings({ ...attnSettings, staff_cutoff_time: e.target.value })}
+                                    value={attnSettings?.staff_cutoff_time || '08:15'}
+                                    onChange={e => setAttnSettings(prev => prev ? ({ ...prev, staff_cutoff_time: e.target.value }) : prev)}
                                 />
                                 <InputHint theme={themeObj}>Auto-absent after this time.</InputHint>
                             </FormGroup>
@@ -3609,8 +3575,8 @@ const QRAttendancePage: React.FC = () => {
                                 <TimeInput
                                     theme={themeObj}
                                     type="text"
-                                    value={attnSettings.timezone || 'Asia/Karachi'}
-                                    onChange={e => setAttnSettings({ ...attnSettings, timezone: e.target.value })}
+                                    value={attnSettings?.timezone || 'Asia/Karachi'}
+                                    onChange={e => setAttnSettings(prev => prev ? ({ ...prev, timezone: e.target.value }) : prev)}
                                     placeholder="Asia/Karachi"
                                 />
                                 <InputHint theme={themeObj}>Used when app is closed.</InputHint>
@@ -3622,11 +3588,11 @@ const QRAttendancePage: React.FC = () => {
                                     <ToggleCard theme={themeObj}>
                                         <input
                                             type="checkbox"
-                                            checked={!!attnSettings.student_mark_late_enabled}
-                                            onChange={e => setAttnSettings({
-                                                ...attnSettings,
+                                            checked={!!attnSettings?.student_mark_late_enabled}
+                                            onChange={e => setAttnSettings(prev => prev ? ({
+                                                ...prev,
                                                 student_mark_late_enabled: e.target.checked
-                                            })}
+                                            }) : prev)}
                                             style={{ marginTop: 4 }}
                                         />
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
@@ -3639,11 +3605,11 @@ const QRAttendancePage: React.FC = () => {
                                     <ToggleCard theme={themeObj}>
                                         <input
                                             type="checkbox"
-                                            checked={!!attnSettings.staff_mark_late_enabled}
-                                            onChange={e => setAttnSettings({
-                                                ...attnSettings,
+                                            checked={!!attnSettings?.staff_mark_late_enabled}
+                                            onChange={e => setAttnSettings(prev => prev ? ({
+                                                ...prev,
                                                 staff_mark_late_enabled: e.target.checked
-                                            })}
+                                            }) : prev)}
                                             style={{ marginTop: 4 }}
                                         />
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
@@ -3663,12 +3629,12 @@ const QRAttendancePage: React.FC = () => {
                                      <ToggleCard theme={themeObj}>
                                          <input
                                              type="checkbox"
-                                             checked={!!attnSettings.student_auto_mark_absent_enabled}
-                                             onChange={e => setAttnSettings({
-                                                 ...attnSettings,
+                                             checked={!!attnSettings?.student_auto_mark_absent_enabled}
+                                             onChange={e => setAttnSettings(prev => prev ? ({
+                                                 ...prev,
                                                  student_auto_mark_absent_enabled: e.target.checked,
-                                                 auto_mark_absent_enabled: e.target.checked || !!attnSettings.staff_auto_mark_absent_enabled
-                                             })}
+                                                 auto_mark_absent_enabled: e.target.checked || !!prev.staff_auto_mark_absent_enabled
+                                             }) : prev)}
                                              style={{ marginTop: 4 }}
                                          />
                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
@@ -3681,12 +3647,12 @@ const QRAttendancePage: React.FC = () => {
                                      <ToggleCard theme={themeObj}>
                                          <input
                                              type="checkbox"
-                                             checked={!!attnSettings.staff_auto_mark_absent_enabled}
-                                             onChange={e => setAttnSettings({
-                                                 ...attnSettings,
+                                             checked={!!attnSettings?.staff_auto_mark_absent_enabled}
+                                             onChange={e => setAttnSettings(prev => prev ? ({
+                                                 ...prev,
                                                  staff_auto_mark_absent_enabled: e.target.checked,
-                                                 auto_mark_absent_enabled: !!attnSettings.student_auto_mark_absent_enabled || e.target.checked
-                                             })}
+                                                 auto_mark_absent_enabled: !!prev.student_auto_mark_absent_enabled || e.target.checked
+                                             }) : prev)}
                                              style={{ marginTop: 4 }}
                                          />
                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
@@ -3829,26 +3795,22 @@ const QRAttendancePage: React.FC = () => {
                                         <CameraStoppedOverlay theme={themeObj}>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center' }}>
                                                 <span style={{ fontSize: '0.85rem', fontWeight: 700, color: themeObj.TEXT_SECONDARY }}>
-                                                    {modelsLoading ? modelsStatus : 'Face recognition offline'}
+                                                    {modelsLoading ? modelsStatus : 'Face recognition stopped'}
                                                 </span>
                                             </div>
                                         </CameraStoppedOverlay>
                                     )}
-                                    {nativeFaceFrame ? (
-                                        <img
-                                            src={nativeFaceFrame}
-                                            alt="Native Face Stream"
-                                            style={{ width: '100%', height: '100%', minHeight: 250, objectFit: 'cover' }}
-                                        />
-                                    ) : (
-                                        <video
-                                             ref={faceVideoRef}
-                                             autoPlay
-                                             playsInline
-                                             muted
-                                             style={{ width: '100%', height: '100%', minHeight: 250, objectFit: 'cover', transform: 'scaleX(-1)', display: 'none' }}
-                                         />
-                                    )}
+                                    <video
+                                         ref={faceVideoRef}
+                                         autoPlay
+                                         playsInline
+                                         muted
+                                         style={{ width: '100%', height: '100%', minHeight: 250, objectFit: 'cover', transform: 'scaleX(-1)', display: isFaceScanning ? 'block' : 'none' }}
+                                     />
+                                    <canvas
+                                        ref={faceCanvasRef}
+                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', display: isFaceScanning ? 'block' : 'none' }}
+                                    />
                                 </div>
                             )}
                         </CameraRegion>

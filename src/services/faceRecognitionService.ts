@@ -64,8 +64,8 @@ async function withFetchOverride<T>(
 
         if (isModelFile && !forceReload && typeof caches !== 'undefined') {
             try {
-                const cache = await caches.open('face-api-models-cache');
-                const cachedResponse = await cache.match(url);
+                // Search across all Cache Storage caches (including Service Worker cache growmore-v1)
+                const cachedResponse = await caches.match(url, { ignoreSearch: true });
                 if (cachedResponse) {
                     const blob = await cachedResponse.blob();
                     const fileName = url.substring(url.lastIndexOf('/') + 1);
@@ -87,10 +87,32 @@ async function withFetchOverride<T>(
             : input instanceof URL ? new URL(finalUrl)
             : new Request(finalUrl, input as Request);
 
-        const response = await nativeFetch(finalInput, {
-            ...(init || {}),
-            cache: forceReload ? 'reload' : 'default',
-        });
+        let response: Response;
+        try {
+            response = await nativeFetch(finalInput, {
+                ...(init || {}),
+                cache: forceReload ? 'reload' : 'default',
+            });
+        } catch (fetchErr) {
+            // Offline fallback: if network fetch fails, search all Cache Storage caches
+            if (typeof caches !== 'undefined') {
+                try {
+                    const fallbackResponse = await caches.match(url, { ignoreSearch: true });
+                    if (fallbackResponse) {
+                        const blob = await fallbackResponse.blob();
+                        const fileName = url.substring(url.lastIndexOf('/') + 1);
+                        loadedBytesMap.set(fileName, blob.size);
+                        updateCombinedProgress();
+                        return new Response(blob, {
+                            headers: fallbackResponse.headers,
+                            status: fallbackResponse.status,
+                            statusText: fallbackResponse.statusText,
+                        });
+                    }
+                } catch (_) {}
+            }
+            throw fetchErr;
+        }
 
         if (!isModelFile || !response.ok) {
             return response;
@@ -151,9 +173,14 @@ export async function loadFaceRecognitionModels(
         if (faceapi.tf) {
             try { (faceapi.tf as any).enableProdMode(); } catch (_) {}
             try {
-                await (faceapi.tf as any).setBackend('cpu');
+                await (faceapi.tf as any).setBackend('webgl');
                 await (faceapi.tf as any).ready();
-            } catch (_) {}
+            } catch (_) {
+                try {
+                    await (faceapi.tf as any).setBackend('cpu');
+                    await (faceapi.tf as any).ready();
+                } catch (_) {}
+            }
         }
 
         const localUrl = window.location.protocol === 'file:' ? './models/' : '/models/';
@@ -203,7 +230,7 @@ export async function loadFaceRecognitionModels(
     return modelsLoadPromise;
 }
 
-/** Converts PostgreSQL bytea format to a Float32Array face descriptor */
+/** Converts PostgreSQL bytea format to a Float32Array face descriptor safely */
 export function parseFaceEmbedding(embedding: any): Float32Array | null {
     if (!embedding) return null;
     if (embedding instanceof Float32Array) return embedding;
@@ -225,13 +252,25 @@ export function parseFaceEmbedding(embedding: any): Float32Array | null {
 
         const len = hex.length / 2;
         const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-        return new Float32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 4);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+        }
+        // Copy to fresh 4-byte aligned ArrayBuffer to prevent Float32Array byteOffset misalignments
+        const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+        const floatArr = new Float32Array(buffer);
+        if (floatArr.length === 128 && !isNaN(floatArr[0]) && isFinite(floatArr[0])) {
+            return floatArr;
+        }
+        return null;
     }
 
-    if (embedding instanceof Uint8Array)
-        return new Float32Array(embedding.buffer, embedding.byteOffset, embedding.byteLength / 4);
-    if (embedding instanceof ArrayBuffer) return new Float32Array(embedding);
+    if (embedding instanceof Uint8Array) {
+        const buffer = embedding.buffer.slice(embedding.byteOffset, embedding.byteOffset + embedding.byteLength);
+        return new Float32Array(buffer);
+    }
+    if (embedding instanceof ArrayBuffer) {
+        return new Float32Array(embedding.slice(0));
+    }
     return null;
 }
 
@@ -243,6 +282,19 @@ export function float32ArrayToHex(arr: Float32Array): string {
     return hex;
 }
 
+/** Gets or computes cached Float32Array face embedding for an RFIDMapping object */
+export function getParsedEmbedding(m: RFIDMapping): Float32Array | null {
+    if (!m.face_embedding) return null;
+    if ((m as any)._cachedFloat32Array instanceof Float32Array) {
+        return (m as any)._cachedFloat32Array;
+    }
+    const parsed = parseFaceEmbedding(m.face_embedding);
+    if (parsed) {
+        (m as any)._cachedFloat32Array = parsed;
+    }
+    return parsed;
+}
+
 /** Computes Euclidean distance between two face descriptors */
 export function calculateEuclideanDistance(a: Float32Array, b: Float32Array): number {
     if (a.length !== b.length) return Infinity;
@@ -251,19 +303,21 @@ export function calculateEuclideanDistance(a: Float32Array, b: Float32Array): nu
     return Math.sqrt(sum);
 }
 
-/** Matches a detected face descriptor against cached local mappings */
+/** Matches a detected face descriptor against cached local mappings in microsecond time */
 export function matchFace(
     descriptor: Float32Array,
     mappings: RFIDMapping[],
-    threshold = 0.6
+    threshold = 0.45
 ): { person: RFIDMapping; distance: number } | null {
     let best: { person: RFIDMapping; distance: number } | null = null;
+    const descLen = descriptor.length;
     for (const m of mappings) {
-        if (!m.face_embedding) continue;
-        const saved = parseFaceEmbedding(m.face_embedding);
-        if (!saved || saved.length !== descriptor.length) continue;
+        const saved = getParsedEmbedding(m);
+        if (!saved || saved.length !== descLen) continue;
         const dist = calculateEuclideanDistance(descriptor, saved);
-        if (dist < threshold && (!best || dist < best.distance)) best = { person: m, distance: dist };
+        if (dist < threshold && (!best || dist < best.distance)) {
+            best = { person: m, distance: dist };
+        }
     }
     return best;
 }

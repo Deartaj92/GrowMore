@@ -2792,6 +2792,14 @@ const RFIDAttendancePage: React.FC = () => {
                     </StatusBadgeRow>
 
                     <DateAndSettingsRow>
+                        <HeaderBtn
+                            theme={themeObj}
+                            style={{ background: 'rgba(34, 197, 94, 0.12)', color: '#22c55e', border: '1px solid rgba(34, 197, 94, 0.3)', fontWeight: 700 }}
+                            onClick={() => navigate('/attendance/qr-scanner')}
+                            title="Switch to QR & Face Attendance Page"
+                        >
+                            <Scan style={{ fontSize: 16 }} /> Switch to QR/Face Page
+                        </HeaderBtn>
 
                         <HeaderBtn theme={themeObj} onClick={() => setIsMuted(!isMuted)} title={isMuted ? 'Unmute' : 'Mute'}>
                             {isMuted ? <VolumeX style={{ fontSize: 18 }} /> : <Volume2 style={{ fontSize: 18 }} />}
