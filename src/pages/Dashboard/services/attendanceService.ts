@@ -14,7 +14,8 @@ export const fetchAbsentees = async (
   students: any[],
   setAbsentees: (data: any[]) => void,
   setStudentDetails: (details: Record<string, any>) => void,
-  getCachedSession: () => Promise<any>
+  getCachedSession: () => Promise<any>,
+  setLateComers?: (data: any[]) => void
 ): Promise<void> => {
   if (!absentDate || !schoolId) return;
 
@@ -39,11 +40,16 @@ export const fetchAbsentees = async (
           section_name: `Section ${absentee.section_id}`,
           monthly_absences: Math.floor(Math.random() * 5) + 1,
           monthly_leaves: Math.floor(Math.random() * 2),
+          monthly_lates: Math.floor(Math.random() * 3),
           attendance_percentage: Math.floor(Math.random() * 20) + 70,
         };
       });
+
+      const absentRecords = dummyAbsentees.filter(a => a.status === 'absent' || a.status === 'leave');
+      const lateRecords = dummyAbsentees.filter(a => a.status === 'late');
       
-      setAbsentees(dummyAbsentees);
+      setAbsentees(absentRecords);
+      if (setLateComers) setLateComers(lateRecords);
       setStudentDetails(dummyDetails);
       return;
     }
@@ -53,6 +59,7 @@ export const fetchAbsentees = async (
     if (!sessionData?.id) {
       setStudentDetails({});
       setAbsentees([]);
+      if (setLateComers) setLateComers([]);
       return;
     }
 
@@ -71,7 +78,7 @@ export const fetchAbsentees = async (
         .eq('date', absentDate)
         .eq('session_id', sessionData.id)
         .eq('school_id', schoolId)
-        .or('status.eq.absent,status.eq.leave')
+        .in('status', ['absent', 'leave', 'late', 'Lt', 'lt'])
         .range(from, to);
     });
 
@@ -82,6 +89,7 @@ export const fetchAbsentees = async (
     if (studentIds.length === 0) {
       setStudentDetails({});
       setAbsentees([]);
+      if (setLateComers) setLateComers([]);
       return;
     }
 
@@ -132,18 +140,21 @@ export const fetchAbsentees = async (
     });
 
     // Calculate monthly statistics for each student
-    const monthlyStats: Record<number, { absences: number; leaves: number; total: number; present: number }> = {};
+    const monthlyStats: Record<number, { absences: number; leaves: number; lates: number; total: number; present: number }> = {};
     if (monthlyAttendance) {
       monthlyAttendance.forEach(record => {
         if (!monthlyStats[record.student_id]) {
-          monthlyStats[record.student_id] = { absences: 0, leaves: 0, total: 0, present: 0 };
+          monthlyStats[record.student_id] = { absences: 0, leaves: 0, lates: 0, total: 0, present: 0 };
         }
         monthlyStats[record.student_id].total++;
         if (record.status === 'absent') {
           monthlyStats[record.student_id].absences++;
         } else if (record.status === 'leave') {
           monthlyStats[record.student_id].leaves++;
-        } else if (record.status === 'present' || record.status === 'late') {
+        } else if (record.status === 'late' || record.status === 'Lt' || record.status === 'lt') {
+          monthlyStats[record.student_id].lates++;
+          monthlyStats[record.student_id].present++;
+        } else if (record.status === 'present') {
           monthlyStats[record.student_id].present++;
         }
       });
@@ -152,27 +163,37 @@ export const fetchAbsentees = async (
     // Process and set data with monthly stats
     const details: Record<string, any> = {};
     studentsData?.forEach((student: any) => {
-      const stats = monthlyStats[student.id] || { absences: 0, leaves: 0, total: 0, present: 0 };
+      const stats = monthlyStats[student.id] || { absences: 0, leaves: 0, lates: 0, total: 0, present: 0 };
       const attendancePercentage = stats.total > 0 
         ? Math.round((stats.present / stats.total) * 100) 
         : 100;
       
-      details[student.id] = {
+      const studentInfo = {
         ...student,
         class_name: student.classes?.name || '',
         section_name: student.sections?.name || '',
         monthly_absences: stats.absences,
         monthly_leaves: stats.leaves,
+        monthly_lates: stats.lates,
         attendance_percentage: attendancePercentage
       };
+      details[student.id] = studentInfo;
+      details[String(student.id)] = studentInfo;
     });
 
+    const absentOrLeaveRecords = attendanceData.filter((r: any) => r.status === 'absent' || r.status === 'leave');
+    const lateRecords = attendanceData.filter((r: any) => r.status === 'late' || r.status === 'Lt' || r.status === 'lt');
+
     setStudentDetails(details);
-    setAbsentees(attendanceData);
+    setAbsentees(absentOrLeaveRecords);
+    if (setLateComers) {
+      setLateComers(lateRecords);
+    }
   } catch (error) {
-    console.error('Error fetching absentees:', error);
+    console.error('Error fetching absentees and late comers:', error);
     setStudentDetails({});
     setAbsentees([]);
+    if (setLateComers) setLateComers([]);
   }
 };
 

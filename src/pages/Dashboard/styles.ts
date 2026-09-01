@@ -1735,12 +1735,16 @@ export const StatusPill = styled.button<{ status?: string; $status?: string }>`
     const isDark = theme.BG === '#252525' || theme.BG === '#181c2a';
     if (s === 'absent') return isDark ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.12)';
     if (s === 'leave') return isDark ? 'rgba(37,99,235,0.15)' : 'rgba(37,99,235,0.12)';
+    if (s === 'late' || s === 'Lt' || s === 'lt') return isDark ? 'rgba(245,158,11,0.18)' : 'rgba(245,158,11,0.15)';
+    if (s === 'present' || s === 'P') return isDark ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.12)';
     return 'transparent';
   }};
   color: ${({ $status, status }) => {
     const s = $status || status;
     if (s === 'absent') return '#ef4444';
     if (s === 'leave') return '#2563eb';
+    if (s === 'late' || s === 'Lt' || s === 'lt') return '#f59e0b';
+    if (s === 'present' || s === 'P') return '#22c55e';
     return '#64748b';
   }};
   border: none;
@@ -1935,11 +1939,15 @@ export const AbsenteesTableStatusPill = styled.button<{ $status: string }>`
   background: ${({ $status, theme }) => {
     if ($status === 'absent') return theme.BG === '#252525' ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.12)';
     if ($status === 'leave') return theme.BG === '#252525' ? 'rgba(37,99,235,0.15)' : 'rgba(37,99,235,0.12)';
+    if ($status === 'late' || $status === 'Lt' || $status === 'lt') return theme.BG === '#252525' ? 'rgba(245,158,11,0.18)' : 'rgba(245,158,11,0.15)';
+    if ($status === 'present' || $status === 'P') return theme.BG === '#252525' ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.12)';
     return 'transparent';
   }};
   color: ${({ $status }) => {
     if ($status === 'absent') return '#ef4444';
     if ($status === 'leave') return '#2563eb';
+    if ($status === 'late' || $status === 'Lt' || $status === 'lt') return '#f59e0b';
+    if ($status === 'present' || $status === 'P') return '#22c55e';
     return '#64748b';
   }};
   border: none;

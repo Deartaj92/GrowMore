@@ -253,30 +253,33 @@ export const getFooterNavButtonStyle = (theme: any, accentColor: string, hovered
   const footer = getFooterNavPalette(theme);
 
   return {
-    width: '30px',
-    height: '30px',
-    minWidth: '30px',
-    minHeight: '30px',
-    padding: 0,
-    display: 'flex',
+    padding: '4px 12px',
+    height: '28px',
+    minHeight: '28px',
+    display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: hovered ? `${accentColor}22` : footer.buttonBg,
-    border: `1.5px solid ${hovered ? `${accentColor}66` : footer.buttonBorder}`,
-    borderRadius: '999px',
+    gap: '6px',
+    background: hovered ? `${accentColor}25` : footer.buttonBg,
+    border: `1.5px solid ${hovered ? accentColor : `${accentColor}55`}`,
+    borderRadius: '14px',
+    color: accentColor,
+    fontSize: '0.76rem',
+    fontWeight: 700,
     cursor: 'pointer',
     position: 'relative' as const,
-    overflow: 'visible' as const,
+    whiteSpace: 'nowrap' as const,
     boxShadow: hovered ? footer.buttonHoverShadow : footer.buttonShadow,
-    transition: 'none',
+    transition: 'all 0.15s ease',
     backdropFilter: 'blur(8px)',
     WebkitBackdropFilter: 'blur(8px)',
+    flexShrink: 0,
   };
 };
 
 export const getFooterNavIconStyle = (theme: any, accentColor: string, hovered = false) => ({
   fontSize: '16px',
-  color: hovered ? accentColor : accentColor,
+  color: accentColor,
   opacity: hovered ? 1 : 0.92,
   filter: getFooterNavPalette(theme).iconShadow,
   transition: 'none',
@@ -314,10 +317,6 @@ export const getFooterNavTooltipArrowStyle = (theme: any) => ({
   border: '3px solid transparent',
   borderTopColor: getFooterNavPalette(theme).tooltipArrow,
 });
-
-// ==========================================
-// MIXINS: Neumorphic / Claymorphic
-// ==========================================
 
 export const clayPanelStyle = css`
   background: ${({ theme }) =>

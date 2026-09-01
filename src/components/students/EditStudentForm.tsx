@@ -33,35 +33,43 @@ const NATIONALITIES = ['Pakistani', 'Indian', 'Afghan', 'Bangladeshi', 'Other'];
 
 // Styled components - Compact Design
 const StyledDialog = muiStyled(Dialog)(({ theme }) => ({
+  zIndex: 1100,
+  '& .MuiDialog-container': {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   '& .MuiDialog-paper': {
-    borderRadius: '12px',
-    background: theme.palette.mode === 'dark' 
-      ? theme.palette.background.paper 
-      : theme.palette.background.paper,
+    borderRadius: '16px',
+    background: theme.palette.background.paper,
     maxWidth: '800px',
     width: '95%',
-    maxHeight: '90vh',
-    margin: '32px auto',
+    margin: '72px 16px 60px 16px',
+    maxHeight: 'calc(100vh - 132px)',
     overflow: 'hidden',
     boxShadow: theme.palette.mode === 'dark'
-      ? '0 4px 16px rgba(0, 0, 0, 0.3)'
-      : '0 4px 16px rgba(0, 0, 0, 0.1)',
-    border: theme.palette.mode === 'dark'
-      ? '1px solid rgba(255, 255, 255, 0.05)'
-      : '1px solid rgba(0, 0, 0, 0.05)',
+      ? '0 20px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08)'
+      : '0 20px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.08)',
     display: 'flex',
     flexDirection: 'column',
+    position: 'relative',
+    zIndex: 1101,
     [theme.breakpoints.down('sm')]: {
-      width: 'calc(100% - 16px)',
-      maxHeight: '95vh',
-      margin: '16px auto',
-      borderRadius: '12px'
+      width: 'calc(100% - 20px)',
+      margin: '68px 10px 56px 10px',
+      maxHeight: 'calc(100vh - 124px)',
+      borderRadius: '16px',
     }
   },
   '& .MuiBackdrop-root': {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    backdropFilter: 'blur(4px)',
-    WebkitBackdropFilter: 'blur(4px)'
+    top: '64px',
+    bottom: '52px',
+    backgroundColor: theme.palette.mode === 'dark'
+      ? 'rgba(15, 23, 42, 0.8)'
+      : 'rgba(15, 23, 42, 0.45)',
+    backdropFilter: 'blur(8px)',
+    WebkitBackdropFilter: 'blur(8px)',
+    position: 'fixed',
+    zIndex: 1099
   }
 }));
 
@@ -524,7 +532,7 @@ export const EditStudentForm: React.FC<EditStudentFormProps> = ({
         <StyledDialog
           open={open}
           onClose={onCancel}
-          fullScreen={fullScreen}
+          fullScreen={false}
           maxWidth="lg"
         >
       <DialogHeader>

@@ -79,7 +79,7 @@ import EmployeeAttendanceTab from './components/EmployeeAttendanceTab/EmployeeAt
 import AccountsTab from './components/AccountsTab/AccountsTab';
 import PredictionsTab from './components/PredictionsTab/PredictionsTab';
 import { Box } from '@mui/material';
-import { Assessment, Groups, Payment, PersonAdd, BarChart, People, AttachMoney, AccountBalanceWallet, Contactless } from '@mui/icons-material';
+import { Assessment, Groups, Payment, PersonAdd, BarChart, People, AttachMoney, AccountBalanceWallet, Contactless, ChevronRight } from '@mui/icons-material';
 
 // TypeScript declaration for jsPDF autoTable
 declare module 'jspdf' {
@@ -102,6 +102,17 @@ const Dashboard: React.FC = () => {
   const theme = useTheme();
   const isDark = checkIsDark(theme);
   const savePdf = useCapacitorPdfSave();
+
+  // Footer scroll state & ref for mobile indication
+  const footerScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkFooterScroll = useCallback(() => {
+    if (footerScrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = footerScrollRef.current;
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 10);
+    }
+  }, []);
 
   // Core data state
   const [students, setStudents] = useState<any[]>([]);
@@ -228,6 +239,7 @@ const Dashboard: React.FC = () => {
 
   // Attendance state
   const [absentees, setAbsentees] = useState<any[]>([]);
+  const [lateComers, setLateComers] = useState<any[]>([]);
   const [studentDetails, setStudentDetails] = useState<Record<string, any>>({});
   const [attendanceDataForDate, setAttendanceDataForDate] = useState<any[]>([]);
   const [halfLeavesForDate, setHalfLeavesForDate] = useState<any[]>([]);
@@ -259,6 +271,8 @@ const Dashboard: React.FC = () => {
   const [exportAbsentLoading, setExportAbsentLoading] = useState(false);
   const [exportPresentLoading, setExportPresentLoading] = useState(false);
   const [isAbsenteesExpanded, setIsAbsenteesExpanded] = useExpandedState('dashboard_absentees_expanded');
+  const [isLateComersExpanded, setIsLateComersExpanded] = useExpandedState('dashboard_late_comers_expanded');
+  const [isConsecutiveAbsentExpanded, setIsConsecutiveAbsentExpanded] = useExpandedState('dashboard_consecutive_absent_expanded');
 
   // Employee attendance state
   const [employeeAbsentees, setEmployeeAbsentees] = useState<any[]>([]);
@@ -703,7 +717,7 @@ const Dashboard: React.FC = () => {
     }
   }, [user?.school_id, toast, setLoading, getCachedSession, startProgress, completeProgress, setProgress]);
 
-  // Fetch absentees
+  // Fetch absentees and late comers
   useEffect(() => {
     if (!absentDate || !user?.school_id) return;
     fetchAbsenteesService(
@@ -713,7 +727,8 @@ const Dashboard: React.FC = () => {
       students,
       setAbsentees,
       setStudentDetails,
-      getCachedSession
+      getCachedSession,
+      setLateComers
     );
   }, [absentDate, user?.school_id, students, sessionData?.id, getCachedSession, attendanceLiveVersion]);
 
@@ -768,11 +783,11 @@ const Dashboard: React.FC = () => {
   }, [activeTab, dashboardDate, user?.school_id, students, sessionData?.id, getCachedSession, attendanceLiveVersion]);
 
   // Calculate attendance stats
-  // Present count includes both 'present' and 'late' statuses
-  const presentToday = attendanceDataForDate.filter(a => a.status === 'present' || a.status === 'late').length;
+  // Present count includes both 'present' and 'late' / 'Lt' statuses
+  const presentToday = attendanceDataForDate.filter(a => a.status === 'present' || a.status === 'late' || a.status === 'Lt' || a.status === 'lt').length;
   const absentToday = attendanceDataForDate.filter(a => a.status === 'absent').length;
   const leaveToday = attendanceDataForDate.filter(a => a.status === 'leave').length;
-  const lateToday = attendanceDataForDate.filter(a => a.status === 'late').length;
+  const lateToday = attendanceDataForDate.filter(a => a.status === 'late' || a.status === 'Lt' || a.status === 'lt').length;
   const halfLeaveCount = halfLeavesForDate.length;
   const totalMarked = attendanceDataForDate.length;
   const presentPercent = totalMarked ? Math.round((presentToday / totalMarked) * 1000) / 10 : 0;
@@ -1919,245 +1934,189 @@ const Dashboard: React.FC = () => {
         visible: true,
         content: (
           <div style={{
+            position: 'relative',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: isMobile ? 'center' : 'space-between',
+            justifyContent: 'center',
             width: '100%',
-            gap: '1rem'
+            overflow: 'hidden'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span>{timeStr}</span>
-              <span style={{ opacity: 0.6 }}>•</span>
-              <span>{dateStr}</span>
-            </div>
-            {!isMobile && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div
+              ref={footerScrollRef}
+              onScroll={checkFooterScroll}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: isMobile ? '0.35rem' : '0.5rem',
+                overflowX: 'auto',
+                whiteSpace: 'nowrap',
+                padding: '2px 0',
+                width: '100%',
+                justifyContent: isMobile ? 'flex-start' : 'center',
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+                WebkitOverflowScrolling: 'touch',
+                maskImage: isMobile && canScrollRight ? 'linear-gradient(to right, black 75%, transparent 98%)' : 'none',
+                WebkitMaskImage: isMobile && canScrollRight ? 'linear-gradient(to right, black 75%, transparent 98%)' : 'none'
+              }}
+            >
+                {/* Auto Attendance (RFID Scanner) Button */}
+                {canAccessFooterShortcut('/attendance/rfid-scanner') && (
+                  <button
+                    onClick={() => navigate('/attendance/rfid-scanner')}
+                    style={getFooterNavButtonStyle(theme, '#f97316', hoveredButton === 'rfidScanner')}
+                    onMouseEnter={() => setHoveredButton('rfidScanner')}
+                    onMouseLeave={() => setHoveredButton(null)}
+                  >
+                    {!isMobile && <Contactless sx={getFooterNavIconStyle(theme, '#f97316', hoveredButton === 'rfidScanner')} />}
+                    <span>Auto Attendance</span>
+                  </button>
+                )}
+
                 {/* Student Attendance Button */}
                 {canAccessFooterShortcut('/attendance/mark') && (
-                  <div
-                    style={{ position: 'relative' }}
+                  <button
+                    onClick={() => navigate('/attendance/mark')}
+                    style={getFooterNavButtonStyle(theme, '#3b82f6', hoveredButton === 'student')}
                     onMouseEnter={() => setHoveredButton('student')}
                     onMouseLeave={() => setHoveredButton(null)}
                   >
-                    <button
-                      onClick={() => navigate('/attendance/mark')}
-                      className="footer-icon-button"
-                      style={getFooterNavButtonStyle(theme, '#3b82f6', hoveredButton === 'student')}
-                    >
-                      <Assessment
-                        sx={getFooterNavIconStyle(theme, '#3b82f6', hoveredButton === 'student')}
-                      />
-                    </button>
-                    {hoveredButton === 'student' && (
-                      <div style={getFooterNavTooltipStyle(theme)}>
-                        Mark Student Attendance
-                        <div style={getFooterNavTooltipArrowStyle(theme)} />
-                      </div>
-                    )}
-                  </div>
+                    {!isMobile && <Assessment sx={getFooterNavIconStyle(theme, '#3b82f6', hoveredButton === 'student')} />}
+                    <span>Student Attendance</span>
+                  </button>
                 )}
 
                 {/* Employee Attendance Button */}
                 {canAccessFooterShortcut('/attendance/staff') && (
-                  <div
-                    style={{ position: 'relative' }}
+                  <button
+                    onClick={() => navigate('/attendance/staff')}
+                    style={getFooterNavButtonStyle(theme, '#10b981', hoveredButton === 'employee')}
                     onMouseEnter={() => setHoveredButton('employee')}
                     onMouseLeave={() => setHoveredButton(null)}
                   >
-                    <button
-                      onClick={() => navigate('/attendance/staff')}
-                      className="footer-icon-button"
-                      style={getFooterNavButtonStyle(theme, '#10b981', hoveredButton === 'employee')}
-                    >
-                      <Groups
-                        sx={getFooterNavIconStyle(theme, '#10b981', hoveredButton === 'employee')}
-                      />
-                    </button>
-                    {hoveredButton === 'employee' && (
-                      <div style={getFooterNavTooltipStyle(theme)}>
-                        Mark Employee Attendance
-                        <div style={getFooterNavTooltipArrowStyle(theme)} />
-                      </div>
-                    )}
-                  </div>
+                    {!isMobile && <Groups sx={getFooterNavIconStyle(theme, '#10b981', hoveredButton === 'employee')} />}
+                    <span>Staff Attendance</span>
+                  </button>
                 )}
 
                 {/* Fee Collection Button */}
                 {canAccessFooterShortcut('/fee-collection') && (
-                  <div
-                    style={{ position: 'relative' }}
+                  <button
+                    onClick={() => navigate('/fee-collection')}
+                    style={getFooterNavButtonStyle(theme, '#8b5cf6', hoveredButton === 'fee')}
                     onMouseEnter={() => setHoveredButton('fee')}
                     onMouseLeave={() => setHoveredButton(null)}
                   >
-                    <button
-                      onClick={() => navigate('/fee-collection')}
-                      className="footer-icon-button"
-                      style={getFooterNavButtonStyle(theme, '#8b5cf6', hoveredButton === 'fee')}
-                    >
-                      <Payment
-                        sx={getFooterNavIconStyle(theme, '#8b5cf6', hoveredButton === 'fee')}
-                      />
-                    </button>
-                    {hoveredButton === 'fee' && (
-                      <div style={getFooterNavTooltipStyle(theme)}>
-                        Fee Collection
-                        <div style={getFooterNavTooltipArrowStyle(theme)} />
-                      </div>
-                    )}
-                  </div>
+                    {!isMobile && <Payment sx={getFooterNavIconStyle(theme, '#8b5cf6', hoveredButton === 'fee')} />}
+                    <span>Fee Collection</span>
+                  </button>
                 )}
 
                 {/* Add Student Button */}
                 {canAccessFooterShortcut('/students/add') && (
-                  <div
-                    style={{ position: 'relative' }}
+                  <button
+                    onClick={() => navigate('/students/add')}
+                    style={getFooterNavButtonStyle(theme, '#22c55e', hoveredButton === 'addStudent')}
                     onMouseEnter={() => setHoveredButton('addStudent')}
                     onMouseLeave={() => setHoveredButton(null)}
                   >
-                    <button
-                      onClick={() => navigate('/students/add')}
-                      className="footer-icon-button"
-                      style={getFooterNavButtonStyle(theme, '#22c55e', hoveredButton === 'addStudent')}
-                    >
-                      <PersonAdd
-                        sx={getFooterNavIconStyle(theme, '#22c55e', hoveredButton === 'addStudent')}
-                      />
-                    </button>
-                    {hoveredButton === 'addStudent' && (
-                      <div style={getFooterNavTooltipStyle(theme)}>
-                        Add Student
-                        <div style={getFooterNavTooltipArrowStyle(theme)} />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* RFID Scanner Button */}
-                {canAccessFooterShortcut('/attendance/rfid-scanner') && (
-                  <div
-                    style={{ position: 'relative' }}
-                    onMouseEnter={() => setHoveredButton('rfidScanner')}
-                    onMouseLeave={() => setHoveredButton(null)}
-                  >
-                    <button
-                      onClick={() => navigate('/attendance/rfid-scanner')}
-                      className="footer-icon-button"
-                      style={getFooterNavButtonStyle(theme, '#f97316', hoveredButton === 'rfidScanner')}
-                    >
-                      <Contactless
-                        sx={getFooterNavIconStyle(theme, '#f97316', hoveredButton === 'rfidScanner')}
-                      />
-                    </button>
-                    {hoveredButton === 'rfidScanner' && (
-                      <div style={getFooterNavTooltipStyle(theme)}>
-                        Scanner mode
-                        <div style={getFooterNavTooltipArrowStyle(theme)} />
-                      </div>
-                    )}
-                  </div>
+                    {!isMobile && <PersonAdd sx={getFooterNavIconStyle(theme, '#22c55e', hoveredButton === 'addStudent')} />}
+                    <span>Add Student</span>
+                  </button>
                 )}
 
                 {/* Reports Button */}
                 {canAccessFooterShortcut('/reports') && (
-                  <div
-                    style={{ position: 'relative' }}
+                  <button
+                    onClick={() => navigate('/reports')}
+                    style={getFooterNavButtonStyle(theme, '#eab308', hoveredButton === 'reports')}
                     onMouseEnter={() => setHoveredButton('reports')}
                     onMouseLeave={() => setHoveredButton(null)}
                   >
-                    <button
-                      onClick={() => navigate('/reports')}
-                      className="footer-icon-button"
-                      style={getFooterNavButtonStyle(theme, '#eab308', hoveredButton === 'reports')}
-                    >
-                      <BarChart
-                        sx={getFooterNavIconStyle(theme, '#eab308', hoveredButton === 'reports')}
-                      />
-                    </button>
-                    {hoveredButton === 'reports' && (
-                      <div style={getFooterNavTooltipStyle(theme)}>
-                        Reports
-                        <div style={getFooterNavTooltipArrowStyle(theme)} />
-                      </div>
-                    )}
-                  </div>
+                    {!isMobile && <BarChart sx={getFooterNavIconStyle(theme, '#eab308', hoveredButton === 'reports')} />}
+                    <span>Reports</span>
+                  </button>
                 )}
 
                 {/* Students List Button */}
                 {canAccessFooterShortcut('/students/list') && (
-                  <div
-                    style={{ position: 'relative' }}
+                  <button
+                    onClick={() => navigate('/students/list')}
+                    style={getFooterNavButtonStyle(theme, '#6366f1', hoveredButton === 'students')}
                     onMouseEnter={() => setHoveredButton('students')}
                     onMouseLeave={() => setHoveredButton(null)}
                   >
-                    <button
-                      onClick={() => navigate('/students/list')}
-                      className="footer-icon-button"
-                      style={getFooterNavButtonStyle(theme, '#6366f1', hoveredButton === 'students')}
-                    >
-                      <People
-                        sx={getFooterNavIconStyle(theme, '#6366f1', hoveredButton === 'students')}
-                      />
-                    </button>
-                    {hoveredButton === 'students' && (
-                      <div style={getFooterNavTooltipStyle(theme)}>
-                        Students List
-                        <div style={getFooterNavTooltipArrowStyle(theme)} />
-                      </div>
-                    )}
-                  </div>
+                    {!isMobile && <People sx={getFooterNavIconStyle(theme, '#6366f1', hoveredButton === 'students')} />}
+                    <span>Students List</span>
+                  </button>
                 )}
 
                 {/* Fine Collection Button */}
                 {canAccessFooterShortcut('/fines/collect') && (
-                  <div
-                    style={{ position: 'relative' }}
+                  <button
+                    onClick={() => navigate('/fines/collect')}
+                    style={getFooterNavButtonStyle(theme, '#10b981', hoveredButton === 'fineCollect')}
                     onMouseEnter={() => setHoveredButton('fineCollect')}
                     onMouseLeave={() => setHoveredButton(null)}
                   >
-                    <button
-                      onClick={() => navigate('/fines/collect')}
-                      className="footer-icon-button"
-                      style={getFooterNavButtonStyle(theme, '#10b981', hoveredButton === 'fineCollect')}
-                    >
-                      <AttachMoney
-                        sx={getFooterNavIconStyle(theme, '#10b981', hoveredButton === 'fineCollect')}
-                      />
-                    </button>
-                    {hoveredButton === 'fineCollect' && (
-                      <div style={getFooterNavTooltipStyle(theme)}>
-                        Fine Collection
-                        <div style={getFooterNavTooltipArrowStyle(theme)} />
-                      </div>
-                    )}
-                  </div>
+                    {!isMobile && <AttachMoney sx={getFooterNavIconStyle(theme, '#10b981', hoveredButton === 'fineCollect')} />}
+                    <span>Fine Collection</span>
+                  </button>
                 )}
 
                 {/* Remaining Fine Button */}
                 {canAccessFooterShortcut('/fines/remaining') && (
-                  <div
-                    style={{ position: 'relative' }}
+                  <button
+                    onClick={() => navigate('/fines/remaining')}
+                    style={getFooterNavButtonStyle(theme, '#f59e0b', hoveredButton === 'remainingFine')}
                     onMouseEnter={() => setHoveredButton('remainingFine')}
                     onMouseLeave={() => setHoveredButton(null)}
                   >
-                    <button
-                      onClick={() => navigate('/fines/remaining')}
-                      className="footer-icon-button"
-                      style={getFooterNavButtonStyle(theme, '#f59e0b', hoveredButton === 'remainingFine')}
-                    >
-                      <AccountBalanceWallet
-                        sx={getFooterNavIconStyle(theme, '#f59e0b', hoveredButton === 'remainingFine')}
-                      />
-                    </button>
-                    {hoveredButton === 'remainingFine' && (
-                      <div style={getFooterNavTooltipStyle(theme)}>
-                        Remaining Fine
-                        <div style={getFooterNavTooltipArrowStyle(theme)} />
-                      </div>
-                    )}
-                  </div>
+                    {!isMobile && <AccountBalanceWallet sx={getFooterNavIconStyle(theme, '#f59e0b', hoveredButton === 'remainingFine')} />}
+                    <span>Remaining Fine</span>
+                  </button>
                 )}
+            </div>
+
+            {/* Pulsing Scroll Indicator Badge for Mobile */}
+            {isMobile && canScrollRight && (
+              <div
+                onClick={() => {
+                  if (footerScrollRef.current) {
+                    footerScrollRef.current.scrollBy({ left: 140, behavior: 'smooth' });
+                  }
+                }}
+                style={{
+                  position: 'absolute',
+                  right: '0px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '2px',
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  color: '#ffffff',
+                  fontSize: '0.65rem',
+                  fontWeight: 800,
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  boxShadow: '0 3px 10px rgba(37, 99, 235, 0.45)',
+                  zIndex: 10,
+                  cursor: 'pointer',
+                  animation: 'pulseScrollHint 1.8s ease-in-out infinite'
+                }}
+                title="Scroll for more shortcuts"
+              >
+                <span>More</span>
+                <ChevronRight sx={{ fontSize: 13 }} />
               </div>
             )}
+            <style>{`
+              @keyframes pulseScrollHint {
+                0%, 100% { transform: translateY(-50%) translateX(0); opacity: 0.95; }
+                50% { transform: translateY(-50%) translateX(3px); opacity: 0.8; }
+              }
+            `}</style>
           </div>
         )
       });
@@ -3603,7 +3562,13 @@ const Dashboard: React.FC = () => {
               setAbsentDate={setAbsentDate}
               isAbsenteesExpanded={isAbsenteesExpanded}
               setIsAbsenteesExpanded={setIsAbsenteesExpanded}
+              isLateComersExpanded={isLateComersExpanded}
+              setIsLateComersExpanded={setIsLateComersExpanded}
+              isConsecutiveAbsentExpanded={isConsecutiveAbsentExpanded}
+              setIsConsecutiveAbsentExpanded={setIsConsecutiveAbsentExpanded}
               absentees={absentees}
+              lateComers={lateComers}
+              setLateComers={setLateComers}
               studentDetails={studentDetails}
               attendanceDataForDate={attendanceDataForDate}
               whatsappProcessing={whatsappProcessing}
@@ -3635,6 +3600,8 @@ const Dashboard: React.FC = () => {
               showAbsentees={showAbsentees}
               isMobile={isMobile}
               canUseManualAbsentAutomationTrigger={canUseManualAbsentAutomationTrigger}
+              getClassName={getClassName}
+              getSectionName={getSectionName}
             />
           )}
 

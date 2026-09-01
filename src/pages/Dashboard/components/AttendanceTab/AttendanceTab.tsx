@@ -279,9 +279,9 @@ const Container = styled.div`
 // Floating action button for quick manual absents (bottom-right)
 const FloatingFab = styled.button`
   position: fixed;
-  bottom: 60px;
+  bottom: 76px;
   @media (max-width: 600px) {
-    bottom: 40px;
+    bottom: 72px;
   }
   right: 20px;
   width: 48px;
@@ -295,8 +295,8 @@ const FloatingFab = styled.button`
   justify-content: center;
   box-shadow: 0 6px 16px rgba(0,0,0,0.25);
   cursor: pointer;
-  z-index: 9999;
-  transition: opacity 0.2s ease;
+  z-index: 10001;
+  transition: bottom 0.2s ease, opacity 0.2s ease;
   &:hover { opacity: 0.92; }
 `;
 
@@ -395,7 +395,13 @@ interface AttendanceTabProps {
   setAbsentDate: (date: string) => void;
   isAbsenteesExpanded: boolean;
   setIsAbsenteesExpanded: (expanded: boolean) => void;
+  isLateComersExpanded?: boolean;
+  setIsLateComersExpanded?: (expanded: boolean) => void;
+  isConsecutiveAbsentExpanded?: boolean;
+  setIsConsecutiveAbsentExpanded?: (expanded: boolean) => void;
   absentees: any[];
+  lateComers?: any[];
+  setLateComers?: React.Dispatch<React.SetStateAction<any[]>>;
   studentDetails: Record<string, any>;
   attendanceDataForDate: any[];
   whatsappProcessing: boolean;
@@ -404,14 +410,14 @@ interface AttendanceTabProps {
   setWhatsappNotificationData: (data: any[]) => void;
   exportAbsentLoading: boolean;
   exportPresentLoading: boolean;
-  exportAbsenteesPDF: () => void;
+exportAbsenteesPDF: () => void;
   exportPresentStudentsPDF: () => void;
   exportConsecutiveAbsentPDF: () => void;
   showExportDropdown: boolean;
   setShowExportDropdown: (show: boolean) => void;
   exportDropdownRef: React.RefObject<HTMLButtonElement>;
-  dropdownIdx: number | null;
-  setDropdownIdx: (idx: number | null) => void;
+  dropdownIdx: number | string | null;
+  setDropdownIdx: (idx: any) => void;
   dropdownPos: { top: number; left: number } | null;
   setDropdownPos: (pos: { top: number; left: number } | null) => void;
   dropdownDirection: 'up' | 'down';
@@ -428,6 +434,8 @@ interface AttendanceTabProps {
   isMobile: boolean;
   /** When false, the floating "A" manual absence automation control is hidden */
   canUseManualAbsentAutomationTrigger: boolean;
+  getClassName?: (classId: any) => string;
+  getSectionName?: (sectionId: any) => string;
 }
 
 const AttendanceTab: React.FC<AttendanceTabProps> = ({
@@ -454,7 +462,13 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
   setAbsentDate,
   isAbsenteesExpanded,
   setIsAbsenteesExpanded,
+  isLateComersExpanded = true,
+  setIsLateComersExpanded,
+  isConsecutiveAbsentExpanded = true,
+  setIsConsecutiveAbsentExpanded,
   absentees,
+  lateComers = [],
+  setLateComers,
   studentDetails,
   attendanceDataForDate,
   whatsappProcessing,
@@ -485,7 +499,9 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
   hasRightCards,
   showAbsentees,
   isMobile,
-  canUseManualAbsentAutomationTrigger
+  canUseManualAbsentAutomationTrigger,
+  getClassName = () => '-',
+  getSectionName = () => '-'
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -493,6 +509,55 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
   const dashboardPalette = getDashboardPalette(theme as any);
   const statusPalette = dashboardPalette.status;
   const isDarkTheme = isDark(theme as any);
+
+  const [showLateStatusDropdown, setShowLateStatusDropdown] = useState(false);
+
+  const bulkUpdateLateComersStatus = async (targetStatus: string) => {
+    if (!user?.school_id || lateComers.length === 0) return;
+
+    try {
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('is_active', true)
+        .eq('school_id', user.school_id)
+        .single();
+
+      if (sessionError) throw sessionError;
+      if (!sessionData?.id) {
+        toast.showToast('No active session found', 'error');
+        return;
+      }
+
+      const lateIds = lateComers.map(l => l.id);
+      const { error: updateError } = await supabase
+        .from('attendance_records')
+        .update({ status: targetStatus })
+        .in('id', lateIds)
+        .eq('school_id', user.school_id);
+
+      if (updateError) throw updateError;
+
+      setAttendanceDataForDate(prev =>
+        prev.map(r => lateIds.includes(r.id) ? { ...r, status: targetStatus } : r)
+      );
+
+      if (targetStatus === 'present') {
+        setLateComers?.([]);
+      } else if (targetStatus === 'absent' || targetStatus === 'leave') {
+        const moved = lateComers.map(l => ({ ...l, status: targetStatus }));
+        setAbsentees(prev => [...prev, ...moved]);
+        setLateComers?.([]);
+      }
+
+      toast.showToast(`Updated status for ${lateIds.length} late comers to ${targetStatus}`, 'success');
+    } catch (err) {
+      console.error('Failed to update status for late comers:', err);
+      toast.showToast('Failed to update status', 'error');
+    } finally {
+      setShowLateStatusDropdown(false);
+    }
+  };
 
   // Manual mark button state and handler for this tab
   const [manualMarkInProgress, setManualMarkInProgress] = useState(false);
@@ -583,13 +648,26 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
       );
 
       if (nextStatus === 'absent' || nextStatus === 'leave') {
-        setAbsentees(prev => prev.map(a =>
-          a.id === absentee.id
-            ? { ...a, status: nextStatus }
-            : a
-        ));
+        setAbsentees(prev => {
+          const exists = prev.some(a => a.id === absentee.id);
+          return exists
+            ? prev.map(a => a.id === absentee.id ? { ...a, status: nextStatus } : a)
+            : [...prev, { ...absentee, status: nextStatus }];
+        });
+        if (setLateComers) setLateComers(prev => prev.filter(l => l.id !== absentee.id));
+      } else if (nextStatus === 'late') {
+        setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
+        if (setLateComers) {
+          setLateComers(prev => {
+            const exists = prev.some(l => l.id === absentee.id);
+            return exists
+              ? prev.map(l => l.id === absentee.id ? { ...l, status: nextStatus } : l)
+              : [...prev, { ...absentee, status: nextStatus }];
+          });
+        }
       } else {
         setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
+        if (setLateComers) setLateComers(prev => prev.filter(l => l.id !== absentee.id));
       }
 
       toast.showToast('Status updated successfully', 'success');
@@ -634,6 +712,7 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
       if (deleteError) throw deleteError;
 
       setAbsentees(prev => prev.filter(a => a.id !== absentee.id));
+      if (setLateComers) setLateComers(prev => prev.filter(l => l.id !== absentee.id));
       setAttendanceDataForDate(prev => prev.filter(r => r.student_id !== absentee.student_id));
 
       toast.showToast('Attendance record deleted', 'success');
@@ -939,21 +1018,31 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
       {consecutiveAbsentStudents.length > 0 && (
       <ContentGrid theme={theme}>
         <ContentCard theme={theme}>
-          <CardTitle theme={theme}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-              <Warning style={{ fontSize: '1.1rem' }} />
-              Consecutive Absent Students
-            </div>
+          <div
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isConsecutiveAbsentExpanded ? '1rem' : 0, cursor: 'pointer' }}
+            onClick={() => setIsConsecutiveAbsentExpanded && setIsConsecutiveAbsentExpanded(!isConsecutiveAbsentExpanded)}
+          >
+            <CardTitle theme={theme} style={{ margin: 0 }}>
+              <Warning style={{ fontSize: '1.1rem', color: '#ef4444' }} />
+              Consecutive Absent Students ({consecutiveAbsentStudents.length})
+            </CardTitle>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', marginLeft: 'auto' }}>
               <ExportButton
-              onClick={exportConsecutiveAbsentPDF}
-              disabled={exportAbsentLoading}
-              title="Export to PDF"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  exportConsecutiveAbsentPDF();
+                }}
+                disabled={exportAbsentLoading}
+                title="Export to PDF"
               >
                 <span style={{ fontWeight: 900, fontSize: '1rem', color: '#fff' }}>A</span>
                 {exportAbsentLoading ? 'Exporting...' : 'Export PDF'}
-            </ExportButton>
-          </CardTitle>
-          <>
+              </ExportButton>
+              <ExpandIcon $expanded={isConsecutiveAbsentExpanded} />
+            </div>
+          </div>
+          {isConsecutiveAbsentExpanded && (
+            <>
               {/* Mobile Card View */}
               <ConsecutiveAbsentGrid>
                 {consecutiveAbsentStudents.map((student, index) => (
@@ -1046,14 +1135,15 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                   </ConsecutiveAbsentTableBody>
                 </ConsecutiveAbsentTable>
               </ConsecutiveAbsentTableContainer>
-          </>
+            </>
+          )}
         </ContentCard>
       </ContentGrid>
       )}
 
       {/* Main Content */}
-      <ContentGrid theme={theme}>
-        {showAbsentees && absentees.length > 0 && (
+      {showAbsentees && absentees.length > 0 && (
+        <ContentGrid theme={theme}>
           <ContentCard theme={theme}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', cursor: 'pointer' }} onClick={() => setIsAbsenteesExpanded(!isAbsenteesExpanded)}>
               <CardTitle theme={theme} style={{ margin: 0 }}>
@@ -1634,8 +1724,469 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
               </div>
             )}
           </ContentCard>
-        )}
-      </ContentGrid>
+        </ContentGrid>
+      )}
+
+      {/* Today's Late Comers Card */}
+      {showAbsentees && (
+        <ContentGrid theme={theme}>
+          <ContentCard theme={theme}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', cursor: 'pointer' }} onClick={() => setIsLateComersExpanded && setIsLateComersExpanded(!isLateComersExpanded)}>
+              <CardTitle theme={theme} style={{ margin: 0 }}>
+                <AccessTime style={{ fontSize: '1.1rem', color: '#f59e0b' }} />
+                Today's Late Comers {lateComers && lateComers.length > 0 ? `(${lateComers.length})` : ''}
+              </CardTitle>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', marginLeft: 'auto' }}>
+                <WhatsAppButton
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (whatsappProcessing || lateComers.length === 0) return;
+
+                    setWhatsappProcessing(true);
+                    try {
+                      const notificationData = await whatsappSemiAutoService.prepareAttendanceNotifications(
+                        lateComers.map(l => ({
+                          id: l.student_id,
+                          status: 'late',
+                          date: absentDate,
+                          remarks: l.remarks
+                        })),
+                        user?.school_id!,
+                        schoolName || 'School',
+                        'All Classes',
+                        undefined
+                      );
+
+                      if (notificationData.length > 0) {
+                        setWhatsappNotificationData(notificationData);
+                        setShowWhatsAppSender(true);
+                        toast.showToast(`Prepared ${notificationData.length} notifications`, 'success');
+                      } else {
+                        toast.showToast('No late students with phone numbers found', 'success');
+                      }
+                    } catch (error) {
+                      toast.showToast('Failed to prepare notifications', 'error');
+                    } finally {
+                      setWhatsappProcessing(false);
+                    }
+                  }}
+                  disabled={whatsappProcessing || lateComers.length === 0}
+                  style={{
+                    opacity: (whatsappProcessing || lateComers.length === 0) ? 0.5 : 1,
+                    cursor: (whatsappProcessing || lateComers.length === 0) ? 'not-allowed' : 'pointer'
+                  }}
+                  title="Send WhatsApp/SMS notifications to late comers"
+                >
+                  {whatsappProcessing ? (
+                    <div style={{
+                      width: '16px',
+                      height: '16px',
+                      border: '2px solid #25d366',
+                      borderTop: '2px solid transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }} />
+                  ) : (
+                    <WhatsApp />
+                  )}
+                </WhatsAppButton>
+                <ExpandIcon $expanded={isLateComersExpanded} />
+              </div>
+            </div>
+            {isLateComersExpanded && (
+              <div>
+                <AbsenteesGrid>
+                  {(() => {
+                    const selectedDate = new Date(absentDate);
+                    const isSunday = selectedDate.getDay() === 0;
+                    const hasAttendanceRecords = attendanceDataForDate.length > 0;
+                    const hasLateStudents = lateComers.length > 0;
+
+                    if (isSunday) {
+                      return (
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '2rem',
+                          textAlign: 'center',
+                          color: dashboardPalette.subtleText,
+                          minHeight: '200px'
+                        }}>
+                          <div style={{ marginBottom: '1rem', color: '#6366f1', opacity: 0.7 }}>
+                            <CalendarMonth style={{ fontSize: '2.5rem', color: '#6366f1', opacity: 0.6, marginBottom: '0.75rem' }} />
+                          </div>
+                          <div style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '0.5rem', color: dashboardPalette.titleText }}>
+                            Sunday - No Classes
+                          </div>
+                          <div style={{ fontSize: '0.95rem', opacity: 0.8 }}>
+                            School is closed on Sundays
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (!hasAttendanceRecords) {
+                      return (
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '2rem',
+                          textAlign: 'center',
+                          color: dashboardPalette.subtleText,
+                          minHeight: '200px'
+                        }}>
+                          <div style={{ marginBottom: '1rem', color: '#6366f1', opacity: 0.7 }}>
+                            <HourglassEmpty style={{ fontSize: '2.5rem', color: '#6366f1', opacity: 0.6, marginBottom: '0.75rem' }} />
+                          </div>
+                          <div style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '0.5rem', color: dashboardPalette.titleText }}>
+                            No Attendance Records
+                          </div>
+                          <div style={{ fontSize: '0.95rem', opacity: 0.8 }}>
+                            No attendance has been recorded for {formatAppDate(absentDate)}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (!hasLateStudents) {
+                      return (
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '2rem',
+                          textAlign: 'center',
+                          color: dashboardPalette.subtleText,
+                          minHeight: '200px'
+                        }}>
+                          <div style={{ marginBottom: '1rem', color: '#22c55e', opacity: 0.7 }}>
+                            <CheckCircle style={{ fontSize: '2.5rem', color: '#22c55e', opacity: 0.6, marginBottom: '0.75rem' }} />
+                          </div>
+                          <div style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '0.5rem', color: dashboardPalette.titleText }}>
+                            No Late Students
+                          </div>
+                          <div style={{ fontSize: '0.95rem', opacity: 0.8 }}>
+                            All present students arrived on time on {formatAppDate(absentDate)}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return lateComers.map((lateComer, globalIdx) => {
+                      const student = studentDetails[lateComer.student_id]
+                        || studentDetails[String(lateComer.student_id)]
+                        || studentDetails[Number(lateComer.student_id)]
+                        || {
+                          id: lateComer.student_id,
+                          name: `Student #${lateComer.student_id}`,
+                          father_name: '-',
+                          class_name: getClassName(lateComer.class_id),
+                          section_name: getSectionName(lateComer.section_id),
+                          monthly_lates: 1,
+                          monthly_absences: 0,
+                          attendance_percentage: 100
+                        };
+                      const lateKey = `late_${globalIdx}`;
+
+                      return (
+                        <CompactAnimatedAbsenteeCard key={lateComer.id} $index={globalIdx}>
+                          <StudentAvatar
+                            onMouseEnter={(e) => {
+                              if (student.picture_url) {
+                                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                setHoveredAvatar({
+                                  url: student.picture_url,
+                                  x: rect.left + rect.width / 2,
+                                  y: rect.top
+                                });
+                              }
+                            }}
+                            onMouseLeave={() => setHoveredAvatar(null)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setHoveredAvatar(null);
+                              navigate(`/students/profile/${student.id}`);
+                            }}
+                            title={`View profile of ${student.name}`}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            {student.picture_url ? (
+                              <img src={student.picture_url} alt={student.name} />
+                            ) : (
+                              <AccountCircle style={{ fontSize: '1.3em', color: '#b0b8d1' }} />
+                            )}
+                          </StudentAvatar>
+                          <AbsenteeCardContent>
+                            <AbsenteeRow>
+                              <AbsenteeId>{getStudentDisplayId(student)}</AbsenteeId>
+                              <Dot />
+                              <AbsenteeName>{student.name}</AbsenteeName>
+                              {student.father_name && (
+                                <>
+                                  <Dot />
+                                  <AbsenteeFather>{student.father_name}</AbsenteeFather>
+                                </>
+                              )}
+                            </AbsenteeRow>
+                            <AbsenteeRow style={{ fontSize: '0.82rem', color: dashboardPalette.subtleText }}>
+                              <span>{student.class_name}</span>
+                              {student.section_name && (
+                                <>
+                                  <Dot />
+                                  <span>{student.section_name}</span>
+                                </>
+                              )}
+                              <Dot />
+                              <span style={{ color: '#f59e0b', fontWeight: 600 }}>{student.monthly_lates || 0} M.L</span>
+                              <Dot />
+                              <span>{student.monthly_absences || 0} M.A</span>
+                              <Dot />
+                              <span style={{
+                                color: student.attendance_percentage < 75 ? '#ef4444' :
+                                  student.attendance_percentage < 85 ? '#eab308' : '#22c55e',
+                                fontWeight: 600
+                              }}>
+                                {student.attendance_percentage || 0}%
+                              </span>
+                            </AbsenteeRow>
+                          </AbsenteeCardContent>
+                          <StatusPill
+                            $status={lateComer.status}
+                            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+
+                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                              const spaceBelow = window.innerHeight - rect.bottom;
+                              const spaceAbove = rect.top;
+                              setDropdownDirection(spaceBelow >= 180 || spaceBelow > spaceAbove ? 'down' : 'up');
+                              setDropdownPos({ top: rect.top, left: rect.left });
+                              setDropdownIdx(lateKey as any);
+                              return false;
+                            }}
+                          >
+                            Late
+                          </StatusPill>
+                          {dropdownIdx === (lateKey as any) && dropdownPos &&
+                            ReactDOM.createPortal(
+                              <StatusDropdown
+                                ref={dropdownRef}
+                                direction={dropdownDirection}
+                                style={{
+                                  position: 'fixed',
+                                  left: dropdownPos.left,
+                                  top: dropdownDirection === 'down' ? dropdownPos.top : undefined,
+                                  bottom: dropdownDirection === 'up' ? window.innerHeight - dropdownPos.top : undefined,
+                                }}
+                              >
+                                {STATUS_OPTIONS.map(opt => (
+                                  <StatusOption
+                                    key={opt.value}
+                                    type="button"
+                                    color={opt.color}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+
+                                      applyAbsenteeStatusChange(lateComers[globalIdx], opt.value);
+                                      return false;
+                                    }}
+                                  >
+                                    {opt.label}
+                                  </StatusOption>
+                                ))}
+                                <StatusOption
+                                  type="button"
+                                  color={DELETE_OPTION.color}
+                                  separator
+                                  onClick={async (e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+
+                                    deleteAbsenteeRecord(lateComers[globalIdx]);
+                                    return false;
+                                  }}
+                                >
+                                  {DELETE_OPTION.label}
+                                </StatusOption>
+                              </StatusDropdown>,
+                              document.body
+                            )}
+                        </CompactAnimatedAbsenteeCard>
+                      );
+                    });
+                  })()}
+                </AbsenteesGrid>
+                {/* Desktop Table View */}
+                <AbsenteesDesktopTable>
+                  {(() => {
+                    const selectedDate = new Date(absentDate);
+                    const isSunday = selectedDate.getDay() === 0;
+                    const hasAttendanceRecords = attendanceDataForDate.length > 0;
+                    const hasLateStudents = lateComers.length > 0;
+
+                    if (isSunday || !hasAttendanceRecords || !hasLateStudents) {
+                      return null;
+                    }
+
+                    return (
+                      <>
+                        <AbsenteesTableHeader>
+                          <AbsenteesTableHeaderCell></AbsenteesTableHeaderCell>
+                          <AbsenteesTableHeaderCell>ID</AbsenteesTableHeaderCell>
+                          <AbsenteesTableHeaderCell>Student Name</AbsenteesTableHeaderCell>
+                          <AbsenteesTableHeaderCell>Father Name</AbsenteesTableHeaderCell>
+                          <AbsenteesTableHeaderCell>Class</AbsenteesTableHeaderCell>
+                          <AbsenteesTableHeaderCell>Late This Month</AbsenteesTableHeaderCell>
+                          <AbsenteesTableHeaderCell>Absence This Month</AbsenteesTableHeaderCell>
+                          <AbsenteesTableHeaderCell>Status</AbsenteesTableHeaderCell>
+                        </AbsenteesTableHeader>
+                        {lateComers.map((lateComer, globalIdx) => {
+                          const student = studentDetails[lateComer.student_id]
+                            || studentDetails[String(lateComer.student_id)]
+                            || studentDetails[Number(lateComer.student_id)]
+                            || {
+                              id: lateComer.student_id,
+                              name: `Student #${lateComer.student_id}`,
+                              father_name: '-',
+                              class_name: getClassName(lateComer.class_id),
+                              section_name: getSectionName(lateComer.section_id),
+                              monthly_lates: 1,
+                              monthly_absences: 0,
+                              attendance_percentage: 100
+                            };
+                          const lateKey = `late_${globalIdx}`;
+
+                          return (
+                            <AbsenteesTableRow key={lateComer.id} $index={globalIdx}>
+                              <AbsenteesTableCell>
+                                <AbsenteesTableAvatar
+                                  onMouseEnter={(e) => {
+                                    if (student.picture_url) {
+                                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                      setHoveredAvatar({
+                                        url: student.picture_url,
+                                        x: rect.left + rect.width / 2,
+                                        y: rect.top
+                                      });
+                                    }
+                                  }}
+                                  onMouseLeave={() => setHoveredAvatar(null)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setHoveredAvatar(null);
+                                    navigate(`/students/profile/${student.id}`);
+                                  }}
+                                  title={`View profile of ${student.name}`}
+                                >
+                                  {student.picture_url ? (
+                                    <img src={student.picture_url} alt={student.name} />
+                                  ) : (
+                                    <AccountCircle style={{ fontSize: '1.5em', color: dashboardPalette.mutedText }} />
+                                  )}
+                                </AbsenteesTableAvatar>
+                              </AbsenteesTableCell>
+                              <AbsenteesTableCell>
+                                <span style={{ color: isDarkTheme ? '#b0b8d1' : '#6366f1', fontWeight: 600 }}>
+                                  {getStudentDisplayId({ id: student.id, roll_number: student.roll_number })}
+                                </span>
+                              </AbsenteesTableCell>
+                              <AbsenteesTableCell style={{ fontWeight: 700 }}>
+                                {student.name}
+                              </AbsenteesTableCell>
+                              <AbsenteesTableCell style={{ color: dashboardPalette.mutedText }}>
+                                {student.father_name || '-'}
+                              </AbsenteesTableCell>
+                              <AbsenteesTableCell style={{ color: dashboardPalette.subtleText }}>
+                                {student.class_name || '-'}{student.section_name ? ` (${student.section_name})` : ''}
+                              </AbsenteesTableCell>
+                              <AbsenteesTableCell style={{ color: '#f59e0b', fontWeight: 600 }}>
+                                {student.monthly_lates || 0}
+                              </AbsenteesTableCell>
+                              <AbsenteesTableCell style={{ color: dashboardPalette.subtleText }}>
+                                {student.monthly_absences || 0}
+                              </AbsenteesTableCell>
+                              <AbsenteesTableCell>
+                                <AbsenteesTableStatusPill
+                                  $status={lateComer.status}
+                                  onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+
+                                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                    const spaceBelow = window.innerHeight - rect.bottom;
+                                    const spaceAbove = rect.top;
+                                    setDropdownDirection(spaceBelow >= 180 || spaceBelow > spaceAbove ? 'down' : 'up');
+                                    setDropdownPos({ top: rect.top, left: rect.left });
+                                    setDropdownIdx(lateKey as any);
+                                    return false;
+                                  }}
+                                >
+                                  Late
+                                </AbsenteesTableStatusPill>
+                                {dropdownIdx === (lateKey as any) && dropdownPos &&
+                                  ReactDOM.createPortal(
+                                    <StatusDropdown
+                                      ref={dropdownRef}
+                                      direction={dropdownDirection}
+                                      style={{
+                                        position: 'fixed',
+                                        left: dropdownPos.left,
+                                        top: dropdownDirection === 'down' ? dropdownPos.top : undefined,
+                                        bottom: dropdownDirection === 'up' ? window.innerHeight - dropdownPos.top : undefined,
+                                      }}
+                                    >
+                                      {STATUS_OPTIONS.map(opt => (
+                                        <StatusOption
+                                          key={opt.value}
+                                          type="button"
+                                          color={opt.color}
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+
+                                            applyAbsenteeStatusChange(lateComers[globalIdx], opt.value);
+                                            return false;
+                                          }}
+                                        >
+                                          {opt.label}
+                                        </StatusOption>
+                                      ))}
+                                      <StatusOption
+                                        type="button"
+                                        color={DELETE_OPTION.color}
+                                        separator
+                                        onClick={async (e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+
+                                          deleteAbsenteeRecord(lateComers[globalIdx]);
+                                          return false;
+                                        }}
+                                      >
+                                        {DELETE_OPTION.label}
+                                      </StatusOption>
+                                    </StatusDropdown>,
+                                    document.body
+                                  )}
+                              </AbsenteesTableCell>
+                            </AbsenteesTableRow>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
+                </AbsenteesDesktopTable>
+              </div>
+            )}
+          </ContentCard>
+        </ContentGrid>
+      )}
     </Container>
   );
 };

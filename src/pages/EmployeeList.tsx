@@ -330,37 +330,40 @@ const EmployeeDetails = styled.p`
   }
 `;
 
-const CardActions = styled.div<{ offsetTop?: boolean }>`
+const CardActions = styled.div<{ $show?: boolean; offsetTop?: boolean }>`
   position: absolute;
   bottom: 8px;
   right: 8px;
   display: flex;
   flex-direction: row;
-  gap: 4px;
+  gap: 6px;
   opacity: 0;
   pointer-events: none;
   z-index: 3;
-  transition: opacity 0.18s, transform 0.18s;
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s ease;
+  transform: translateY(4px) scale(0.92);
   width: auto;
   
   @media (min-width: 701px) {
     ${EmployeeCard}:hover & {
       opacity: 1;
       pointer-events: auto;
-      transform: translateY(0);
+      transform: translateY(0) scale(1);
     }
   }
   
   @media (max-width: 700px) {
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
+    opacity: ${({ $show }) => ($show ? 1 : 0)};
+    pointer-events: ${({ $show }) => ($show ? 'auto' : 'none')};
+    transform: ${({ $show }) => ($show ? 'translateY(0) scale(1)' : 'translateY(6px) scale(0.9)')};
+    bottom: 8px;
+    right: 8px;
   }
 `;
 
 const CardActionBtn = styled.button`
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   border: none;
   background: #facc15;
@@ -368,22 +371,19 @@ const CardActionBtn = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  font-size: 1.15rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
   transition: background 0.18s, color 0.18s, transform 0.18s;
   cursor: pointer;
+  
   &:hover {
-    background: #fde047;
-    color: #7c3aed;
     transform: scale(1.12);
   }
-  &:last-child {
-    background: #ef4444;
-    color: #fff;
-    &:hover {
-      background: #dc2626;
-      color: #fff;
-    }
+
+  @media (max-width: 700px) {
+    width: 32px;
+    height: 32px;
+    font-size: 1.25rem;
   }
 `;
 
@@ -482,6 +482,7 @@ const StatusDot = styled.div<{ $color: string }>`
 
 
 const EmployeeList: React.FC = () => {
+  const [activeCardId, setActiveCardId] = useState<string | number | null>(null);
   const [employees, setEmployees] = useState<any[]>([]);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -674,7 +675,7 @@ const EmployeeList: React.FC = () => {
             <EmployeeCard
               key={employee.id}
               status={employee.status || 'active'}
-              onClick={() => handleProfile(employee)}
+              onClick={() => setActiveCardId(prev => prev === employee.id ? null : employee.id)}
               data-employee-card
             >
               <CardTop>
@@ -751,7 +752,7 @@ const EmployeeList: React.FC = () => {
                   </EmployeeDetails>
                 </div>
               </CardTop>
-              <CardActions>
+              <CardActions $show={activeCardId === employee.id}>
                 <CardActionBtn
                   title="Change Status"
                   onClick={(e) => {
@@ -768,16 +769,17 @@ const EmployeeList: React.FC = () => {
                     e.stopPropagation();
                     handleProfile(employee);
                   }}
-                  style={{ background: '#4a6cf7', color: '#fff' }}
+                  style={{ background: '#2563eb', color: '#fff' }}
                 >
                   <PersonIcon fontSize="inherit" />
                 </CardActionBtn>
                 <CardActionBtn
-                  title="Edit"
+                  title="Edit Employee"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleEdit(employee);
                   }}
+                  style={{ background: '#f59e0b', color: '#fff' }}
                 >
                   <EditIcon fontSize="inherit" />
                 </CardActionBtn>

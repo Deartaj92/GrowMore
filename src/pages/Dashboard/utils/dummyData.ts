@@ -230,12 +230,13 @@ export const generateDummyAdmissions = () => {
 };
 
 export const generateDummyAbsentees = (studentIds: number[], date: string) => {
-  const absentCount = Math.floor(studentIds.length * 0.15); // 15% absent
+  const absentCount = Math.floor(studentIds.length * 0.15); // 15% absent/late/leave
   const selectedIds = studentIds.slice(0, absentCount);
+  const statuses = ['absent', 'absent', 'leave', 'late', 'late'];
   return selectedIds.map((studentId, i) => ({
     id: i + 1,
     student_id: studentId,
-    status: 'absent',
+    status: statuses[i % statuses.length],
     date,
     remarks: null,
     class_id: (i % 10) + 1,
