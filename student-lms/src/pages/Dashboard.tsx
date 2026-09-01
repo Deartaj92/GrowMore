@@ -18,9 +18,12 @@ import './Dashboard.css';
 
 export const Dashboard: React.FC = () => {
   const { student } = useAuth();
-  const { getDashboardData, getAttendanceData, loading } = useStudentData();
+  const { getDashboardData, getAttendanceData, getHomeworkForDate, loading } = useStudentData();
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [attPercentage, setAttPercentage] = useState<number | null>(null);
+  const [selectedDiaryDate, setSelectedDiaryDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [homeworkEntries, setHomeworkEntries] = useState<any[]>([]);
+  const [loadingHomework, setLoadingHomework] = useState<boolean>(false);
 
   useEffect(() => {
     if (student) {
@@ -39,6 +42,20 @@ export const Dashboard: React.FC = () => {
         });
     }
   }, [student, getDashboardData, getAttendanceData]);
+
+  // Fetch homework for selected date
+  useEffect(() => {
+    if (student && student.class_id && selectedDiaryDate) {
+      setLoadingHomework(true);
+      getHomeworkForDate(student.school_id, student.class_id, student.section_id, selectedDiaryDate)
+        .then((hwList: any[]) => {
+          setHomeworkEntries(hwList || []);
+        })
+        .finally(() => {
+          setLoadingHomework(false);
+        });
+    }
+  }, [student, selectedDiaryDate, getHomeworkForDate]);
 
   if (loading || !student || !dashboardData) {
     return (
@@ -141,22 +158,35 @@ export const Dashboard: React.FC = () => {
 
           {/* Homework Diary Widget */}
           <section id="homework" className="dashboard-section glass-panel">
-            <div className="section-header">
-              <BookOpen size={20} className="section-icon primary-color" />
-              <h3>Homework Diary</h3>
+            <div className="section-header diary-section-header">
+              <div className="section-header-title">
+                <BookOpen size={20} className="section-icon primary-color" />
+                <h3>Homework Diary</h3>
+              </div>
+              <input
+                type="date"
+                value={selectedDiaryDate}
+                onChange={(e) => setSelectedDiaryDate(e.target.value)}
+                className="diary-date-input"
+                title="Select date for homework diary"
+              />
             </div>
             <div className="section-body homework-list">
-              {homework.length === 0 ? (
+              {loadingHomework ? (
+                <div className="empty-state">
+                  <p>Loading homework for selected date...</p>
+                </div>
+              ) : homeworkEntries.length === 0 ? (
                 <div className="empty-state">
                   <AlertCircle size={36} className="text-muted" />
-                  <p>No homework assignments posted recently.</p>
+                  <p>No homework assignments posted for {new Date(selectedDiaryDate + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}.</p>
                 </div>
               ) : (
-                homework.map((hw: any) => (
+                homeworkEntries.map((hw: any) => (
                   <div key={hw.id} className="homework-card">
                     <div className="homework-meta">
                       <span className="homework-subject">{hw.subject}</span>
-                      <span className="homework-date">{new Date(hw.date).toLocaleDateString()}</span>
+                      <span className="homework-date">{new Date(hw.date + 'T00:00:00').toLocaleDateString()}</span>
                     </div>
                     <p className="homework-text">{hw.text}</p>
                   </div>

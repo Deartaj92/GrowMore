@@ -5,6 +5,10 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: './', // Use relative paths for Electron support
+  server: {
+    port: 3001,
+    open: true,
+  },
   build: {
     outDir: '../public/student-portal',
     emptyOutDir: true,

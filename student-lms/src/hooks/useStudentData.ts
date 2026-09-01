@@ -599,10 +599,48 @@ export const useStudentData = () => {
     }
   }, []);
 
+  const getHomeworkForDate = useCallback(async (schoolId: number, classId: number | null, sectionId: number | null, dateStr: string) => {
+    if (!classId) return [];
+    try {
+      let homeworkQuery = supabase
+        .from('homework_diary')
+        .select(`
+          id,
+          homework_date,
+          homework_text,
+          subject_id,
+          subjects:subject_id(name)
+        `)
+        .eq('school_id', schoolId)
+        .eq('class_id', classId)
+        .eq('homework_date', dateStr)
+        .order('id', { ascending: false });
+
+      if (sectionId) {
+        homeworkQuery = homeworkQuery.eq('section_id', sectionId);
+      }
+
+      const { data: hwData } = await homeworkQuery;
+      if (hwData) {
+        return hwData.map((item: any) => ({
+          id: item.id,
+          date: item.homework_date,
+          text: item.homework_text,
+          subject: Array.isArray(item.subjects) ? item.subjects[0]?.name : item.subjects?.name || 'General',
+        }));
+      }
+      return [];
+    } catch (e) {
+      console.error('getHomeworkForDate error:', e);
+      return [];
+    }
+  }, []);
+
   return {
     loading,
     error,
     getDashboardData,
+    getHomeworkForDate,
     getAttendanceData,
     getFeeData,
     getChallanDetails,

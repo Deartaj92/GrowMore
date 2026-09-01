@@ -135,6 +135,38 @@
   color: var(--text-muted);
 }
 
+.diary-section-header {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.section-header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.diary-date-input {
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  font-weight: 600;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  color-scheme: dark;
+  transition: all var(--transition-fast);
+}
+
+.diary-date-input:hover,
+.diary-date-input:focus {
+  border-color: var(--primary);
+  background: var(--bg-accent);
+}
+
 /* Noticeboard / Announcement Widget */
 .announcements-list,
 .homework-list {
