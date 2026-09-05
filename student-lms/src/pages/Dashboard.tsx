@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { StatBlock } from '../components/StatBlock';
 import { PageLoader } from '../components/GrowMoreLoader';
+import { AnnouncementModal } from '../components/AnnouncementModal';
 import './Dashboard.css';
 
 export const Dashboard: React.FC = () => {
@@ -24,6 +25,7 @@ export const Dashboard: React.FC = () => {
   const [selectedDiaryDate, setSelectedDiaryDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [homeworkEntries, setHomeworkEntries] = useState<any[]>([]);
   const [loadingHomework, setLoadingHomework] = useState<boolean>(false);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<any | null>(null);
 
   useEffect(() => {
     if (student) {
@@ -144,12 +146,17 @@ export const Dashboard: React.FC = () => {
                 </div>
               ) : (
                 announcements.map((ann: any) => (
-                  <div key={ann.id} className="announcement-card">
+                  <div
+                    key={ann.id}
+                    className="announcement-card clickable-announcement"
+                    onClick={() => setSelectedAnnouncement(ann)}
+                    title="Click to view full announcement details"
+                  >
                     <div className="announcement-header">
-                      <h4>{ann.title}</h4>
+                      <h4 dangerouslySetInnerHTML={{ __html: ann.title || 'Announcement' }} />
                       <span className="announcement-date">{new Date(ann.created_at).toLocaleDateString()}</span>
                     </div>
-                    <p className="announcement-content">{ann.content}</p>
+                    <div className="announcement-content" dangerouslySetInnerHTML={{ __html: ann.content }} />
                   </div>
                 ))
               )}
@@ -269,6 +276,14 @@ export const Dashboard: React.FC = () => {
 
         </div>
       </div>
+
+      {selectedAnnouncement && (
+        <AnnouncementModal
+          announcements={[selectedAnnouncement]}
+          ignoreDismissed
+          onClose={() => setSelectedAnnouncement(null)}
+        />
+      )}
     </div>
   );
 };

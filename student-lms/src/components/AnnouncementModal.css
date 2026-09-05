@@ -1,0 +1,228 @@
+.lms-announcement-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.lms-announcement-box {
+  background: var(--bg-primary);
+  border-radius: 18px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--glass-border);
+  max-width: 380px;
+  width: min(380px, calc(100vw - 32px));
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.lms-announcement-header-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px 2px 12px;
+  background: var(--bg-secondary);
+}
+
+.lms-announcement-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-arrow-btn {
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.nav-arrow-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.nav-page-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
+.lms-announcement-close-btn {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.lms-announcement-close-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-accent);
+}
+
+.lms-announcement-header {
+  padding: 8px 16px 8px 16px;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--bg-secondary);
+}
+
+.lms-announcement-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.lms-announcement-body {
+  padding: 14px 18px;
+  flex: 1;
+  overflow-y: auto;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  background: var(--bg-primary);
+  min-height: 160px;
+}
+
+/* Format HTML rich text elements inside ql-editor */
+.ql-editor {
+  font-family: 'JameelNooriNastaleeq', 'Inter', 'Segoe UI', Arial, sans-serif;
+  color: var(--text-primary);
+}
+
+.ql-editor h1,
+.ql-editor h2,
+.ql-editor h3,
+.ql-editor h4,
+.ql-editor h5,
+.ql-editor h6 {
+  margin: 8px 0 4px 0;
+  font-weight: 600;
+}
+
+.ql-editor p {
+  margin: 6px 0;
+}
+
+.ql-editor ul,
+.ql-editor ol {
+  margin: 6px 0 6px 1.2rem;
+  padding-left: 1rem;
+}
+
+.ql-editor li {
+  margin: 2px 0;
+}
+
+.ql-editor code {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85em;
+}
+
+.ql-editor strong,
+.ql-editor b {
+  font-weight: 600;
+}
+
+.ql-editor em,
+.ql-editor i {
+  font-style: italic;
+}
+
+.lms-announcement-footer {
+  padding: 10px 18px 12px 18px;
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  min-height: 44px;
+  justify-content: center;
+}
+
+.lms-announcement-footer-highlight {
+  font-weight: 600;
+  color: var(--text-primary);
+  width: 100%;
+}
+
+.lms-announcement-actions {
+  display: flex;
+  gap: 12px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--glass-border);
+  background: var(--bg-secondary);
+}
+
+.lms-btn-action {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.lms-btn-primary {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.lms-btn-primary:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+
+.lms-btn-secondary {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border-color: var(--glass-border);
+}
+
+.lms-btn-secondary:hover {
+  transform: translateY(-1px);
+  background: var(--bg-accent);
+}
+
+/* Minimal scrollbar */
+.lms-announcement-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.lms-announcement-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.lms-announcement-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}

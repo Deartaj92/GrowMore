@@ -183,9 +183,15 @@
   transition: all var(--transition-fast);
 }
 
+.announcement-card.clickable-announcement {
+  cursor: pointer;
+}
+
 .announcement-card:hover {
   background: var(--bg-accent);
-  transform: translateY(-1px);
+  border-color: var(--primary-muted);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
 }
 
 .announcement-header {

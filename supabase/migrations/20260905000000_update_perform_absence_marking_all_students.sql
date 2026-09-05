@@ -1,80 +1,7 @@
-CREATE OR REPLACE FUNCTION public.trigger_attendance_automation(p_school_id integer, p_date date)
-RETURNS jsonb AS $$
-DECLARE
-  holiday_name text;
-  result jsonb;
-  col_exists boolean := false;
-  is_holiday boolean := false;
-BEGIN
-  -- Sunday skip (defensive: server-side enforcement)
-  IF EXTRACT(DOW FROM p_date) = 0 THEN
-    RETURN jsonb_build_object(
-      'status', 'skipped',
-      'reason', 'Sunday',
-      'message', 'Cannot mark absents on Sundays.'
-    );
-  END IF;
+-- Migration to update perform_absence_marking and trigger_attendance_automation
+-- Ensures that clicking the manual absence mark ("A") button marks ALL students with no attendance,
+-- regardless of whether they have a card / rfid_uid assigned.
 
-  -- Holiday check (server-side, robust to schema differences)
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'holidays') THEN
-    -- 1. Check for holiday_date column
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'holidays' AND column_name = 'holiday_date' AND table_schema = 'public') THEN
-      EXECUTE 'SELECT EXISTS (SELECT 1 FROM holidays WHERE school_id = $1 AND holiday_date = $2)'
-      INTO is_holiday USING p_school_id, p_date;
-      IF is_holiday THEN
-          EXECUTE 'SELECT name FROM holidays WHERE school_id = $1 AND holiday_date = $2 LIMIT 1'
-          INTO holiday_name USING p_school_id, p_date;
-      END IF;
-    END IF;
-
-    -- 2. If not found, check for 'date' column
-    IF NOT is_holiday AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'holidays' AND column_name = 'date' AND table_schema = 'public') THEN
-      EXECUTE 'SELECT EXISTS (SELECT 1 FROM holidays WHERE school_id = $1 AND date = $2)'
-      INTO is_holiday USING p_school_id, p_date;
-      IF is_holiday THEN
-          EXECUTE 'SELECT name FROM holidays WHERE school_id = $1 AND date = $2 LIMIT 1'
-          INTO holiday_name USING p_school_id, p_date;
-      END IF;
-    END IF;
-
-    -- 3. If not found, check for start_date/end_date range
-    IF NOT is_holiday 
-       AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'holidays' AND column_name = 'start_date' AND table_schema = 'public')
-       AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'holidays' AND column_name = 'end_date' AND table_schema = 'public') THEN
-      EXECUTE 'SELECT EXISTS (SELECT 1 FROM holidays WHERE school_id = $1 AND $2 BETWEEN start_date AND end_date)'
-      INTO is_holiday USING p_school_id, p_date;
-      IF is_holiday THEN
-          EXECUTE 'SELECT name FROM holidays WHERE school_id = $1 AND $2 BETWEEN start_date AND end_date LIMIT 1'
-          INTO holiday_name USING p_school_id, p_date;
-      END IF;
-    END IF;
-
-    IF is_holiday THEN
-        RETURN jsonb_build_object(
-          'status', 'skipped',
-          'reason', 'Holiday',
-          'holiday_name', holiday_name,
-          'message', 'Today is a holiday: ' || COALESCE(holiday_name, 'School Holiday') || '. Absent marking skipped.'
-        );
-    END IF;
-  END IF;
-
-  -- If there is a dedicated server-side marking function, delegate to it
-  SELECT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'perform_absence_marking' AND pronamespace = 'public'::regnamespace) INTO col_exists;
-  IF col_exists THEN
-    EXECUTE 'SELECT public.perform_absence_marking($1, $2)' USING p_school_id, p_date INTO result;
-    RETURN result;
-  END IF;
-
-  -- TODO: Implement the actual auto-mark logic on the server side (fallback no-op).
-  -- For now, return a success signal so frontend can refresh state.
-  RETURN jsonb_build_object('status', 'ok', 'date', p_date, 'school_id', p_school_id,
-    'message', 'Manual absence marking triggered for ' || to_char(p_date, 'YYYY-MM-DD')
-  );
-END;
-$$ LANGUAGE plpgsql;
-
--- Backend helper: perform actual absence marking (best-effort; depends on schema)
 CREATE OR REPLACE FUNCTION public.perform_absence_marking(p_school_id integer, p_date date)
 RETURNS jsonb AS $$
 DECLARE
@@ -85,7 +12,7 @@ DECLARE
   v_session_id integer;
   sql text;
 BEGIN
-  -- Basic Sunday guard (redundant, but safe)
+  -- Basic Sunday guard
   IF EXTRACT(DOW FROM p_date) = 0 THEN
     RETURN jsonb_build_object('status', 'skipped', 'reason', 'Sunday', 'message', 'Cannot mark absents on Sundays.');
   END IF;
@@ -98,7 +25,7 @@ BEGIN
     RETURN jsonb_build_object('status', 'ok', 'date', p_date, 'school_id', p_school_id, 'message', 'Attendance records table missing; no action taken');
   END IF;
 
-  -- Perform insert if possible (robust guard against NOT NULL constraints)
+  -- Perform insert if possible
   SELECT EXISTS (
     SELECT 1 FROM information_schema.columns WHERE table_name = 'attendance_records' AND column_name = 'class_id' AND table_schema = 'public'
   ) INTO has_attendance_class_id;
@@ -108,6 +35,7 @@ BEGIN
   IF NOT (has_attendance_class_id AND has_student_class_id) THEN
     RETURN jsonb_build_object('status', 'skipped', 'reason', 'MissingColumn', 'message', 'Missing required class_id column');
   END IF;
+
   -- Determine active session for the school
   SELECT id INTO v_session_id FROM sessions WHERE school_id = p_school_id AND is_active = true LIMIT 1;
   IF v_session_id IS NULL THEN
@@ -140,7 +68,6 @@ BEGIN
            'WHERE s.school_id = $1 AND sch.session_id = $3 AND sch.new_class_id IS NOT NULL';
   END;
 
-  -- Optional filters if columns exist
   -- Filter for active students
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'students' AND column_name = 'status' AND table_schema = 'public') THEN
     sql := sql || ' AND COALESCE(s.status, ''active'') = ''active''';
@@ -148,12 +75,13 @@ BEGIN
     sql := sql || ' AND s.is_active = true';
   END IF;
 
+  -- Mark all students who do not already have attendance for the date (no card requirement)
   sql := sql || ' AND NOT EXISTS (' ||
          'SELECT 1 FROM attendance_records ar WHERE ar.school_id = $1 AND ar.student_id = s.id AND ar.date = $2' ||
          ')';
+
   EXECUTE sql USING p_school_id, p_date, v_session_id;
   GET DIAGNOSTICS cnt = ROW_COUNT;
-  
 
   IF cnt IS NULL THEN cnt := 0; END IF;
   RETURN jsonb_build_object('status', 'ok', 'date', p_date, 'school_id', p_school_id, 'marked', cnt, 'message', 'Absences marked: ' || cnt);

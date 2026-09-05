@@ -1423,11 +1423,17 @@ class RFIDOfflineService {
             }
 
             if (!person && navigator.onLine && hasHex) {
-                const { data: student } = await supabase.from('students')
-                    .select('id, name, father_name, roll_number, picture_url, status, attendance_mode, class_id, section_id, classes:class_id(name), sections:section_id(name)')
-                    .eq('school_id', schoolId).in('rfid_uid', uidCandidatesCI).maybeSingle();
+                const [studentRes, staffRes] = await Promise.all([
+                    supabase.from('students')
+                        .select('id, name, father_name, roll_number, picture_url, status, attendance_mode, class_id, section_id, classes:class_id(name), sections:section_id(name)')
+                        .eq('school_id', schoolId).in('rfid_uid', uidCandidatesCI).maybeSingle(),
+                    supabase.from('staff')
+                        .select('id, name, picture_url, role, status, attendance_mode')
+                        .eq('school_id', schoolId).in('rfid_uid', uidCandidatesCI).maybeSingle(),
+                ]);
 
-                if (student) {
+                if (studentRes.data) {
+                    const student = studentRes.data;
                     person = {
                         rfid_uid: cleanUID,
                         person_id: student.id,
@@ -1443,31 +1449,32 @@ class RFIDOfflineService {
                         section_id: student.section_id,
                         status: (student as any).status || 'active',
                     };
-                } else {
-                    const { data: staff } = await supabase.from('staff')
-                        .select('id, name, picture_url, role, status, attendance_mode')
-                        .eq('school_id', schoolId).in('rfid_uid', uidCandidatesCI).maybeSingle();
-
-                    if (staff) {
-                        person = {
-                            rfid_uid: cleanUID,
-                            person_id: staff.id,
-                            name: staff.name,
-                            type: 'employee',
-                            attendance_mode: this.normalizeAttendanceMode((staff as any).attendance_mode, true),
-                            picture_url: staff.picture_url,
-                            role: staff.role,
-                            status: (staff as any).status || 'active',
-                        };
-                    }
+                } else if (staffRes.data) {
+                    const staff = staffRes.data;
+                    person = {
+                        rfid_uid: cleanUID,
+                        person_id: staff.id,
+                        name: staff.name,
+                        type: 'employee',
+                        attendance_mode: this.normalizeAttendanceMode((staff as any).attendance_mode, true),
+                        picture_url: staff.picture_url,
+                        role: staff.role,
+                        status: (staff as any).status || 'active',
+                    };
                 }
 
                 if (!person) {
-                    const { data: studentQr } = await supabase.from('students')
-                        .select('id, name, father_name, roll_number, picture_url, status, attendance_mode, class_id, section_id, classes:class_id(name), sections:section_id(name)')
-                        .eq('school_id', schoolId).in('qr_uid', uidCandidatesCI).maybeSingle();
+                    const [studentQrRes, staffQrRes] = await Promise.all([
+                        supabase.from('students')
+                            .select('id, name, father_name, roll_number, picture_url, status, attendance_mode, class_id, section_id, classes:class_id(name), sections:section_id(name)')
+                            .eq('school_id', schoolId).in('qr_uid', uidCandidatesCI).maybeSingle(),
+                        supabase.from('staff')
+                            .select('id, name, picture_url, role, status, attendance_mode')
+                            .eq('school_id', schoolId).in('qr_uid', uidCandidatesCI).maybeSingle(),
+                    ]);
 
-                    if (studentQr) {
+                    if (studentQrRes.data) {
+                        const studentQr = studentQrRes.data;
                         person = {
                             rfid_uid: cleanUID,
                             person_id: studentQr.id,
@@ -1483,23 +1490,18 @@ class RFIDOfflineService {
                             section_id: studentQr.section_id,
                             status: (studentQr as any).status || 'active',
                         };
-                    } else {
-                        const { data: staffQr } = await supabase.from('staff')
-                            .select('id, name, picture_url, role, status, attendance_mode')
-                            .eq('school_id', schoolId).in('qr_uid', uidCandidatesCI).maybeSingle();
-
-                        if (staffQr) {
-                            person = {
-                                rfid_uid: cleanUID,
-                                person_id: staffQr.id,
-                                name: staffQr.name,
-                                type: 'employee',
-                                attendance_mode: this.normalizeAttendanceMode((staffQr as any).attendance_mode, true),
-                                picture_url: staffQr.picture_url,
-                                role: staffQr.role,
-                                status: (staffQr as any).status || 'active',
-                            };
-                        }
+                    } else if (staffQrRes.data) {
+                        const staffQr = staffQrRes.data;
+                        person = {
+                            rfid_uid: cleanUID,
+                            person_id: staffQr.id,
+                            name: staffQr.name,
+                            type: 'employee',
+                            attendance_mode: this.normalizeAttendanceMode((staffQr as any).attendance_mode, true),
+                            picture_url: staffQr.picture_url,
+                            role: staffQr.role,
+                            status: (staffQr as any).status || 'active',
+                        };
                     }
                 }
 
@@ -1507,14 +1509,21 @@ class RFIDOfflineService {
                     const prefixCandidates = buildRfidUidPrefixCandidates(cleanUID);
 
                     for (const prefixCandidate of prefixCandidates) {
-                        const { data: prefixedStudents } = await supabase.from('students')
-                            .select('id, name, father_name, roll_number, picture_url, status, attendance_mode, class_id, section_id, rfid_uid, classes:class_id(name), sections:section_id(name)')
-                            .eq('school_id', schoolId)
-                            .ilike('rfid_uid', `${prefixCandidate}%`)
-                            .limit(2);
+                        const [prefixedStudentsRes, prefixedStaffRes] = await Promise.all([
+                            supabase.from('students')
+                                .select('id, name, father_name, roll_number, picture_url, status, attendance_mode, class_id, section_id, rfid_uid, classes:class_id(name), sections:section_id(name)')
+                                .eq('school_id', schoolId)
+                                .ilike('rfid_uid', `${prefixCandidate}%`)
+                                .limit(2),
+                            supabase.from('staff')
+                                .select('id, name, picture_url, role, status, attendance_mode, rfid_uid')
+                                .eq('school_id', schoolId)
+                                .ilike('rfid_uid', `${prefixCandidate}%`)
+                                .limit(2),
+                        ]);
 
-                        if ((prefixedStudents || []).length === 1) {
-                            const student = prefixedStudents![0] as any;
+                        if ((prefixedStudentsRes.data || []).length === 1) {
+                            const student = prefixedStudentsRes.data![0] as any;
                             person = {
                                 rfid_uid: sanitizeRfidUid(student.rfid_uid || cleanUID),
                                 person_id: student.id,
@@ -1533,14 +1542,8 @@ class RFIDOfflineService {
                             break;
                         }
 
-                        const { data: prefixedStaff } = await supabase.from('staff')
-                            .select('id, name, picture_url, role, status, attendance_mode, rfid_uid')
-                            .eq('school_id', schoolId)
-                            .ilike('rfid_uid', `${prefixCandidate}%`)
-                            .limit(2);
-
-                        if ((prefixedStaff || []).length === 1) {
-                            const staff = prefixedStaff![0] as any;
+                        if ((prefixedStaffRes.data || []).length === 1) {
+                            const staff = prefixedStaffRes.data![0] as any;
                             person = {
                                 rfid_uid: sanitizeRfidUid(staff.rfid_uid || cleanUID),
                                 person_id: staff.id,
@@ -1558,13 +1561,21 @@ class RFIDOfflineService {
             }
 
             if (!person && navigator.onLine && hasQrToken) {
-                const { data: studentRawQr } = await supabase.from('students')
-                    .select('id, name, father_name, roll_number, picture_url, status, attendance_mode, class_id, section_id, classes:class_id(name), sections:section_id(name)')
-                    .eq('school_id', schoolId)
-                    .eq('qr_uid', qrCanonical)
-                    .maybeSingle();
+                const [studentRawQrRes, staffRawQrRes] = await Promise.all([
+                    supabase.from('students')
+                        .select('id, name, father_name, roll_number, picture_url, status, attendance_mode, class_id, section_id, classes:class_id(name), sections:section_id(name)')
+                        .eq('school_id', schoolId)
+                        .eq('qr_uid', qrCanonical)
+                        .maybeSingle(),
+                    supabase.from('staff')
+                        .select('id, name, picture_url, role, status, attendance_mode')
+                        .eq('school_id', schoolId)
+                        .eq('qr_uid', qrCanonical)
+                        .maybeSingle(),
+                ]);
 
-                if (studentRawQr) {
+                if (studentRawQrRes.data) {
+                    const studentRawQr = studentRawQrRes.data;
                     person = {
                         rfid_uid: hasHex ? cleanUID : qrCanonical,
                         person_id: studentRawQr.id,
@@ -1580,25 +1591,18 @@ class RFIDOfflineService {
                         section_id: studentRawQr.section_id,
                         status: (studentRawQr as any).status || 'active',
                     };
-                } else {
-                    const { data: staffRawQr } = await supabase.from('staff')
-                        .select('id, name, picture_url, role, status, attendance_mode')
-                        .eq('school_id', schoolId)
-                        .eq('qr_uid', qrCanonical)
-                        .maybeSingle();
-
-                    if (staffRawQr) {
-                        person = {
-                            rfid_uid: hasHex ? cleanUID : qrCanonical,
-                            person_id: staffRawQr.id,
-                            name: staffRawQr.name,
-                            type: 'employee',
-                            attendance_mode: this.normalizeAttendanceMode((staffRawQr as any).attendance_mode, true),
-                            picture_url: staffRawQr.picture_url,
-                            role: staffRawQr.role,
-                            status: (staffRawQr as any).status || 'active',
-                        };
-                    }
+                } else if (staffRawQrRes.data) {
+                    const staffRawQr = staffRawQrRes.data;
+                    person = {
+                        rfid_uid: hasHex ? cleanUID : qrCanonical,
+                        person_id: staffRawQr.id,
+                        name: staffRawQr.name,
+                        type: 'employee',
+                        attendance_mode: this.normalizeAttendanceMode((staffRawQr as any).attendance_mode, true),
+                        picture_url: staffRawQr.picture_url,
+                        role: staffRawQr.role,
+                        status: (staffRawQr as any).status || 'active',
+                    };
                 }
             }
 

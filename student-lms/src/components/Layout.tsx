@@ -22,6 +22,7 @@ import { useLmsSettings } from '../contexts/LmsSettingsContext';
 import { MobileDockNav } from './MobileDockNav';
 import { StudentPhoto } from './StudentPhoto';
 import { GrowMoreLogo } from './GrowMoreLogo';
+import { AnnouncementModal } from './AnnouncementModal';
 import './Layout.css';
 
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
@@ -61,7 +62,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     return v ? parseInt(v, 10) : 0;
   });
 
-  const { notifications, loading: notifLoading } = useNotifications(
+  const { notifications, announcementsList, loading: notifLoading } = useNotifications(
     student?.id,
     student?.school_id,
     student?.class_id,
@@ -266,9 +267,23 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                       <p className="no-notifications">No new notifications</p>
                     ) : (
                       notifications.map((n) => (
-                        <div key={n.id} className={`notification-item type-${n.type}`}>
-                          <h4>{n.title}</h4>
-                          <p>{n.content}</p>
+                        <div
+                          key={n.id}
+                          className={`notification-item type-${n.type} ${n.link ? 'clickable' : ''}`}
+                          onClick={() => {
+                            if (n.link) {
+                              if (n.link.startsWith('#')) {
+                                const el = document.querySelector(n.link);
+                                if (el) el.scrollIntoView({ behavior: 'smooth' });
+                              } else {
+                                navigate(n.link);
+                              }
+                            }
+                            setNotificationsOpen(false);
+                          }}
+                        >
+                          <h4 dangerouslySetInnerHTML={{ __html: n.title }} />
+                          <div className="notif-content-text" dangerouslySetInnerHTML={{ __html: n.content }} />
                           <span className="notif-time">
                             {new Date(n.created_at).toLocaleDateString(undefined, {
                               month: 'short',
@@ -311,6 +326,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </button>
           </div>
         </header>
+
+        {/* Automatic Modal Pop-up for New School Announcements */}
+        {announcementsList.length > 0 && (
+          <AnnouncementModal announcements={announcementsList} />
+        )}
 
         <main className="lms-content animate-fade-in">
           {isCurrentTabDisabled ? (

@@ -6,7 +6,8 @@ export type AppNotification = {
   title: string;
   content: string;
   created_at: string;
-  type: 'announcement' | 'fee' | 'homework';
+  type: 'announcement' | 'fee' | 'homework' | 'report' | 'attendance';
+  link?: string;
 };
 
 export const useNotifications = (
@@ -16,11 +17,13 @@ export const useNotifications = (
   sectionId: number | null | undefined
 ) => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [announcementsList, setAnnouncementsList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchNotifications = useCallback(async () => {
     if (!studentId || !schoolId) {
       setNotifications([]);
+      setAnnouncementsList([]);
       return;
     }
 
@@ -28,10 +31,12 @@ export const useNotifications = (
     try {
       const todayStr = new Date().toISOString().split('T')[0];
       const items: AppNotification[] = [];
+      const activeAnnouncements: any[] = [];
 
+      // 1. Fetch Active Announcements
       const { data: annData } = await supabase
         .from('announcements')
-        .select('id, title, content, created_at, audience_group, target_scope, class_id, section_id, student_id, student_ids')
+        .select('id, title, content, message, footer_text, hide_dont_show, created_at, audience_group, target_scope, class_id, section_id, student_id, student_ids')
         .eq('school_id', schoolId)
         .eq('is_active', true)
         .lte('show_from', todayStr)
@@ -56,17 +61,22 @@ export const useNotifications = (
             matches = targetIds.includes(studentId);
           }
           if (matches) {
+            activeAnnouncements.push(ann);
             items.push({
               id: `ann-${ann.id}`,
               title: ann.title || 'Announcement',
               content: ann.content || '',
               created_at: ann.created_at,
               type: 'announcement',
+              link: '#noticeboard'
             });
           }
         });
       }
 
+      setAnnouncementsList(activeAnnouncements);
+
+      // 2. Fetch Unpaid Fee Challans Alert
       const { data: activeSession } = await supabase
         .from('sessions')
         .select('id')
@@ -90,10 +100,63 @@ export const useNotifications = (
             content: `You have ${count} unpaid fee challan${count > 1 ? 's' : ''} pending.`,
             created_at: new Date().toISOString(),
             type: 'fee',
+            link: '/fees'
           });
         }
       }
 
+      // 3. Fetch Exam Results / Report Cards Notifications
+      const { data: examData } = await supabase
+        .from('examination_summaries')
+        .select(`
+          examination_id,
+          percentage,
+          grade,
+          examinations!inner (
+            id,
+            name
+          )
+        `)
+        .eq('student_id', studentId)
+        .eq('school_id', schoolId)
+        .order('examination_id', { ascending: false })
+        .limit(2);
+
+      if (examData && examData.length > 0) {
+        examData.forEach((ex: any) => {
+          const examName = Array.isArray(ex.examinations) ? ex.examinations[0]?.name : ex.examinations?.name || 'Examination';
+          items.unshift({
+            id: `report-${ex.examination_id}`,
+            title: `Exam Report Published: ${examName}`,
+            content: `Your report card is ready! Overall score: ${ex.percentage || 0}% (${ex.grade || 'Grade N/A'}).`,
+            created_at: new Date().toISOString(),
+            type: 'report',
+            link: '/academics'
+          });
+        });
+      }
+
+      // 4. Fetch Attendance Alert for Today
+      const { data: todayAtt } = await supabase
+        .from('attendance_records')
+        .select('*')
+        .eq('student_id', studentId)
+        .eq('date', todayStr)
+        .maybeSingle();
+
+      if (todayAtt && (todayAtt.status?.toLowerCase() === 'absent' || todayAtt.status?.toLowerCase() === 'late')) {
+        const isAbsent = todayAtt.status.toLowerCase() === 'absent';
+        items.unshift({
+          id: `att-alert-${todayStr}`,
+          title: `Attendance Alert: ${isAbsent ? 'Marked Absent' : 'Marked Late'}`,
+          content: `You were recorded as ${todayAtt.status} today (${todayStr}).`,
+          created_at: todayAtt.created_at || new Date().toISOString(),
+          type: 'attendance',
+          link: '/attendance'
+        });
+      }
+
+      // 5. Fetch Recent Homework Entries
       if (classId) {
         let hwQuery = supabase
           .from('homework_diary')
@@ -115,14 +178,16 @@ export const useNotifications = (
             content: (hw.homework_text || '').slice(0, 120),
             created_at: hw.homework_date,
             type: 'homework',
+            link: '#homework'
           });
         });
       }
 
-      setNotifications(items.slice(0, 12));
+      setNotifications(items.slice(0, 15));
     } catch (e) {
       console.error('Failed to load notifications', e);
       setNotifications([]);
+      setAnnouncementsList([]);
     } finally {
       setLoading(false);
     }
@@ -134,5 +199,5 @@ export const useNotifications = (
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
-  return { notifications, loading, refresh: fetchNotifications };
+  return { notifications, announcementsList, loading, refresh: fetchNotifications };
 };

@@ -51,6 +51,7 @@ import {
     Bolt as BoltIcon,
     VolumeUp as Volume2,
     VolumeOff as VolumeX,
+    LightMode as SunIcon,
 } from '@mui/icons-material';
 import { CachedAttendanceHistoryItem, rfidOfflineService } from '../services/rfidOfflineService';
 import {
@@ -1539,6 +1540,12 @@ const QRAttendancePage: React.FC = () => {
     const [lastDetectedQr, setLastDetectedQr] = useState('');
     const lastCameraScanRef = useRef<{ value: string; time: number } | null>(null);
 
+    // ─── Camera Brightness Control ──────────────────────────────────────────────
+    const [cameraBrightness, setCameraBrightness] = useState<number>(() => {
+        const saved = localStorage.getItem('qr_camera_brightness');
+        return saved ? parseInt(saved, 10) : 100;
+    });
+
     // ─── Face Recognition States ────────────────────────────────────────────────
     const [scannerMode, setScannerMode] = useState<'qr' | 'face'>('face');
     const [isFaceScanning, setIsFaceScanning] = useState(false);
@@ -1560,6 +1567,70 @@ const QRAttendancePage: React.FC = () => {
     const faceLastSeenRef = useRef<Map<number, number>>(new Map());
     const pendingMatchRef = useRef<{ personId: number; count: number } | null>(null);
     const mappingsRef = useRef<RFIDMapping[]>([]);
+
+    const applyCameraTrackConstraints = useCallback(async (track: MediaStreamTrack | null, brightnessPercent: number) => {
+        if (!track || !track.getCapabilities) return;
+        try {
+            const caps: any = track.getCapabilities() || {};
+            const advancedConstraints: any = {};
+
+            // Lock exposureMode to manual/single-shot to disable continuous hardware auto-exposure shifts
+            if (caps.exposureMode && Array.isArray(caps.exposureMode)) {
+                if (caps.exposureMode.includes('manual')) {
+                    advancedConstraints.exposureMode = 'manual';
+                } else if (caps.exposureMode.includes('single-shot')) {
+                    advancedConstraints.exposureMode = 'single-shot';
+                }
+            }
+
+            // Lock whiteBalanceMode to manual if supported to prevent color temperature shifts
+            if (caps.whiteBalanceMode && Array.isArray(caps.whiteBalanceMode)) {
+                if (caps.whiteBalanceMode.includes('manual')) {
+                    advancedConstraints.whiteBalanceMode = 'manual';
+                }
+            }
+
+            // Lock hardware exposure compensation if supported by hardware
+            if (caps.exposureCompensation) {
+                const { min, max } = caps.exposureCompensation;
+                const step = (brightnessPercent - 100) / 100;
+                const target = step >= 0 ? step * max : step * Math.abs(min);
+                advancedConstraints.exposureCompensation = Math.min(max, Math.max(min, target));
+            }
+
+            // Lock hardware brightness if supported
+            if (caps.brightness) {
+                const { min, max } = caps.brightness;
+                const target = min + ((brightnessPercent / 200) * (max - min));
+                advancedConstraints.brightness = Math.min(max, Math.max(min, target));
+            }
+
+            if (Object.keys(advancedConstraints).length > 0) {
+                await track.applyConstraints({ advanced: [advancedConstraints] } as any).catch(() => {});
+            }
+        } catch (e) {
+            console.warn('Could not apply camera track constraints:', e);
+        }
+    }, []);
+
+    useEffect(() => {
+        // Apply hardware locks to Face Stream track
+        if (faceStreamRef.current) {
+            const track = faceStreamRef.current.getVideoTracks()[0];
+            if (track) {
+                void applyCameraTrackConstraints(track, cameraBrightness);
+            }
+        }
+        // Apply hardware locks to QR Stream track
+        const qrVideoEl = document.querySelector(`#${cameraRegionId} video`) as HTMLVideoElement | null;
+        if (qrVideoEl && qrVideoEl.srcObject) {
+            const stream = qrVideoEl.srcObject as MediaStream;
+            const track = stream?.getVideoTracks?.()?.[0];
+            if (track) {
+                void applyCameraTrackConstraints(track, cameraBrightness);
+            }
+        }
+    }, [cameraBrightness, isFaceScanning, isCameraScanning, applyCameraTrackConstraints]);
 
 
 
@@ -1700,44 +1771,11 @@ const QRAttendancePage: React.FC = () => {
 
     useEffect(() => {
         if (!user?.school_id) return;
-
-        const storageKey = buildDailyScanStorageKey(user.school_id);
-        const activeToday = getLocalToday();
-
-        try {
-            const raw = localStorage.getItem(storageKey);
-
-            if (selectedDate !== activeToday) {
-                loadHistoryFeed(selectedDate);
-                return;
-            }
-
-            if (!raw) {
-                loadHistoryFeed(selectedDate);
-                return;
-            }
-
-            const parsed = JSON.parse(raw) as PersistedDailyScanHistory;
-
-            if (!parsed || parsed.date !== activeToday) {
-                localStorage.removeItem(storageKey);
-                loadHistoryFeed(selectedDate);
-                return;
-            }
-
-            setFeed((parsed.feed || []).map(item => ({ ...item, isNew: false })));
-            setPresentCount(parsed.presentCount || 0);
-            setUnknownCount(parsed.unknownCount || 0);
-            setDupCount(parsed.dupCount || 0);
-        } catch (error) {
-            console.warn('Failed to restore RFID daily scan history:', error);
-            localStorage.removeItem(storageKey);
-            loadHistoryFeed(selectedDate);
-        }
-    }, [isOnline, loadHistoryFeed, selectedDate, user?.school_id]);
+        loadHistoryFeed(selectedDate);
+    }, [loadHistoryFeed, selectedDate, user?.school_id]);
 
     useEffect(() => {
-        if (!user?.school_id) return;
+        if (!user?.school_id || feed.length === 0) return;
 
         const activeToday = getLocalToday();
         const storageKey = buildDailyScanStorageKey(user.school_id);
@@ -2123,8 +2161,8 @@ const QRAttendancePage: React.FC = () => {
         }
 
         let waitCount = 0;
-        while (!isCacheReadyRef.current && waitCount < 30) {
-            await new Promise(r => setTimeout(r, 100));
+        while (!isCacheReadyRef.current && waitCount < 4 && !navigator.onLine) {
+            await new Promise(r => setTimeout(r, 50));
             waitCount++;
         }
 
@@ -2701,6 +2739,19 @@ const QRAttendancePage: React.FC = () => {
 
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             faceStreamRef.current = stream;
+
+            const videoTrack = stream.getVideoTracks()[0];
+            if (videoTrack && videoTrack.getCapabilities) {
+                try {
+                    const caps = (videoTrack.getCapabilities && videoTrack.getCapabilities()) || {};
+                    if ('exposureCompensation' in caps) {
+                        const { min, max } = (caps as any).exposureCompensation;
+                        const step = (cameraBrightness - 100) / 100;
+                        const target = step > 0 ? step * (max || 2) : step * Math.abs(min || 2);
+                        videoTrack.applyConstraints({ advanced: [{ exposureCompensation: target }] } as any).catch(() => {});
+                    }
+                } catch (_) {}
+            }
 
             if (faceVideoRef.current) {
                 faceVideoRef.current.srcObject = stream;
@@ -3775,45 +3826,115 @@ const QRAttendancePage: React.FC = () => {
                 {/* ── Left: Scanner ── */}
                 <ScannerCard theme={themeObj}>
                     <ScannerUpper>
-                        <CameraRegion theme={themeObj}>
-                            {scannerMode === 'qr' ? (
-                                <>
-                                    {!isCameraScanning &&
-                                        !cameraError &&
-                                        scanStatus === 'idle' &&
-                                        cameraStatus === 'Camera stopped' && (
-                                            <CameraStoppedOverlay theme={themeObj}>
-                                                <CameraStoppedWord $variant="blue">Camera</CameraStoppedWord>
-                                                <CameraStoppedWord $variant="red">Stopped</CameraStoppedWord>
-                                            </CameraStoppedOverlay>
-                                        )}
-                                    <div id={cameraRegionId} style={{ width: '100%', minHeight: 250 }} />
-                                </>
-                            ) : (
-                                <div style={{ position: 'relative', width: '100%', minHeight: 250, borderRadius: 12, overflow: 'hidden', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    {!isFaceScanning && !faceCameraError && (
-                                        <CameraStoppedOverlay theme={themeObj}>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center' }}>
-                                                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: themeObj.TEXT_SECONDARY }}>
-                                                    {modelsLoading ? modelsStatus : 'Face recognition stopped'}
-                                                </span>
-                                            </div>
-                                        </CameraStoppedOverlay>
+                                <CameraRegion theme={themeObj}>
+                                    <style>{`
+                                        #${cameraRegionId} video,
+                                        video {
+                                            filter: brightness(${cameraBrightness}%) !important;
+                                        }
+                                    `}</style>
+                                    {scannerMode === 'qr' ? (
+                                        <>
+                                            {!isCameraScanning &&
+                                                !cameraError &&
+                                                scanStatus === 'idle' &&
+                                                cameraStatus === 'Camera stopped' && (
+                                                    <CameraStoppedOverlay theme={themeObj}>
+                                                        <CameraStoppedWord $variant="blue">Camera</CameraStoppedWord>
+                                                        <CameraStoppedWord $variant="red">Stopped</CameraStoppedWord>
+                                                    </CameraStoppedOverlay>
+                                                )}
+                                            <div id={cameraRegionId} style={{ width: '100%', minHeight: 250 }} />
+                                        </>
+                                    ) : (
+                                        <div style={{ position: 'relative', width: '100%', minHeight: 250, borderRadius: 12, overflow: 'hidden', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {!isFaceScanning && !faceCameraError && (
+                                                <CameraStoppedOverlay theme={themeObj}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center' }}>
+                                                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: themeObj.TEXT_SECONDARY }}>
+                                                            {modelsLoading ? modelsStatus : 'Face recognition stopped'}
+                                                        </span>
+                                                    </div>
+                                                </CameraStoppedOverlay>
+                                            )}
+                                            <video
+                                                 ref={faceVideoRef}
+                                                 autoPlay
+                                                 playsInline
+                                                 muted
+                                                 style={{ width: '100%', height: '100%', minHeight: 250, objectFit: 'cover', transform: 'scaleX(-1)', display: isFaceScanning ? 'block' : 'none', filter: `brightness(${cameraBrightness}%)` }}
+                                             />
+                                            <canvas
+                                                ref={faceCanvasRef}
+                                                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', display: isFaceScanning ? 'block' : 'none' }}
+                                            />
+                                        </div>
                                     )}
-                                    <video
-                                         ref={faceVideoRef}
-                                         autoPlay
-                                         playsInline
-                                         muted
-                                         style={{ width: '100%', height: '100%', minHeight: 250, objectFit: 'cover', transform: 'scaleX(-1)', display: isFaceScanning ? 'block' : 'none' }}
-                                     />
-                                    <canvas
-                                        ref={faceCanvasRef}
-                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', display: isFaceScanning ? 'block' : 'none' }}
-                                    />
-                                </div>
+                                </CameraRegion>
+
+                        {/* ── Camera Brightness Slider (placed right under camera screen) ── */}
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.65rem',
+                            width: '100%',
+                            padding: '0.4rem 0.65rem',
+                            borderRadius: '10px',
+                            background: themeObj.FIELD_BG,
+                            border: `1px solid ${themeObj.BORDER}`,
+                            boxSizing: 'border-box',
+                            flexShrink: 0
+                        }}>
+                            <SunIcon style={{ fontSize: 16, color: '#f59e0b', flexShrink: 0 }} />
+                            <span style={{ fontSize: '0.74rem', fontWeight: 700, color: themeObj.TEXT_PRIMARY, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                Brightness
+                            </span>
+                            <input
+                                type="range"
+                                min="30"
+                                max="250"
+                                step="5"
+                                value={cameraBrightness}
+                                onChange={(e) => {
+                                    const val = parseInt(e.target.value, 10);
+                                    setCameraBrightness(val);
+                                    localStorage.setItem('qr_camera_brightness', String(val));
+                                }}
+                                style={{
+                                    flex: 1,
+                                    minWidth: 60,
+                                    cursor: 'pointer',
+                                    accentColor: '#f59e0b',
+                                    height: '5px'
+                                }}
+                            />
+                            <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#f59e0b', fontVariantNumeric: 'tabular-nums', flexShrink: 0, minWidth: 36, textAlign: 'right' }}>
+                                {cameraBrightness}%
+                            </span>
+                            {cameraBrightness !== 100 && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setCameraBrightness(100);
+                                        localStorage.setItem('qr_camera_brightness', '100');
+                                    }}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: themeObj.TEXT_SECONDARY,
+                                        fontSize: '0.68rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        padding: '1px 3px',
+                                        textDecoration: 'underline',
+                                        flexShrink: 0
+                                    }}
+                                >
+                                    Reset
+                                </button>
                             )}
-                        </CameraRegion>
+                        </div>
+
                         {cameraError || faceCameraError ? (
                             <CameraErrorText theme={themeObj}>{cameraError || faceCameraError}</CameraErrorText>
                         ) : null}
@@ -4335,6 +4456,12 @@ const ScannerUpper = styled.div`
   align-items: stretch;
   gap: 0.55rem;
   min-height: 0;
+  overflow-y: auto;
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.BORDER};
+    border-radius: 4px;
+  }
 `;
 
 const ScannerLiveLine = styled.div`
