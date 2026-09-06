@@ -401,6 +401,87 @@ class RFIDOfflineService {
         return cachedSettings;
     }
 
+    private attendanceOnDemandMap: Map<number, boolean> = new Map();
+
+    public setAttendanceOnDemand(schoolId: number, enabled: boolean): void {
+        const numericId = Number(schoolId);
+        this.attendanceOnDemandMap.set(numericId, enabled);
+        try {
+            localStorage.setItem(`attendance_on_demand_${numericId}`, enabled ? 'true' : 'false');
+        } catch (e) {}
+    }
+
+    public isAttendanceOnDemand(schoolId: number): boolean {
+        const numericId = Number(schoolId);
+        if (this.attendanceOnDemandMap.has(numericId)) {
+            return !!this.attendanceOnDemandMap.get(numericId);
+        }
+        try {
+            const val = localStorage.getItem(`attendance_on_demand_${numericId}`);
+            const enabled = val === 'true';
+            this.attendanceOnDemandMap.set(numericId, enabled);
+            return enabled;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    public async checkIsSundayOrHoliday(
+        schoolId: number,
+        targetDate?: string,
+        ignoreDemandOverride: boolean = false
+    ): Promise<{ isNonWorkingDay: boolean; isCalendarNonWorkingDay: boolean; reason?: string }> {
+        const dateStr = targetDate || new Date().toISOString().slice(0, 10);
+        let calendarReason: string | undefined = undefined;
+        let isCalendarNonWorkingDay = false;
+
+        // 1. Check if Sunday
+        const [year, month, day] = dateStr.split('-').map(Number);
+        if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+            const d = new Date(year, month - 1, day);
+            if (d.getDay() === 0) {
+                isCalendarNonWorkingDay = true;
+                calendarReason = 'Sunday';
+            }
+        }
+
+        // 2. Check if Holiday
+        if (!isCalendarNonWorkingDay && schoolId) {
+            try {
+                if (navigator.onLine) {
+                    const { data, error } = await supabase
+                        .from('holidays')
+                        .select('id, title')
+                        .eq('school_id', Number(schoolId))
+                        .lte('start_date', dateStr)
+                        .gte('end_date', dateStr)
+                        .limit(1);
+
+                    if (!error && data && data.length > 0) {
+                        isCalendarNonWorkingDay = true;
+                        calendarReason = data[0].title || 'Holiday';
+                    }
+                } else {
+                    const cachedHolidays = await this.getConfig(`holidays_${schoolId}`);
+                    if (Array.isArray(cachedHolidays)) {
+                        const match = cachedHolidays.find((h: any) => h.start_date <= dateStr && h.end_date >= dateStr);
+                        if (match) {
+                            isCalendarNonWorkingDay = true;
+                            calendarReason = match.title || 'Holiday';
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('Error checking holiday status:', e);
+            }
+        }
+
+        const demandActive = !ignoreDemandOverride && schoolId ? this.isAttendanceOnDemand(schoolId) : false;
+        const isNonWorkingDay = isCalendarNonWorkingDay && !demandActive;
+
+        return { isNonWorkingDay, isCalendarNonWorkingDay, reason: calendarReason };
+    }
+
     private buildHistoryItem(schoolId: number, date: string, person: RFIDMapping, record: {
         status: string | null;
         check_in_time: string | null;
@@ -725,8 +806,16 @@ class RFIDOfflineService {
                     settingsPayload = settings;
                     await this.cacheConfig(KEY_ATTN_SETTINGS, settings);
                 }
+
+                const { data: holidays } = await supabase
+                    .from('holidays')
+                    .select('id, title, start_date, end_date')
+                    .eq('school_id', schoolId);
+                if (holidays) {
+                    await this.cacheConfig(`holidays_${schoolId}`, holidays);
+                }
             } catch (e) {
-                console.warn('Failed to cache active session or settings:', e);
+                console.warn('Failed to cache active session, settings, or holidays:', e);
             }
 
             this.persistWebFallbackMappings(schoolId, serializedMappings);
@@ -1715,6 +1804,26 @@ class RFIDOfflineService {
             return { success: false, person: resolvedPerson, type: 'error_inactive' };
         }
 
+        // 1c. Check if Sunday or Holiday
+        const targetDayDate = targetDate || new Date().toISOString().slice(0, 10);
+        const nonWorkingCheck = await this.checkIsSundayOrHoliday(schoolId, targetDayDate);
+        if (nonWorkingCheck.isNonWorkingDay) {
+            if (navigator.onLine) {
+                const timestamp = (await this.getServerTimestamp()) || new Date().toISOString();
+                this.logScanHistory({
+                    schoolId,
+                    userId: resolvedPerson.person_id,
+                    role: resolvedPerson.type,
+                    timestamp,
+                    platform,
+                    mode: 'online',
+                    actionTaken: 'ignored',
+                    metadata: { reason: 'non_working_day', day_reason: nonWorkingCheck.reason },
+                }).catch(() => {});
+            }
+            return { success: false, person: resolvedPerson, type: 'error_holiday' };
+        }
+
         const settings = await this.getAttendanceSettings(schoolId);
         const now = new Date().toISOString();
         const offlineSettings = settings || await this.getConfig(KEY_ATTN_SETTINGS);
@@ -1777,10 +1886,35 @@ class RFIDOfflineService {
                 this.cacheDailyAttendanceHistory(schoolId, offlineDate).catch(() => {});
                 this.lastHistoryRefresh = Date.now();
             } else {
-                // ── OFFLINE PATH: use local cache for instant feedback ──
-                const existingHistory = await this.getCachedDailyAttendanceHistory(schoolId, offlineDate);
+                // ── OFFLINE PATH: check local history cache AND scan queue to prevent duplicates ──
+                const [existingHistory, pendingQueue] = await Promise.all([
+                    this.getCachedDailyAttendanceHistory(schoolId, offlineDate),
+                    this.getQueue()
+                ]);
                 const historyKey = this.buildDailyHistoryKey(schoolId, offlineDate, currentPerson.type, currentPerson.person_id);
-                const existingRecord = existingHistory.find(h => h.key === historyKey);
+                let existingRecord = existingHistory.find(h => h.key === historyKey);
+
+                if (!existingRecord) {
+                    const pendingScan = pendingQueue.find(q =>
+                        Number(q.school_id) === Number(schoolId) &&
+                        q.date === offlineDate &&
+                        q.person_type === currentPerson.type &&
+                        Number(q.person_id) === Number(currentPerson.person_id)
+                    );
+                    if (pendingScan) {
+                        existingRecord = {
+                            key: historyKey,
+                            school_id: schoolId,
+                            date: offlineDate,
+                            person_id: currentPerson.person_id,
+                            person_type: currentPerson.type,
+                            name: currentPerson.name,
+                            status: pendingScan.status || 'present',
+                            check_in_time: pendingScan.timestamp || now,
+                            check_out_time: pendingScan.scan_type === 'out' ? pendingScan.timestamp : null,
+                        };
+                    }
+                }
 
                 if (existingRecord) {
                     if (currentPerson.type === 'employee' && this.isEmployeeActiveAttendance(existingRecord)) {
@@ -1845,7 +1979,79 @@ class RFIDOfflineService {
         }
         return this.runAttendancePipelineAfterIdentification(person, schoolId, targetDate, cleanUID, platform, forceOffline);
     }
+
+    async deleteAttendanceRecord(
+        schoolId: number,
+        personId: number | string,
+        personType: 'student' | 'employee',
+        date: string
+    ): Promise<void> {
+        const table = personType === 'student' ? 'attendance_records' : 'staff_attendance_records';
+        const idCol = personType === 'student' ? 'student_id' : 'staff_id';
+        const numericPersonId = Number(personId);
+        const numericSchoolId = Number(schoolId);
+
+        // 1. Delete online from Supabase if connected
+        if (navigator.onLine) {
+            try {
+                const { error } = await supabase
+                    .from(table)
+                    .delete()
+                    .eq('school_id', numericSchoolId)
+                    .eq(idCol, numericPersonId)
+                    .eq('date', date);
+
+                if (error) {
+                    console.warn('Failed to delete online attendance record:', error);
+                }
+            } catch (e) {
+                console.warn('Error deleting online attendance record:', e);
+            }
+        }
+
+        // 2. Delete from IndexedDB STORE_DAILY_HISTORY
+        try {
+            const historyKey = this.buildDailyHistoryKey(numericSchoolId, date, personType, numericPersonId);
+            const db = await this.getDB();
+            await new Promise<void>((resolve) => {
+                const tx = db.transaction(STORE_DAILY_HISTORY, 'readwrite');
+                tx.objectStore(STORE_DAILY_HISTORY).delete(historyKey);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => resolve();
+            });
+        } catch (e) {}
+
+        // 3. Remove pending queued scans for this person on date from STORE_QUEUE
+        try {
+            const db = await this.getDB();
+            await new Promise<void>((resolve) => {
+                const tx = db.transaction(STORE_QUEUE, 'readwrite');
+                const store = tx.objectStore(STORE_QUEUE);
+                const req = store.getAll();
+                req.onsuccess = () => {
+                    const list = (req.result || []) as QueuedScan[];
+                    list.forEach(q => {
+                        if (
+                            Number(q.school_id) === numericSchoolId &&
+                            q.date === date &&
+                            q.person_type === personType &&
+                            Number(q.person_id) === numericPersonId &&
+                            q.id !== undefined
+                        ) {
+                            store.delete(q.id);
+                        }
+                    });
+                };
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => resolve();
+            });
+        } catch (e) {}
+
+        // 4. Remove from in-memory cache
+        const mapKey = `${numericSchoolId}:${date}:${personType}:${numericPersonId}`;
+        this.inMemoryTodayScans.delete(mapKey);
+    }
 }
 
 export const rfidOfflineService = new RFIDOfflineService();
-export type MarkResultType = 'new' | 'already' | 'error' | 'offline' | 'out' | 'error_checkout_early' | 'already_out' | 'error_inactive' | 'error_manual_only' | 'offline_present' | 'offline_late' | 'offline_checkout' | 'offline_already' | 'offline_already_out' | 'offline_checkout_early' | 'online_present' | 'online_late';
+export type MarkResultType = 'new' | 'already' | 'error' | 'offline' | 'out' | 'error_checkout_early' | 'already_out' | 'error_inactive' | 'error_manual_only' | 'error_holiday' | 'offline_present' | 'offline_late' | 'offline_checkout' | 'offline_already' | 'offline_already_out' | 'offline_checkout_early' | 'online_present' | 'online_late';

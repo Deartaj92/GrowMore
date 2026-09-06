@@ -32,11 +32,12 @@ import {
     CloudSync as CloudSyncIcon,
     Settings as SettingsIcon,
     Save as SaveIcon,
-  Nfc as NfcIcon,
+    Nfc as NfcIcon,
     Logout as LogoutIcon,
     Bolt as BoltIcon,
     VolumeUp as Volume2,
     VolumeOff as VolumeX,
+    Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { CachedAttendanceHistoryItem, rfidOfflineService } from '../services/rfidOfflineService';
 import {
@@ -783,6 +784,26 @@ const FeedList = styled.div`
   flex-direction: column;
 `;
 
+const FeedDeleteBtn = styled.button`
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  opacity: 0;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin-left: 0.4rem;
+
+  &:hover {
+    background: rgba(239, 68, 68, 0.15);
+    transform: scale(1.1);
+  }
+`;
+
 const FeedItem = styled.div<{ $type: 'success' | 'error' | 'warn'; $personType: 'student' | 'employee'; $new?: boolean; $attendanceStatus?: string }>`
   padding: 0.85rem 1.2rem;
   display: flex;
@@ -793,7 +814,12 @@ const FeedItem = styled.div<{ $type: 'success' | 'error' | 'warn'; $personType: 
   background: ${({ $new, theme }) => $new ? theme.ACCENT + '08' : 'transparent'};
   transition: all 0.2s;
 
-  &:hover { background: ${({ theme }) => theme.HOVER_BG}; }
+  &:hover {
+    background: ${({ theme }) => theme.HOVER_BG};
+    .feed-delete-btn {
+      opacity: 1;
+    }
+  }
 
   @media (max-width: 600px) {
     padding: 0.75rem 0.9rem;
@@ -1514,10 +1540,82 @@ const RFIDAttendancePage: React.FC = () => {
     } | null>(null);
 
     const [selectedDate, setSelectedDate] = useState(today);
+    const [nonWorkingInfo, setNonWorkingInfo] = useState<{ isNonWorkingDay: boolean; isCalendarNonWorkingDay: boolean; reason?: string }>({ isNonWorkingDay: false, isCalendarNonWorkingDay: false });
+    const [isOnDemandActive, setIsOnDemandActive] = useState(false);
+
+    const refreshNonWorkingStatus = useCallback(async () => {
+        if (!user?.school_id || !selectedDate) return;
+        const res = await rfidOfflineService.checkIsSundayOrHoliday(user.school_id, selectedDate);
+        setNonWorkingInfo(res);
+        setIsOnDemandActive(rfidOfflineService.isAttendanceOnDemand(user.school_id));
+    }, [user?.school_id, selectedDate]);
+
+    useEffect(() => {
+        refreshNonWorkingStatus();
+    }, [refreshNonWorkingStatus]);
+
+    const toggleAttendanceOnDemand = async () => {
+        if (!user?.school_id) return;
+        const newStatus = !isOnDemandActive;
+        rfidOfflineService.setAttendanceOnDemand(user.school_id, newStatus);
+        setIsOnDemandActive(newStatus);
+        await refreshNonWorkingStatus();
+        showToast(
+            newStatus
+                ? '⚡ Attendance on Demand ENABLED. Scans are now allowed.'
+                : 'Attendance on Demand DISABLED. Sunday/Holiday restrictions active.',
+            newStatus ? 'success' : 'info'
+        );
+    };
     const [scanStatus, setScanStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [statusMsg, setStatusMsg] = useState('Waiting for card scan...');
     const [feed, setFeed] = useState<ScanResult[]>([]);
+    const [deleteTarget, setDeleteTarget] = useState<ScanResult | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [feedSearch, setFeedSearch] = useState('');
+
+    const confirmDeleteFeedItem = async () => {
+        if (!deleteTarget || isDeleting || !user?.school_id) return;
+        setIsDeleting(true);
+        try {
+            if (deleteTarget.personId) {
+                await rfidOfflineService.deleteAttendanceRecord(
+                    user.school_id,
+                    deleteTarget.personId,
+                    deleteTarget.personType,
+                    selectedDate
+                );
+            }
+            setFeed(prev => prev.filter(item => item.id !== deleteTarget.id));
+            if (deleteTarget.type === 'success') {
+                setPresentCount(prev => Math.max(0, prev - 1));
+            }
+            showToast(`Deleted attendance entry for ${deleteTarget.name}`, 'success');
+        } catch (err: any) {
+            console.error('Failed to delete feed item:', err);
+            showToast('Failed to delete record: ' + (err.message || 'Unknown error'), 'error');
+        } finally {
+            setIsDeleting(false);
+            setDeleteTarget(null);
+        }
+    };
+
+    useEffect(() => {
+        if (!deleteTarget) return;
+        const handleModalKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                confirmDeleteFeedItem();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                setDeleteTarget(null);
+            }
+        };
+        window.addEventListener('keydown', handleModalKeyDown, true);
+        return () => window.removeEventListener('keydown', handleModalKeyDown, true);
+    }, [deleteTarget, isDeleting]);
     const [presentCount, setPresentCount] = useState(0);
     const [unknownCount, setUnknownCount] = useState(0);
     const [dupCount, setDupCount] = useState(0);
@@ -2225,6 +2323,23 @@ const RFIDAttendancePage: React.FC = () => {
                     return;
                 }
 
+                if (result.type === 'error_holiday' && result.person) {
+                    setScanStatus('error');
+                    setStatusMsg(`Sunday / Holiday: ${result.person.name}`);
+                    setScannedPerson({ name: result.person.name });
+                    addFeedItem({
+                        type: 'warn',
+                        name: result.person.name,
+                        sub: 'Attendance registration is disabled on Sundays and Holidays',
+                        time,
+                        personType: result.person.type === 'student' ? 'student' : 'employee',
+                        personId: result.person.person_id,
+                    });
+                    showToast('Attendance registration is disabled on Sundays and Holidays', 'error');
+                    speak(`${result.person.name}, Sunday or Holiday`);
+                    return;
+                }
+
                 setScanStatus('error');
                 setStatusMsg(`Unknown Card: ${cleanUID}`);
                 setUnknownCount(p => p + 1);
@@ -2619,10 +2734,9 @@ const RFIDAttendancePage: React.FC = () => {
 
     const triggerManualAbsentMark = async () => {
         if (!user?.school_id) return;
-        const dateObj = selectedDate ? new Date(selectedDate + 'T00:00:00') : new Date();
-        const dayOfWeek = dateObj.getUTCDay();
-        if (dayOfWeek === 0) {
-            showToast('Cannot mark absents on Sundays.', 'warning');
+        const nonWorkingCheck = await rfidOfflineService.checkIsSundayOrHoliday(user.school_id, selectedDate);
+        if (nonWorkingCheck.isNonWorkingDay) {
+            showToast(`Cannot mark absents on ${nonWorkingCheck.reason || 'Sundays or Holidays'}.`, 'warning');
             return;
         }
 
@@ -2773,6 +2887,29 @@ const RFIDAttendancePage: React.FC = () => {
                             max={today}
                             onChange={e => setSelectedDate(e.target.value)}
                         />
+                        {nonWorkingInfo.isCalendarNonWorkingDay && (
+                            <span style={{ padding: '4px 10px', borderRadius: 8, background: isOnDemandActive ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)', color: isOnDemandActive ? '#22c55e' : '#ef4444', border: `1px solid ${isOnDemandActive ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`, fontSize: '0.78rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                                {isOnDemandActive
+                                    ? `⚡ On Demand Active (${nonWorkingInfo.reason || 'Sunday/Holiday'})`
+                                    : `⚠️ ${nonWorkingInfo.reason || 'Non-Working Day'} (Attendance Blocked)`}
+                                <button
+                                    type="button"
+                                    onClick={toggleAttendanceOnDemand}
+                                    style={{
+                                        background: isOnDemandActive ? 'rgba(239, 68, 68, 0.2)' : '#ef4444',
+                                        color: isOnDemandActive ? '#ef4444' : '#ffffff',
+                                        border: isOnDemandActive ? '1px solid rgba(239, 68, 68, 0.4)' : 'none',
+                                        borderRadius: 6,
+                                        padding: '3px 8px',
+                                        fontSize: '0.72rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    {isOnDemandActive ? 'Turn Off' : 'Enable On Demand'}
+                                </button>
+                            </span>
+                        )}
                     </TopBarDateWrap>
                 </TopBarLeading>
 
@@ -2796,9 +2933,9 @@ const RFIDAttendancePage: React.FC = () => {
                             theme={themeObj}
                             style={{ background: 'rgba(34, 197, 94, 0.12)', color: '#22c55e', border: '1px solid rgba(34, 197, 94, 0.3)', fontWeight: 700 }}
                             onClick={() => navigate('/attendance/qr-scanner')}
-                            title="Switch to QR & Face Attendance Page"
+                            title="Switch to Face Attendance Page"
                         >
-                            <Scan style={{ fontSize: 16 }} /> Switch to QR/Face Page
+                            <Scan style={{ fontSize: 16 }} /> Switch to Face Page
                         </HeaderBtn>
 
                         <HeaderBtn theme={themeObj} onClick={() => setIsMuted(!isMuted)} title={isMuted ? 'Unmute' : 'Mute'}>
@@ -3334,6 +3471,16 @@ const RFIDAttendancePage: React.FC = () => {
                                                     )}
                                                     <FeedTimeLabel theme={themeObj}>{item.time}</FeedTimeLabel>
                                                 </FeedTime>
+                                                <FeedDeleteBtn
+                                                    className="feed-delete-btn"
+                                                    title="Delete Attendance Record"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setDeleteTarget(item);
+                                                    }}
+                                                >
+                                                    <DeleteIcon style={{ fontSize: 16 }} />
+                                                </FeedDeleteBtn>
                                             </FeedItem>
                                         ))
                                     )}
@@ -3404,6 +3551,16 @@ const RFIDAttendancePage: React.FC = () => {
                                                     )}
                                                     <FeedTimeLabel theme={themeObj}>{item.time}</FeedTimeLabel>
                                                 </FeedTime>
+                                                <FeedDeleteBtn
+                                                    className="feed-delete-btn"
+                                                    title="Delete Attendance Record"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setDeleteTarget(item);
+                                                     }}
+                                                >
+                                                    <DeleteIcon style={{ fontSize: 16 }} />
+                                                </FeedDeleteBtn>
                                             </FeedItem>
                                         ))
                                     )}
@@ -3418,6 +3575,38 @@ const RFIDAttendancePage: React.FC = () => {
             <FloatingFab onClick={triggerManualAbsentMark} aria-label="Mark Absents Now" title="Mark Absents Now" disabled={manualMarkInProgress}>
                 <span style={{ fontWeight: 900, fontSize: 20, color: '#fff' }}>A</span>
             </FloatingFab>
+
+            {/* Delete Feed Item Confirmation Modal */}
+            {deleteTarget && (
+                <ModalOverlay onClick={() => setDeleteTarget(null)}>
+                    <ModalContent theme={themeObj} onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+                        <ModalHeader theme={themeObj}>
+                            <ModalTitleBlock theme={themeObj}>
+                                <h2 style={{ color: '#ef4444' }}>Confirm Delete</h2>
+                                <p>This will permanently remove attendance online & offline.</p>
+                            </ModalTitleBlock>
+                        </ModalHeader>
+                        <div style={{ padding: '0.75rem 0', fontSize: '0.9rem', color: themeObj.TEXT_PRIMARY }}>
+                            Are you sure you want to delete attendance record for <strong>{deleteTarget.name}</strong> ({deleteTarget.time})?
+                        </div>
+                        <SettingsActions>
+                            <SecondaryBtn theme={themeObj} onClick={() => setDeleteTarget(null)}>
+                                Cancel (Esc)
+                            </SecondaryBtn>
+                            <SecondaryBtn
+                                theme={themeObj}
+                                style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}
+                                onClick={confirmDeleteFeedItem}
+                                disabled={isDeleting}
+                                autoFocus
+                            >
+                                {isDeleting ? 'Deleting...' : 'Yes, Delete (Enter)'}
+                            </SecondaryBtn>
+                        </SettingsActions>
+                    </ModalContent>
+                </ModalOverlay>
+            )}
+
 
             {/* Sync Progress Overlay */}
             {isSyncing && syncProgress.total > 0 && (

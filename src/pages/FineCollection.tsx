@@ -1,3 +1,4 @@
+// Fine Collection Page - Updated with Remaining Fine Student List Sidebar
 import React, { useState, useEffect, useRef, useMemo, useContext } from 'react';
 import styled, { useTheme } from 'styled-components';
 import { 
@@ -17,7 +18,8 @@ import {
   CheckCircle,
   AccountBalanceWallet,
   ReceiptLong,
-  Person
+  Person,
+  People
 } from '@mui/icons-material';
 import { Skeleton } from '@mui/material';
 import { supabase } from '../supabaseClient';
@@ -33,12 +35,13 @@ import { formatAppDate } from '../utils/dateUtils';
 import AppDateField from '../components/shared/AppDateField';
 import Loader from '../components/Loader';
 import { getStudentDisplayId, matchesStudentSearch, fetchStudentByIdentifier, getSequenceNumber } from '../utils/studentUtils';
+import { sortClasses } from '../utils/classUtils';
 
 /* ── EXACT THEME STYLED COMPONENTS & MAXIMUM SPACE UTILIZATION ── */
 
 const Container = styled.div`
   width: 100%;
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 1rem;
   box-sizing: border-box;
@@ -50,13 +53,17 @@ const Container = styled.div`
 
 const PageGrid = styled.div`
   display: grid;
-  grid-template-columns: 390px 1fr;
+  grid-template-columns: 310px 380px 1fr;
   gap: 1.2rem;
   align-items: start;
   min-height: calc(100vh - 160px);
 
+  @media (max-width: 1280px) {
+    grid-template-columns: 280px 340px 1fr;
+    gap: 1rem;
+  }
   @media (max-width: 1024px) {
-    grid-template-columns: 350px 1fr;
+    grid-template-columns: 320px 1fr;
     gap: 1rem;
   }
   @media (max-width: 900px) {
@@ -73,15 +80,6 @@ const LeftSection = styled.div`
     position: static;
     width: 100%;
   }
-`;
-
-const RightSection = styled.div`
-  flex: 1;
-  min-width: 0;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
 `;
 
 const Card = styled.div`
@@ -101,6 +99,208 @@ const Card = styled.div`
     padding: 0.85rem 0.95rem;
     border-radius: 10px;
   }
+`;
+
+const RemainingFinesCard = styled(Card)`
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 140px);
+  max-height: 800px;
+  overflow: hidden;
+
+  @media (max-width: 900px) {
+    height: 420px;
+  }
+`;
+
+const SidebarHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+`;
+
+const HeaderTitleGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: ${({ theme }) => (theme as any).ACCENT};
+  font-weight: 700;
+  font-size: 1.05rem;
+  svg {
+    font-size: 1.25rem;
+  }
+`;
+
+const CountBadge = styled.span`
+  background: rgba(244, 63, 94, 0.15);
+  color: #f43f5e;
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+`;
+
+const SidebarSearchInput = styled.input`
+  width: 100%;
+  border: 1.2px solid ${({ theme }) => theme.FIELD_BORDER};
+  background: ${({ theme }) => theme.FIELD_BG};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  outline: none;
+  margin-bottom: 0.5rem;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+
+  &:focus {
+    border-color: ${({ theme }) => (theme as any).ACCENT};
+  }
+
+  &::placeholder {
+    color: #7c8597;
+  }
+`;
+
+const FilterRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+  margin-bottom: 0.75rem;
+`;
+
+const SidebarSelect = styled.select`
+  width: 100%;
+  border: 1.2px solid ${({ theme }) => theme.FIELD_BORDER};
+  background: ${({ theme }) => theme.FIELD_BG};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.82rem;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+  height: 33px;
+
+  &:focus {
+    border-color: ${({ theme }) => (theme as any).ACCENT};
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const StudentListWrapper = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-right: 4px;
+
+  scrollbar-width: thin;
+  scrollbar-color: ${({ theme }) => (theme as any).ACCENT + '55'} transparent;
+
+  &::-webkit-scrollbar {
+    width: 5px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => (theme as any).ACCENT + '77'};
+    border-radius: 5px;
+  }
+`;
+
+const StudentListItem = styled.div<{ $active?: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 9px;
+  background: ${({ $active, theme }) => $active ? theme.HOVER_BG : theme.FIELD_BG};
+  border: 1.2px solid ${({ $active, theme }) => $active ? (theme as any).ACCENT : theme.BORDER};
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: ${({ theme }) => theme.HOVER_BG};
+    border-color: ${({ theme }) => (theme as any).ACCENT};
+    transform: translateY(-1px);
+  }
+`;
+
+const StudentItemMain = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  flex: 1;
+`;
+
+const StudentItemAvatar = styled.div`
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #232a3b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  color: #b0b8d1;
+  overflow: hidden;
+  border: 1.5px solid #353b4a;
+  flex-shrink: 0;
+`;
+
+const StudentItemText = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+`;
+
+const StudentItemName = styled.span`
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.88rem;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const StudentItemSub = styled.span`
+  color: #7c8597;
+  font-size: 0.76rem;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const FineBadge = styled.div`
+  background: rgba(244, 63, 94, 0.12);
+  color: #f43f5e;
+  border: 1px solid rgba(244, 63, 94, 0.25);
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
+`;
+
+const RightSection = styled.div`
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
 `;
 
 const CardTitle = styled.h3`
@@ -867,6 +1067,15 @@ const PageSkeleton: React.FC = () => {
     <Container>
       <PageGrid>
         <LeftSection>
+          <Card style={{ height: '500px' }}>
+            <Skeleton variant="text" width={160} height={28} sx={{ mb: 2 }} animation="wave" />
+            <Skeleton variant="rectangular" height={36} sx={{ borderRadius: '8px', mb: 1.5 }} animation="wave" />
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <Skeleton key={idx} variant="rectangular" height={46} sx={{ borderRadius: '8px', mb: 1 }} animation="wave" />
+            ))}
+          </Card>
+        </LeftSection>
+        <LeftSection>
           <Card>
             <Skeleton variant="rectangular" height={38} sx={{ borderRadius: '9px', mb: 2 }} animation="wave" />
             <Skeleton variant="rectangular" height={52} sx={{ borderRadius: '9px', mb: 2 }} animation="wave" />
@@ -1073,6 +1282,7 @@ const FineCollection: React.FC = () => {
       if (data && data.length > 0) {
         setSpecialFinesForStudent(prev => prev.map(fine => fine.id === editingSpecialFineId ? { ...fine, ...data[0] } : fine));
         showToast('Special fine updated successfully.', 'success');
+        fetchBulkData();
       } else {
         showToast('Special fine updated, but failed to refresh the row.', 'warning');
       }
@@ -1107,6 +1317,7 @@ const FineCollection: React.FC = () => {
       if (error) throw error;
       setSpecialFinesForStudent(prev => prev.filter(fine => fine.id !== specialFineToDeleteId));
       showToast('Special fine deleted successfully.', 'success');
+      fetchBulkData();
     } catch (err: any) {
       showToast('Failed to delete special fine: ' + (err.message || 'Unknown error'), 'error');
     } finally {
@@ -1114,6 +1325,151 @@ const FineCollection: React.FC = () => {
       cancelDeleteSpecialFine();
     }
   };
+
+  const [allFines, setAllFines] = useState<any[]>([]);
+  const [allAttendance, setAllAttendance] = useState<any[]>([]);
+  const [allPayments, setAllPayments] = useState<any[]>([]);
+  const [allSpecialFines, setAllSpecialFines] = useState<any[]>([]);
+  const [sidebarSearch, setSidebarSearch] = useState('');
+  const [sidebarClass, setSidebarClass] = useState('');
+  const [sidebarSection, setSidebarSection] = useState('');
+
+  useEffect(() => {
+    if (!sidebarClass) {
+      setSidebarSection('');
+    } else {
+      const selectedClassObj = classes.find(c => String(c.id) === String(sidebarClass));
+      if (selectedClassObj && selectedClassObj.has_sections === false) {
+        setSidebarSection('');
+      }
+    }
+  }, [sidebarClass, classes]);
+
+  const fetchBulkData = async () => {
+    if (!user?.school_id) return;
+    try {
+      const [finesData, attendanceData, paymentsData, specialFinesData] = await Promise.all([
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('fines')
+            .select('class_id, absent_fine, late_fine, effective_from')
+            .eq('school_id', user.school_id)
+            .order('effective_from', { ascending: true })
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('attendance_records')
+            .select('student_id, class_id, date, status')
+            .eq('school_id', user.school_id)
+            .in('status', ['absent', 'late'])
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('fine_payments')
+            .select('*')
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        }),
+        fetchAllRows(async (from, to) => {
+          return await supabase.from('special_fines')
+            .select('id, student_id, amount, paid_amount, status, description, created_at')
+            .eq('school_id', user.school_id)
+            .range(from, to);
+        }),
+      ]);
+      setAllFines(finesData || []);
+      setAllAttendance(attendanceData || []);
+      setAllPayments(paymentsData || []);
+      setAllSpecialFines(specialFinesData || []);
+    } catch (err) {
+      console.error("Error updating bulk fine data:", err);
+    }
+  };
+
+  const studentsWithRemainingFine = useMemo(() => {
+    if (!students.length) return [];
+
+    return students.map(student => {
+      let attFine = 0;
+      if (allFines.length > 0 && allAttendance.length > 0) {
+        const studentAtt = allAttendance.filter(
+          (rec: any) => rec.student_id === student.id && (rec.status === 'absent' || rec.status === 'late')
+        );
+        for (const rec of studentAtt) {
+          const classIdFromRecord = rec.class_id || student.class_id;
+          const classFines = allFines.filter((f: any) => String(f.class_id) === String(classIdFromRecord)) || [];
+          let applicableFine = null;
+          for (const f of classFines) {
+            if (f.effective_from <= rec.date) {
+              applicableFine = f;
+            }
+          }
+          let fineAmount = 0;
+          if (applicableFine) {
+            fineAmount = rec.status === 'absent' ? Number(applicableFine.absent_fine || 0) : Number(applicableFine.late_fine || 0);
+          }
+          attFine += fineAmount;
+        }
+      }
+
+      const studentPayments = allPayments.filter((p: any) => p.student_id === student.id);
+      const paid = studentPayments.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+      const remission = studentPayments.reduce((sum: number, p: any) => sum + Number(p.remission || 0), 0);
+
+      const studentSpecials = allSpecialFines.filter((s: any) => String(s.student_id) === String(student.id));
+      const specialTotal = studentSpecials.reduce((sum: number, s: any) => sum + Number(s.amount || 0), 0);
+      const specialPaid = studentSpecials.reduce((sum: number, s: any) => sum + Number(s.paid_amount || 0), 0);
+      const specialRemaining = specialTotal - specialPaid;
+
+      const combinedTotal = attFine + specialTotal;
+      const combinedPaid = paid + specialPaid;
+      const remainingFine = combinedTotal - combinedPaid - remission;
+
+      return {
+        ...student,
+        remainingFine: remainingFine > 0 ? remainingFine : 0,
+        totalFine: attFine,
+        paid,
+        remission,
+        specialRemaining
+      };
+    })
+    .filter(student => student.remainingFine > 0)
+    .sort((a, b) => b.remainingFine - a.remainingFine);
+  }, [students, allFines, allAttendance, allPayments, allSpecialFines]);
+
+  const sortedClassesList = useMemo(() => {
+    const pendingClassIds = new Set(studentsWithRemainingFine.map(s => String(s.class_id)));
+    const classesWithPending = classes.filter(c => pendingClassIds.has(String(c.id)));
+    return sortClasses(classesWithPending);
+  }, [classes, studentsWithRemainingFine]);
+
+  const availableSidebarSections = useMemo(() => {
+    if (!sidebarClass) return [];
+    const selectedClassObj = classes.find(c => String(c.id) === String(sidebarClass));
+    if (selectedClassObj && selectedClassObj.has_sections === false) {
+      return [];
+    }
+    const pendingSectionIds = new Set(
+      studentsWithRemainingFine
+        .filter(s => String(s.class_id) === String(sidebarClass) && s.section_id)
+        .map(s => String(s.section_id))
+    );
+    return sections.filter(s => String(s.class_id) === String(sidebarClass) && pendingSectionIds.has(String(s.id)));
+  }, [sidebarClass, classes, sections, studentsWithRemainingFine]);
+
+  const filteredPendingStudents = useMemo(() => {
+    const q = sidebarSearch.trim().toLowerCase();
+    return studentsWithRemainingFine.filter(student => {
+      const matchesSearch = !q ||
+        student.name.toLowerCase().includes(q) ||
+        matchesStudentSearch(student, q).matches;
+
+      const matchesClass = !sidebarClass || String(student.class_id) === String(sidebarClass);
+      const matchesSection = !sidebarSection || String(student.section_id) === String(sidebarSection);
+
+      return matchesSearch && matchesClass && matchesSection;
+    });
+  }, [studentsWithRemainingFine, sidebarSearch, sidebarClass, sidebarSection]);
 
   const formatCurrency = (value: number): string => {
     if (value % 1 === 0) {
@@ -1131,14 +1487,60 @@ const FineCollection: React.FC = () => {
       const minDuration = 1200;
       const start = Date.now();
       const dataPromise = (async () => {
-        const [{ data: studentsData }, { data: classesData }, { data: sectionsData }] = await Promise.all([
-          supabase.from('students').select('*').eq('status', 'active').eq('school_id', user.school_id),
-          supabase.from('classes').select('id, name, has_sections').eq('school_id', user.school_id),
-          supabase.from('sections').select('id, name').eq('school_id', user.school_id),
+        const [studentsData, classesData, sectionsData, finesData, attendanceData, paymentsData, specialFinesData] = await Promise.all([
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('students')
+              .select('*')
+              .eq('status', 'active')
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('classes')
+              .select('id, name, has_sections')
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('sections')
+              .select('id, name, class_id')
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('fines')
+              .select('class_id, absent_fine, late_fine, effective_from')
+              .eq('school_id', user.school_id)
+              .order('effective_from', { ascending: true })
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('attendance_records')
+              .select('student_id, class_id, date, status')
+              .eq('school_id', user.school_id)
+              .in('status', ['absent', 'late'])
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('fine_payments')
+              .select('*')
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
+          fetchAllRows(async (from, to) => {
+            return await supabase.from('special_fines')
+              .select('id, student_id, amount, paid_amount, status, description, created_at')
+              .eq('school_id', user.school_id)
+              .range(from, to);
+          }),
         ]);
         if (studentsData) setStudents(studentsData);
         if (classesData) setClasses(classesData);
         if (sectionsData) setSections(sectionsData);
+        setAllFines(finesData || []);
+        setAllAttendance(attendanceData || []);
+        setAllPayments(paymentsData || []);
+        setAllSpecialFines(specialFinesData || []);
       })();
       const timerPromise = new Promise(res => setTimeout(res, minDuration));
       await Promise.all([dataPromise, timerPromise]);
@@ -1598,7 +2000,9 @@ const FineCollection: React.FC = () => {
 
       if (newPayment && newPayment.length > 0) {
         setPaymentHistory(prevHistory => [newPayment[0], ...prevHistory]);
+        setAllPayments(prev => [newPayment[0], ...prev]);
         showToast("Payment collected successfully!", 'success');
+        fetchBulkData();
         setAmount('');
         setRemission('');
         setRemarks('');
@@ -1651,7 +2055,9 @@ const FineCollection: React.FC = () => {
         throw error;
       }
       setPaymentHistory(prevHistory => prevHistory.filter(p => p.id !== itemToDeleteId));
+      setAllPayments(prev => prev.filter(p => p.id !== itemToDeleteId));
       showToast("Payment record deleted successfully.", 'success');
+      fetchBulkData();
     } catch (err: any) {
       if (!(err.message && err.message.startsWith('Failed to delete payment'))) {
         showToast("An unexpected error occurred. Please try again.", 'error');
@@ -1740,7 +2146,95 @@ const FineCollection: React.FC = () => {
   return (
     <Container>
       <PageGrid>
-        {/* LEFT COLUMN */}
+        {/* COLUMN 1: REMAINING FINES STUDENT LIST */}
+        <LeftSection>
+          <RemainingFinesCard>
+            <SidebarHeader>
+              <HeaderTitleGroup>
+                <People /> Remaining Fine
+              </HeaderTitleGroup>
+              <CountBadge>{studentsWithRemainingFine.length}</CountBadge>
+            </SidebarHeader>
+
+            <SidebarSearchInput
+              type="text"
+              value={sidebarSearch}
+              onChange={e => setSidebarSearch(e.target.value)}
+              placeholder="Search by name or ID..."
+            />
+
+            {/* Class & Section Filters */}
+            <FilterRow>
+              <SidebarSelect
+                value={sidebarClass}
+                onChange={e => setSidebarClass(e.target.value)}
+              >
+                <option value="">All Classes</option>
+                {sortedClassesList.map(cls => (
+                  <option key={cls.id} value={cls.id}>
+                    {cls.name}
+                  </option>
+                ))}
+              </SidebarSelect>
+
+              <SidebarSelect
+                value={sidebarSection}
+                onChange={e => setSidebarSection(e.target.value)}
+                disabled={!sidebarClass || availableSidebarSections.length === 0}
+              >
+                <option value="">All Sections</option>
+                {availableSidebarSections.map(sec => (
+                  <option key={sec.id} value={sec.id}>
+                    {sec.name}
+                  </option>
+                ))}
+              </SidebarSelect>
+            </FilterRow>
+
+            <StudentListWrapper>
+              {filteredPendingStudents.length === 0 ? (
+                <div style={{ padding: '1rem 0.5rem', textAlign: 'center', color: '#7c8597', fontSize: '0.85rem' }}>
+                  {sidebarSearch.trim() ? 'No matching students found' : 'No students with pending fine'}
+                </div>
+              ) : (
+                filteredPendingStudents.map((student) => {
+                  const isSelected = selectedStudent?.id === student.id;
+                  const className = getClassName(student.class_id);
+                  const hasSec = getClassHasSections(student.class_id);
+                  const secName = hasSec ? getSectionName(student.section_id) : '';
+                  const classSec = className + (secName ? ` - ${secName}` : '');
+
+                  return (
+                    <StudentListItem
+                      key={student.id}
+                      $active={isSelected}
+                      onClick={() => handleSelectStudent(student)}
+                    >
+                      <StudentItemMain>
+                        <StudentItemAvatar>
+                          {student.picture_url ? (
+                            <img src={student.picture_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <AccountCircle style={{ fontSize: '1.1rem' }} />
+                          )}
+                        </StudentItemAvatar>
+                        <StudentItemText>
+                          <StudentItemName>{student.name}</StudentItemName>
+                          <StudentItemSub>{classSec}</StudentItemSub>
+                        </StudentItemText>
+                      </StudentItemMain>
+                      <FineBadge>
+                        Rs. {formatCurrency(student.remainingFine)}
+                      </FineBadge>
+                    </StudentListItem>
+                  );
+                })
+              )}
+            </StudentListWrapper>
+          </RemainingFinesCard>
+        </LeftSection>
+
+        {/* COLUMN 2: SEARCH & FINE DETAILS */}
         <LeftSection>
           <Card>
             {/* Search Field */}

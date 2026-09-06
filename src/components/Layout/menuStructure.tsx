@@ -252,8 +252,8 @@ export const employeeAttendanceMenuItems: MenuItem[] = [
 
 export const otherAttendanceMenuItems: MenuItem[] = [
   {
-    title: 'QR Scanner',
-    description: 'Mark attendance via QR code scanning at school entrance',
+    title: 'Face & QR Scanner',
+    description: 'Mark attendance via Face recognition or QR code scanning',
     icon: React.createElement(QrCodeScannerIcon),
     path: '/attendance/qr-scanner',
     color: '#0ea5e9'

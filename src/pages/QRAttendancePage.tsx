@@ -52,6 +52,7 @@ import {
     VolumeUp as Volume2,
     VolumeOff as VolumeX,
     LightMode as SunIcon,
+    Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { CachedAttendanceHistoryItem, rfidOfflineService } from '../services/rfidOfflineService';
 import {
@@ -678,6 +679,7 @@ const FeedList = styled.div`
 `;
 
 const FeedItem = styled.div<{ $type: 'success' | 'error' | 'warn'; $personType: 'student' | 'employee'; $new?: boolean; $attendanceStatus?: string }>`
+  position: relative;
   padding: 0.85rem 1.2rem;
   display: flex;
   align-items: center;
@@ -687,11 +689,49 @@ const FeedItem = styled.div<{ $type: 'success' | 'error' | 'warn'; $personType: 
   background: ${({ $new, theme }) => $new ? theme.ACCENT + '08' : 'transparent'};
   transition: all 0.2s;
 
-  &:hover { background: ${({ theme }) => theme.HOVER_BG}; }
+  &:hover {
+    background: ${({ theme }) => theme.HOVER_BG};
+    .feed-delete-btn {
+      opacity: 1;
+      visibility: visible;
+      transform: scale(1);
+    }
+  }
 
   @media (max-width: 600px) {
     padding: 0.75rem 0.9rem;
     gap: 0.75rem;
+  }
+`;
+
+const FeedDeleteBtn = styled.button`
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.85);
+  transition: all 0.2s ease-in-out;
+  flex-shrink: 0;
+  margin-left: 0.35rem;
+
+  &:hover {
+    background: #ef4444;
+    color: #ffffff;
+    border-color: #ef4444;
+  }
+
+  @media (max-width: 768px) {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
   }
 `;
 
@@ -1427,10 +1467,82 @@ const QRAttendancePage: React.FC = () => {
     } | null>(null);
 
     const [selectedDate, setSelectedDate] = useState(today);
+    const [nonWorkingInfo, setNonWorkingInfo] = useState<{ isNonWorkingDay: boolean; isCalendarNonWorkingDay: boolean; reason?: string }>({ isNonWorkingDay: false, isCalendarNonWorkingDay: false });
+    const [isOnDemandActive, setIsOnDemandActive] = useState(false);
+
+    const refreshNonWorkingStatus = useCallback(async () => {
+        if (!user?.school_id || !selectedDate) return;
+        const res = await rfidOfflineService.checkIsSundayOrHoliday(user.school_id, selectedDate);
+        setNonWorkingInfo(res);
+        setIsOnDemandActive(rfidOfflineService.isAttendanceOnDemand(user.school_id));
+    }, [user?.school_id, selectedDate]);
+
+    useEffect(() => {
+        refreshNonWorkingStatus();
+    }, [refreshNonWorkingStatus]);
+
+    const toggleAttendanceOnDemand = async () => {
+        if (!user?.school_id) return;
+        const newStatus = !isOnDemandActive;
+        rfidOfflineService.setAttendanceOnDemand(user.school_id, newStatus);
+        setIsOnDemandActive(newStatus);
+        await refreshNonWorkingStatus();
+        showToast(
+            newStatus
+                ? '⚡ Attendance on Demand ENABLED. Scans are now allowed.'
+                : 'Attendance on Demand DISABLED. Sunday/Holiday restrictions active.',
+            newStatus ? 'success' : 'info'
+        );
+    };
     const [scanStatus, setScanStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [statusMsg, setStatusMsg] = useState('Waiting for QR scan...');
     const [feed, setFeed] = useState<ScanResult[]>([]);
+    const [deleteTarget, setDeleteTarget] = useState<ScanResult | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [feedSearch, setFeedSearch] = useState('');
+
+    const confirmDeleteFeedItem = async () => {
+        if (!deleteTarget || isDeleting || !user?.school_id) return;
+        setIsDeleting(true);
+        try {
+            if (deleteTarget.personId) {
+                await rfidOfflineService.deleteAttendanceRecord(
+                    user.school_id,
+                    deleteTarget.personId,
+                    deleteTarget.personType,
+                    selectedDate
+                );
+            }
+            setFeed(prev => prev.filter(item => item.id !== deleteTarget.id));
+            if (deleteTarget.type === 'success') {
+                setPresentCount(prev => Math.max(0, prev - 1));
+            }
+            showToast(`Deleted attendance entry for ${deleteTarget.name}`, 'success');
+        } catch (err: any) {
+            console.error('Failed to delete feed item:', err);
+            showToast('Failed to delete record: ' + (err.message || 'Unknown error'), 'error');
+        } finally {
+            setIsDeleting(false);
+            setDeleteTarget(null);
+        }
+    };
+
+    useEffect(() => {
+        if (!deleteTarget) return;
+        const handleModalKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                confirmDeleteFeedItem();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                setDeleteTarget(null);
+            }
+        };
+        window.addEventListener('keydown', handleModalKeyDown, true);
+        return () => window.removeEventListener('keydown', handleModalKeyDown, true);
+    }, [deleteTarget, isDeleting]);
     const [presentCount, setPresentCount] = useState(0);
     const [unknownCount, setUnknownCount] = useState(0);
     const [dupCount, setDupCount] = useState(0);
@@ -2224,6 +2336,23 @@ const QRAttendancePage: React.FC = () => {
                     return;
                 }
 
+                if (result.type === 'error_holiday' && result.person) {
+                    setScanStatus('error');
+                    setStatusMsg(`Sunday / Holiday: ${result.person.name}`);
+                    setScannedPerson({ name: result.person.name });
+                    addFeedItem({
+                        type: 'warn',
+                        name: result.person.name,
+                        sub: 'Attendance registration is disabled on Sundays and Holidays',
+                        time,
+                        personType: result.person.type === 'student' ? 'student' : 'employee',
+                        personId: result.person.person_id,
+                    });
+                    showToast('Attendance registration is disabled on Sundays and Holidays', 'error');
+                    speak(`${result.person.name}, Sunday or Holiday`);
+                    return;
+                }
+
                 setScanStatus('error');
                 setStatusMsg(`Unknown: ${displayScanId}`);
                 setUnknownCount(p => p + 1);
@@ -2413,7 +2542,7 @@ const QRAttendancePage: React.FC = () => {
         setStatusMsg('Face detected. Matching...');
 
         try {
-            const result = await rfidOfflineService.markAttendanceWithPerson(person, user.school_id!, selectedDate, true);
+            const result = await rfidOfflineService.markAttendanceWithPerson(person, user.school_id!, selectedDate, !navigator.onLine);
             
             // Refresh queue count
             const q = await rfidOfflineService.getQueue();
@@ -2474,6 +2603,25 @@ const QRAttendancePage: React.FC = () => {
                         personId: result.person.person_id,
                     });
                     showToast(`${result.person.name} is set to manual-only attendance`, 'error');
+                    return;
+                }
+
+                if (result.type === 'error_holiday' && result.person) {
+                    markedPersonsRef.current.add(result.person.person_id);
+                    faceLastSeenRef.current.set(result.person.person_id, Date.now());
+                    setScanStatus('error');
+                    setStatusMsg(`Sunday / Holiday: ${result.person.name}`);
+                    setScannedPerson({ name: result.person.name });
+                    addFeedItem({
+                        type: 'warn',
+                        name: result.person.name,
+                        sub: 'Attendance registration is disabled on Sundays and Holidays',
+                        time,
+                        personType: result.person.type === 'student' ? 'student' : 'employee',
+                        personId: result.person.person_id,
+                    });
+                    showToast('Attendance registration is disabled on Sundays and Holidays', 'error');
+                    speak(`${result.person.name}, Sunday or Holiday`);
                     return;
                 }
 
@@ -3235,10 +3383,9 @@ const QRAttendancePage: React.FC = () => {
 
     const triggerManualAbsentMark = async () => {
         if (!user?.school_id) return;
-        const dateObj = selectedDate ? new Date(selectedDate + 'T00:00:00') : new Date();
-        const dayOfWeek = dateObj.getUTCDay();
-        if (dayOfWeek === 0) {
-            showToast('Cannot mark absents on Sundays.', 'warning');
+        const nonWorkingCheck = await rfidOfflineService.checkIsSundayOrHoliday(user.school_id, selectedDate);
+        if (nonWorkingCheck.isNonWorkingDay) {
+            showToast(`Cannot mark absents on ${nonWorkingCheck.reason || 'Sundays or Holidays'}.`, 'warning');
             return;
         }
 
@@ -3362,7 +3509,30 @@ const QRAttendancePage: React.FC = () => {
         <Page theme={themeObj}>
             <TopBar theme={themeObj}>
                 <Title theme={themeObj}>
-                    <Scan /> {scannerMode === 'qr' ? 'QR Attendance' : 'IR Face Attendance'}
+                    <Scan /> {scannerMode === 'qr' ? 'Face & QR Attendance' : 'IR Face Attendance'}
+                    {nonWorkingInfo.isCalendarNonWorkingDay && (
+                        <span style={{ padding: '4px 10px', borderRadius: 8, background: isOnDemandActive ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)', color: isOnDemandActive ? '#22c55e' : '#ef4444', border: `1px solid ${isOnDemandActive ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`, fontSize: '0.78rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px', textTransform: 'none', marginLeft: '12px' }}>
+                            {isOnDemandActive
+                                ? `⚡ On Demand Active (${nonWorkingInfo.reason || 'Sunday/Holiday'})`
+                                : `⚠️ ${nonWorkingInfo.reason || 'Non-Working Day'} (Attendance Blocked)`}
+                            <button
+                                type="button"
+                                onClick={toggleAttendanceOnDemand}
+                                style={{
+                                    background: isOnDemandActive ? 'rgba(239, 68, 68, 0.2)' : '#ef4444',
+                                    color: isOnDemandActive ? '#ef4444' : '#ffffff',
+                                    border: isOnDemandActive ? '1px solid rgba(239, 68, 68, 0.4)' : 'none',
+                                    borderRadius: 6,
+                                    padding: '3px 8px',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                {isOnDemandActive ? 'Turn Off' : 'Enable On Demand'}
+                            </button>
+                        </span>
+                    )}
                 </Title>
 
                 <TopBarActions>
@@ -3508,6 +3678,37 @@ const QRAttendancePage: React.FC = () => {
                 </ModalOverlay>
             )}
 
+            {/* Single Item Deletion Modal */}
+            {deleteTarget && (
+                <ModalOverlay onClick={() => setDeleteTarget(null)}>
+                    <ModalContent theme={themeObj} onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+                        <ModalHeader theme={themeObj}>
+                            <ModalTitleBlock theme={themeObj}>
+                                <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#ef4444' }}>
+                                    <DeleteIcon /> Confirm Deletion
+                                </h2>
+                                <p style={{ marginTop: 6, fontSize: '0.88rem', lineHeight: 1.4 }}>
+                                    Are you sure you want to delete attendance record for <strong>{deleteTarget.name}</strong> ({deleteTarget.time})?
+                                </p>
+                            </ModalTitleBlock>
+                        </ModalHeader>
+                        <SettingsActions style={{ marginTop: '1.2rem' }}>
+                            <SecondaryBtn theme={themeObj} onClick={() => setDeleteTarget(null)}>
+                                No (Esc)
+                            </SecondaryBtn>
+                            <SecondaryBtn
+                                theme={themeObj}
+                                style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', fontWeight: 700 }}
+                                onClick={confirmDeleteFeedItem}
+                                autoFocus
+                            >
+                                Yes, Delete (Enter)
+                            </SecondaryBtn>
+                        </SettingsActions>
+                    </ModalContent>
+                </ModalOverlay>
+            )}
+
             {/* Late Toggle Password Modal */}
             {showLatePasswordModal && (
                 <ModalOverlay onClick={() => setShowLatePasswordModal(false)}>
@@ -3550,7 +3751,7 @@ const QRAttendancePage: React.FC = () => {
                         <ModalHeader theme={themeObj}>
                             <ModalTitleBlock theme={themeObj}>
                                 <h2><SettingsIcon /> Attendance Settings</h2>
-                                <p>Configure rules for QR attendance scanning and automation.</p>
+                                <p>Configure rules for Face & QR attendance scanning and automation.</p>
                             </ModalTitleBlock>
                         </ModalHeader>
 
@@ -4149,6 +4350,16 @@ const QRAttendancePage: React.FC = () => {
                                                     )}
                                                     <FeedTimeLabel theme={themeObj}>{item.time}</FeedTimeLabel>
                                                 </FeedTime>
+                                                <FeedDeleteBtn
+                                                    className="feed-delete-btn"
+                                                    title="Delete Attendance Record"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setDeleteTarget(item);
+                                                    }}
+                                                >
+                                                    <DeleteIcon style={{ fontSize: 16 }} />
+                                                </FeedDeleteBtn>
                                             </FeedItem>
                                         ))
                                     )}
@@ -4219,6 +4430,16 @@ const QRAttendancePage: React.FC = () => {
                                                     )}
                                                     <FeedTimeLabel theme={themeObj}>{item.time}</FeedTimeLabel>
                                                 </FeedTime>
+                                                <FeedDeleteBtn
+                                                    className="feed-delete-btn"
+                                                    title="Delete Attendance Record"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setDeleteTarget(item);
+                                                    }}
+                                                >
+                                                    <DeleteIcon style={{ fontSize: 16 }} />
+                                                </FeedDeleteBtn>
                                             </FeedItem>
                                         ))
                                     )}
@@ -4228,6 +4449,37 @@ const QRAttendancePage: React.FC = () => {
                     </FeedSplitGrid>
                 </FeedCard>
             </MainGrid>
+
+            {/* Delete Feed Item Confirmation Modal */}
+            {deleteTarget && (
+                <ModalOverlay onClick={() => setDeleteTarget(null)}>
+                    <ModalContent theme={themeObj} onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+                        <ModalHeader theme={themeObj}>
+                            <ModalTitleBlock theme={themeObj}>
+                                <h2 style={{ color: '#ef4444' }}>Confirm Delete</h2>
+                                <p>This will permanently remove attendance online & offline.</p>
+                            </ModalTitleBlock>
+                        </ModalHeader>
+                        <div style={{ padding: '0.75rem 0', fontSize: '0.9rem', color: themeObj.TEXT_PRIMARY }}>
+                            Are you sure you want to delete attendance record for <strong>{deleteTarget.name}</strong> ({deleteTarget.time})?
+                        </div>
+                        <SettingsActions>
+                            <SecondaryBtn theme={themeObj} onClick={() => setDeleteTarget(null)}>
+                                Cancel (Esc)
+                            </SecondaryBtn>
+                            <SecondaryBtn
+                                theme={themeObj}
+                                style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}
+                                onClick={confirmDeleteFeedItem}
+                                disabled={isDeleting}
+                                autoFocus
+                            >
+                                {isDeleting ? 'Deleting...' : 'Yes, Delete (Enter)'}
+                            </SecondaryBtn>
+                        </SettingsActions>
+                    </ModalContent>
+                </ModalOverlay>
+            )}
 
             {/* Floating action button: Mark Absents Now (bottom-right) */}
             <FloatingFab onClick={triggerManualAbsentMark} aria-label="Mark Absents Now" title="Mark Absents Now" disabled={manualMarkInProgress}>

@@ -1985,8 +1985,8 @@ const Header: React.FC<HeaderProps> = ({
 
   const otherAttendanceMenuItems = [
     {
-      title: 'QR Scanner',
-      description: 'Mark attendance via QR code scanning',
+      title: 'Face & QR Scanner',
+      description: 'Mark attendance via Face recognition or QR code scanning',
       icon: <QrCodeScannerIcon />,
       path: '/attendance/qr-scanner',
       color: '#0ea5e9'

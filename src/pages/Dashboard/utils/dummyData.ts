@@ -300,16 +300,22 @@ export const generateDummyFineDetails = () => {
 };
 
 export const generateDummyConsecutiveAbsent = () => {
-  return Array.from({ length: 5 }, (_, i) => ({
-    student_id: i + 1,
-    student_name: `Student ${i + 1}`,
-    father_name: `Father ${i + 1}`,
-    mobile: `0300${i + 1}000000`,
-    roll_number: `${i + 1}`,
-    class_name: `${i + 1}st`,
-    section_name: 'A',
-    consecutive_days: Math.floor(Math.random() * 10) + 3,
-  }));
+  return Array.from({ length: 5 }, (_, i) => {
+    const recent = Math.floor(Math.random() * 8) + 3;
+    const total = recent + Math.floor(Math.random() * 6);
+    return {
+      student_id: i + 1,
+      student_name: `Student ${i + 1}`,
+      father_name: `Father ${i + 1}`,
+      mobile: `0300${i + 1}000000`,
+      roll_number: `${i + 1}`,
+      class_name: `${i + 1}st`,
+      section_name: 'A',
+      consecutive_days: recent,
+      recent_consecutive_days: recent,
+      total_consecutive_days: total,
+    };
+  });
 };
 
 export const generateDummyAttendanceStats = () => {

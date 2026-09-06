@@ -1079,13 +1079,14 @@ export const ConsecutiveAbsentHeader = styled.div`
 export const ConsecutiveAbsentTableContainer = styled.div`
   max-height: 400px;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
   padding-right: 12px;
   scrollbar-width: thin;
   scrollbar-color: ${({ theme }) => theme.BG === '#252525' ? '#6366f1cc #232a3b' : '#6366f1cc #e5e7eb'};
   
   &::-webkit-scrollbar {
     width: 8px;
+    height: 8px;
   }
   
   &::-webkit-scrollbar-track {
@@ -1107,6 +1108,7 @@ export const ConsecutiveAbsentTable = styled.div`
   display: flex;
   flex-direction: column;
   width: 100%;
+  min-width: 780px;
   
   @media (max-width: 900px) {
     display: none; /* Hide table on mobile - use cards instead */
@@ -1115,11 +1117,12 @@ export const ConsecutiveAbsentTable = styled.div`
 
 export const ConsecutiveAbsentTableHeader = styled.div`
   display: grid;
-  grid-template-columns: 80px 180px 180px 150px 150px 150px;
+  grid-template-columns: 70px minmax(130px, 1.2fr) minmax(130px, 1.2fr) 140px 100px 120px;
   gap: 1rem;
   padding: 0.85rem 1.25rem;
   margin-bottom: 0.5rem;
-  background: transparent;
+  background: ${({ theme }) => (theme.BG === '#252525' ? '#2a2a2a' : theme.CARD || '#ffffff')};
+  border-bottom: 1px solid ${({ theme }) => (theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)')};
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -1129,9 +1132,10 @@ export const ConsecutiveAbsentTableHeader = styled.div`
   top: 0;
   z-index: 10;
   @media (min-width: 901px) and (max-width: 1200px) {
-    grid-template-columns: 60px 140px 140px 120px 120px 120px;
+    grid-template-columns: 60px minmax(110px, 1fr) minmax(110px, 1fr) 120px 90px 110px;
     gap: 0.75rem;
     font-size: 0.7rem;
+    padding: 0.75rem 0.875rem;
   }
 `;
 
@@ -1145,7 +1149,7 @@ export const ConsecutiveAbsentTableBody = styled.div``;
 
 export const ConsecutiveAbsentTableRow = styled.div<{ $index?: number }>`
   display: grid;
-  grid-template-columns: 80px 180px 180px 150px 150px 150px;
+  grid-template-columns: 70px minmax(130px, 1.2fr) minmax(130px, 1.2fr) 140px 100px 120px;
   gap: 1rem;
   padding: 0.85rem 1.25rem;
   align-items: center;
@@ -1180,7 +1184,7 @@ export const ConsecutiveAbsentTableRow = styled.div<{ $index?: number }>`
   opacity: 0;
   
   @media (min-width: 901px) and (max-width: 1200px) {
-    grid-template-columns: 60px 140px 140px 120px 120px 120px;
+    grid-template-columns: 60px minmax(110px, 1fr) minmax(110px, 1fr) 120px 90px 110px;
     gap: 0.75rem;
     font-size: 0.8rem;
     padding: 0.75rem 0.875rem;

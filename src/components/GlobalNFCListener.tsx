@@ -120,6 +120,10 @@ const GlobalNFCListener: React.FC = () => {
                 const statusLabel = (p.status || 'inactive').replace('_', ' ');
                 title = p.name;
                 sub = `Not Active (${statusLabel})`;
+            } else if (result.type === 'error_holiday' && p) {
+                type = 'warning';
+                title = p.name;
+                sub = 'Attendance disabled on Sundays & Holidays';
             } else if (result.success && p) {
                 let statusStr = 'Present';
                 if (result.type === 'offline') {

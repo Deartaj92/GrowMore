@@ -1,4 +1,5 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { parseISO } from 'date-fns';
 import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from 'styled-components';
@@ -723,9 +724,55 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
     }
   };
 
+  const [isHolidayDate, setIsHolidayDate] = useState(false);
+
+  useEffect(() => {
+    if (!dashboardDate || !user?.school_id) return;
+    let isCancelled = false;
+
+    const checkHolidayDate = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('holidays')
+          .select('id')
+          .eq('school_id', user.school_id)
+          .lte('start_date', dashboardDate)
+          .gte('end_date', dashboardDate)
+          .limit(1);
+
+        if (!isCancelled) {
+          if (!error && data && data.length > 0) {
+            setIsHolidayDate(true);
+          } else {
+            setIsHolidayDate(false);
+          }
+        }
+      } catch (e) {
+        if (!isCancelled) setIsHolidayDate(false);
+      }
+    };
+
+    checkHolidayDate();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [dashboardDate, user?.school_id]);
+
+  const selectedDateObj = useMemo(() => {
+    try {
+      return parseISO(dashboardDate);
+    } catch {
+      return new Date();
+    }
+  }, [dashboardDate]);
+
+  const isSundayDate = selectedDateObj.getDay() === 0;
+  const isNonWorkingDay = isSundayDate || isHolidayDate;
+
   return (
     <Container>
-      {canUseManualAbsentAutomationTrigger && (
+      {canUseManualAbsentAutomationTrigger && !isNonWorkingDay && (
         <FloatingFabPortal onClick={triggerManualAbsentMarkTab} ariaLabel="Mark Absents Now" title="Mark Absents Now" disabled={manualMarkInProgress}>
           <span style={{ fontWeight: 900, fontSize: 20, color: '#fff' }}>A</span>
         </FloatingFabPortal>
@@ -1093,8 +1140,8 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                       </ConsecutiveAbsentRow>
                     </ConsecutiveAbsentCardContent>
                     <ConsecutiveAbsentDaysContainer>
-                      <ConsecutiveDaysBadge days={student.consecutive_days}>
-                        {student.consecutive_days} {student.consecutive_days === 1 ? 'day' : 'days'}
+                      <ConsecutiveDaysBadge days={student.total_consecutive_days ?? student.consecutive_days}>
+                        {student.total_consecutive_days ?? student.consecutive_days} {(student.total_consecutive_days ?? student.consecutive_days) === 1 ? 'day' : 'days'}
                       </ConsecutiveDaysBadge>
                     </ConsecutiveAbsentDaysContainer>
                   </ConsecutiveAbsentMobileCard>
@@ -1110,7 +1157,7 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                     <ConsecutiveAbsentTableHeaderCell>Father Name</ConsecutiveAbsentTableHeaderCell>
                     <ConsecutiveAbsentTableHeaderCell>Mobile</ConsecutiveAbsentTableHeaderCell>
                     <ConsecutiveAbsentTableHeaderCell>Class</ConsecutiveAbsentTableHeaderCell>
-                    <ConsecutiveAbsentTableHeaderCell style={{ textAlign: 'center' }}>Consecutive Days</ConsecutiveAbsentTableHeaderCell>
+                    <ConsecutiveAbsentTableHeaderCell style={{ textAlign: 'center' }}>Absent For</ConsecutiveAbsentTableHeaderCell>
                   </ConsecutiveAbsentTableHeader>
                   <ConsecutiveAbsentTableBody>
                     {consecutiveAbsentStudents.map((student, index) => (
@@ -1126,8 +1173,8 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
                           {student.section_name && ` (${student.section_name})`}
                         </ConsecutiveAbsentTableCell>
                         <ConsecutiveAbsentTableCell style={{ textAlign: 'center' }}>
-                          <ConsecutiveDaysBadge days={student.consecutive_days}>
-                            {student.consecutive_days} {student.consecutive_days === 1 ? 'day' : 'days'}
+                          <ConsecutiveDaysBadge days={student.total_consecutive_days ?? student.consecutive_days}>
+                            {student.total_consecutive_days ?? student.consecutive_days} {(student.total_consecutive_days ?? student.consecutive_days) === 1 ? 'day' : 'days'}
                           </ConsecutiveDaysBadge>
                         </ConsecutiveAbsentTableCell>
                       </ConsecutiveAbsentTableRow>
@@ -1727,8 +1774,8 @@ const AttendanceTab: React.FC<AttendanceTabProps> = ({
         </ContentGrid>
       )}
 
-      {/* Today's Late Comers Card */}
-      {showAbsentees && (
+      {/* Today's Late Comers Card — only when there are entries */}
+      {showAbsentees && lateComers && lateComers.length > 0 && (
         <ContentGrid theme={theme}>
           <ContentCard theme={theme}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', cursor: 'pointer' }} onClick={() => setIsLateComersExpanded && setIsLateComersExpanded(!isLateComersExpanded)}>

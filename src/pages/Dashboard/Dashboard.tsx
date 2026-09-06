@@ -266,6 +266,8 @@ const Dashboard: React.FC = () => {
     class_name: string;
     section_name?: string;
     consecutive_days: number;
+    recent_consecutive_days: number;
+    total_consecutive_days: number;
   }>>([]);
   const [consecutiveAbsentLoading, setConsecutiveAbsentLoading] = useState(false);
   const [exportAbsentLoading, setExportAbsentLoading] = useState(false);
@@ -1201,83 +1203,143 @@ const Dashboard: React.FC = () => {
 
         const today = dashboardDate;
 
-        const { data: absentTodayRecords, error: absentTodayError } = await supabase
-          .from('attendance_records')
-          .select('student_id, class_id, section_id')
-          .eq('date', dashboardDate)
-          .eq('status', 'absent')
-          .eq('session_id', sessionData.id)
-          .eq('school_id', user.school_id);
+        // Query attendance records for the active session (or up to 180 days prior) up to dashboardDate
+        const startDate = sessionData.start_date || (() => {
+          const dateObj = new Date(parseISO(dashboardDate));
+          dateObj.setDate(dateObj.getDate() - 180);
+          return format(dateObj, 'yyyy-MM-dd');
+        })();
 
-        if (absentTodayError || !absentTodayRecords || absentTodayRecords.length === 0) {
+        const allAttendanceRecords = await fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('attendance_records')
+            .select('student_id, date, status, class_id, section_id')
+            .lte('date', today)
+            .gte('date', startDate)
+            .eq('session_id', sessionData.id)
+            .eq('school_id', user.school_id)
+            .order('date', { ascending: false })
+            .range(from, to);
+        });
+
+        if (!allAttendanceRecords || allAttendanceRecords.length === 0) {
           setConsecutiveAbsentStudents([]);
           setConsecutiveAbsentLoading(false);
           return;
         }
 
-        const absentStudentIds = absentTodayRecords.map(r => r.student_id);
-        const uniqueStudentIds = Array.from(new Set(absentStudentIds));
-
-        const { data: studentsData } = await supabase
-          .from('students')
-          .select('id, name, father_name, phone, roll_number')
-          .in('id', uniqueStudentIds)
-          .eq('school_id', user.school_id);
-
-        const allClassIds = absentTodayRecords.map(r => r.class_id).filter((id): id is number => Boolean(id));
-        const classIds = Array.from(new Set(allClassIds));
-        const { data: classesData } = await supabase
-          .from('classes')
-          .select('id, name')
-          .in('id', classIds)
-          .eq('school_id', user.school_id);
-
-        const allSectionIds = absentTodayRecords.map(r => r.section_id).filter((id): id is number => Boolean(id));
-        const sectionIds = Array.from(new Set(allSectionIds));
-        const { data: sectionsData } = await supabase
-          .from('sections')
-          .select('id, name')
-          .in('id', sectionIds)
-          .eq('school_id', user.school_id);
-
-        const studentsMap = new Map((studentsData || []).map(s => [s.id, s]));
-        const classesMap = new Map((classesData || []).map(c => [c.id, c]));
-        const sectionsMap = new Map((sectionsData || []).map(s => [s.id, s]));
-
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const startDate = thirtyDaysAgo.toISOString().slice(0, 10);
-
-        const chunkSize = 1000;
-        let allAttendanceRecords: any[] = [];
-
-        for (let i = 0; i < absentStudentIds.length; i += chunkSize) {
-          const chunk = absentStudentIds.slice(i, i + chunkSize);
-          const { data: attendanceChunk } = await supabase
-            .from('attendance_records')
-            .select('student_id, date, status')
-            .in('student_id', chunk)
-            .gte('date', startDate)
-            .lte('date', today)
-            .eq('session_id', sessionData.id)
-            .eq('school_id', user.school_id)
-            .order('date', { ascending: false });
-
-          if (attendanceChunk) {
-            allAttendanceRecords.push(...attendanceChunk);
-          }
-        }
-
-        const studentAttendanceMap = new Map<number, Array<{ date: string; status: string }>>();
+        // Group attendance records by student_id
+        const studentAttendanceMap = new Map<number, Array<{ date: string; status: string; class_id?: number; section_id?: number }>>();
         allAttendanceRecords.forEach(record => {
           if (!studentAttendanceMap.has(record.student_id)) {
             studentAttendanceMap.set(record.student_id, []);
           }
-          studentAttendanceMap.get(record.student_id)!.push({
-            date: record.date,
-            status: record.status
-          });
+          studentAttendanceMap.get(record.student_id)!.push(record);
         });
+
+        // Identify students whose most recent recorded status on or before dashboardDate is 'absent'
+        // and calculate their consecutive absent days starting from their latest record.
+        const candidateMap = new Map<number, { recentConsecutiveDays: number; totalConsecutiveDays: number; classId?: number; sectionId?: number }>();
+
+        studentAttendanceMap.forEach((records, studentId) => {
+          records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+          if (records.length === 0) return;
+
+          const latestRecord = records[0];
+
+          // If the student's latest recorded attendance is not absent, they are not currently absent
+          if (latestRecord.status !== 'absent') return;
+
+          let recentConsecutiveDays = 0;
+          let totalConsecutiveDays = 0;
+          let gapEncountered = false;
+
+          for (let i = 0; i < records.length; i++) {
+            const rec = records[i];
+
+            if (i > 0 && !gapEncountered) {
+              const prevRecordDate = new Date(parseISO(records[i - 1].date));
+              const currentRecordDate = new Date(parseISO(rec.date));
+              const diffMs = prevRecordDate.getTime() - currentRecordDate.getTime();
+              const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+              if (diffDays > 7) {
+                gapEncountered = true;
+              }
+            }
+
+            if (rec.status === 'absent') {
+              totalConsecutiveDays++;
+              if (!gapEncountered) {
+                recentConsecutiveDays++;
+              }
+            } else {
+              break;
+            }
+          }
+
+          if (totalConsecutiveDays >= 3 || recentConsecutiveDays >= 3) {
+            candidateMap.set(studentId, {
+              recentConsecutiveDays,
+              totalConsecutiveDays,
+              classId: latestRecord.class_id,
+              sectionId: latestRecord.section_id
+            });
+          }
+        });
+
+        if (candidateMap.size === 0) {
+          setConsecutiveAbsentStudents([]);
+          setConsecutiveAbsentLoading(false);
+          return;
+        }
+
+        const candidateStudentIds = Array.from(candidateMap.keys());
+
+        // Fetch student details for active candidate students
+        let allStudents: any[] = [];
+        for (let i = 0; i < candidateStudentIds.length; i += 1000) {
+          const chunk = candidateStudentIds.slice(i, i + 1000);
+          const chunkStudents = await fetchAllRows(async (from, to) => {
+            return await supabase
+              .from('students')
+              .select('id, name, father_name, phone, roll_number, status, class_id, section_id')
+              .in('id', chunk)
+              .eq('school_id', user.school_id)
+              .eq('status', 'active')
+              .range(from, to);
+          });
+          allStudents.push(...chunkStudents);
+        }
+
+        const studentsMap = new Map(allStudents.map(s => [s.id, s]));
+
+        const classIdsSet = new Set<number>();
+        const sectionIdsSet = new Set<number>();
+
+        allStudents.forEach(s => {
+          const cand = candidateMap.get(s.id);
+          const cid = s.class_id || cand?.classId;
+          const sid = s.section_id || cand?.sectionId;
+          if (cid) classIdsSet.add(cid);
+          if (sid) sectionIdsSet.add(sid);
+        });
+
+        const classIds = Array.from(classIdsSet);
+        const sectionIds = Array.from(sectionIdsSet);
+
+        const [{ data: classesData }, { data: sectionsData }] = await Promise.all([
+          classIds.length > 0
+            ? supabase.from('classes').select('id, name').in('id', classIds).eq('school_id', user.school_id)
+            : Promise.resolve({ data: [] }),
+          sectionIds.length > 0
+            ? supabase.from('sections').select('id, name').in('id', sectionIds).eq('school_id', user.school_id)
+            : Promise.resolve({ data: [] })
+        ]);
+
+        const classesMap = new Map((classesData || []).map(c => [c.id, c]));
+        const sectionsMap = new Map((sectionsData || []).map(s => [s.id, s]));
 
         const consecutiveAbsent: Array<{
           student_id: number;
@@ -1288,53 +1350,34 @@ const Dashboard: React.FC = () => {
           class_name: string;
           section_name?: string;
           consecutive_days: number;
+          recent_consecutive_days: number;
+          total_consecutive_days: number;
         }> = [];
 
-        absentTodayRecords.forEach(absentRecord => {
-          const studentId = absentRecord.student_id;
-          const attendanceRecords = studentAttendanceMap.get(studentId) || [];
+        candidateMap.forEach((cand, studentId) => {
+          const student = studentsMap.get(studentId);
+          if (!student) return;
 
-          if (attendanceRecords.length < 3) {
-            return;
-          }
+          const cid = student.class_id || cand.classId;
+          const sid = student.section_id || cand.sectionId;
+          const classData = cid ? classesMap.get(cid) : undefined;
+          const sectionData = sid ? sectionsMap.get(sid) : undefined;
 
-          attendanceRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-          const previousRecord1 = attendanceRecords[1];
-          const previousRecord2 = attendanceRecords[2];
-
-          if (previousRecord1.status === 'absent' && previousRecord2.status === 'absent') {
-            let consecutiveDays = 1;
-            let checkIndex = 1;
-
-            while (checkIndex < attendanceRecords.length) {
-              const record = attendanceRecords[checkIndex];
-              if (record.status === 'absent') {
-                consecutiveDays++;
-                checkIndex++;
-              } else {
-                break;
-              }
-            }
-
-            const student = studentsMap.get(studentId);
-            const classData = classesMap.get(absentRecord.class_id);
-            const sectionData = sectionsMap.get(absentRecord.section_id);
-
-            consecutiveAbsent.push({
-              student_id: studentId,
-              student_name: student?.name || 'Unknown',
-              father_name: student?.father_name || '',
-              mobile: student?.phone || '',
-              roll_number: student?.roll_number || null,
-              class_name: classData?.name || 'Unknown',
-              section_name: sectionData?.name,
-              consecutive_days: consecutiveDays
-            });
-          }
+          consecutiveAbsent.push({
+            student_id: studentId,
+            student_name: student.name || 'Unknown',
+            father_name: student.father_name || '',
+            mobile: student.phone || '',
+            roll_number: student.roll_number || null,
+            class_name: classData?.name || 'Unknown',
+            section_name: sectionData?.name,
+            consecutive_days: cand.recentConsecutiveDays,
+            recent_consecutive_days: cand.recentConsecutiveDays,
+            total_consecutive_days: cand.totalConsecutiveDays
+          });
         });
 
-        consecutiveAbsent.sort((a, b) => b.consecutive_days - a.consecutive_days);
+        consecutiveAbsent.sort((a, b) => b.recent_consecutive_days - a.recent_consecutive_days);
         setConsecutiveAbsentStudents(consecutiveAbsent);
       } catch (error) {
         console.error('Error fetching consecutive absent:', error);
@@ -2499,7 +2542,7 @@ const Dashboard: React.FC = () => {
 
       autoTable(doc, {
         startY: 36,
-        head: [['SNo', 'ID', 'Name', 'Father Name', 'Mobile', 'Class', 'Consecutive Days']],
+        head: [['SNo', 'ID', 'Name', 'Father Name', 'Mobile', 'Class', 'Absent For']],
         body: sortedStudents.map((student, idx) => [
           idx + 1,
           getStudentDisplayId({ id: student.student_id, roll_number: student.roll_number }),
@@ -2507,7 +2550,7 @@ const Dashboard: React.FC = () => {
           student.father_name || '-',
           student.mobile || '-',
           `${student.class_name}${student.section_name ? ` (${student.section_name})` : ''}`,
-          student.consecutive_days
+          `${student.total_consecutive_days ?? student.consecutive_days} ${(student.total_consecutive_days ?? student.consecutive_days) === 1 ? 'day' : 'days'}`
         ]),
         theme: 'grid',
         headStyles: {
@@ -2532,11 +2575,11 @@ const Dashboard: React.FC = () => {
         columnStyles: {
           0: { cellWidth: 14, halign: 'center' },
           1: { cellWidth: 14, halign: 'center' },
-          2: { cellWidth: 32, halign: 'left' },
-          3: { cellWidth: 32, halign: 'left' },
-          4: { cellWidth: 25, halign: 'center' },
+          2: { cellWidth: 34, halign: 'left' },
+          3: { cellWidth: 34, halign: 'left' },
+          4: { cellWidth: 26, halign: 'center' },
           5: { cellWidth: 30, halign: 'left' },
-          6: { cellWidth: 25, halign: 'center' },
+          6: { cellWidth: 30, halign: 'center' },
         },
         didParseCell: function (data) {
           if (data.column.index === 6) {
