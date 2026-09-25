@@ -3,7 +3,17 @@ import styled, { css } from 'styled-components';
 // ==========================================
 // HELPER: Theme Detect
 // ==========================================
-export const isDark = (theme: any) => theme.BG === '#0f172a' || theme.BG === '#111827' || theme.BG === '#1e293b' || theme.BG === '#252525' || theme.BG === '#181c2a';
+export const isDark = (theme: any) =>
+  !theme ||
+  theme.mode === 'dark' ||
+  theme.BG === '#0f172a' ||
+  theme.BG === '#111827' ||
+  theme.BG === '#1e293b' ||
+  theme.BG === '#252525' ||
+  theme.BG === '#181c2a' ||
+  theme.BG === '#1a1a1a' ||
+  theme.BG === '#121212' ||
+  (typeof theme.BG === 'string' && (theme.BG.startsWith('#1') || theme.BG.startsWith('#2') || theme.BG.startsWith('#0')));
 
 // Shared sizing tokens for cards/sections across the app
 export const CARD_RADIUS_LG = '6px';

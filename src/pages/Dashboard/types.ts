@@ -1,4 +1,4 @@
-export type DashboardTab = 'attendance' | 'fee' | 'admissions' | 'homework' | 'employeeAttendance' | 'accounts' | 'predictions' | 'birthdays';
+export type DashboardTab = 'attendance' | 'admissions' | 'homework' | 'employeeAttendance' | 'accounts' | 'predictions' | 'birthdays';
 
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'leave';
 
@@ -17,48 +17,6 @@ export interface FineToDelete {
   className: string;
   amount: number;
   date: string;
-}
-
-export interface FeeSummary {
-  totalInvoiced: number;
-  totalCollected: number;
-  totalOutstanding: number;
-  collectionRate: number;
-  totalDiscount: number;
-}
-
-export interface FeeCollectionPeriod {
-  oldStudents: number;
-  newAdmissions: number;
-  totalPayable: number;
-  paid: number;
-  discount: number;
-  droppedOut: number;
-  remaining: number;
-  balance: number;
-}
-
-export interface FeeCollectionDetails {
-  previousArrears: FeeCollectionPeriod;
-  currentMonth: FeeCollectionPeriod;
-  nextMonths: FeeCollectionPeriod;
-  total: FeeCollectionPeriod;
-}
-
-export interface DefaulterData {
-  studentId: number;
-  studentName: string;
-  fatherName: string | null;
-  rollNumber: string | null;
-  className: string;
-  sectionName: string;
-  outstandingAmount: number;
-  challanCount: number;
-  arrearCount: number;
-  totalChallans: number;
-  totalArrears: number;
-  totalPaid: number;
-  totalDiscount: number;
 }
 
 export interface AdmissionsData {

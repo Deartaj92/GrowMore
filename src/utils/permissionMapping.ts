@@ -8,7 +8,6 @@ export const pathToPermissionKey: Record<string, string> = {
 
   // Dashboard Tabs
   '/dashboard/tab/attendance': 'dashboard-tab-attendance',
-  '/dashboard/tab/fee': 'dashboard-tab-fee',
   '/dashboard/tab/admissions': 'dashboard-tab-admissions',
   '/dashboard/tab/homework': 'dashboard-tab-homework',
   '/dashboard/tab/employeeAttendance': 'dashboard-tab-employee-attendance',
@@ -62,24 +61,9 @@ export const pathToPermissionKey: Record<string, string> = {
   '/teacher-subjects': 'teacher-subjects',
   '/timetable': 'timetable',
 
-  // Fee Collection
-  '/fee-structure-management': 'fee-structure',
-  '/fee-plans': 'fee-plans',
-  '/fee-increments': 'fee-increments',
-  '/generate-challans': 'generate-challans',
-  '/challans': 'view-challans',
-  '/fee-collection': 'fee-collection',
-  '/family-fee-collection': 'fee-collection',
-  '/fee-defaulters': 'fee-defaulters',
-  '/fee-arrears': 'fee-arrears',
-  '/fee-audit-logs': 'fee-audit-logs',
-  '/fee-analytics': 'fee-analytics',
-  '/payments-analytics': 'payments-analytics',
   '/setup-accounts': 'setup-accounts',
   '/balance-sheet': 'balance-sheet',
   '/cash-flow': 'cash-flow-view',
-  '/payment-history': 'payment-history',
-  '/ledger': 'fee-ledger',
 
   // Finance
   '/expense-manager': 'expense-manager',
@@ -139,9 +123,16 @@ export const pathToPermissionKey: Record<string, string> = {
   // User Dashboard
   '/user': 'dashboard', // User dashboard uses dashboard permission
 
+  // Enterprise Ledger Fee System
+  '/fee-counter': 'fee-counter-pos',
+  '/fee-demands': 'fee-demands-generate',
+  '/fee-catalog': 'fee-catalog-manage',
+  '/fee-concessions': 'fee-concessions-manage',
+  '/fee-ledger': 'fee-ledger-dashboard',
+
   // Additional routes
   '/employees': 'employees-list',
-  '/finance': 'fee-structure', // Finance dashboard
+  '/finance': 'expense-manager', // Finance dashboard
   '/fines': 'fine-assign', // Fine dashboard
   '/expense-management': 'expense-manager', // Expense dashboard
   '/communication': 'messages', // Communication dashboard

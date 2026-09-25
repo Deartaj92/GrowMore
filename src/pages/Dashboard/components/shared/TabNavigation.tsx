@@ -55,7 +55,6 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
 
   const allTabs: TabInfo[] = [
     { id: 'attendance', label: 'Attendance', icon: <EventNote /> },
-    { id: 'fee', label: 'Fee Collection', icon: <AccountBalanceWallet /> },
     { id: 'admissions', label: 'Admissions', icon: <PersonAdd /> },
     { id: 'homework', label: 'Homework Diary', icon: <Assignment /> },
     { id: 'employeeAttendance', label: 'Employee Attendance', icon: <Groups /> },

@@ -24,8 +24,7 @@ import { useCapacitorPdfSave } from '../../hooks/useCapacitorPdfSave';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-// Import extracted components, types, styles, utils, hooks, and services
-import { DashboardTab, FineToDelete, FeeSummary, FeeCollectionDetails, DefaulterData } from './types';
+import { DashboardTab, FineToDelete } from './types';
 import {
   isDark as checkIsDark,
   getFooterNavButtonStyle,
@@ -56,12 +55,7 @@ import {
   generateDummyClassAttendance,
   generateDummyConsecutiveAbsent
 } from './utils/dummyData';
-import {
-  fetchFeeSummary as fetchFeeSummaryService,
-  fetchCollectionChartsData as fetchCollectionChartsDataService,
-  fetchFeeCollectionDetails as fetchFeeCollectionDetailsService,
-  fetchDefaultersData as fetchDefaultersDataService
-} from './services/feeService';
+
 import { fetchAllRows } from '../../utils/paginationHelper';
 import { fetchAdmissionsData as fetchAdmissionsDataService } from './services/admissionsService';
 import { fetchHomeworkDiary as fetchHomeworkDiaryService } from './services/homeworkService';
@@ -72,7 +66,6 @@ import TabNavigation from './components/shared/TabNavigation';
 import DeleteModal from './components/shared/DeleteModal';
 import AttendanceTab from './components/AttendanceTab/AttendanceTab';
 import BirthdaysTab from './components/BirthdaysTab/BirthdaysTab';
-import FeeTab from './components/FeeTab/FeeTab';
 import AdmissionsTab from './components/AdmissionsTab/AdmissionsTab';
 import HomeworkTab from './components/HomeworkTab/HomeworkTab';
 import EmployeeAttendanceTab from './components/EmployeeAttendanceTab/EmployeeAttendanceTab';
@@ -166,7 +159,6 @@ const Dashboard: React.FC = () => {
 
         const tabPermissionMap: Record<string, DashboardTab> = {
           'dashboard-tab-attendance': 'attendance',
-          'dashboard-tab-fee': 'fee',
           'dashboard-tab-admissions': 'admissions',
           'dashboard-tab-homework': 'homework',
           'dashboard-tab-employee-attendance': 'employeeAttendance',
@@ -218,11 +210,6 @@ const Dashboard: React.FC = () => {
       setAttendanceStatsLoading(true);
       setAttendanceChartsLoading(true);
       setConsecutiveAbsentLoading(true);
-    } else if (newTab === 'fee') {
-      setFeeSummaryLoading(true);
-      setCollectionChartsLoading(true);
-      setFeeCollectionDetailsLoading(true);
-      setDefaultersLoading(true);
     } else if (newTab === 'admissions') {
       setAdmissionsLoading(true);
     } else if (newTab === 'homework') {
@@ -303,63 +290,7 @@ const Dashboard: React.FC = () => {
   });
   const [accountsLoading, setAccountsLoading] = useState(false);
 
-  // Fee state
-  const [feeSummary, setFeeSummary] = useState<FeeSummary>({
-    totalInvoiced: 0,
-    totalCollected: 0,
-    totalOutstanding: 0,
-    totalDiscount: 0,
-    collectionRate: 0
-  });
-  const [feeSummaryLoading, setFeeSummaryLoading] = useState(false);
-  const [dailyCollectionData, setDailyCollectionData] = useState<Array<{ day: string; amount: number }>>([]);
-  const [monthlyCollectionData, setMonthlyCollectionData] = useState<Array<{ month: string; amount: number }>>([]);
-  const [collectionChartsLoading, setCollectionChartsLoading] = useState(false);
-  const [feeCollectionDetails, setFeeCollectionDetails] = useState<FeeCollectionDetails>({
-    previousArrears: {
-      oldStudents: 0,
-      newAdmissions: 0,
-      totalPayable: 0,
-      paid: 0,
-      discount: 0,
-      droppedOut: 0,
-      remaining: 0,
-      balance: 0
-    },
-    currentMonth: {
-      oldStudents: 0,
-      newAdmissions: 0,
-      totalPayable: 0,
-      paid: 0,
-      discount: 0,
-      droppedOut: 0,
-      remaining: 0,
-      balance: 0
-    },
-    nextMonths: {
-      oldStudents: 0,
-      newAdmissions: 0,
-      totalPayable: 0,
-      paid: 0,
-      discount: 0,
-      droppedOut: 0,
-      remaining: 0,
-      balance: 0
-    },
-    total: {
-      oldStudents: 0,
-      newAdmissions: 0,
-      totalPayable: 0,
-      paid: 0,
-      discount: 0,
-      droppedOut: 0,
-      remaining: 0,
-      balance: 0
-    }
-  });
-  const [feeCollectionDetailsLoading, setFeeCollectionDetailsLoading] = useState(false);
-  const [defaultersData, setDefaultersData] = useState<DefaulterData[]>([]);
-  const [defaultersLoading, setDefaultersLoading] = useState(false);
+
 
   // Admissions state
   const [admissionsData, setAdmissionsData] = useState({
@@ -1389,67 +1320,7 @@ const Dashboard: React.FC = () => {
     fetchConsecutiveAbsent();
   }, [activeTab, user?.school_id, sessionData?.id, dashboardDate, attendanceLiveVersion]);
 
-  // Fetch fee summary
-  useEffect(() => {
-    if (activeTab !== 'fee') return;
-    if (!user?.school_id) return;
 
-    // Set loading state before fetching
-    setFeeSummaryLoading(true);
-    fetchFeeSummaryService(
-      String(user.school_id),
-      dashboardDate,
-      setFeeSummary,
-      setFeeSummaryLoading,
-      getCachedSession
-    );
-  }, [activeTab, dashboardDate, user?.school_id, getCachedSession]);
-
-  // Fetch collection charts
-  useEffect(() => {
-    if (activeTab !== 'fee') return;
-    if (!user?.school_id) return;
-
-    // Set loading state before fetching
-    setCollectionChartsLoading(true);
-    fetchCollectionChartsDataService(
-      String(user.school_id),
-      dashboardDate,
-      setDailyCollectionData,
-      setMonthlyCollectionData,
-      setCollectionChartsLoading
-    );
-  }, [activeTab, dashboardDate, user?.school_id]);
-
-  // Fetch fee collection details
-  useEffect(() => {
-    if (activeTab !== 'fee') return;
-    if (!user?.school_id) return;
-
-    // Set loading state before fetching
-    setFeeCollectionDetailsLoading(true);
-    fetchFeeCollectionDetailsService(
-      String(user.school_id),
-      dashboardDate,
-      setFeeCollectionDetails,
-      setFeeCollectionDetailsLoading
-    );
-  }, [activeTab, dashboardDate, user?.school_id]);
-
-  // Fetch defaulters
-  useEffect(() => {
-    if (activeTab !== 'fee') return;
-    if (!user?.school_id) return;
-
-    // Set loading state before fetching
-    setDefaultersLoading(true);
-    fetchDefaultersDataService(
-      String(user.school_id),
-      dashboardDate,
-      setDefaultersData,
-      setDefaultersLoading
-    );
-  }, [activeTab, dashboardDate, user?.school_id]);
 
   // Fetch admissions data
   useEffect(() => {
@@ -1841,12 +1712,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (prevActiveTabRef.current !== null && prevActiveTabRef.current !== activeTab) {
       // Tab changed - reset loading states for the new tab
-      if (activeTab === 'fee') {
-        setFeeSummaryLoading(true);
-        setCollectionChartsLoading(true);
-        setFeeCollectionDetailsLoading(true);
-        setDefaultersLoading(true);
-      } else if (activeTab === 'admissions') {
+      if (activeTab === 'admissions') {
         setAdmissionsLoading(true);
       } else if (activeTab === 'homework') {
         setHomeworkLoading(true);
@@ -3546,8 +3412,6 @@ const Dashboard: React.FC = () => {
     switch (tab) {
       case 'attendance':
         return attendanceStatsLoading || attendanceChartsLoading || consecutiveAbsentLoading;
-      case 'fee':
-        return feeSummaryLoading || collectionChartsLoading || feeCollectionDetailsLoading || defaultersLoading;
       case 'admissions':
         return admissionsLoading;
       case 'homework':
@@ -3648,19 +3512,7 @@ const Dashboard: React.FC = () => {
             />
           )}
 
-          {activeTab === 'fee' && (
-            <FeeTab
-              feeSummary={feeSummary}
-              feeSummaryLoading={feeSummaryLoading}
-              collectionChartsLoading={collectionChartsLoading}
-              dailyCollectionData={dailyCollectionData}
-              monthlyCollectionData={monthlyCollectionData}
-              feeCollectionDetails={feeCollectionDetails}
-              feeCollectionDetailsLoading={feeCollectionDetailsLoading}
-              defaultersData={defaultersData}
-              defaultersLoading={defaultersLoading}
-            />
-          )}
+
 
           {activeTab === 'admissions' && (
             <AdmissionsTab

@@ -78,7 +78,6 @@ export interface LmsPortalSettings {
   tabs: {
     dashboard: { enabled: boolean; label: string };
     attendance: { enabled: boolean; label: string };
-    fees: { enabled: boolean; label: string; allow_online_payment: boolean; payment_instructions: string };
     academics: { enabled: boolean; label: string; show_class_tests: boolean; show_exam_results: boolean; default_view: 'tests' | 'exams' };
     feedback: { enabled: boolean; label: string };
     profile: { enabled: boolean; label: string; allow_password_change: boolean };
@@ -92,7 +91,6 @@ export const DEFAULT_LMS_SETTINGS: LmsPortalSettings = {
   tabs: {
     dashboard: { enabled: true, label: 'Dashboard' },
     attendance: { enabled: true, label: 'Attendance' },
-    fees: { enabled: true, label: 'Fees & Challans', allow_online_payment: true, payment_instructions: '' },
     academics: { enabled: true, label: 'Academics', show_class_tests: true, show_exam_results: true, default_view: 'exams' },
     feedback: { enabled: true, label: 'Feedback' },
     profile: { enabled: true, label: 'My Profile', allow_password_change: true },
@@ -111,7 +109,6 @@ export const encodeLmsSettings = (s: LmsPortalSettings): string => {
 
   const dLab = s.tabs.dashboard.label !== 'Dashboard' ? s.tabs.dashboard.label : undefined;
   const aLab = s.tabs.attendance.label !== 'Attendance' ? s.tabs.attendance.label : undefined;
-  const fLab = s.tabs.fees.label !== 'Fees & Challans' ? s.tabs.fees.label : undefined;
   const cLab = s.tabs.academics.label !== 'Academics' ? s.tabs.academics.label : undefined;
   const bLab = s.tabs.feedback.label !== 'Feedback' ? s.tabs.feedback.label : undefined;
   const pLab = s.tabs.profile.label !== 'My Profile' ? s.tabs.profile.label : undefined;
@@ -119,7 +116,6 @@ export const encodeLmsSettings = (s: LmsPortalSettings): string => {
   compact.t = {
     d: dLab ? [s.tabs.dashboard.enabled ? 1 : 0, dLab] : (s.tabs.dashboard.enabled ? 1 : 0),
     a: aLab ? [s.tabs.attendance.enabled ? 1 : 0, aLab] : (s.tabs.attendance.enabled ? 1 : 0),
-    f: [s.tabs.fees.enabled ? 1 : 0, s.tabs.fees.allow_online_payment ? 1 : 0, ...(fLab ? [fLab] : [])],
     c: [s.tabs.academics.enabled ? 1 : 0, s.tabs.academics.show_class_tests ? 1 : 0, s.tabs.academics.show_exam_results ? 1 : 0, ...(cLab ? [cLab] : [])],
     b: bLab ? [s.tabs.feedback.enabled ? 1 : 0, bLab] : (s.tabs.feedback.enabled ? 1 : 0),
     p: [s.tabs.profile.enabled ? 1 : 0, s.tabs.profile.allow_password_change ? 1 : 0, ...(pLab ? [pLab] : [])],
@@ -148,17 +144,6 @@ export const decodeLmsSettings = (str: string): LmsPortalSettings => {
         return { enabled: val[0] === 1, label: cleanLabel(strLabel, defaultLabel) };
       }
       return { enabled: defaultEnabled, label: defaultLabel };
-    };
-
-    const parseFees = (val: any) => {
-      if (!Array.isArray(val)) return { enabled: true, allow_online_payment: true, label: 'Fees & Challans', payment_instructions: '' };
-      const strLabel = val.find((item: any) => typeof item === 'string');
-      return {
-        enabled: val[0] === 1,
-        allow_online_payment: val[1] === 1,
-        label: cleanLabel(strLabel, 'Fees & Challans'),
-        payment_instructions: '',
-      };
     };
 
     const parseAcademics = (val: any) => {
@@ -190,7 +175,6 @@ export const decodeLmsSettings = (str: string): LmsPortalSettings => {
       tabs: {
         dashboard: parseTab(c.t?.d, true, 'Dashboard'),
         attendance: parseTab(c.t?.a, true, 'Attendance'),
-        fees: parseFees(c.t?.f),
         academics: parseAcademics(c.t?.c),
         feedback: parseTab(c.t?.b, true, 'Feedback'),
         profile: parseProfile(c.t?.p),
@@ -1200,54 +1184,7 @@ const GeneralSettings: React.FC = () => {
                 </Paper>
               </Grid>
 
-              {/* Fees Tab Card */}
-              <Grid item xs={12} md={6}>
-                <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                    <Typography variant="subtitle2" fontWeight={700}>💳 Fees & Challans Tab</Typography>
-                    <Switch
-                      checked={lmsSettings.tabs.fees.enabled}
-                      onChange={(e) => {
-                        setLmsSettings((prev) => ({
-                          ...prev,
-                          tabs: { ...prev.tabs, fees: { ...prev.tabs.fees, enabled: e.target.checked } },
-                        }));
-                        setHasChanges(true);
-                      }}
-                    />
-                  </Box>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Display Label"
-                    value={lmsSettings.tabs.fees.label}
-                    onChange={(e) => {
-                      setLmsSettings((prev) => ({
-                        ...prev,
-                        tabs: { ...prev.tabs, fees: { ...prev.tabs.fees, label: e.target.value } },
-                      }));
-                      setHasChanges(true);
-                    }}
-                    sx={{ mb: 1.5 }}
-                  />
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        size="small"
-                        checked={lmsSettings.tabs.fees.allow_online_payment}
-                        onChange={(e) => {
-                          setLmsSettings((prev) => ({
-                            ...prev,
-                            tabs: { ...prev.tabs, fees: { ...prev.tabs.fees, allow_online_payment: e.target.checked } },
-                          }));
-                          setHasChanges(true);
-                        }}
-                      />
-                    }
-                    label={<Typography variant="caption">Enable "Pay Online" Button</Typography>}
-                  />
-                </Paper>
-              </Grid>
+
 
               {/* Feedback Tab Card */}
               <Grid item xs={12} md={6}>

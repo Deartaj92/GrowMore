@@ -7,7 +7,7 @@ import { useToast } from '../components/useToast';
 import { broadcastStudentSessionChange } from '../utils/studentSessionEvents';
 import { pushNotificationService } from '../services/pushNotificationService';
 import { hasPermission } from '../services/permissionService';
-import { Visibility, VisibilityOff, School as SchoolIcon, DarkMode as DarkModeIcon, LightMode as LightModeIcon, FamilyRestroom, Person } from '@mui/icons-material';
+import { Visibility, VisibilityOff, School as SchoolIcon, DarkMode as DarkModeIcon, LightMode as LightModeIcon, FamilyRestroom, Person, ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import {
   clayCardStyle,
@@ -17,6 +17,7 @@ import {
   getLayoutPalette,
   CARD_RADIUS_LG,
   CARD_RADIUS_MD,
+  isDark,
 } from '../styles/DesignSystem';
 
 // Mac-style window controls (copied from Layout.tsx)
@@ -83,32 +84,42 @@ function MacWindowControlsComponent() {
 
 const Container = styled.div`
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   background: ${({ theme }) => theme.BG};
-  padding: 1rem;
-
-  @media (max-width: 768px) {
-    padding: 1rem 0.5rem;
-    align-items: center;
-  }
+  padding: 1.5rem 1rem;
+  box-sizing: border-box;
+  position: relative;
 
   @media (max-width: 480px) {
     padding: 1rem 0.75rem;
-    align-items: center;
+  }
+
+  @media (max-height: 620px) {
+    align-items: flex-start;
+    padding-top: 1.25rem;
+    padding-bottom: 1.25rem;
   }
 `;
+
 const TopRightControls = styled.div`
   position: fixed;
-  top: 0;
-  right: 0;
+  top: 14px;
+  right: 16px;
   z-index: 1001;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 18px 0 0;
+
+  @media (max-width: 480px) {
+    top: 10px;
+    right: 10px;
+    gap: 6px;
+  }
 `;
+
 const ThemeToggle = styled.button`
   width: 32px;
   height: 32px;
@@ -123,89 +134,102 @@ const ThemeToggle = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 10px;
+  margin-right: 6px;
+
   &:hover {
     background: ${({ theme }) => theme.HOVER_BG};
     color: ${({ theme }) => theme.ACCENT};
     transform: scale(1.05);
     box-shadow: ${({ theme }) => `0 2px 8px ${theme.ACCENT}33`};
   }
-`;
-const LoginCard = styled.form`
-  ${clayCardStyle}
-  padding: 2.2rem 2rem 1.7rem 2rem;
-  margin-bottom: 1.2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
-  width: 100%;
-  max-width: 410px;
-  align-items: stretch;
-
-  @media (max-width: 768px) {
-    padding: 1.8rem 1.5rem 1.5rem 1.5rem;
-    margin-left: 1rem;
-    margin-right: 1rem;
-    max-width: calc(100% - 2rem);
-    width: calc(100% - 2rem);
-  }
 
   @media (max-width: 480px) {
-    padding: 1.5rem 1.2rem 1.2rem 1.2rem;
-    margin-left: 0.75rem;
-    margin-right: 0.75rem;
-    max-width: calc(100% - 1.5rem);
-    width: calc(100% - 1.5rem);
+    margin-right: 0;
   }
 `;
+
+const LoginCard = styled.form`
+  ${clayCardStyle}
+  padding: 2.2rem 2rem 1.8rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  box-sizing: border-box;
+
+  @media (max-width: 480px) {
+    padding: 1.6rem 1.15rem 1.4rem 1.15rem;
+    gap: 1rem;
+    border-radius: 12px;
+  }
+
+  @media (max-width: 360px) {
+    padding: 1.35rem 0.9rem 1.2rem 0.9rem;
+    gap: 0.85rem;
+  }
+`;
+
 const Logo = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: ${({ theme }) => theme.ACCENT};
-  margin-bottom: 8px;
+  gap: 8px;
   user-select: none;
   text-align: center;
-  svg { color: ${({ theme }) => theme.ACCENT}; font-size: 32px; }
-`;
-const Title = styled.h2`
-  color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 1.45rem;
-  font-weight: 700;
-  margin: 0 0 8px 0;
-  text-align: center;
-`;
-const Label = styled.label`
-  font-size: 1rem;
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-weight: 600;
-  margin-bottom: 0.1rem;
-`;
-const InputGroup = styled.div`
-  display: flex;
-  align-items: center;
-  border-radius: ${CARD_RADIUS_MD};
-  padding: 0 12px;
-  transition: all 0.18s;
-  &:focus-within {
-    /* The focus state is handled by the neumorphFieldStyle */
+  margin-bottom: 2px;
+
+  svg {
+    color: ${({ theme }) => theme.ACCENT};
+    font-size: 34px;
+  }
+
+  .brand-text {
+    font-size: clamp(1.22rem, 4vw, 1.45rem);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  @media (max-width: 480px) {
+    svg {
+      font-size: 30px;
+    }
   }
 `;
+
+const Title = styled.h2`
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: clamp(1.2rem, 3.5vw, 1.38rem);
+  font-weight: 700;
+  margin: 0 0 6px 0;
+  text-align: center;
+  line-height: 1.25;
+`;
+
+const Label = styled.label`
+  font-size: clamp(0.88rem, 2.4vw, 0.96rem);
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-weight: 600;
+  margin-bottom: 2px;
+`;
+
+const InputGroup = styled.div`
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+`;
+
 const Input = styled.input`
   ${neumorphFieldStyle}
   border: none;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
-  font-size: 1.08rem;
-  padding: 13px 12px;
+  font-size: 16px; /* 16px avoids auto-zoom on mobile Safari */
+  padding: 12px 14px;
   width: 100%;
-  
-  /* Override neumorphFieldStyle padding if needed */
-  & {
-    padding: 13px 12px;
-  }
+  height: 48px;
+  box-sizing: border-box;
   
   /* Prevent autofill from changing theme style */
   &:-webkit-autofill,
@@ -217,85 +241,267 @@ const Input = styled.input`
     caret-color: ${({ theme }) => theme.TEXT_PRIMARY} !important;
     transition: background-color 5000s ease-in-out 0s;
   }
+
+  @media (max-width: 480px) {
+    padding: 10px 12px;
+    height: 46px;
+  }
 `;
+
+const PasswordInput = styled(Input)`
+  padding-right: 46px;
+
+  @media (max-width: 480px) {
+    padding-right: 44px;
+  }
+`;
+
 const ToggleButton = styled.button`
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
   background: none;
   border: none;
-  color: ${({ theme }) => theme.ACCENT};
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
   cursor: pointer;
   font-size: 1.2rem;
   display: flex;
   align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  z-index: 2;
+  transition: color 0.18s, background-color 0.18s;
+
+  &:hover {
+    color: ${({ theme }) => theme.ACCENT};
+    background: ${({ theme }) => `${theme.ACCENT}15`};
+  }
+
+  svg {
+    font-size: 21px;
+  }
 `;
+
 const Button = styled.button.attrs({ $variant: 'primary' })`
   ${clayButtonStyle}
   border-radius: ${CARD_RADIUS_MD};
-  padding: 13px 0;
-  font-size: 1.08rem;
+  padding: 0;
+  height: 48px;
+  font-size: clamp(0.96rem, 2.5vw, 1.05rem);
   font-weight: 600;
   cursor: pointer;
-  margin-top: 8px;
+  margin-top: 6px;
   width: 100%;
+
+  @media (max-width: 480px) {
+    height: 46px;
+  }
 `;
+
 const ErrorMsg = styled.div`
   color: #ef4444;
-  font-size: 1rem;
+  font-size: 0.92rem;
   text-align: center;
   margin-top: 4px;
   background: ${({ theme }) => theme.BG === '#252525' ? '#2a2a2a' : '#fff8f8'};
   border-radius: 8px;
-  padding: 7px 0 5px 0;
+  padding: 8px 12px;
 `;
 
-const LoginModeSwitch = styled.div`
+const RoleBlocksContainer = styled.div`
   display: flex;
-  gap: 2px;
-  margin-bottom: 16px;
-  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
-  border-radius: ${CARD_RADIUS_LG};
-  padding: 4px;
-  position: relative;
-  border: 1.5px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
-  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  margin: 2px 0 4px 0;
 `;
 
-const SwitchOption = styled.button<{ $active: boolean }>`
-  ${clayButtonStyle}
-  flex: 1;
-  border-radius: ${CARD_RADIUS_MD};
-  padding: 10px 16px;
-  font-size: 0.95rem;
-  font-weight: ${({ $active }) => $active ? '600' : '500'};
+const RoleHeader = styled.div`
+  text-align: center;
+`;
+
+const RoleSubtitle = styled.p`
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-size: clamp(0.82rem, 2.4vw, 0.88rem);
+  margin: 3px 0 0 0;
+  font-weight: 500;
+`;
+
+const BlocksGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+
+  @media (max-width: 420px) {
+    gap: 7px;
+  }
+
+  @media (max-width: 340px) {
+    gap: 5px;
+  }
+`;
+
+const RoleBlockButton = styled.button<{ $color: string; $glow: string }>`
+  background: ${({ theme }) =>
+    isDark(theme)
+      ? 'linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, rgba(30, 36, 50, 0.75) 100%)'
+      : 'linear-gradient(145deg, #ffffff 0%, #f6f8fc 100%)'};
+  border: 1.5px solid ${({ theme }) =>
+    isDark(theme) ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.95)'};
+  border-radius: 12px;
+  padding: 14px 6px 12px 6px;
+  min-height: 102px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   cursor: pointer;
   position: relative;
-  z-index: 1;
-  
-  /* Use variant based on active state */
-  ${({ $active }) => $active ? `
-    $variant: 'primary';
-  ` : `
-    $variant: 'secondary';
-  `}
-  
+  overflow: hidden;
+  box-sizing: border-box;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: ${({ theme }) =>
+    isDark(theme)
+      ? '0 4px 14px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06)'
+      : '0 4px 12px rgba(15, 23, 42, 0.05), inset 0 1px 0 #ffffff'};
+
+  &:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: ${({ $color }) => $color};
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  &:hover {
+    transform: translateY(-3px);
+    border-color: ${({ $color }) => `${$color}90`};
+    box-shadow: ${({ theme, $glow }) =>
+      isDark(theme)
+        ? `0 8px 20px rgba(0, 0, 0, 0.45), 0 0 16px ${$glow}`
+        : `0 8px 18px rgba(37, 99, 235, 0.12), 0 0 12px ${$glow}`};
+
+    &:before {
+      opacity: 1;
+    }
+
+    .role-icon-box {
+      transform: scale(1.08);
+      background: ${({ $color }) => `${$color}22`};
+    }
+  }
+
   &:active {
-    transform: scale(0.98);
+    transform: translateY(-1px) scale(0.98);
   }
-  
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    pointer-events: none;
+
+  @media (max-width: 420px) {
+    padding: 12px 4px 10px 4px;
+    min-height: 94px;
+    border-radius: 10px;
+    gap: 5px;
   }
-  
-  @media (max-width: 768px) {
-    padding: 8px 12px;
-    font-size: 0.9rem;
+
+  @media (max-width: 340px) {
+    padding: 10px 2px 8px 2px;
+    min-height: 88px;
+    border-radius: 8px;
+    gap: 4px;
   }
 `;
 
-const SwitchLabel = styled.span`
-  display: block;
+const RoleIconBox = styled.div<{ $color: string }>`
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${({ $color }) => `${$color}15`};
+  color: ${({ $color }) => $color};
+  transition: all 0.22s ease;
+
+  svg {
+    font-size: 22px;
+  }
+
+  @media (max-width: 420px) {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    svg {
+      font-size: 19px;
+    }
+  }
+
+  @media (max-width: 340px) {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    svg {
+      font-size: 17px;
+    }
+  }
+`;
+
+const RoleName = styled.span`
+  font-size: clamp(0.82rem, 2.5vw, 0.95rem);
+  font-weight: 700;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+`;
+
+const RoleDescription = styled.span`
+  font-size: clamp(0.64rem, 1.9vw, 0.72rem);
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  font-weight: 500;
+  text-align: center;
   white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.1;
+`;
+
+const FormHeader = styled.div`
+  display: flex;
+  align-items: center;
+  margin-bottom: 2px;
+`;
+
+const BackBtn = styled.button`
+  background: none;
+  border: none;
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 8px;
+  transition: all 0.18s;
+
+  &:hover {
+    color: ${({ theme }) => theme.ACCENT};
+    background: ${({ theme }) => `${theme.ACCENT}15`};
+  }
+
+  svg {
+    font-size: 18px;
+  }
 `;
 
 const Login: React.FC = () => {
@@ -642,131 +848,159 @@ const Login: React.FC = () => {
         <LoginCard onSubmit={handleSubmit}>
           <Logo>
             <SchoolIcon />
-            <div>Welcome to <span style={{ color: '#ff6b35' }}>GROW</span> <span style={{ color: '#4a6cf7' }}>MORE</span>!</div>
+            <div className="brand-text">Welcome to <span style={{ color: '#ff6b35' }}>GROW</span> <span style={{ color: '#4a6cf7' }}>MORE</span>!</div>
           </Logo>
-          <LoginModeSwitch>
-            <SwitchOption
-              $active={loginMode === 'staff'}
-              onClick={() => handleModeSwitch('staff')}
-              disabled={loading}
-              type="button"
-            >
-              <SwitchLabel>Staff</SwitchLabel>
-            </SwitchOption>
-            <SwitchOption
-              $active={loginMode === 'parent'}
-              onClick={() => handleModeSwitch('parent')}
-              disabled={loading}
-              type="button"
-            >
-              <SwitchLabel>Parent</SwitchLabel>
-            </SwitchOption>
-            <SwitchOption
-              $active={loginMode === 'student'}
-              onClick={() => handleModeSwitch('student')}
-              disabled={loading}
-              type="button"
-            >
-              <SwitchLabel>Student</SwitchLabel>
-            </SwitchOption>
-          </LoginModeSwitch>
+
           {!loginMode ? (
-            <>
-              <Title>Select Login Type</Title>
-              <div style={{
-                textAlign: 'center',
-                color: 'var(--text-secondary, #666)',
-                fontSize: '0.95rem',
-                padding: '20px 0'
-              }}>
-                Please select Staff, Parent, or Student to continue
-              </div>
-            </>
-          ) : loginMode === 'staff' ? (
-            <>
-              <Title>Sign In</Title>
-              <Label htmlFor="username">Username</Label>
-              <InputGroup>
-                <Input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={e => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
-                  autoComplete="username"
-                  autoFocus={!isMobile}
-                  required
-                  placeholder="Enter your username"
-                />
-              </InputGroup>
-              <Label htmlFor="password">Password</Label>
-              <InputGroup>
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  required
-                  placeholder="Enter your password"
-                />
-                <ToggleButton type="button" onClick={() => setShowPassword(v => !v)}>
-                  {showPassword ? <VisibilityOff /> : <Visibility />}
-                </ToggleButton>
-              </InputGroup>
-            </>
-          ) : loginMode === 'parent' ? (
-            <>
-              <Title>Parent Login</Title>
-              <Label htmlFor="familyId">Family ID</Label>
-              <InputGroup>
-                <Input
-                  id="familyId"
-                  type="text"
-                  inputMode="numeric"
-                  value={familyId}
-                  onChange={e => {
-                    const value = e.target.value;
-                    // Only allow numeric characters
-                    if (value === '' || /^\d+$/.test(value)) {
-                      setFamilyId(value);
-                    }
-                  }}
-                  autoFocus={!isMobile}
-                  autoComplete="off"
-                  required
-                  placeholder="Enter your Family ID"
-                />
-              </InputGroup>
-              <Label htmlFor="parentPassword">Password</Label>
-              <InputGroup>
-                <Input
-                  id="parentPassword"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  placeholder="Enter your password"
-                />
-                <ToggleButton type="button" onClick={() => setShowPassword(v => !v)}>
-                  {showPassword ? <VisibilityOff /> : <Visibility />}
-                </ToggleButton>
-              </InputGroup>
-            </>
+            <RoleBlocksContainer>
+              <RoleHeader>
+                <Title style={{ marginBottom: '4px' }}>Select Login Type</Title>
+                <RoleSubtitle>Choose your portal to proceed with login</RoleSubtitle>
+              </RoleHeader>
+
+              <BlocksGrid>
+                <RoleBlockButton
+                  type="button"
+                  $color="#3b82f6"
+                  $glow="rgba(59, 130, 246, 0.25)"
+                  onClick={() => handleModeSwitch('staff')}
+                  aria-label="Staff Login"
+                >
+                  <RoleIconBox $color="#3b82f6" className="role-icon-box">
+                    <Person />
+                  </RoleIconBox>
+                  <RoleName>Staff</RoleName>
+                  <RoleDescription>Admin & Faculty</RoleDescription>
+                </RoleBlockButton>
+
+                <RoleBlockButton
+                  type="button"
+                  $color="#10b981"
+                  $glow="rgba(16, 185, 129, 0.25)"
+                  onClick={() => handleModeSwitch('parent')}
+                  aria-label="Parent Login"
+                >
+                  <RoleIconBox $color="#10b981" className="role-icon-box">
+                    <FamilyRestroom />
+                  </RoleIconBox>
+                  <RoleName>Parent</RoleName>
+                  <RoleDescription>Family Portal</RoleDescription>
+                </RoleBlockButton>
+
+                <RoleBlockButton
+                  type="button"
+                  $color="#ff6b35"
+                  $glow="rgba(255, 107, 53, 0.25)"
+                  onClick={() => handleModeSwitch('student')}
+                  aria-label="Student Portal"
+                >
+                  <RoleIconBox $color="#ff6b35" className="role-icon-box">
+                    <SchoolIcon />
+                  </RoleIconBox>
+                  <RoleName>Student</RoleName>
+                  <RoleDescription>Learning LMS</RoleDescription>
+                </RoleBlockButton>
+              </BlocksGrid>
+            </RoleBlocksContainer>
           ) : (
             <>
-              <Title>Student Portal</Title>
-              <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-secondary)' }}>
-                Redirecting to Student Portal...
-              </div>
+              <FormHeader>
+                <BackBtn type="button" onClick={() => setLoginMode(null)}>
+                  <ArrowBackIcon /> Change Role
+                </BackBtn>
+              </FormHeader>
+
+              {loginMode === 'staff' ? (
+                <>
+                  <Title>Staff Sign In</Title>
+                  <Label htmlFor="username">Username</Label>
+                  <InputGroup>
+                    <Input
+                      id="username"
+                      type="text"
+                      value={username}
+                      onChange={e => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                      autoComplete="username"
+                      autoFocus={!isMobile}
+                      required
+                      placeholder="Enter your username"
+                    />
+                  </InputGroup>
+                  <Label htmlFor="password">Password</Label>
+                  <InputGroup>
+                    <PasswordInput
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      autoComplete="current-password"
+                      required
+                      placeholder="Enter your password"
+                    />
+                    <ToggleButton type="button" onClick={() => setShowPassword(v => !v)} aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </ToggleButton>
+                  </InputGroup>
+                </>
+              ) : loginMode === 'parent' ? (
+                <>
+                  <Title>Parent Sign In</Title>
+                  <Label htmlFor="familyId">Family ID</Label>
+                  <InputGroup>
+                    <Input
+                      id="familyId"
+                      type="text"
+                      inputMode="numeric"
+                      value={familyId}
+                      onChange={e => {
+                        const value = e.target.value;
+                        // Only allow numeric characters
+                        if (value === '' || /^\d+$/.test(value)) {
+                          setFamilyId(value);
+                        }
+                      }}
+                      autoFocus={!isMobile}
+                      autoComplete="off"
+                      required
+                      placeholder="Enter your Family ID"
+                    />
+                  </InputGroup>
+                  <Label htmlFor="parentPassword">Password</Label>
+                  <InputGroup>
+                    <PasswordInput
+                      id="parentPassword"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      required
+                      placeholder="Enter your password"
+                    />
+                    <ToggleButton type="button" onClick={() => setShowPassword(v => !v)} aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </ToggleButton>
+                  </InputGroup>
+                </>
+              ) : (
+                <>
+                  <Title>Student Portal</Title>
+                  <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-secondary)' }}>
+                    Redirecting to Student Portal...
+                  </div>
+                </>
+              )}
+
+              {error && <ErrorMsg>{error}</ErrorMsg>}
+
+              {loginMode !== 'student' && (
+                <Button
+                  type="submit"
+                  disabled={loading}
+                >
+                  {loading ? 'Signing in...' : 'Sign In'}
+                </Button>
+              )}
             </>
           )}
-          {error && <ErrorMsg>{error}</ErrorMsg>}
-          <Button
-            type="submit"
-            disabled={loading || !loginMode}
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </Button>
         </LoginCard>
       </Container>
     </ThemeProvider>

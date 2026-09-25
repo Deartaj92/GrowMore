@@ -42,10 +42,6 @@ import { useLoading } from '../contexts/LoadingContext';
 import NoSessionsFound from './NoSessionsFound';
 import NoClassesFound from './NoClassesFound';
 import NoSectionsFound from './NoSectionsFound';
-import { CreateFeePlanModal } from '../pages/FeePlans/components/CreateFeePlanModal';
-import { FeeHead } from '../types/fee';
-import { StudentInfo } from '../pages/FeePlans/types';
-import { feeService } from '../services/feeService';
 import AppDateField from './shared/AppDateField';
 import {
   clayCardStyle,
@@ -1219,10 +1215,7 @@ const StudentAdmissionForm: React.FC = () => {
     timestamp: Date;
   } | null>(null);
   const [selectedClassHasSections, setSelectedClassHasSections] = useState<boolean>(true);
-  const [showFeePlanModal, setShowFeePlanModal] = useState(false);
-  const [feeHeads, setFeeHeads] = useState<FeeHead[]>([]);
-  const [newStudentForFeePlan, setNewStudentForFeePlan] = useState<StudentInfo | null>(null);
-  const [saveAndCreateFeePlan, setSaveAndCreateFeePlan] = useState(false);
+
   const [families, setFamilies] = useState<any[]>([]);
   const [loadingFamilies, setLoadingFamilies] = useState(false);
   const [showNewFamilyModal, setShowNewFamilyModal] = useState(false);
@@ -1510,19 +1503,7 @@ const StudentAdmissionForm: React.FC = () => {
     });
   }, [user?.school_id]);
 
-  // Fetch fee heads on mount
-  useEffect(() => {
-    const fetchFeeHeads = async () => {
-      if (!user?.school_id) return;
-      try {
-        const heads = await feeService.getFeeHeads(user.school_id);
-        setFeeHeads(heads);
-      } catch (error) {
-        console.error('Error fetching fee heads:', error);
-      }
-    };
-    fetchFeeHeads();
-  }, [user?.school_id]);
+
 
   // Fetch sections when class changes
   useEffect(() => {
@@ -1884,11 +1865,7 @@ const StudentAdmissionForm: React.FC = () => {
     setShowConfirm(true);
   };
 
-  const handleSaveAndCreateFeePlan = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaveAndCreateFeePlan(true);
-    handleSubmit(e);
-  };
+
 
   // Helper function to generate random 5-digit password
   const generateRandomPassword = (): string => {
@@ -1905,7 +1882,6 @@ const StudentAdmissionForm: React.FC = () => {
       return;
     }
 
-    const shouldOpenFeePlan = saveAndCreateFeePlan;
     setShowConfirm(false);
     setSubmitting(true);
 
@@ -2083,25 +2059,7 @@ const StudentAdmissionForm: React.FC = () => {
       const displayId = newStudent.roll_number || newStudent.id;
       showToast(`Student added successfully with Roll Number: ${displayId}!`, 'success');
       
-      // If "Save and Create Fee Plan" was clicked, prepare student info and open modal
-      if (shouldOpenFeePlan) {
-        const studentInfo: StudentInfo = {
-          id: newStudent.id,
-          name: form.name,
-          fatherName: form.fatherName,
-          rollNumber: newStudent.roll_number || null,
-          dateOfAdmission: form.admissionDate,
-          className: selectedClass?.name || 'Unknown',
-          sectionName: selectedSection?.name || (selectedClassHasSections ? 'Unknown' : 'No Section'),
-          classId: Number(form.class),
-          sectionId: selectedClassHasSections ? Number(form.section) : undefined
-        };
-        setNewStudentForFeePlan(studentInfo);
-        setShowFeePlanModal(true);
-        setSaveAndCreateFeePlan(false);
-      } else {
-        handleReset();
-      }
+      handleReset();
     } catch (err: any) {
       showToast('Error: ' + (err.message || 'Unknown error'), 'error');
     } finally {
@@ -2811,18 +2769,7 @@ const StudentAdmissionForm: React.FC = () => {
                       >
                         {submitting ? 'Saving...' : 'Save'}
                       </PrimaryButton>
-                      {!isMobile && (
-                        <PrimaryButton
-                          type="button"
-                          variant="contained"
-                          startIcon={<DescriptionIcon />}
-                          onClick={handleSaveAndCreateFeePlan}
-                          disabled={submitting}
-                          fullWidth
-                        >
-                          Save & Fee Plan
-                        </PrimaryButton>
-                      )}
+
                       <SecondaryButton
                         variant="outlined"
                         startIcon={<RefreshIcon />}
@@ -2839,18 +2786,6 @@ const StudentAdmissionForm: React.FC = () => {
                       >
                         Cancel
                       </SecondaryButton>
-                      {isMobile && (
-                        <PrimaryButton
-                          type="button"
-                          variant="contained"
-                          startIcon={<DescriptionIcon />}
-                          onClick={handleSaveAndCreateFeePlan}
-                          disabled={submitting}
-                          fullWidth
-                        >
-                          Save & Fee Plan
-                        </PrimaryButton>
-                      )}
                     </ActionButtonsContainer>
                   </SidebarCard>
                 </Grid>
@@ -3010,24 +2945,7 @@ const StudentAdmissionForm: React.FC = () => {
           </MuiButton>
         </Box>
       </Dialog>
-      {activeSession && (
-        <CreateFeePlanModal
-          isOpen={showFeePlanModal}
-          onClose={() => {
-            setShowFeePlanModal(false);
-            setNewStudentForFeePlan(null);
-            handleReset();
-          }}
-          onSuccess={() => {
-            setShowFeePlanModal(false);
-            setNewStudentForFeePlan(null);
-            handleReset();
-          }}
-          schoolId={user?.school_id || 0}
-          feeHeads={feeHeads}
-          initialStudent={newStudentForFeePlan}
-        />
-      )}
+
     </ThemeProvider>
   );
 };

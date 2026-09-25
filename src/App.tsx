@@ -73,21 +73,6 @@ const TeacherProfile = React.lazy(() =>
 
 import SchoolsManagement from './pages/SchoolsManagement';
 import SchoolWelcomeScreen from './pages/SchoolWelcomeScreen';
-import FeeStructureManager from './pages/FeeStructureManager';
-import FeePlans from './pages/FeePlans';
-import FeeIncrements from './pages/FeeIncrements';
-import FeeCollection from './pages/FeeCollectionNew';
-import FamilyFeeCollection from './pages/FamilyFeeCollection';
-import FeeDefaultersList from './pages/FeeDefaultersList';
-import FeeArrearsManager from './pages/FeeArrearsManager';
-import FeeAuditLogsPage from './pages/FeeAuditLogsPage';
-import ChallanGenerationPage from './pages/ChallanGenerationPage';
-import ChallansListPage from './pages/ChallansListPage';
-import FeeAnalyticsPage from './pages/FeeAnalyticsPage';
-import PaymentsAnalyticsPage from './pages/PaymentsAnalyticsPage';
-import FeeSettings from './pages/FeeSettings';
-import PaymentHistoryPage from './pages/PaymentHistoryPage';
-import LedgerPage from './pages/LedgerPage';
 import SetupAccountsPage from './pages/SetupAccountsPage';
 import BalanceSheetPage from './pages/BalanceSheetPage';
 import CashFlowPage from './pages/CashFlowPage';
@@ -140,6 +125,12 @@ import RFIDCardAssignmentPage from './pages/RFIDCardAssignmentPage';
 import StudentAttendanceQrPrintPage from './pages/StudentAttendanceQrPrintPage';
 // Finance Management Components
 import FinanceDashboard from './components/FinanceDashboard';
+// Enterprise Fee Ledger Components
+import FeeCatalogPage from './pages/FeeLedger/FeeCatalogPage';
+import FeeConcessionsPage from './pages/FeeLedger/FeeConcessionsPage';
+import FeeDemandsPage from './pages/FeeLedger/FeeDemandsPage';
+import FeeCounterPage from './pages/FeeLedger/FeeCounterPage';
+import FeeStudentLedgerPage from './pages/FeeLedger/FeeStudentLedgerPage';
 // Communication Management Components
 import CommunicationDashboard from './components/CommunicationDashboard';
 // Settings Management Components
@@ -231,1091 +222,995 @@ const App: React.FC = () => {
                           <Route path="/landing" element={<PublicLandingPage />} />
                           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-                        {/* School Welcome Screen - Shows after login */}
-                        <Route
-                          path="/welcome"
-                          element={
-                            <ProtectedRoute requiredPermission="dashboard">
-                              <SchoolWelcomeScreen />
-                            </ProtectedRoute>
-                          }
-                        />
-
-                        {/* Dashboard Route - Main app entry point */}
-                        <Route
-                          path="/dashboard"
-                          element={
-                            <ProtectedRoute requiredPermission="dashboard">
-                              <Layout />
-                            </ProtectedRoute>
-                          }
-                        >
+                          {/* School Welcome Screen - Shows after login */}
                           <Route
-                            index
-                            element={<Dashboard />}
-                          />
-                        </Route>
-
-                        {/* Protected Routes */}
-                        <Route path="/" element={<Layout />}>
-                          {/* Root route - handle initial redirection based on user role */}
-                          <Route
-                            index
-                            element={<InitialRouteHandler />}
-                          />
-
-                          {/* Teacher Welcome Page */}
-                          {/* Student My Profile - Only accessible to students, no ID in URL */}
-                          <Route
-                            path="my-profile"
-                            element={
-                              <ProtectedRoute requiredPermission="student-profile">
-                                <StudentProfile isMyProfile={true} />
-                              </ProtectedRoute>
-                            }
-                          />
-                          {/* Public Student Profile (uses Layout providers for styles/contexts) - Students cannot access this directly */}
-                          <Route
-                            path="student/:id"
-                            element={
-                              <ProtectedRoute
-                                requiredPermission="student-profile"
-                              >
-                                <StudentProfile />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
-                            path="user"
-                            element={<UserDashboard />}
-                          />
-
-                          {/* Teacher Timetable */}
-                          <Route
-                            path="my-timetable"
-                            element={
-                              <ProtectedRoute requiredPermission="timetable">
-                                <MyTimetable />
-                              </ProtectedRoute>
-                            }
-                          />
-
-
-                          {/* Classes Management */}
-                          <Route
-                            path="classes/all"
-                            element={
-                              <ProtectedRoute requiredPermission="settings-classes">
-                                <ClassesManager />
-                              </ProtectedRoute>
-                            }
-                          />
-
-
-                          {/* Student Management */}
-                          <Route
-                            path="students/list"
-                            element={
-                              <ProtectedRoute
-                                requiredPermission="students-list"
-                              >
-                                <StudentList />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="students/cards"
-                            element={
-                              <ProtectedRoute
-                                requiredPermission="students-cards"
-                              >
-                                <StudentCardsPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="misc/notebook-tags"
-                            element={
-                              <ProtectedRoute
-                                requiredPermission="notebook-tags"
-                              >
-                                <NotebookTagGenerator />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="students/profile/:id"
-                            element={
-                              <ProtectedRoute
-                                requiredPermission="student-profile"
-                              >
-                                <StudentProfile />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="students/add"
-                            element={
-                              <ProtectedRoute requiredPermission="students-add">
-                                <StudentAdmissionForm />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="bulk-student-admission"
-                            element={
-                              <ProtectedRoute requiredPermission="students-bulk-admission">
-                                <BulkStudentAdmission />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="students/status"
-                            element={
-                              <ProtectedRoute requiredPermission="students-status">
-                                <StudentStatusManager />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="students/withdrawal-register"
-                            element={
-                              <ProtectedRoute
-                                requiredPermission="withdrawal-register"
-                              >
-                                <WithdrawalRegister />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="students/certificates"
-                            element={
-                              <ProtectedRoute
-                                requiredPermission="students-certificates"
-                              >
-                                <StudentCertificateGenerator />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="students/general-message"
-                            element={
-                              <ProtectedRoute requiredPermission="messages">
-                                <GeneralMessagePage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="events"
-                            element={
-                              <ProtectedRoute requiredPermission="events">
-                                <Events />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="bulk-promote-demote"
-                            element={
-                              <ProtectedRoute requiredPermission="students-bulk-promote">
-                                <BulkPromoteDemote />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="family-management"
-                            element={
-                              <ProtectedRoute requiredPermission="family-management">
-                                <FamilyManagementPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Employee Management */}
-                          <Route
-                            path="employees"
-                            element={
-                              <ProtectedRoute requiredPermission="employees-list">
-                                <EmployeeList />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="employees/list"
-                            element={
-                              <ProtectedRoute requiredPermission="employees-list">
-                                <EmployeeList />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="employees/add"
-                            element={
-                              <ProtectedRoute requiredPermission="employees-add">
-                                <StaffAddForm />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Teacher My Profile - Only accessible to teachers, no ID in URL */}
-                          <Route
-                            path="profile"
-                            element={
-                              <ProtectedRoute requiredPermission="teacher-profile">
-                                <TeacherProfile isMyProfile={true} />
-                              </ProtectedRoute>
-                            }
-                          />
-                          {/* Public Teacher Profile (for viewing other teachers) */}
-                          <Route
-                            path="employees/profile/:id"
-                            element={
-                              <ProtectedRoute
-                                requiredPermission="teacher-profile"
-                              >
-                                <TeacherProfile />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="/teacher-subjects"
-                            element={
-                              <ProtectedRoute requiredPermission="teacher-subjects">
-                                <TeacherSubjectManager />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Payroll Management */}
-                          <Route
-                            path="payroll"
-                            element={
-                              <ProtectedRoute requiredPermission="payroll-view">
-                                <PayrollDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Settings Dashboard */}
-
-                          {/* Settings Routes */}
-                          <Route
-                            path="settings/sessions"
-                            element={
-                              <ProtectedRoute requiredPermission="settings-classes">
-                                <SessionsManager />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="settings/user-management"
-                            element={
-                              <ProtectedRoute requiredPermission="settings-classes">
-                                <UserManagement />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="settings/role-management"
-                            element={
-                              <ProtectedRoute requiredPermission="settings-classes">
-                                <RoleManagement />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="settings/user-permissions"
-                            element={
-                              <ProtectedRoute requiredPermission="settings-classes">
-                                <UserPermissionManagement />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="settings/institute-profile"
-                            element={
-                              <ProtectedRoute requiredPermission="settings-classes">
-                                <InstituteProfile />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="settings/holidays"
-                            element={
-                              <ProtectedRoute requiredPermission="settings-classes">
-                                <HolidayManager />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="settings/classes"
-                            element={
-                              <ProtectedRoute requiredPermission="settings-classes">
-                                <ClassesManager />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="settings/general-settings"
-                            element={
-                              <ProtectedRoute requiredPermission="settings-classes">
-                                <GeneralSettings />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="settings/lms-control"
-                            element={
-                              <ProtectedRoute requiredPermission="settings-classes">
-                                <LmsControlPanel />
-                              </ProtectedRoute>
-                            }
-                          />
-
-
-                          <Route
-                            path="settings/user-announcements"
-                            element={
-                              <ProtectedRoute requiredPermission="settings-classes">
-                                <UserAnnouncements />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="settings/notifications"
-                            element={
-                              <ProtectedRoute requiredPermission="settings-classes">
-                                <NotificationSettings />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="settings/rendersettings"
-                            element={
-                              <ProtectedRoute requiredPermission="settings-landing-page">
-                                <RenderSettings />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="home"
+                            path="/welcome"
                             element={
                               <ProtectedRoute requiredPermission="dashboard">
-                                <CustomLandingPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Finance Management Dashboard */}
-                          <Route
-                            path="finance"
-                            element={
-                              <ProtectedRoute requiredPermission="fee-structure">
-                                <FinanceDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Fine Dashboard */}
-                          <Route
-                            path="fines"
-                            element={
-                              <ProtectedRoute requiredPermission="fine-assign">
-                                <FineDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="fine-dashboard"
-                            element={
-                              <ProtectedRoute requiredPermission="fee-structure">
-                                <FineDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Fine Management Routes */}
-                          <Route
-                            path="fines/assign"
-                            element={
-                              <ProtectedRoute requiredPermission="fine-assign">
-                                <FineManager />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="fines/collect"
-                            element={
-                              <ProtectedRoute requiredPermission="fine-collect">
-                                <FineCollection />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="fines/remaining"
-                            element={
-                              <ProtectedRoute requiredPermission="fine-remaining">
-                                <RemainingFine />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="fines/special"
-                            element={
-                              <ProtectedRoute requiredPermission="fine-assign">
-                                <SpecialFines />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="fines/statistics"
-                            element={
-                              <ProtectedRoute
-                                requiredPermission="fine-statistics"
-                              >
-                                <FineStatistics />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Fee Management Routes */}
-                          <Route
-                            path="fee-structure-management"
-                            element={
-                              <ProtectedRoute requiredPermission="fee-structure">
-                                <FeeStructureManager />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="fee-plans"
-                            element={
-                              <ProtectedRoute requiredPermission="fee-plans">
-                                <FeePlans />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="fee-increments"
-                            element={
-                              <ProtectedRoute requiredPermission="fee-increments">
-                                <FeeIncrements />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="generate-challans"
-                            element={
-                              <ProtectedRoute requiredPermission="generate-challans">
-                                <ChallanGenerationPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="challans"
-                            element={
-                              <ProtectedRoute requiredPermission="view-challans">
-                                <ChallansListPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="fee-collection"
-                            element={
-                              <ProtectedRoute requiredPermission="fee-collection">
-                                <FeeCollection />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="family-fee-collection"
-                            element={
-                              <ProtectedRoute requiredPermission="fee-collection">
-                                <FamilyFeeCollection />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="fee-defaulters"
-                            element={
-                              <ProtectedRoute requiredPermission="fee-defaulters">
-                                <FeeDefaultersList />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="fee-arrears"
-                            element={
-                              <ProtectedRoute requiredPermission="fee-arrears">
-                                <FeeArrearsManager />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="fee-audit-logs"
-                            element={
-                              <ProtectedRoute requiredPermission="fee-audit-logs">
-                                <FeeAuditLogsPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="fee-analytics"
-                            element={
-                              <ProtectedRoute
-                                requiredPermission="fee-analytics"
-                              >
-                                <FeeAnalyticsPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="payments-analytics"
-                            element={
-                              <ProtectedRoute
-                                requiredPermission="payments-analytics"
-                              >
-                                <PaymentsAnalyticsPage />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
-                            path="fee-settings"
-                            element={
-                              <ProtectedRoute requiredPermission="fee-structure">
-                                <FeeSettings />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="payment-history"
-                            element={
-                              <ProtectedRoute requiredPermission="payment-history">
-                                <PaymentHistoryPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="ledger"
-                            element={
-                              <ProtectedRoute requiredPermission="fee-ledger">
-                                <LedgerPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="setup-accounts"
-                            element={
-                              <ProtectedRoute requiredPermission="setup-accounts">
-                                <SetupAccountsPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="balance-sheet"
-                            element={
-                              <ProtectedRoute requiredPermission="setup-accounts">
-                                <BalanceSheetPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="cash-flow"
-                            element={
-                              <ProtectedRoute requiredPermission="cash-flow-view">
-                                <CashFlowPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Expense Management Dashboard */}
-                          <Route
-                            path="expense-management"
-                            element={
-                              <ProtectedRoute requiredPermission="expense-manager">
-                                <ExpenseDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Expense Management Routes */}
-                          <Route
-                            path="expense-manager"
-                            element={
-                              <ProtectedRoute requiredPermission="expense-manager">
-                                <ExpenseManager />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="other-income-manager"
-                            element={
-                              <ProtectedRoute requiredPermission="other-income-manager">
-                                <OtherIncomeManager />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="expense-analytics"
-                            element={
-                              <ProtectedRoute
-                                requiredPermission="expense-analytics">
-                                <ExpenseAnalyticsPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Assets & Liabilities Management */}
-                          <Route
-                            path="assets-liabilities"
-                            element={
-                              <ProtectedRoute requiredPermission="assets-liabilities-view">
-                                <AssetsLiabilitiesManager />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Communication Management Dashboard */}
-                          <Route
-                            path="communication"
-                            element={
-                              <ProtectedRoute requiredPermission="messages">
-                                <CommunicationDashboard />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Enquiry Management Routes */}
-                          <Route
-                            path="enquiries"
-                            element={
-                              <ProtectedRoute requiredPermission="enquiry-dashboard">
-                                <EnquiryManagementDashboardPage />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
-                            path="enquiries/dashboard"
-                            element={
-                              <ProtectedRoute requiredPermission="enquiry-dashboard">
-                                <EnquiryDashboardPage />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
-                            path="enquiries/list"
-                            element={
-                              <ProtectedRoute requiredPermission="enquiry-list">
-                                <EnquiryListPage />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
-                            path="enquiries/create"
-                            element={
-                              <ProtectedRoute requiredPermission="enquiry-create">
-                                <EnquiryFormPage />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
-                            path="enquiries/:id"
-                            element={
-                              <ProtectedRoute requiredPermission="enquiry-list">
-                                <EnquiryDetailPage />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
-                            path="enquiries/:id/edit"
-                            element={
-                              <ProtectedRoute requiredPermission="enquiry-create">
-                                <EnquiryFormPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Reports Management */}
-                          <Route
-                            path="reports"
-                            element={
-                              <ProtectedRoute requiredPermission="reports-students">
-                                <Reports />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
-                            path="reports/students"
-                            element={
-                              <ProtectedRoute requiredPermission="reports-students">
-                                <Reports />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
-                            path="reports/employee-reports"
-                            element={
-                              <ProtectedRoute requiredPermission="reports-employees">
-                                <Reports defaultTab="staff" />
-                              </ProtectedRoute>
-                            }
-                          />
-
-
-                          {/* Attendance Routes */}
-                          <Route
-                            path="attendance/mark"
-                            element={
-                              <ProtectedRoute requiredPermission="attendance-mark">
-                                <MarkAttendance />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="attendance/staff"
-                            element={
-                              <ProtectedRoute requiredPermission="attendance-staff">
-                                <MarkStaffAttendance />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="attendance/staff-report"
-                            element={
-                              <ProtectedRoute requiredPermission="attendance-staff-report">
-                                <StaffAttendanceReport />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="attendance/staff-checkinout-grid"
-                            element={
-                              <ProtectedRoute requiredPermission="attendance-staff-report">
-                                <StaffCheckInOutGridPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="attendance/report"
-                            element={
-                              <ProtectedRoute
-                                requiredPermission="attendance-report"
-                              >
-                                <AttendanceReport />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="attendance/half-leaves"
-                            element={
-                              <ProtectedRoute requiredPermission="half-leaves">
-                                <HalfLeaves />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="attendance/analytics"
-                            element={
-                              <ProtectedRoute requiredPermission="attendance-analytics">
-                                <StudentAttendanceAnalyticsPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="attendance/student-analytics"
-                            element={
-                              <ProtectedRoute requiredPermission="attendance-analytics">
-                                <StudentAttendanceAnalyticsPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="attendance/staff-half-leaves"
-                            element={
-                              <ProtectedRoute requiredPermission="staff-half-leaves">
-                                <StaffHalfLeaves />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="attendance/staff-analytics"
-                            element={
-                              <ProtectedRoute requiredPermission="attendance-staff-analytics">
-                                <StaffAttendanceAnalyticsPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="attendance/rfid-scanner"
-                            element={
-                              <ProtectedRoute requiredPermission="rfid-scanner">
-                                <RFIDAttendancePage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="attendance/qr-scanner"
-                            element={
-                              <ProtectedRoute requiredPermission="rfid-scanner">
-                                <QRAttendancePage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="attendance/rfid-cards"
-                            element={
-                              <ProtectedRoute requiredPermission="rfid-card-assignment">
-                                <RFIDCardAssignmentPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="attendance/student-qr-labels"
-                            element={
-                              <ProtectedRoute requiredPermission="rfid-card-assignment">
-                                <StudentAttendanceQrPrintPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="attendance/leave-requests"
-                            element={
-                              <ProtectedRoute requiredPermission="leave-requests">
-                                <LeaveRequestsPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="attendance/complaints-suggestions"
-                            element={
-                              <ProtectedRoute requiredPermission="complaints-suggestions">
-                                <ComplaintsSuggestionsPage />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Subject Management */}
-                          <Route
-                            path="subjects"
-                            element={
-                              <ProtectedRoute requiredPermission="subjects">
-                                <SubjectManager />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Examination Dashboard */}
-
-                          {/* Examination Management */}
-                          <Route
-                            path="examinations"
-                            element={
-                              <ProtectedRoute
-                                requiredPermission="examinations"
-                              >
-                                <ExaminationManager />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="student-exam-exclusion"
-                            element={
-                              <ProtectedRoute requiredPermission="examinations">
-                                <StudentExclusionManager />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Examination Configuration */}
-                          <Route
-                            path="examination-configuration"
-                            element={
-                              <ProtectedRoute requiredPermission="examination-configuration">
-                                <ExaminationConfiguration />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="marks-entry"
-                            element={
-                              <ProtectedRoute requiredPermission="marks-entry">
-                                <MarksEntryManager />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="master-sheets"
-                            element={
-                              <ProtectedRoute requiredPermission="master-sheets">
-                                <MasterSheetManager />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="dmc-generation"
-                            element={
-                              <ProtectedRoute requiredPermission="dmc-generation">
-                                <DetailedMarksCertificate />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="position-holders"
-                            element={
-                              <ProtectedRoute requiredPermission="position-holders">
-                                <PositionHolders />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="exam-analytics"
-                            element={
-                              <ProtectedRoute requiredPermission="exam-analytics">
-                                <ExaminationAnalytics />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Test Record Management */}
-                          <Route
-                            path="test-records"
-                            element={
-                              <ProtectedRoute
-                                requiredPermission="test-records"
-                              >
-                                <TestRecordManager />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
-                            path="test-record-master-sheet"
-                            element={
-                              <ProtectedRoute requiredPermission="test-master-sheet">
-                                <TestRecordMasterSheet />
-                              </ProtectedRoute>
-                            }
-                          />
-                          <Route
-                            path="test-analytics"
-                            element={
-                              <ProtectedRoute requiredPermission="test-analytics">
-                                <TestAnalytics />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Time Table Management */}
-                          <Route
-                            path="timetable"
-                            element={
-                              <ProtectedRoute requiredPermission="timetable">
-                                <TimeTableManager />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Homework Diary Management */}
-                          <Route
-                            path="homework-diary"
-                            element={
-                              <ProtectedRoute requiredPermission="homework-diary">
-                                <HomeworkDiaryManager />
-                              </ProtectedRoute>
-                            }
-                          />
-                          {/* Diary Analytics */}
-                          <Route
-                            path="diary-analytics"
-                            element={
-                              <ProtectedRoute requiredPermission="diary-analytics">
-                                <DiaryAnalytics />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Schools Management */}
-                          <Route
-                            path="schools"
-                            element={
-                              <ProtectedRoute requiredPermission="settings-institute-profile">
-                                <SchoolsManagement />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          {/* Default route */}
-                          <Route path="*" element={<PageNotFound />} />
-                        </Route>
-                      </Routes>
+                                <SchoolWelcomeScreen />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          {/* Dashboard Route - Main app entry point */}
+                          <Route
+                            path="/dashboard"
+                            element={
+                              <ProtectedRoute requiredPermission="dashboard">
+                                <Layout />
+                              </ProtectedRoute>
+                            }
+                          >
+                            <Route
+                              index
+                              element={<Dashboard />}
+                            />
+                          </Route>
+
+                          {/* Protected Routes */}
+                          <Route path="/" element={<Layout />}>
+                            {/* Root route - handle initial redirection based on user role */}
+                            <Route
+                              index
+                              element={<InitialRouteHandler />}
+                            />
+
+                            {/* Teacher Welcome Page */}
+                            {/* Student My Profile - Only accessible to students, no ID in URL */}
+                            <Route
+                              path="my-profile"
+                              element={
+                                <ProtectedRoute requiredPermission="student-profile">
+                                  <StudentProfile isMyProfile={true} />
+                                </ProtectedRoute>
+                              }
+                            />
+                            {/* Public Student Profile (uses Layout providers for styles/contexts) - Students cannot access this directly */}
+                            <Route
+                              path="student/:id"
+                              element={
+                                <ProtectedRoute
+                                  requiredPermission="student-profile"
+                                >
+                                  <StudentProfile />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="user"
+                              element={<UserDashboard />}
+                            />
+
+                            {/* Teacher Timetable */}
+                            <Route
+                              path="my-timetable"
+                              element={
+                                <ProtectedRoute requiredPermission="timetable">
+                                  <MyTimetable />
+                                </ProtectedRoute>
+                              }
+                            />
+
+
+                            {/* Classes Management */}
+                            <Route
+                              path="classes/all"
+                              element={
+                                <ProtectedRoute requiredPermission="settings-classes">
+                                  <ClassesManager />
+                                </ProtectedRoute>
+                              }
+                            />
+
+
+                            {/* Student Management */}
+                            <Route
+                              path="students/list"
+                              element={
+                                <ProtectedRoute
+                                  requiredPermission="students-list"
+                                >
+                                  <StudentList />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="students/cards"
+                              element={
+                                <ProtectedRoute
+                                  requiredPermission="students-cards"
+                                >
+                                  <StudentCardsPage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="misc/notebook-tags"
+                              element={
+                                <ProtectedRoute
+                                  requiredPermission="notebook-tags"
+                                >
+                                  <NotebookTagGenerator />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="students/profile/:id"
+                              element={
+                                <ProtectedRoute
+                                  requiredPermission="student-profile"
+                                >
+                                  <StudentProfile />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="students/add"
+                              element={
+                                <ProtectedRoute requiredPermission="students-add">
+                                  <StudentAdmissionForm />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="bulk-student-admission"
+                              element={
+                                <ProtectedRoute requiredPermission="students-bulk-admission">
+                                  <BulkStudentAdmission />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="students/status"
+                              element={
+                                <ProtectedRoute requiredPermission="students-status">
+                                  <StudentStatusManager />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="students/withdrawal-register"
+                              element={
+                                <ProtectedRoute
+                                  requiredPermission="withdrawal-register"
+                                >
+                                  <WithdrawalRegister />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="students/certificates"
+                              element={
+                                <ProtectedRoute
+                                  requiredPermission="students-certificates"
+                                >
+                                  <StudentCertificateGenerator />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="students/general-message"
+                              element={
+                                <ProtectedRoute requiredPermission="messages">
+                                  <GeneralMessagePage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="events"
+                              element={
+                                <ProtectedRoute requiredPermission="events">
+                                  <Events />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="bulk-promote-demote"
+                              element={
+                                <ProtectedRoute requiredPermission="students-bulk-promote">
+                                  <BulkPromoteDemote />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="family-management"
+                              element={
+                                <ProtectedRoute requiredPermission="family-management">
+                                  <FamilyManagementPage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Employee Management */}
+                            <Route
+                              path="employees"
+                              element={
+                                <ProtectedRoute requiredPermission="employees-list">
+                                  <EmployeeList />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="employees/list"
+                              element={
+                                <ProtectedRoute requiredPermission="employees-list">
+                                  <EmployeeList />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="employees/add"
+                              element={
+                                <ProtectedRoute requiredPermission="employees-add">
+                                  <StaffAddForm />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Teacher My Profile - Only accessible to teachers, no ID in URL */}
+                            <Route
+                              path="profile"
+                              element={
+                                <ProtectedRoute requiredPermission="teacher-profile">
+                                  <TeacherProfile isMyProfile={true} />
+                                </ProtectedRoute>
+                              }
+                            />
+                            {/* Public Teacher Profile (for viewing other teachers) */}
+                            <Route
+                              path="employees/profile/:id"
+                              element={
+                                <ProtectedRoute
+                                  requiredPermission="teacher-profile"
+                                >
+                                  <TeacherProfile />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="/teacher-subjects"
+                              element={
+                                <ProtectedRoute requiredPermission="teacher-subjects">
+                                  <TeacherSubjectManager />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Payroll Management */}
+                            <Route
+                              path="payroll"
+                              element={
+                                <ProtectedRoute requiredPermission="payroll-view">
+                                  <PayrollDashboard />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Settings Dashboard */}
+
+                            {/* Settings Routes */}
+                            <Route
+                              path="settings/sessions"
+                              element={
+                                <ProtectedRoute requiredPermission="settings-classes">
+                                  <SessionsManager />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="settings/user-management"
+                              element={
+                                <ProtectedRoute requiredPermission="settings-classes">
+                                  <UserManagement />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="settings/role-management"
+                              element={
+                                <ProtectedRoute requiredPermission="settings-classes">
+                                  <RoleManagement />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="settings/user-permissions"
+                              element={
+                                <ProtectedRoute requiredPermission="settings-classes">
+                                  <UserPermissionManagement />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="settings/institute-profile"
+                              element={
+                                <ProtectedRoute requiredPermission="settings-classes">
+                                  <InstituteProfile />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="settings/holidays"
+                              element={
+                                <ProtectedRoute requiredPermission="settings-classes">
+                                  <HolidayManager />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="settings/classes"
+                              element={
+                                <ProtectedRoute requiredPermission="settings-classes">
+                                  <ClassesManager />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="settings/general-settings"
+                              element={
+                                <ProtectedRoute requiredPermission="settings-classes">
+                                  <GeneralSettings />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="settings/lms-control"
+                              element={
+                                <ProtectedRoute requiredPermission="settings-classes">
+                                  <LmsControlPanel />
+                                </ProtectedRoute>
+                              }
+                            />
+
+
+                            <Route
+                              path="settings/user-announcements"
+                              element={
+                                <ProtectedRoute requiredPermission="settings-classes">
+                                  <UserAnnouncements />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="settings/notifications"
+                              element={
+                                <ProtectedRoute requiredPermission="settings-classes">
+                                  <NotificationSettings />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="settings/rendersettings"
+                              element={
+                                <ProtectedRoute requiredPermission="settings-landing-page">
+                                  <RenderSettings />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="home"
+                              element={
+                                <ProtectedRoute requiredPermission="dashboard">
+                                  <CustomLandingPage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Finance Management Dashboard */}
+                            <Route
+                              path="finance"
+                              element={
+                                <ProtectedRoute requiredPermission="fee-structure">
+                                  <FinanceDashboard />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Enterprise Ledger Fee Routes */}
+                            <Route
+                              path="fee-counter"
+                              element={
+                                <ProtectedRoute requiredPermission="fee-counter-pos">
+                                  <FeeCounterPage />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="fee-demands"
+                              element={
+                                <ProtectedRoute requiredPermission="fee-demands-generate">
+                                  <FeeDemandsPage />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="fee-catalog"
+                              element={
+                                <ProtectedRoute requiredPermission="fee-catalog-manage">
+                                  <FeeCatalogPage />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="fee-concessions"
+                              element={
+                                <ProtectedRoute requiredPermission="fee-concessions-manage">
+                                  <FeeConcessionsPage />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="fee-ledger"
+                              element={
+                                <ProtectedRoute requiredPermission="fee-ledger-dashboard">
+                                  <FeeStudentLedgerPage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Fine Dashboard */}
+                            <Route
+                              path="fines"
+                              element={
+                                <ProtectedRoute requiredPermission="fine-assign">
+                                  <FineDashboard />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="fine-dashboard"
+                              element={
+                                <ProtectedRoute requiredPermission="fee-structure">
+                                  <FineDashboard />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Fine Management Routes */}
+                            <Route
+                              path="fines/assign"
+                              element={
+                                <ProtectedRoute requiredPermission="fine-assign">
+                                  <FineManager />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="fines/collect"
+                              element={
+                                <ProtectedRoute requiredPermission="fine-collect">
+                                  <FineCollection />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="fines/remaining"
+                              element={
+                                <ProtectedRoute requiredPermission="fine-remaining">
+                                  <RemainingFine />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="fines/special"
+                              element={
+                                <ProtectedRoute requiredPermission="fine-assign">
+                                  <SpecialFines />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="fines/statistics"
+                              element={
+                                <ProtectedRoute
+                                  requiredPermission="fine-statistics"
+                                >
+                                  <FineStatistics />
+                                </ProtectedRoute>
+                              }
+                            />
+
+
+                            <Route
+                              path="setup-accounts"
+                              element={
+                                <ProtectedRoute requiredPermission="setup-accounts">
+                                  <SetupAccountsPage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="balance-sheet"
+                              element={
+                                <ProtectedRoute requiredPermission="setup-accounts">
+                                  <BalanceSheetPage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="cash-flow"
+                              element={
+                                <ProtectedRoute requiredPermission="cash-flow-view">
+                                  <CashFlowPage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Expense Management Dashboard */}
+                            <Route
+                              path="expense-management"
+                              element={
+                                <ProtectedRoute requiredPermission="expense-manager">
+                                  <ExpenseDashboard />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Expense Management Routes */}
+                            <Route
+                              path="expense-manager"
+                              element={
+                                <ProtectedRoute requiredPermission="expense-manager">
+                                  <ExpenseManager />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="other-income-manager"
+                              element={
+                                <ProtectedRoute requiredPermission="other-income-manager">
+                                  <OtherIncomeManager />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="expense-analytics"
+                              element={
+                                <ProtectedRoute
+                                  requiredPermission="expense-analytics">
+                                  <ExpenseAnalyticsPage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Assets & Liabilities Management */}
+                            <Route
+                              path="assets-liabilities"
+                              element={
+                                <ProtectedRoute requiredPermission="assets-liabilities-view">
+                                  <AssetsLiabilitiesManager />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Communication Management Dashboard */}
+                            <Route
+                              path="communication"
+                              element={
+                                <ProtectedRoute requiredPermission="messages">
+                                  <CommunicationDashboard />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Enquiry Management Routes */}
+                            <Route
+                              path="enquiries"
+                              element={
+                                <ProtectedRoute requiredPermission="enquiry-dashboard">
+                                  <EnquiryManagementDashboardPage />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="enquiries/dashboard"
+                              element={
+                                <ProtectedRoute requiredPermission="enquiry-dashboard">
+                                  <EnquiryDashboardPage />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="enquiries/list"
+                              element={
+                                <ProtectedRoute requiredPermission="enquiry-list">
+                                  <EnquiryListPage />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="enquiries/create"
+                              element={
+                                <ProtectedRoute requiredPermission="enquiry-create">
+                                  <EnquiryFormPage />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="enquiries/:id"
+                              element={
+                                <ProtectedRoute requiredPermission="enquiry-list">
+                                  <EnquiryDetailPage />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="enquiries/:id/edit"
+                              element={
+                                <ProtectedRoute requiredPermission="enquiry-create">
+                                  <EnquiryFormPage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Reports Management */}
+                            <Route
+                              path="reports"
+                              element={
+                                <ProtectedRoute requiredPermission="reports-students">
+                                  <Reports />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="reports/students"
+                              element={
+                                <ProtectedRoute requiredPermission="reports-students">
+                                  <Reports />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="reports/employee-reports"
+                              element={
+                                <ProtectedRoute requiredPermission="reports-employees">
+                                  <Reports defaultTab="staff" />
+                                </ProtectedRoute>
+                              }
+                            />
+
+
+                            {/* Attendance Routes */}
+                            <Route
+                              path="attendance/mark"
+                              element={
+                                <ProtectedRoute requiredPermission="attendance-mark">
+                                  <MarkAttendance />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="attendance/staff"
+                              element={
+                                <ProtectedRoute requiredPermission="attendance-staff">
+                                  <MarkStaffAttendance />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="attendance/staff-report"
+                              element={
+                                <ProtectedRoute requiredPermission="attendance-staff-report">
+                                  <StaffAttendanceReport />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="attendance/staff-checkinout-grid"
+                              element={
+                                <ProtectedRoute requiredPermission="attendance-staff-report">
+                                  <StaffCheckInOutGridPage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="attendance/report"
+                              element={
+                                <ProtectedRoute
+                                  requiredPermission="attendance-report"
+                                >
+                                  <AttendanceReport />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="attendance/half-leaves"
+                              element={
+                                <ProtectedRoute requiredPermission="half-leaves">
+                                  <HalfLeaves />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="attendance/analytics"
+                              element={
+                                <ProtectedRoute requiredPermission="attendance-analytics">
+                                  <StudentAttendanceAnalyticsPage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="attendance/student-analytics"
+                              element={
+                                <ProtectedRoute requiredPermission="attendance-analytics">
+                                  <StudentAttendanceAnalyticsPage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="attendance/staff-half-leaves"
+                              element={
+                                <ProtectedRoute requiredPermission="staff-half-leaves">
+                                  <StaffHalfLeaves />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="attendance/staff-analytics"
+                              element={
+                                <ProtectedRoute requiredPermission="attendance-staff-analytics">
+                                  <StaffAttendanceAnalyticsPage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="attendance/rfid-scanner"
+                              element={
+                                <ProtectedRoute requiredPermission="rfid-scanner">
+                                  <RFIDAttendancePage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="attendance/qr-scanner"
+                              element={
+                                <ProtectedRoute requiredPermission="rfid-scanner">
+                                  <QRAttendancePage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="attendance/rfid-cards"
+                              element={
+                                <ProtectedRoute requiredPermission="rfid-card-assignment">
+                                  <RFIDCardAssignmentPage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="attendance/student-qr-labels"
+                              element={
+                                <ProtectedRoute requiredPermission="rfid-card-assignment">
+                                  <StudentAttendanceQrPrintPage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="attendance/leave-requests"
+                              element={
+                                <ProtectedRoute requiredPermission="leave-requests">
+                                  <LeaveRequestsPage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="attendance/complaints-suggestions"
+                              element={
+                                <ProtectedRoute requiredPermission="complaints-suggestions">
+                                  <ComplaintsSuggestionsPage />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Subject Management */}
+                            <Route
+                              path="subjects"
+                              element={
+                                <ProtectedRoute requiredPermission="subjects">
+                                  <SubjectManager />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Examination Dashboard */}
+
+                            {/* Examination Management */}
+                            <Route
+                              path="examinations"
+                              element={
+                                <ProtectedRoute
+                                  requiredPermission="examinations"
+                                >
+                                  <ExaminationManager />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="student-exam-exclusion"
+                              element={
+                                <ProtectedRoute requiredPermission="examinations">
+                                  <StudentExclusionManager />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Examination Configuration */}
+                            <Route
+                              path="examination-configuration"
+                              element={
+                                <ProtectedRoute requiredPermission="examination-configuration">
+                                  <ExaminationConfiguration />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="marks-entry"
+                              element={
+                                <ProtectedRoute requiredPermission="marks-entry">
+                                  <MarksEntryManager />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="master-sheets"
+                              element={
+                                <ProtectedRoute requiredPermission="master-sheets">
+                                  <MasterSheetManager />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="dmc-generation"
+                              element={
+                                <ProtectedRoute requiredPermission="dmc-generation">
+                                  <DetailedMarksCertificate />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="position-holders"
+                              element={
+                                <ProtectedRoute requiredPermission="position-holders">
+                                  <PositionHolders />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="exam-analytics"
+                              element={
+                                <ProtectedRoute requiredPermission="exam-analytics">
+                                  <ExaminationAnalytics />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Test Record Management */}
+                            <Route
+                              path="test-records"
+                              element={
+                                <ProtectedRoute
+                                  requiredPermission="test-records"
+                                >
+                                  <TestRecordManager />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="test-record-master-sheet"
+                              element={
+                                <ProtectedRoute requiredPermission="test-master-sheet">
+                                  <TestRecordMasterSheet />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="test-analytics"
+                              element={
+                                <ProtectedRoute requiredPermission="test-analytics">
+                                  <TestAnalytics />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Time Table Management */}
+                            <Route
+                              path="timetable"
+                              element={
+                                <ProtectedRoute requiredPermission="timetable">
+                                  <TimeTableManager />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Homework Diary Management */}
+                            <Route
+                              path="homework-diary"
+                              element={
+                                <ProtectedRoute requiredPermission="homework-diary">
+                                  <HomeworkDiaryManager />
+                                </ProtectedRoute>
+                              }
+                            />
+                            {/* Diary Analytics */}
+                            <Route
+                              path="diary-analytics"
+                              element={
+                                <ProtectedRoute requiredPermission="diary-analytics">
+                                  <DiaryAnalytics />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Schools Management */}
+                            <Route
+                              path="schools"
+                              element={
+                                <ProtectedRoute requiredPermission="settings-institute-profile">
+                                  <SchoolsManagement />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            {/* Default route */}
+                            <Route path="*" element={<PageNotFound />} />
+                          </Route>
+                        </Routes>
                       </React.Suspense>
                     </ToastProvider>
                     {/* Only render UpdateNotification on Electron/Capacitor, not on web */}

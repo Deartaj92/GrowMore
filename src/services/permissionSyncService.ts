@@ -50,7 +50,6 @@ function getAllMenuItems(): MenuItemType[] {
   // Add dashboard tab permissions (virtual paths for tab-level access control)
   const dashboardTabItems = [
     { title: 'Dashboard - Attendance Tab', description: 'Access the Attendance tab on the Dashboard', path: '/dashboard/tab/attendance', color: '#3b82f6', icon: React.createElement(DashboardIcon) },
-    { title: 'Dashboard - Fee Collection Tab', description: 'Access the Fee Collection tab on the Dashboard', path: '/dashboard/tab/fee', color: '#10b981', icon: React.createElement(DashboardIcon) },
     { title: 'Dashboard - Admissions Tab', description: 'Access the Admissions tab on the Dashboard', path: '/dashboard/tab/admissions', color: '#8b5cf6', icon: React.createElement(DashboardIcon) },
     { title: 'Dashboard - Homework Tab', description: 'Access the Homework Diary tab on the Dashboard', path: '/dashboard/tab/homework', color: '#f59e0b', icon: React.createElement(DashboardIcon) },
     { title: 'Dashboard - Employee Attendance Tab', description: 'Access the Employee Attendance tab on the Dashboard', path: '/dashboard/tab/employeeAttendance', color: '#06b6d4', icon: React.createElement(DashboardIcon) },
@@ -73,7 +72,7 @@ function getCategoryFromPath(path: string): string {
   if (path.startsWith('/attendance')) return 'Attendance';
   if (path.startsWith('/reports')) return 'Reports';
   if (path.startsWith('/employees')) return 'Employees';
-  if (path.startsWith('/fee') || path.startsWith('/concessions') || path.startsWith('/payment') || path.startsWith('/ledger')) return 'Fee Management';
+
   if (path.startsWith('/expense')) return 'Finance';
   if (path.startsWith('/fines')) return 'Fine Management';
   if (path.startsWith('/students/general-message') || path.startsWith('/settings/user-announcements')) return 'Communication';

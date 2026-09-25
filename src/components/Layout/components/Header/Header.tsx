@@ -949,35 +949,35 @@ type SearchPageItem = {
 
 type SearchResultItem =
   | {
-      type: 'student';
-      id: string;
-      title: string;
-      subtitle: string;
-      meta: string;
-      imageUrl?: string | null;
-      path: string;
-      accent?: string;
-      status?: string | null;
-    }
+    type: 'student';
+    id: string;
+    title: string;
+    subtitle: string;
+    meta: string;
+    imageUrl?: string | null;
+    path: string;
+    accent?: string;
+    status?: string | null;
+  }
   | {
-      type: 'employee';
-      id: string;
-      title: string;
-      subtitle: string;
-      meta: string;
-      imageUrl?: string | null;
-      path: string;
-      accent?: string;
-    }
+    type: 'employee';
+    id: string;
+    title: string;
+    subtitle: string;
+    meta: string;
+    imageUrl?: string | null;
+    path: string;
+    accent?: string;
+  }
   | {
-      type: 'page';
-      id: string;
-      title: string;
-      subtitle: string;
-      meta: string;
-      path: string;
-      accent?: string;
-    };
+    type: 'page';
+    id: string;
+    title: string;
+    subtitle: string;
+    meta: string;
+    path: string;
+    accent?: string;
+  };
 
 const GlobalSearchWrapper = styled.div`
   position: relative;
@@ -1053,13 +1053,13 @@ const GlobalSearchInputShell = styled.div<{ $open: boolean }>`
   @media (max-width: 700px) {
     background: ${({ theme }) => isDark(theme) ? '#252525' : '#ffffff'};
     box-shadow: ${({ theme, $open }) =>
-      $open
-        ? (isDark(theme)
-            ? `0 0 0 3px ${theme.ACCENT}22, 0 14px 30px rgba(0, 0, 0, 0.34)`
-            : `0 0 0 3px ${theme.ACCENT}22, 0 14px 26px rgba(15, 23, 42, 0.16)`)
-        : (isDark(theme)
-            ? '0 6px 16px rgba(0, 0, 0, 0.28)'
-            : '0 6px 14px rgba(15, 23, 42, 0.12)')};
+    $open
+      ? (isDark(theme)
+        ? `0 0 0 3px ${theme.ACCENT}22, 0 14px 30px rgba(0, 0, 0, 0.34)`
+        : `0 0 0 3px ${theme.ACCENT}22, 0 14px 26px rgba(15, 23, 42, 0.16)`)
+      : (isDark(theme)
+        ? '0 6px 16px rgba(0, 0, 0, 0.28)'
+        : '0 6px 14px rgba(15, 23, 42, 0.12)')};
   }
 `;
 
@@ -1250,19 +1250,19 @@ const SearchStatusBadge = styled.span<{ $status?: string | null }>`
   flex-shrink: 0;
   color: ${({ $status }) =>
     $status === 'active' ? '#22c55e' :
-    $status === 'inactive' ? '#ef4444' :
-    $status === 'suspended' ? '#f59e0b' :
-    '#94a3b8'};
+      $status === 'inactive' ? '#ef4444' :
+        $status === 'suspended' ? '#f59e0b' :
+          '#94a3b8'};
   background: ${({ $status }) =>
     $status === 'active' ? 'rgba(34, 197, 94, 0.12)' :
-    $status === 'inactive' ? 'rgba(239, 68, 68, 0.12)' :
-    $status === 'suspended' ? 'rgba(245, 158, 11, 0.12)' :
-    'rgba(148, 163, 184, 0.12)'};
+      $status === 'inactive' ? 'rgba(239, 68, 68, 0.12)' :
+        $status === 'suspended' ? 'rgba(245, 158, 11, 0.12)' :
+          'rgba(148, 163, 184, 0.12)'};
   border: 1px solid ${({ $status }) =>
     $status === 'active' ? 'rgba(34, 197, 94, 0.24)' :
-    $status === 'inactive' ? 'rgba(239, 68, 68, 0.24)' :
-    $status === 'suspended' ? 'rgba(245, 158, 11, 0.24)' :
-    'rgba(148, 163, 184, 0.24)'};
+      $status === 'inactive' ? 'rgba(239, 68, 68, 0.24)' :
+        $status === 'suspended' ? 'rgba(245, 158, 11, 0.24)' :
+          'rgba(148, 163, 184, 0.24)'};
 `;
 
 const SearchResultSubtitle = styled.div`
@@ -1394,62 +1394,62 @@ const Header: React.FC<HeaderProps> = ({
   const [cachedDashboardPath, setCachedDashboardPath] = useState<string | null>(null);
 
   const loadPermissions = useCallback(async () => {
-      if (!navigator.onLine) {
-        return;
-      }
+    if (!navigator.onLine) {
+      return;
+    }
 
-      // Check if user is Super Admin (from super_admins table)
-      if (user?.id && !user?.school_id) {
-        try {
-          const { data: superAdminData } = await supabase
-            .from('super_admins')
-            .select('id')
-            .eq('username', user.username)
-            .maybeSingle();
+    // Check if user is Super Admin (from super_admins table)
+    if (user?.id && !user?.school_id) {
+      try {
+        const { data: superAdminData } = await supabase
+          .from('super_admins')
+          .select('id')
+          .eq('username', user.username)
+          .maybeSingle();
 
-          if (superAdminData) {
-            setIsSuperAdmin(true);
-            // Super Admin has all permissions
-            setUserPermissions(new Set(Object.values(pathToPermissionKey)));
-            setPermissionsLoaded(true);
-            setCachedDashboardPath('/dashboard');
-            return;
-          }
-        } catch (error) {
-          console.error('Error checking super admin:', error);
-        }
-      }
-
-      // Load permissions for all users with role_id from roles table
-      if (user?.id && user?.school_id) {
-        try {
-          const perms = await getUserPermissions(user.id, user.school_id);
-          setUserPermissions(perms);
-          // Cache dashboard path based on permissions
-          if (user.role === 'school_admin' || perms.has('dashboard')) {
-            setCachedDashboardPath('/dashboard');
-          } else {
-            setCachedDashboardPath('/user');
-          }
+        if (superAdminData) {
+          setIsSuperAdmin(true);
+          // Super Admin has all permissions
+          setUserPermissions(new Set(Object.values(pathToPermissionKey)));
           setPermissionsLoaded(true);
-        } catch (error) {
-          console.error('Error loading permissions:', error);
-          if (user.role === 'school_admin') {
-            setCachedDashboardPath('/dashboard');
-          } else {
-            setCachedDashboardPath('/user');
-          }
-          setPermissionsLoaded(true);
+          setCachedDashboardPath('/dashboard');
+          return;
         }
-      } else {
-        if (user?.role === 'school_admin') {
+      } catch (error) {
+        console.error('Error checking super admin:', error);
+      }
+    }
+
+    // Load permissions for all users with role_id from roles table
+    if (user?.id && user?.school_id) {
+      try {
+        const perms = await getUserPermissions(user.id, user.school_id);
+        setUserPermissions(perms);
+        // Cache dashboard path based on permissions
+        if (user.role === 'school_admin' || perms.has('dashboard')) {
+          setCachedDashboardPath('/dashboard');
+        } else {
+          setCachedDashboardPath('/user');
+        }
+        setPermissionsLoaded(true);
+      } catch (error) {
+        console.error('Error loading permissions:', error);
+        if (user.role === 'school_admin') {
           setCachedDashboardPath('/dashboard');
         } else {
           setCachedDashboardPath('/user');
         }
         setPermissionsLoaded(true);
       }
-    }, [user?.id, user?.school_id, user?.username]);
+    } else {
+      if (user?.role === 'school_admin') {
+        setCachedDashboardPath('/dashboard');
+      } else {
+        setCachedDashboardPath('/user');
+      }
+      setPermissionsLoaded(true);
+    }
+  }, [user?.id, user?.school_id, user?.username]);
 
   useEffect(() => {
     loadPermissions();
@@ -2053,63 +2053,42 @@ const Header: React.FC<HeaderProps> = ({
     }
   ];
 
-  // Fee menu items - split into two groups
+  // Enterprise Ledger Fee System menu items
   const feeMenuItems1 = [
     {
-      title: 'Fee Collection',
-      description: 'Enhanced fee collection interface',
-      icon: <AttachMoneyIcon />,
-      path: '/fee-collection',
-      color: '#8b5cf6'
+      title: 'Fee Counter (POS)',
+      description: 'Point of sale collection, cashier shifts & receipts',
+      icon: <CreditCardIcon />,
+      path: '/fee-counter',
+      color: '#2563eb'
     },
     {
-      title: 'Family Fee Collection',
-      description: 'Collect fees for linked family students',
-      icon: <AttachMoneyIcon />,
-      path: '/family-fee-collection',
-      color: '#0ea5e9'
+      title: 'Fee Demands (Challans)',
+      description: 'Bulk generation and management of fee demands',
+      icon: <ReceiptIcon />,
+      path: '/fee-demands',
+      color: '#059669'
     },
     {
-      title: 'Fee Structure',
-      description: 'Create and manage fee structures',
+      title: 'Fee Catalog & Policies',
+      description: 'Fee heads, class rate cards & late fine rules',
       icon: <AccountBalanceIcon />,
-      path: '/fee-structure-management',
-      color: '#10b981'
+      path: '/fee-catalog',
+      color: '#4f46e5'
     },
     {
-      title: 'Fee Plans',
-      description: 'Create and manage individual student fee plans',
+      title: 'Concessions & Scholarships',
+      description: 'Discounts, sibling concessions & scholarships',
       icon: <DescriptionIcon />,
-      path: '/fee-plans',
-      color: '#06b6d4'
+      path: '/fee-concessions',
+      color: '#ec4899'
     },
     {
-      title: 'Generate Challans',
-      description: 'Generate fee challans for students based on fee plans',
-      icon: <ReceiptIcon />,
-      path: '/generate-challans',
-      color: '#3b82f6'
-    },
-    {
-      title: 'Challans List',
-      description: 'View and manage all generated challans',
-      icon: <ListIcon />,
-      path: '/challans',
-      color: '#6366f1'
-    },
-    {
-      title: 'Fee Defaulters',
-      description: 'View students with outstanding fees',
-      icon: <AttachMoneyIcon />,
-      path: '/fee-defaulters',
-      color: '#ef4444'
-    },
-    {
-      title: 'Fee Arrears',
-      description: 'Add and manage other payments/arrears without challans',
-      icon: <ReceiptIcon />,
-      path: '/fee-arrears',
-      color: '#f59e0b'
+      title: 'Student Financial Ledger',
+      description: 'Double-entry subledger statement & payment reversals',
+      icon: <AccountBalanceWallet />,
+      path: '/fee-ledger',
+      color: '#0d9488'
     }
   ];
 
@@ -3279,11 +3258,11 @@ const Header: React.FC<HeaderProps> = ({
               <MenuIcon />
             </HamburgerButton>
           )}
-            <AppLogo
-              type="button"
-              onClick={handleLogoClick}
-              title={isRestrictedRole ? 'Go to Home' : 'Go to Dashboard'}
-            >
+          <AppLogo
+            type="button"
+            onClick={handleLogoClick}
+            title={isRestrictedRole ? 'Go to Home' : 'Go to Dashboard'}
+          >
             {instituteProfile?.logo_url ? (
               <img src={instituteProfile.logo_url} alt="App Logo" />
             ) : (
@@ -3737,19 +3716,19 @@ const Header: React.FC<HeaderProps> = ({
                                     <BadgeIcon style={{ fontSize: 22 }} />
                                   ) : (
                                     fallbackLabel
-                                )}
-                              </SearchResultAvatar>
-                              <SearchResultText>
-                                <SearchResultTitleRow>
-                                  <SearchResultTitle>{item.title}</SearchResultTitle>
-                                  {item.type === 'student' && item.status && (
-                                    <SearchStatusBadge $status={item.status}>
-                                      {item.status}
-                                    </SearchStatusBadge>
                                   )}
-                                </SearchResultTitleRow>
-                                <SearchResultSubtitle>{item.subtitle}</SearchResultSubtitle>
-                              </SearchResultText>
+                                </SearchResultAvatar>
+                                <SearchResultText>
+                                  <SearchResultTitleRow>
+                                    <SearchResultTitle>{item.title}</SearchResultTitle>
+                                    {item.type === 'student' && item.status && (
+                                      <SearchStatusBadge $status={item.status}>
+                                        {item.status}
+                                      </SearchStatusBadge>
+                                    )}
+                                  </SearchResultTitleRow>
+                                  <SearchResultSubtitle>{item.subtitle}</SearchResultSubtitle>
+                                </SearchResultText>
                                 <SearchResultMeta>{item.meta}</SearchResultMeta>
                               </SearchResultButton>
                             );
@@ -3764,44 +3743,44 @@ const Header: React.FC<HeaderProps> = ({
           )}
           {(user || studentInfo || parentInfo) && <NotificationBell />}
           {appInputLock.isScreenLockEnvironment && (
-          <HeaderIconCircle
-            data-app-input-lock-control
-            role="button"
-            tabIndex={0}
-            onClick={() => {
-              if (appInputLock.isLockActive) appInputLock.openUnlockModal();
-              else appInputLock.lockApp();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
+            <HeaderIconCircle
+              data-app-input-lock-control
+              role="button"
+              tabIndex={0}
+              onClick={() => {
                 if (appInputLock.isLockActive) appInputLock.openUnlockModal();
                 else appInputLock.lockApp();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  if (appInputLock.isLockActive) appInputLock.openUnlockModal();
+                  else appInputLock.lockApp();
+                }
+              }}
+              aria-label={appInputLock.isLockActive ? 'Unlock app' : 'Lock app'}
+              aria-pressed={appInputLock.isLockActive}
+              title={
+                appInputLock.isLockActive
+                  ? 'Unlock app (same password as Settings)'
+                  : 'Lock app — blocks the rest of the app until you unlock; USB RFID scanner still works on the RFID page'
               }
-            }}
-            aria-label={appInputLock.isLockActive ? 'Unlock app' : 'Lock app'}
-            aria-pressed={appInputLock.isLockActive}
-            title={
-              appInputLock.isLockActive
-                ? 'Unlock app (same password as Settings)'
-                : 'Lock app — blocks the rest of the app until you unlock; USB RFID scanner still works on the RFID page'
-            }
-            style={
-              appInputLock.isLockActive
-                ? {
+              style={
+                appInputLock.isLockActive
+                  ? {
                     background: 'rgba(239, 68, 68, 0.22)',
                     borderColor: 'rgba(239, 68, 68, 0.42)',
                     color: '#b91c1c',
                   }
-                : {
+                  : {
                     background: 'rgba(34, 197, 94, 0.22)',
                     borderColor: 'rgba(34, 197, 94, 0.42)',
                     color: '#15803d',
                   }
-            }
-          >
-            {appInputLock.isLockActive ? <Lock /> : <LockOpen />}
-          </HeaderIconCircle>
+              }
+            >
+              {appInputLock.isLockActive ? <Lock /> : <LockOpen />}
+            </HeaderIconCircle>
           )}
           <HeaderIconCircle
             role="button"

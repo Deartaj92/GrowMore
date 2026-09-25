@@ -559,37 +559,7 @@ const LmsControlPanel: React.FC = () => {
           </CheckboxRow>
         </Card>
 
-        {/* Fees Tab */}
-        <Card $theme={theme}>
-          <CardHeader>
-            <CardTitle>
-              <AttachMoneyIcon /> Fees Tab
-            </CardTitle>
-            <ToggleSwitch $checked={settings.tabs.fees.enabled}>
-              <input
-                type="checkbox"
-                checked={settings.tabs.fees.enabled}
-                onChange={(e) => updateTab('fees', 'enabled', e.target.checked)}
-              />
-              <span />
-            </ToggleSwitch>
-          </CardHeader>
-          <FormGroup>
-            <Label>Custom Tab Label</Label>
-            <Input
-              value={settings.tabs.fees.label}
-              onChange={(e) => updateTab('fees', 'label', e.target.value)}
-            />
-          </FormGroup>
-          <CheckboxRow>
-            <input
-              type="checkbox"
-              checked={settings.tabs.fees.allow_online_payment}
-              onChange={(e) => updateTab('fees', 'allow_online_payment', e.target.checked)}
-            />
-            Allow Online Payment Submissions
-          </CheckboxRow>
-        </Card>
+
 
         {/* Feedback Tab */}
         <Card $theme={theme}>
