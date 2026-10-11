@@ -25,6 +25,8 @@ export const pathToPermissionKey: Record<string, string> = {
   '/students/certificates': 'students-certificates',
   '/students/cards': 'students-cards',
   '/misc/notebook-tags': 'notebook-tags',
+  '/misc/chair-tags': 'notebook-tags',
+  '/students/chair-tags': 'notebook-tags',
   '/student/:id': 'student-profile',
   '/students/profile/:id': 'student-profile',
   '/profile': 'teacher-profile',

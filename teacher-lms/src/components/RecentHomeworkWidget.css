@@ -1,0 +1,139 @@
+.homework-widget {
+  padding: 1.5rem;
+  border-radius: var(--radius-xl);
+}
+
+.homework-widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.95rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.homework-widget-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.homework-icon-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--indigo-500);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.homework-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.homework-subtitle {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.homework-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.homework-item-card {
+  padding: 1.15rem 1.25rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  transition: all var(--transition-fast);
+}
+
+.homework-item-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-medium);
+}
+
+.homework-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.homework-class-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--emerald-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.homework-due-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.homework-item-title {
+  margin: 0 0 6px 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.homework-item-desc {
+  margin: 0 0 12px 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.homework-progress-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.homework-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+}
+
+.submission-count-text {
+  color: var(--text-muted);
+}
+
+.submission-count-text strong {
+  color: var(--text-main);
+}
+
+.submission-pct-text {
+  font-weight: 700;
+  color: var(--indigo-500);
+}
+
+.homework-progress-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border-medium);
+  overflow: hidden;
+}
+
+.homework-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--emerald-500);
+  transition: width 0.4s ease;
+}

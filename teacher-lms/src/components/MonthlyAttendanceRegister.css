@@ -1,0 +1,793 @@
+/* =========================================================
+   GROWMORE TEACHER LMS - MONTHLY ATTENDANCE REGISTER STYLES
+   Executive Matrix Grid with Sticky Columns & Print Support
+   ========================================================= */
+
+.monthly-register-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  width: 100%;
+}
+
+/* =========================================================
+   1. TOOLBAR & CONTROLS STRIP
+   ========================================================= */
+.register-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1rem 1.35rem;
+  border-radius: var(--radius-lg);
+  flex-wrap: wrap;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  box-shadow: var(--card-shadow);
+}
+
+.toolbar-left-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.register-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.register-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.register-select {
+  min-width: 220px;
+}
+
+/* Month Stepper (Arrows + Month Pill) */
+.month-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--bg-pill-group);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  padding: 0.2rem;
+}
+
+.stepper-arrow-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.stepper-arrow-btn:hover {
+  background: var(--bg-card-solid);
+  color: var(--text-main);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.month-display-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0 0.75rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+.register-search-field {
+  flex: 1;
+  min-width: 190px;
+  max-width: 280px;
+}
+
+.toolbar-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  align-self: flex-end;
+  padding-bottom: 0.15rem;
+}
+
+.register-export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.52rem 1.15rem;
+  background: #2563eb;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+  transition: all var(--transition-fast);
+}
+
+.register-export-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.5);
+  transform: translateY(-1px);
+}
+
+.register-export-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.register-print-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.52rem 0.95rem;
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+/* =========================================================
+   2. KPI SUMMARY BAR
+   ========================================================= */
+.register-kpi-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.35rem;
+  border-radius: var(--radius-lg);
+  flex-wrap: wrap;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  box-shadow: var(--card-shadow);
+}
+
+/* =========================================================
+   3. LEGEND STRIP
+   ========================================================= */
+.register-legend-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 1.15rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+}
+
+.legend-items {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.legend-chip strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-xs);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.legend-chip.legend-p strong {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--emerald-600);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.legend-chip.legend-a strong {
+  background: rgba(244, 63, 94, 0.2);
+  color: var(--rose-500);
+  border: 1px solid rgba(244, 63, 94, 0.4);
+}
+
+.legend-chip.legend-l strong {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--amber-500);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.legend-chip.legend-lv strong {
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--indigo-500);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+}
+
+.legend-chip.legend-sun strong {
+  background: var(--bg-surface);
+  color: var(--text-dim);
+  border: 1px solid var(--border-subtle);
+}
+
+.legend-tip {
+  color: var(--text-dim);
+  font-size: 0.76rem;
+  font-style: italic;
+}
+
+/* =========================================================
+   4. MATRIX TABLE CONTAINER & SCROLL
+   ========================================================= */
+.matrix-table-container {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+.matrix-table-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+.register-matrix-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+/* Table Header Styles */
+.register-matrix-table thead th {
+  background: var(--bg-surface);
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-bottom: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-subtle);
+  padding: 0.35rem 0.25rem;
+  user-select: none;
+}
+
+.header-days-row th {
+  height: 28px;
+}
+
+.header-weekday-row th {
+  height: 22px;
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+
+/* Sticky Columns on the Left */
+.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 20;
+  background: var(--bg-card-row) !important;
+}
+
+.col-idx {
+  width: 34px;
+  min-width: 34px;
+  max-width: 34px;
+  left: 0;
+  border-right: 1px solid var(--border-subtle);
+}
+
+.col-roll {
+  width: 65px;
+  min-width: 65px;
+  left: 34px;
+  border-right: 1px solid var(--border-subtle);
+}
+
+.col-name {
+  width: 210px;
+  min-width: 210px;
+  left: 99px;
+  text-align: left !important;
+  padding-left: 0.75rem !important;
+  border-right: 2px solid var(--border-medium);
+  box-shadow: 4px 0 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Ensure sticky headers have higher z-index */
+thead th.sticky-col {
+  z-index: 30;
+  background: var(--bg-surface) !important;
+}
+
+/* Day Header Styles */
+.day-col-header {
+  width: 32px;
+  min-width: 32px;
+  max-width: 34px;
+}
+
+.day-number-text {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.col-sunday {
+  background: rgba(244, 63, 94, 0.08) !important;
+  color: var(--rose-500) !important;
+}
+
+.col-today {
+  box-shadow: inset 0 -2px 0 var(--emerald-500);
+}
+
+.col-today .day-number-text {
+  color: var(--emerald-500);
+}
+
+.weekday-letter-cell {
+  font-weight: 700;
+}
+
+/* Summary Columns on the Right */
+.summary-col {
+  width: 38px;
+  min-width: 38px;
+  font-size: 0.76rem;
+  border-left: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+
+.col-pct {
+  width: 62px;
+  min-width: 62px;
+  border-left: 1.5px solid var(--border-medium);
+}
+
+/* Table Body Styles */
+.student-matrix-row td {
+  border-bottom: 1px solid var(--bg-card-row-border);
+  border-right: 1px solid var(--border-subtle);
+  height: 48px;
+  padding: 0.25rem 0.2rem;
+  background: var(--bg-card-row);
+}
+
+.student-matrix-row:hover td {
+  background: var(--bg-card-hover);
+}
+
+.student-matrix-row:hover .sticky-col {
+  background: var(--bg-card-hover) !important;
+}
+
+/* Student Info in Matrix */
+.matrix-student-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.matrix-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-weight: 800;
+  font-size: 0.75rem;
+  color: var(--emerald-600);
+}
+
+.matrix-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.matrix-names-block {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.matrix-student-name {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.matrix-father-name {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.matrix-roll-pill {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--radius-xs);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Day Status Cells */
+.matrix-status-cell {
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  padding: 0 !important;
+  vertical-align: middle;
+}
+
+.matrix-status-cell:hover:not(.cell-sunday) {
+  background: rgba(16, 185, 129, 0.12) !important;
+  box-shadow: inset 0 0 0 1px var(--emerald-500);
+}
+
+.cell-sunday {
+  background: rgba(244, 63, 94, 0.04) !important;
+  cursor: default;
+}
+
+.cell-sun-tag {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--rose-500);
+  opacity: 0.6;
+}
+
+/* Badges inside Cells */
+.cell-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-xs);
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.badge-p {
+  background: rgba(16, 185, 129, 0.18);
+  color: var(--emerald-600);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.badge-a {
+  background: rgba(244, 63, 94, 0.18);
+  color: var(--rose-500);
+  border: 1px solid rgba(244, 63, 94, 0.35);
+}
+
+.badge-l {
+  background: rgba(245, 158, 11, 0.18);
+  color: var(--amber-500);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.badge-lv {
+  background: rgba(99, 102, 241, 0.18);
+  color: var(--indigo-500);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+.cell-empty-dash {
+  color: var(--text-dim);
+  opacity: 0.4;
+  font-size: 0.82rem;
+}
+
+.cell-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(16, 185, 129, 0.2);
+  border-top-color: var(--emerald-500);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Percentage Badges */
+.pct-badge {
+  display: inline-block;
+  padding: 0.2rem 0.45rem;
+  border-radius: var(--radius-xs);
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.pct-high {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--emerald-600);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.pct-mid {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--amber-500);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.pct-low {
+  background: rgba(244, 63, 94, 0.15);
+  color: var(--rose-500);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+.pct-none {
+  color: var(--text-dim);
+}
+
+/* =========================================================
+   5. CELL QUICK-EDIT MODAL / POPOVER
+   ========================================================= */
+.cell-popover-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.cell-popover-card {
+  width: min(100%, 360px);
+  padding: 1.35rem;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-medium);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  background: var(--bg-card-solid);
+  animation: popIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.popover-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1.15rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.popover-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.popover-date {
+  margin: 0.15rem 0 0 0;
+  font-size: 0.8rem;
+  color: var(--emerald-600);
+  font-weight: 600;
+}
+
+.popover-status-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.popover-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.popover-btn.p {
+  background: rgba(16, 185, 129, 0.14);
+  color: var(--emerald-600);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.popover-btn.p:hover,
+.popover-btn.p.active {
+  background: var(--emerald-500);
+  color: #ffffff;
+  box-shadow: 0 0 14px var(--emerald-glow);
+}
+
+.popover-btn.a {
+  background: rgba(244, 63, 94, 0.14);
+  color: var(--rose-500);
+  border-color: rgba(244, 63, 94, 0.3);
+}
+
+.popover-btn.a:hover,
+.popover-btn.a.active {
+  background: var(--rose-500);
+  color: #ffffff;
+  box-shadow: 0 0 14px var(--rose-glow);
+}
+
+.popover-btn.l {
+  background: rgba(245, 158, 11, 0.14);
+  color: var(--amber-500);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.popover-btn.l:hover,
+.popover-btn.l.active {
+  background: var(--amber-500);
+  color: #080c15;
+  box-shadow: 0 0 14px var(--amber-glow);
+}
+
+.popover-btn.lv {
+  background: rgba(99, 102, 241, 0.14);
+  color: var(--indigo-500);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.popover-btn.lv:hover,
+.popover-btn.lv.active {
+  background: var(--indigo-500);
+  color: #ffffff;
+  box-shadow: 0 0 14px var(--indigo-glow);
+}
+
+/* =========================================================
+   6. PRINT STYLES & REPORT SHEET
+   ========================================================= */
+.print-only-header,
+.print-signatures-block {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: landscape;
+    margin: 10mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 8pt !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .monthly-register-container {
+    gap: 0.5rem;
+  }
+
+  .print-only-header {
+    display: flex !important;
+    flex-direction: column;
+    text-align: center;
+    border-bottom: 2px solid #000;
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+  }
+
+  .print-school-name {
+    font-size: 14pt;
+    font-weight: 800;
+    margin: 0;
+  }
+
+  .print-report-title {
+    font-size: 10pt;
+    font-weight: 700;
+    margin: 3px 0;
+  }
+
+  .print-meta-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 8pt;
+    margin-top: 4px;
+  }
+
+  .matrix-table-container {
+    border: 1px solid #000 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+  }
+
+  .register-matrix-table thead th,
+  .student-matrix-row td {
+    border: 1px solid #999 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    height: 24px !important;
+    font-size: 7.5pt !important;
+  }
+
+  .sticky-col {
+    position: static !important;
+    box-shadow: none !important;
+  }
+
+  .matrix-avatar {
+    display: none !important;
+  }
+
+  .print-signatures-block {
+    display: flex !important;
+    justify-content: space-between;
+    margin-top: 25px;
+    padding-top: 10px;
+  }
+
+  .sig-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 200px;
+    font-size: 8pt;
+    font-weight: 700;
+  }
+
+  .sig-line {
+    width: 100%;
+    border-bottom: 1px solid #000;
+    margin-bottom: 4px;
+  }
+}

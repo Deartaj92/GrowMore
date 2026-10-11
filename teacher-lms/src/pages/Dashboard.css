@@ -1,0 +1,349 @@
+.teacher-dashboard-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-bottom: 2.5rem;
+}
+
+/* EXECUTIVE HERO BANNER */
+.dashboard-hero-banner {
+  padding: 1.35rem 1.6rem;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--card-shadow);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-banner-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 780px;
+}
+
+.hero-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.hero-greeting {
+  margin: 0;
+  font-size: 1.55rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.hero-context-line {
+  font-size: 0.86rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.hero-context-line strong {
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.hero-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.hero-tag-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+}
+
+.hero-tag-item.highlight {
+  color: var(--emerald-500);
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.25);
+  font-weight: 700;
+}
+
+.hero-banner-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* PUBLISHED EXAM ALERT BANNER */
+.dashboard-exam-alert {
+  padding: 0.95rem 1.35rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1.5px solid var(--emerald-500);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* STATS GRID */
+.dashboard-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.85rem;
+}
+
+/* TWO-COLUMN WORKSPACE GRID */
+.dashboard-workspace-grid {
+  display: grid;
+  grid-template-columns: 1fr 370px;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+.workspace-main-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.workspace-side-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ASSIGNED CLASSES SIDE CARD */
+.assigned-classes-card {
+  padding: 1.5rem;
+  border-radius: var(--radius-xl);
+}
+
+.side-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.side-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.side-card-icon-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--indigo-500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.side-card-icon-badge.emerald {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--emerald-500);
+}
+
+.side-card-title {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.side-card-subtitle {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.assigned-classes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.assigned-class-item {
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  transition: all var(--transition-fast);
+}
+
+.assigned-class-item:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-medium);
+}
+
+.assigned-class-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.class-title-badge {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.assigned-class-subject {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.assigned-class-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.student-count-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  color: var(--text-dim);
+}
+
+/* ATTENDANCE COMPLIANCE CARD */
+.attendance-pulse-card {
+  padding: 1.5rem;
+  border-radius: var(--radius-xl);
+}
+
+.compliance-pulse-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pulse-metric-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.pulse-metric-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  text-align: center;
+}
+
+.pulse-val {
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.pulse-val.text-emerald { color: var(--emerald-500); }
+.pulse-val.text-indigo { color: var(--indigo-500); }
+
+.pulse-lbl {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-top: 3px;
+}
+
+.compliance-note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* RESPONSIVE */
+@media (max-width: 1180px) {
+  .dashboard-workspace-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .teacher-dashboard-page {
+    gap: 1.15rem;
+  }
+
+  .dashboard-hero-banner {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1.25rem 1rem;
+    gap: 1rem;
+    border-radius: var(--radius-lg);
+  }
+
+  .hero-greeting {
+    font-size: 1.35rem;
+  }
+
+  .hero-banner-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .hero-banner-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .dashboard-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .assigned-classes-card,
+  .attendance-pulse-card {
+    padding: 1.15rem 1rem;
+    border-radius: var(--radius-lg);
+  }
+}
+
+@media (max-width: 420px) {
+  .dashboard-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-tags-row {
+    gap: 6px;
+  }
+
+  .hero-tag-item {
+    font-size: 0.72rem;
+    padding: 3px 8px;
+  }
+}

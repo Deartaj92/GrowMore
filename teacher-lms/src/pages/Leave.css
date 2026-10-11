@@ -1,0 +1,83 @@
+/* =========================================================
+   GROWMORE TEACHER LMS - LEAVE REQUESTS MODULE
+   Executive Minimalistic Leave Manager (Strictly Flat Solid Colors)
+   ========================================================= */
+
+.leave-module-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  padding-bottom: 3rem;
+}
+
+.leave-requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.leave-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--card-shadow);
+  padding: 1.25rem 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.leave-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.leave-requester-info {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.leave-requester-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.leave-period-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--indigo-500);
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.leave-reason-text {
+  font-size: 0.88rem;
+  color: var(--text-main);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.leave-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}

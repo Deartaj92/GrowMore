@@ -45,6 +45,7 @@ import {
   QrCodeScanner as QrCodeScannerIcon,
   QrCode2 as QrCode2Icon,
   CreditCard as CreditCardIcon,
+  EventSeat as EventSeatIcon,
 } from '@mui/icons-material';
 
 export interface MenuItem {
@@ -147,6 +148,13 @@ export const studentSecondaryMenuItems: MenuItem[] = [
     icon: React.createElement(BadgeIcon),
     path: '/students/cards',
     color: '#8b5cf6'
+  },
+  {
+    title: 'Chair Tags',
+    description: 'Generate and print chair/desk tags for examinations',
+    icon: React.createElement(EventSeatIcon),
+    path: '/misc/chair-tags',
+    color: '#0ea5e9'
   }
 ];
 
@@ -158,6 +166,13 @@ export const miscMenuItems: MenuItem[] = [
     icon: React.createElement(AssignmentIcon),
     path: '/misc/notebook-tags',
     color: '#3b82f6'
+  },
+  {
+    title: 'Chair Tags',
+    description: 'Generate and print chair/desk tags for examinations',
+    icon: React.createElement(EventSeatIcon),
+    path: '/misc/chair-tags',
+    color: '#8b5cf6'
   }
 ];
 

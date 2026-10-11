@@ -1,0 +1,1363 @@
+/* =========================================================
+   GROWMORE TEACHER LMS - ATTENDANCE MODULE COMPREHENSIVE STYLES
+   Full Support for Executive Dark Mode & Crisp Clean Light Mode
+   ========================================================= */
+
+.attendance-module-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  padding-bottom: 6.5rem; /* Ensure space for sticky floating dock */
+  position: relative;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* =========================================================
+   1. STREAMLINED EXECUTIVE HEADER & TAB NAVIGATION
+   ========================================================= */
+.attendance-header {
+  border-radius: var(--radius-lg);
+  padding: 1.15rem 1.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--card-shadow);
+}
+
+.att-header-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.att-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.att-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.att-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-pill);
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--emerald-500);
+}
+
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--emerald-500);
+  box-shadow: 0 0 8px var(--emerald-500);
+  animation: attPulse 2s infinite ease-in-out;
+}
+
+@keyframes attPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.att-section-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-pill);
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--indigo-500);
+}
+
+.att-heading {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--text-main);
+  line-height: 1.25;
+}
+
+.att-subtext {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+/* Tabs Segmented Switcher (Adaptive Light & Dark) */
+.att-tabs-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--bg-surface);
+  padding: 0.3rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+}
+
+.att-tab-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.05rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.att-tab-link:hover {
+  color: var(--text-main);
+  background: var(--status-btn-hover);
+}
+
+.att-tab-link.active {
+  background: var(--bg-card-solid);
+  color: var(--emerald-600);
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  font-weight: 700;
+}
+
+/* =========================================================
+   2. TOOLBAR / FILTER & BULK CONTROLS STRIP
+   ========================================================= */
+.att-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1rem 1.35rem;
+  border-radius: var(--radius-lg);
+  flex-wrap: wrap;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+}
+
+.toolbar-controls-grid {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.toolbar-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.toolbar-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.label-icon {
+  flex-shrink: 0;
+}
+
+/* Custom Styled Select Dropdown (Adaptive) */
+.select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.toolbar-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: var(--select-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  color: var(--input-text);
+  padding: 0.55rem 2.2rem 0.55rem 0.95rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  transition: all var(--transition-fast);
+  min-width: 230px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2310b981' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+}
+
+.toolbar-select:hover {
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.toolbar-select:focus {
+  border-color: var(--emerald-500);
+  box-shadow: 0 0 0 2px var(--emerald-glow);
+}
+
+.toolbar-select option {
+  background: var(--bg-card-solid);
+  color: var(--text-main);
+  padding: 0.5rem;
+}
+
+/* Date Field Wrapper */
+.date-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.toolbar-date-input {
+  background-color: var(--select-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  color: var(--input-text);
+  padding: 0.55rem 0.85rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  color-scheme: var(--date-scheme);
+}
+
+.toolbar-date-input:focus {
+  border-color: var(--emerald-500);
+  box-shadow: 0 0 0 2px var(--emerald-glow);
+}
+
+/* Search Field Wrapper */
+.search-expand {
+  flex: 1;
+  min-width: 220px;
+  max-width: 340px;
+}
+
+.search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-lens {
+  position: absolute;
+  left: 0.85rem;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+.toolbar-search-input {
+  width: 100%;
+  background-color: var(--select-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  color: var(--input-text);
+  padding: 0.55rem 2rem 0.55rem 2.3rem;
+  font-size: 0.86rem;
+  font-family: inherit;
+  outline: none;
+  transition: all var(--transition-fast);
+}
+
+.toolbar-search-input:focus {
+  border-color: var(--emerald-500);
+  box-shadow: 0 0 0 2px var(--emerald-glow);
+}
+
+.toolbar-search-input::placeholder {
+  color: var(--text-dim);
+  opacity: 0.8;
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 0.65rem;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
+}
+
+.search-clear-btn:hover {
+  color: var(--text-main);
+}
+
+/* Bulk Actions Group */
+.toolbar-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  align-self: flex-end;
+  padding-bottom: 0.15rem;
+}
+
+.actions-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin-right: 0.25rem;
+}
+
+.bulk-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.bulk-action-btn.bulk-present {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: var(--emerald-600);
+}
+
+.bulk-action-btn.bulk-present:hover {
+  background: var(--emerald-500);
+  color: #ffffff;
+  box-shadow: 0 0 14px var(--emerald-glow);
+}
+
+.bulk-action-btn.bulk-absent {
+  background: rgba(244, 63, 94, 0.15);
+  border-color: rgba(244, 63, 94, 0.35);
+  color: var(--rose-500);
+}
+
+.bulk-action-btn.bulk-absent:hover {
+  background: var(--rose-500);
+  color: #ffffff;
+  box-shadow: 0 0 14px var(--rose-glow);
+}
+
+.bulk-action-btn.bulk-reset {
+  background: var(--bg-surface);
+  border-color: var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.bulk-action-btn.bulk-reset:hover {
+  background: var(--border-medium);
+  color: var(--text-main);
+}
+
+/* =========================================================
+   3. STATUS NOTIFICATION ALERTS
+   ========================================================= */
+.att-alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.att-alert-banner.success {
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: var(--emerald-600);
+}
+
+.att-alert-banner.error {
+  background: rgba(244, 63, 94, 0.14);
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  color: var(--rose-500);
+}
+
+/* =========================================================
+   4. KPI COUNTERS RIBBON (Adaptive)
+   ========================================================= */
+.attendance-kpi-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.35rem;
+  border-radius: var(--radius-lg);
+  flex-wrap: wrap;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  box-shadow: var(--card-shadow);
+}
+
+.kpi-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-chip);
+  border: 1px solid var(--border-subtle);
+}
+
+.kpi-chip.total {
+  border-left: 3.5px solid #94a3b8;
+}
+
+.kpi-chip.present {
+  border-left: 3.5px solid var(--emerald-500);
+}
+
+.kpi-chip.absent {
+  border-left: 3.5px solid var(--rose-500);
+}
+
+.kpi-chip.late {
+  border-left: 3.5px solid var(--amber-500);
+}
+
+.kpi-chip.leave {
+  border-left: 3.5px solid var(--indigo-500);
+}
+
+.kpi-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.kpi-val {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-main);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.kpi-sub {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--emerald-600);
+  background: rgba(16, 185, 129, 0.15);
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--radius-xs);
+}
+
+.kpi-save-action {
+  margin-left: auto;
+}
+
+.att-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.35rem;
+  border-radius: var(--radius-md);
+  background: var(--emerald-600);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.86rem;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.att-save-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
+}
+
+.att-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* =========================================================
+   5. STUDENT ROSTER LIST & CARDS (Adaptive Light & Dark)
+   ========================================================= */
+.roster-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.student-roster-item {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.2fr) minmax(340px, 1.1fr) minmax(200px, 0.8fr);
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-card-row);
+  border: 1px solid var(--bg-card-row-border);
+  border-left-width: 4px;
+  transition: all var(--transition-fast);
+  box-shadow: var(--card-shadow);
+}
+
+.student-roster-item:hover {
+  border-color: var(--border-medium);
+  box-shadow: var(--card-shadow-hover);
+  transform: translateY(-1px);
+}
+
+/* Status left-border states */
+.student-roster-item.status--present {
+  border-left-color: var(--emerald-500);
+}
+
+.student-roster-item.status--absent {
+  border-left-color: var(--rose-500);
+}
+
+.student-roster-item.status--late {
+  border-left-color: var(--amber-500);
+}
+
+.student-roster-item.status--leave {
+  border-left-color: var(--indigo-500);
+}
+
+/* Student Info Column */
+.student-info-col {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.student-index-num {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--text-dim);
+  min-width: 26px;
+  opacity: 0.85;
+}
+
+.student-avatar-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+  border: 2px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.student-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.student-avatar-fallback {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--emerald-600);
+}
+
+.student-names-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.student-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.student-full-name {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
+.student-roll-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-xs);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+}
+
+.student-father-name {
+  font-size: 0.76rem;
+  color: var(--text-dim);
+}
+
+/* 4-State Pill Toggle Group (Adaptive) */
+.status-selector-col {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.35rem;
+  background: var(--bg-pill-group);
+  padding: 0.3rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+}
+
+.status-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.4rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--status-btn-color);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.status-pill-btn:hover {
+  color: var(--text-main);
+  background: var(--status-btn-hover);
+}
+
+/* Active Status States */
+.status-pill-btn.present.active {
+  background: var(--emerald-500);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 16px var(--emerald-glow);
+}
+
+.status-pill-btn.absent.active {
+  background: var(--rose-500);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 16px var(--rose-glow);
+}
+
+.status-pill-btn.late.active {
+  background: var(--amber-500);
+  color: #080c15; /* High contrast dark text on yellow */
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 16px var(--amber-glow);
+}
+
+.status-pill-btn.leave.active {
+  background: var(--indigo-500);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 16px var(--indigo-glow);
+}
+
+/* Inline Remarks Input (Adaptive) */
+.remarks-col {
+  width: 100%;
+}
+
+.remarks-input {
+  width: 100%;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-pill-group);
+  border: 1px solid var(--input-border);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.82rem;
+  transition: all var(--transition-fast);
+}
+
+.remarks-input:focus {
+  outline: none;
+  border-color: var(--emerald-500);
+  background: var(--input-bg);
+  box-shadow: 0 0 0 2px var(--emerald-glow);
+}
+
+.remarks-input::placeholder {
+  color: var(--text-dim);
+  opacity: 0.75;
+}
+
+/* Empty & Loader States */
+.roster-empty-panel,
+.roster-loader-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3.5rem 2rem;
+  border-radius: var(--radius-xl);
+  text-align: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+}
+
+.empty-roster-icon {
+  color: var(--text-dim);
+  opacity: 0.6;
+}
+
+.roster-empty-panel h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.roster-empty-panel p {
+  font-size: 0.86rem;
+  color: var(--text-dim);
+  max-width: 420px;
+  margin: 0;
+}
+
+/* =========================================================
+   6. FLOATING BOTTOM DOCK / SAVE ACTION BAR (Adaptive)
+   ========================================================= */
+.sticky-bottom-bar {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(92%, 960px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 0.85rem 1.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--sticky-bg);
+  border: 1px solid var(--sticky-border);
+  box-shadow: var(--sticky-shadow);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  z-index: 100;
+}
+
+.sticky-info-text {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  font-size: 0.86rem;
+}
+
+.section-tag-pill {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.date-tag-pill {
+  font-weight: 600;
+  color: var(--emerald-600);
+}
+
+.summary-text-pill {
+  color: var(--text-muted);
+}
+
+.summary-text-pill strong {
+  color: var(--text-main);
+}
+
+/* =========================================================
+   7. SECTION HISTORY LOG (TAB 2)
+   ========================================================= */
+.attendance-history-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.history-header-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius-lg);
+  flex-wrap: wrap;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--card-shadow);
+}
+
+.history-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.history-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.history-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+/* History Interactive Filter Toolbar */
+.history-toolbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.hist-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.hist-filter-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.hist-select {
+  min-width: 170px;
+  padding: 0.45rem 2rem 0.45rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.hist-select-sm {
+  min-width: 130px;
+  padding: 0.45rem 1.8rem 0.45rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.hist-date-input {
+  padding: 0.45rem 0.65rem;
+  font-size: 0.82rem;
+}
+
+.hist-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.hist-search-icon {
+  position: absolute;
+  left: 0.65rem;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+.hist-search-input {
+  padding: 0.45rem 0.75rem 0.45rem 1.85rem;
+  font-size: 0.82rem;
+  width: 170px;
+  transition: width var(--transition-normal);
+}
+
+.hist-search-input:focus {
+  width: 220px;
+}
+
+.history-table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  padding: 0.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--card-shadow);
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.88rem;
+}
+
+.history-table th {
+  padding: 0.85rem 1.15rem;
+  color: var(--text-dim);
+  background: var(--bg-surface);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.history-table td {
+  padding: 0.95rem 1.15rem;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-main);
+}
+
+.history-table tr:hover td {
+  background: var(--status-btn-hover);
+}
+
+/* =========================================================
+   8. TEACHER SELF CHECK-IN LOG (TAB 3)
+   ========================================================= */
+.teacher-self-log-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.self-log-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 1.5rem 1.85rem;
+  border-radius: var(--radius-xl);
+  flex-wrap: wrap;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+}
+
+.self-log-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.self-avatar-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 2px solid var(--emerald-500);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--emerald-600);
+  box-shadow: 0 0 20px var(--emerald-glow);
+}
+
+.self-avatar-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.self-teacher-name {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.self-teacher-role {
+  font-size: 0.88rem;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.self-stats-box {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  background: var(--bg-surface);
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+}
+
+.self-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 65px;
+}
+
+.self-stat-num {
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
+.self-stat-lbl {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.self-table-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.35rem;
+  border-radius: var(--radius-xl);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+}
+
+.self-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.self-table-header h4 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+/* =========================================================
+   9. MOBILE & TABLET RESPONSIVE EXCELLENCE
+   ========================================================= */
+@media (max-width: 1024px) {
+  .student-roster-item {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .status-selector-col {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .attendance-module-page {
+    gap: 1rem;
+    padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px)); /* Safe clearance for both mobile dock and save bar */
+  }
+
+  /* Header */
+  .attendance-header {
+    padding: 1rem;
+  }
+
+  .att-header-main {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+  }
+
+  .att-heading {
+    font-size: 1.15rem;
+  }
+
+  .att-subtext {
+    font-size: 0.78rem;
+  }
+
+  .att-tabs-nav {
+    width: 100%;
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0.25rem;
+    border-radius: var(--radius-md);
+    gap: 4px;
+  }
+
+  .att-tabs-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .att-tab-link {
+    min-width: 105px;
+    justify-content: center;
+    font-size: 0.78rem;
+    padding: 0.5rem 0.5rem;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Toolbar */
+  .att-toolbar {
+    padding: 0.85rem;
+    gap: 0.85rem;
+  }
+
+  .toolbar-controls-grid {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  .toolbar-field {
+    width: 100%;
+  }
+
+  .select-wrapper,
+  .date-wrapper,
+  .search-wrapper {
+    width: 100%;
+  }
+
+  .toolbar-select,
+  .toolbar-date-input,
+  .toolbar-search-input {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-height: 44px;
+    font-size: 0.88rem;
+  }
+
+  .search-expand {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .toolbar-actions-group {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 6px;
+    align-self: stretch;
+    padding-bottom: 0;
+  }
+
+  .actions-label {
+    display: none;
+  }
+
+  .bulk-action-btn {
+    justify-content: center;
+    min-height: 42px;
+    padding: 0.5rem;
+    font-size: 0.78rem;
+  }
+
+  /* KPI Counters Grid */
+  .attendance-kpi-bar {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 0.85rem;
+  }
+
+  .kpi-chip {
+    padding: 0.45rem 0.65rem;
+    justify-content: space-between;
+  }
+
+  .kpi-chip.total {
+    grid-column: span 2;
+  }
+
+  .kpi-val {
+    font-size: 1.15rem;
+  }
+
+  .kpi-save-action {
+    grid-column: span 2;
+    width: 100%;
+    margin-top: 0.25rem;
+  }
+
+  .att-save-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  /* Student Roster Card Mobile */
+  .student-roster-item {
+    padding: 0.85rem;
+    gap: 0.75rem;
+    border-radius: var(--radius-md);
+  }
+
+  .student-info-col {
+    gap: 0.75rem;
+  }
+
+  .student-avatar-box {
+    width: 38px;
+    height: 38px;
+  }
+
+  .student-full-name {
+    font-size: 0.92rem;
+  }
+
+  .status-selector-col {
+    width: 100%;
+    padding: 3px;
+    gap: 3px;
+  }
+
+  .status-pill-btn {
+    font-size: 0.74rem;
+    padding: 0.5rem 0.25rem;
+    min-height: 40px;
+    gap: 4px;
+  }
+
+  .remarks-input {
+    min-height: 40px;
+    font-size: 0.84rem;
+  }
+
+  /* Floating Bottom Dock on Mobile */
+  .sticky-bottom-bar {
+    position: fixed;
+    bottom: calc(64px + 10px + env(safe-area-inset-bottom, 0px));
+    left: 10px;
+    right: 10px;
+    width: auto;
+    transform: none;
+    border-radius: var(--radius-md);
+    padding: 0.65rem 0.85rem;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    z-index: 95;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  }
+
+  .sticky-info-text {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    font-size: 0.75rem;
+  }
+
+  .sticky-info-text .text-dim,
+  .sticky-info-text .date-tag-pill {
+    display: none;
+  }
+
+  .section-tag-pill {
+    font-size: 0.82rem;
+  }
+
+  .summary-text-pill {
+    font-size: 0.74rem;
+  }
+
+  .sticky-bottom-bar .btn-lg {
+    padding: 0.55rem 0.95rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* History & Self-Log Tabs Mobile */
+  .history-header-card {
+    padding: 1rem;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .history-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .history-table {
+    min-width: 520px;
+  }
+
+  .self-log-hero {
+    padding: 1.15rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+  }
+
+  .self-stats-box {
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .self-stat-item {
+    min-width: 0;
+  }
+}
+
+/* ULTRA-COMPACT PHONES (<400px: iPhone SE, Galaxy A) */
+@media (max-width: 400px) {
+  .status-pill-btn {
+    font-size: 0.68rem;
+    padding: 0.42rem 0.15rem;
+    gap: 2px;
+  }
+
+  .status-pill-btn svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .student-full-name {
+    font-size: 0.88rem;
+  }
+
+  .student-roll-badge {
+    font-size: 0.68rem;
+    padding: 0.1rem 0.35rem;
+  }
+
+  .toolbar-actions-group .bulk-action-btn span {
+    font-size: 0.72rem;
+  }
+}

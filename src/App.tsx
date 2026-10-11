@@ -101,6 +101,7 @@ import DiaryAnalytics from './components/DiaryAnalytics';
 import GeneralMessagePage from './pages/GeneralMessagePage';
 import StudentCardsPage from './pages/StudentCardsPage';
 import NotebookTagGenerator from './pages/NotebookTagGenerator';
+import ChairTagGenerator from './pages/ChairTagGenerator';
 import StudentCertificateGenerator from './components/StudentCertificateGenerator';
 // Fine Management Components
 import FineDashboard from './components/FineDashboard';
@@ -333,6 +334,28 @@ const App: React.FC = () => {
                                   requiredPermission="notebook-tags"
                                 >
                                   <NotebookTagGenerator />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="misc/chair-tags"
+                              element={
+                                <ProtectedRoute
+                                  requiredPermission="notebook-tags"
+                                >
+                                  <ChairTagGenerator />
+                                </ProtectedRoute>
+                              }
+                            />
+
+                            <Route
+                              path="students/chair-tags"
+                              element={
+                                <ProtectedRoute
+                                  requiredPermission="notebook-tags"
+                                >
+                                  <ChairTagGenerator />
                                 </ProtectedRoute>
                               }
                             />

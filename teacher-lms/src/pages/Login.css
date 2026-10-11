@@ -1,0 +1,413 @@
+/* =========================================================
+   GROWMORE TEACHER LMS - EXECUTIVE FACULTY LOGIN
+   Strictly Flat Solid Colors · Clean Modern SaaS Aesthetic
+   ========================================================= */
+
+.teacher-login-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  background-color: var(--bg-app);
+  position: relative;
+  overflow-y: auto;
+}
+
+/* Two-Panel Executive Container */
+.teacher-login-container {
+  width: 100%;
+  max-width: 980px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  overflow: hidden;
+  position: relative;
+  z-index: 10;
+}
+
+@media (max-width: 860px) {
+  .teacher-login-container {
+    grid-template-columns: 1fr;
+    max-width: 480px;
+  }
+}
+
+/* LEFT: INSTITUTIONAL SHOWCASE PANEL */
+.login-showcase-panel {
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-subtle);
+  padding: 2.75rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+@media (max-width: 860px) {
+  .login-showcase-panel {
+    display: none;
+  }
+}
+
+.login-showcase-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.login-brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.login-brand-title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.login-brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--emerald-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.login-showcase-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.login-showcase-headline {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.login-showcase-sub {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* Feature Showcase Items */
+.login-features-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.login-feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.login-feature-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--emerald-500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.login-feature-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.login-feature-title {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.login-feature-desc {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+/* Showcase Footer */
+.login-showcase-footer {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.login-institution-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.login-security-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--emerald-500);
+}
+
+/* RIGHT: AUTHENTICATION FORM PANEL */
+.login-form-panel {
+  padding: 3rem 2.75rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+@media (max-width: 600px) {
+  .login-form-panel {
+    padding: 2.25rem 1.5rem;
+  }
+}
+
+/* Mobile Brand Header */
+.login-mobile-header {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 860px) {
+  .login-mobile-header {
+    display: flex;
+  }
+}
+
+.login-form-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.login-form-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+}
+
+.login-form-subtitle {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Error Banner */
+.login-error-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/* Form */
+.teacher-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
+.input-group-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon-box {
+  position: absolute;
+  left: 14px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transition: color var(--transition-fast);
+}
+
+.form-input {
+  width: 100%;
+  padding: 11px 14px 11px 42px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.form-input::placeholder {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.form-input:focus {
+  border-color: var(--emerald-500);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.form-input:focus ~ .input-icon-box {
+  color: var(--emerald-500);
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color var(--transition-fast);
+}
+
+.password-toggle-btn:hover {
+  color: var(--text-main);
+}
+
+/* Options Row */
+.login-options-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.78rem;
+}
+
+.login-remember-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  font-weight: 500;
+}
+
+.login-remember-checkbox {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--emerald-500);
+  cursor: pointer;
+}
+
+.login-help-link {
+  color: var(--text-dim);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color var(--transition-fast);
+}
+
+.login-help-link:hover {
+  color: var(--emerald-500);
+}
+
+/* Submit Button */
+.login-submit-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* Security Note & Footer */
+.login-footer-security {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+.login-portal-back-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+  margin-top: 0.25rem;
+  text-align: center;
+}
+
+.login-portal-back-link:hover {
+  color: var(--text-main);
+}

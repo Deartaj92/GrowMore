@@ -7,7 +7,7 @@ import { useToast } from '../components/useToast';
 import { broadcastStudentSessionChange } from '../utils/studentSessionEvents';
 import { pushNotificationService } from '../services/pushNotificationService';
 import { hasPermission } from '../services/permissionService';
-import { Visibility, VisibilityOff, School as SchoolIcon, DarkMode as DarkModeIcon, LightMode as LightModeIcon, FamilyRestroom, Person, ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import { Visibility, VisibilityOff, School as SchoolIcon, DarkMode as DarkModeIcon, LightMode as LightModeIcon, FamilyRestroom, Person, MenuBook as TeacherIcon, ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import { ThemeContext, darkTheme, lightTheme } from '../components/Layout';
 import {
   clayCardStyle,
@@ -150,19 +150,19 @@ const ThemeToggle = styled.button`
 
 const LoginCard = styled.form`
   ${clayCardStyle}
-  padding: 2.2rem 2rem 1.8rem 2rem;
+  padding: 2.2rem 2.2rem 2rem 2.2rem;
   display: flex;
   flex-direction: column;
-  gap: 1.15rem;
+  gap: 1.25rem;
   width: 100%;
-  max-width: 430px;
+  max-width: 480px;
   margin: 0 auto;
   box-sizing: border-box;
 
   @media (max-width: 480px) {
-    padding: 1.6rem 1.15rem 1.4rem 1.15rem;
+    padding: 1.6rem 1.25rem 1.4rem 1.25rem;
     gap: 1rem;
-    border-radius: 12px;
+    border-radius: 14px;
   }
 
   @media (max-width: 360px) {
@@ -332,35 +332,31 @@ const RoleSubtitle = styled.p`
 
 const BlocksGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
   width: 100%;
   box-sizing: border-box;
 
-  @media (max-width: 420px) {
-    gap: 7px;
-  }
-
-  @media (max-width: 340px) {
-    gap: 5px;
+  @media (max-width: 480px) {
+    gap: 10px;
   }
 `;
 
 const RoleBlockButton = styled.button<{ $color: string; $glow: string }>`
   background: ${({ theme }) =>
     isDark(theme)
-      ? 'linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, rgba(30, 36, 50, 0.75) 100%)'
+      ? 'rgba(255, 255, 255, 0.03)'
       : 'linear-gradient(145deg, #ffffff 0%, #f6f8fc 100%)'};
   border: 1.5px solid ${({ theme }) =>
     isDark(theme) ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.95)'};
-  border-radius: 12px;
-  padding: 14px 6px 12px 6px;
-  min-height: 102px;
+  border-radius: 14px;
+  padding: 18px 14px 16px 14px;
+  min-height: 124px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 8px;
   cursor: pointer;
   position: relative;
   overflow: hidden;
@@ -368,7 +364,7 @@ const RoleBlockButton = styled.button<{ $color: string; $glow: string }>`
   transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: ${({ theme }) =>
     isDark(theme)
-      ? '0 4px 14px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06)'
+      ? '0 4px 14px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
       : '0 4px 12px rgba(15, 23, 42, 0.05), inset 0 1px 0 #ffffff'};
 
   &:before {
@@ -379,91 +375,78 @@ const RoleBlockButton = styled.button<{ $color: string; $glow: string }>`
     right: 0;
     height: 3px;
     background: ${({ $color }) => $color};
-    opacity: 0;
-    transition: opacity 0.2s ease;
+    opacity: 0.65;
+    transition: opacity 0.2s ease, height 0.2s ease;
   }
 
   &:hover {
-    transform: translateY(-3px);
+    transform: translateY(-2px);
     border-color: ${({ $color }) => `${$color}90`};
+    background: ${({ theme, $color }) =>
+      isDark(theme) ? `${$color}10` : `${$color}0a`};
     box-shadow: ${({ theme, $glow }) =>
       isDark(theme)
-        ? `0 8px 20px rgba(0, 0, 0, 0.45), 0 0 16px ${$glow}`
-        : `0 8px 18px rgba(37, 99, 235, 0.12), 0 0 12px ${$glow}`};
+        ? `0 10px 24px rgba(0, 0, 0, 0.45), 0 0 16px ${$glow}`
+        : `0 8px 20px rgba(37, 99, 235, 0.12), 0 0 12px ${$glow}`};
 
     &:before {
       opacity: 1;
+      height: 4px;
     }
 
     .role-icon-box {
-      transform: scale(1.08);
-      background: ${({ $color }) => `${$color}22`};
+      transform: scale(1.06);
+      background: ${({ $color }) => `${$color}25`};
     }
   }
 
   &:active {
-    transform: translateY(-1px) scale(0.98);
+    transform: scale(0.98);
   }
 
-  @media (max-width: 420px) {
-    padding: 12px 4px 10px 4px;
-    min-height: 94px;
-    border-radius: 10px;
-    gap: 5px;
-  }
-
-  @media (max-width: 340px) {
-    padding: 10px 2px 8px 2px;
-    min-height: 88px;
-    border-radius: 8px;
-    gap: 4px;
+  @media (max-width: 480px) {
+    padding: 14px 10px 12px 10px;
+    min-height: 110px;
+    border-radius: 12px;
+    gap: 6px;
   }
 `;
 
 const RoleIconBox = styled.div<{ $color: string }>`
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: ${({ $color }) => `${$color}15`};
+  background: ${({ $color }) => `${$color}18`};
   color: ${({ $color }) => $color};
   transition: all 0.22s ease;
 
   svg {
-    font-size: 22px;
+    font-size: 26px;
   }
 
-  @media (max-width: 420px) {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
+  @media (max-width: 480px) {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
     svg {
-      font-size: 19px;
-    }
-  }
-
-  @media (max-width: 340px) {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    svg {
-      font-size: 17px;
+      font-size: 22px;
     }
   }
 `;
 
 const RoleName = styled.span`
-  font-size: clamp(0.82rem, 2.5vw, 0.95rem);
+  font-size: clamp(0.94rem, 2.8vw, 1.05rem);
   font-weight: 700;
   color: ${({ theme }) => theme.TEXT_PRIMARY};
   letter-spacing: -0.01em;
-  line-height: 1.1;
+  line-height: 1.15;
 `;
 
 const RoleDescription = styled.span`
-  font-size: clamp(0.64rem, 1.9vw, 0.72rem);
+  font-size: clamp(0.72rem, 2.2vw, 0.8rem);
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   font-weight: 500;
   text-align: center;
@@ -471,7 +454,7 @@ const RoleDescription = styled.span`
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.1;
+  line-height: 1.2;
 `;
 
 const FormHeader = styled.div`
@@ -505,7 +488,7 @@ const BackBtn = styled.button`
 `;
 
 const Login: React.FC = () => {
-  const [loginMode, setLoginMode] = useState<'staff' | 'parent' | 'student' | null>(null);
+  const [loginMode, setLoginMode] = useState<'staff' | 'teacher' | 'parent' | 'student' | null>(null);
   const [username, setUsername] = useState('');
   const [studentId, setStudentId] = useState('');
   const [familyId, setFamilyId] = useState('');
@@ -526,7 +509,7 @@ const Login: React.FC = () => {
   const themeObj = themeMode === 'dark' ? darkTheme : lightTheme;
 
   // Lock mode during submission to prevent switching
-  const loginModeRef = useRef<'staff' | 'parent' | 'student' | null>(null);
+  const loginModeRef = useRef<'staff' | 'teacher' | 'parent' | 'student' | null>(null);
   loginModeRef.current = loginMode;
 
   // Mobile detection
@@ -551,9 +534,23 @@ const Login: React.FC = () => {
   };
 
   // Handle mode switching with field clearing
-  const handleModeSwitch = (mode: 'staff' | 'parent' | 'student') => {
+  const handleModeSwitch = (mode: 'staff' | 'teacher' | 'parent' | 'student') => {
     if (loading) return; // Prevent switching during submission
     
+    if (mode === 'teacher') {
+      setLoginMode(mode);
+      setTimeout(() => {
+        if ((window as any).electronAPI) {
+          const currentUrl = window.location.href;
+          const rootPath = currentUrl.split('index.html')[0];
+          window.location.href = rootPath + 'teacher-portal/index.html';
+        } else {
+          window.location.href = '/teacher-portal/index.html';
+        }
+      }, 100);
+      return;
+    }
+
     if (mode === 'student') {
       setLoginMode(mode);
       // Short delay for UI to update before redirecting
@@ -635,6 +632,72 @@ const Login: React.FC = () => {
           pushNotificationService.rehydrateStoredToken(staffUser.staff_id, staffUser.school_id, 'staff').catch(() => {
             // Silently fail - push notifications are not critical for login
           });
+        }
+
+        // Check if the authenticated user is a Teacher
+        let isTeacher =
+          staffUser?.role?.toLowerCase() === 'teacher' ||
+          staffUser?.role?.toLowerCase() === 'faculty';
+
+        let teacherStaffData: any = null;
+        if (staffUser?.staff_id) {
+          const { data: staffData } = await supabase
+            .from('staff')
+            .select('*')
+            .eq('id', staffUser.staff_id)
+            .maybeSingle();
+
+          if (staffData) {
+            teacherStaffData = staffData;
+            if (
+              staffData.role?.toLowerCase() === 'teacher' ||
+              staffData.designation?.toLowerCase().includes('teacher') ||
+              staffData.role?.toLowerCase() === 'faculty'
+            ) {
+              isTeacher = true;
+            }
+          }
+        }
+
+        // If a teacher signed in via admin portal, divert them to Teachers Panel
+        if (isTeacher) {
+          const schoolId = teacherStaffData?.school_id || staffUser?.school_id || 2;
+          const { data: schoolData } = await supabase
+            .from('schools')
+            .select('name')
+            .eq('id', schoolId)
+            .maybeSingle();
+
+          const teacherSession = {
+            id: teacherStaffData?.id || staffUser.staff_id || staffUser.id,
+            user_id: staffUser.id,
+            name: teacherStaffData?.name || staffUser.name || 'Faculty Member',
+            email: teacherStaffData?.email || null,
+            phone: teacherStaffData?.mobile || null,
+            designation: teacherStaffData?.education || teacherStaffData?.role || 'Teacher',
+            role: teacherStaffData?.role || 'Teacher',
+            employee_id: teacherStaffData?.national_id ? `ID: ${teacherStaffData.national_id}` : `EMP-${teacherStaffData?.id || staffUser.id}`,
+            school_id: schoolId,
+            school_name: schoolData?.name || 'Al Haram Public School and Iqra Academy',
+            qualification: teacherStaffData?.education || null,
+            gender: teacherStaffData?.gender || null,
+            photo_url: teacherStaffData?.picture_url || null,
+            joining_date: teacherStaffData?.joining_date || null,
+            is_demo: false,
+          };
+          localStorage.setItem('growmore_teacher_session', JSON.stringify(teacherSession));
+
+          toast.showToast('Faculty account verified. Redirecting to Teachers Panel…', 'success');
+          setTimeout(() => {
+            if ((window as any).electronAPI) {
+              const currentUrl = window.location.href;
+              const rootPath = currentUrl.split('index.html')[0];
+              window.location.href = rootPath + 'teacher-portal/index.html';
+            } else {
+              window.location.href = '/teacher-portal/index.html';
+            }
+          }, 150);
+          return;
         }
 
         // Check dashboard permission before redirecting (regardless of previous page)
@@ -864,23 +927,37 @@ const Login: React.FC = () => {
                   $color="#3b82f6"
                   $glow="rgba(59, 130, 246, 0.25)"
                   onClick={() => handleModeSwitch('staff')}
-                  aria-label="Staff Login"
+                  aria-label="Admin Login"
                 >
                   <RoleIconBox $color="#3b82f6" className="role-icon-box">
                     <Person />
                   </RoleIconBox>
-                  <RoleName>Staff</RoleName>
-                  <RoleDescription>Admin & Faculty</RoleDescription>
+                  <RoleName>Admin</RoleName>
+                  <RoleDescription>Admin Portal</RoleDescription>
                 </RoleBlockButton>
 
                 <RoleBlockButton
                   type="button"
                   $color="#10b981"
                   $glow="rgba(16, 185, 129, 0.25)"
+                  onClick={() => handleModeSwitch('teacher')}
+                  aria-label="Teachers Panel"
+                >
+                  <RoleIconBox $color="#10b981" className="role-icon-box">
+                    <TeacherIcon />
+                  </RoleIconBox>
+                  <RoleName>Teacher</RoleName>
+                  <RoleDescription>Teachers Panel</RoleDescription>
+                </RoleBlockButton>
+
+                <RoleBlockButton
+                  type="button"
+                  $color="#8b5cf6"
+                  $glow="rgba(139, 92, 246, 0.25)"
                   onClick={() => handleModeSwitch('parent')}
                   aria-label="Parent Login"
                 >
-                  <RoleIconBox $color="#10b981" className="role-icon-box">
+                  <RoleIconBox $color="#8b5cf6" className="role-icon-box">
                     <FamilyRestroom />
                   </RoleIconBox>
                   <RoleName>Parent</RoleName>
@@ -912,7 +989,7 @@ const Login: React.FC = () => {
 
               {loginMode === 'staff' ? (
                 <>
-                  <Title>Staff Sign In</Title>
+                  <Title>Admin Sign In</Title>
                   <Label htmlFor="username">Username</Label>
                   <InputGroup>
                     <Input

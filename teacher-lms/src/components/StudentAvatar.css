@@ -1,0 +1,71 @@
+.student-avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  user-select: none;
+  border: 1.5px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+  background: var(--bg-card, #252525);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.student-avatar:hover {
+  transform: scale(1.04);
+}
+
+.student-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.student-avatar-img.loaded {
+  opacity: 1;
+}
+
+.student-avatar-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  color: #ffffff;
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.student-avatar-fallback.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.student-avatar-gender-indicator {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--bg-card, #252525);
+}
+
+.student-avatar-gender-indicator.male {
+  background: #3b82f6;
+}
+
+.student-avatar-gender-indicator.female {
+  background: #ec4899;
+}

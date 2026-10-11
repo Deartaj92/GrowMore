@@ -1,0 +1,170 @@
+/* GROWMORE TEACHERS PORTAL - DESIGN SYSTEM TOKENS */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-title: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Border Radii */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-pill: 9999px;
+
+  /* Timing & Transitions */
+  --transition-fast: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  /* Brand Accents */
+  --emerald-500: #10b981;
+  --emerald-600: #059669;
+  --emerald-glow: rgba(16, 185, 129, 0.35);
+
+  --indigo-500: #6366f1;
+  --indigo-600: #4f46e5;
+  --indigo-glow: rgba(99, 102, 241, 0.35);
+
+  --amber-500: #f59e0b;
+  --amber-glow: rgba(245, 158, 11, 0.3);
+
+  --rose-500: #f43f5e;
+  --rose-glow: rgba(244, 63, 94, 0.3);
+
+  --cyan-500: #06b6d4;
+  --cyan-glow: rgba(6, 182, 212, 0.3);
+}
+
+/* DARK THEME (MATCHED TO GROWMORE MAIN APP) */
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg-app: #252525;
+  --bg-sidebar: #1c1c1c;
+  --bg-header: #1c1c1c;
+  
+  /* Solid Professional Card Background */
+  --bg-card: #2c2c2c;
+  --bg-card-hover: #333333;
+  --bg-card-solid: #2c2c2c;
+  --bg-surface: #202020;
+  --bg-elevated: #323232;
+
+  /* Crisp Visible Borders */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: #3d3d3d;
+  --border-focus: #10b981;
+
+  /* Crisp Typography */
+  --text-main: #f8fafc;
+  --text-muted: #b0b8d1;
+  --text-dim: #718096;
+  --text-inverse: #1c1c1c;
+
+  /* Shadows with Rich Depth */
+  --card-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  --card-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.55);
+  --inset-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  --input-bg: #1c1c1c;
+  --input-border: #3d3d3d;
+  --input-text: #f8fafc;
+  --input-placeholder: #718096;
+
+  --dock-bg: #1c1c1c;
+
+  /* Module Semantic Tokens (Dark) */
+  --bg-card-row: #242424;
+  --bg-card-row-border: rgba(255, 255, 255, 0.06);
+  --bg-chip: #202020;
+  --bg-pill-group: #1c1c1c;
+  --select-bg: #1c1c1c;
+  --date-scheme: dark;
+  --sticky-bg: #1c1c1c;
+  --sticky-border: #3d3d3d;
+  --sticky-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --status-btn-color: #94a3b8;
+  --status-btn-hover: rgba(255, 255, 255, 0.06);
+}
+
+/* LIGHT THEME */
+[data-theme='light'] {
+  color-scheme: light;
+  --bg-app: #f1f5f9;
+  --bg-sidebar: #ffffff;
+  --bg-header: rgba(255, 255, 255, 0.92);
+  
+  --bg-card: #ffffff;
+  --bg-card-hover: #ffffff;
+  --bg-card-solid: #ffffff;
+  --bg-surface: #e2e8f0;
+  --bg-elevated: #ffffff;
+
+  --border-subtle: rgba(203, 213, 225, 0.85);
+  --border-medium: rgba(148, 163, 184, 0.8);
+  --border-focus: #10b981;
+
+  --text-main: #0f172a;
+  --text-muted: #334155;
+  --text-dim: #64748b;
+  --text-inverse: #ffffff;
+
+  --card-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 2px 4px rgba(15, 23, 42, 0.03);
+  --card-shadow-hover: 0 10px 24px -4px rgba(15, 23, 42, 0.1), 0 0 16px rgba(16, 185, 129, 0.12);
+  --inset-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --input-text: #0f172a;
+  --input-placeholder: #64748b;
+
+  --dock-bg: rgba(255, 255, 255, 0.96);
+
+  /* Module Semantic Tokens (Light) */
+  --bg-card-row: #ffffff;
+  --bg-card-row-border: #e2e8f0;
+  --bg-chip: #ffffff;
+  --bg-pill-group: #f1f5f9;
+  --select-bg: #ffffff;
+  --date-scheme: light;
+  --sticky-bg: rgba(255, 255, 255, 0.96);
+  --sticky-border: rgba(16, 185, 129, 0.35);
+  --sticky-shadow: 0 16px 36px rgba(15, 23, 42, 0.12), 0 0 24px rgba(16, 185, 129, 0.12);
+  --status-btn-color: #475569;
+  --status-btn-hover: rgba(15, 23, 42, 0.05);
+}
+
+/* =========================================================
+   UNIVERSAL SELECT & DROPDOWN POPUP THEMING
+   ========================================================= */
+select {
+  font-family: inherit;
+  color-scheme: inherit;
+}
+
+[data-theme='dark'] select {
+  color-scheme: dark;
+  background-color: var(--select-bg);
+  color: var(--text-main);
+  border-color: var(--border-subtle);
+}
+
+[data-theme='dark'] select option,
+[data-theme='dark'] select optgroup {
+  background-color: #1c1c1c !important;
+  color: #f8fafc !important;
+}
+
+[data-theme='light'] select {
+  color-scheme: light;
+  background-color: #ffffff;
+  color: #0f172a;
+  border-color: var(--border-subtle);
+}
+
+[data-theme='light'] select option,
+[data-theme='light'] select optgroup {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}

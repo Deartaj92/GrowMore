@@ -58,6 +58,7 @@ import {
   QrCodeScanner as QrCodeScannerIcon,
   QrCode2 as QrCode2Icon,
   CreditCard as CreditCardIcon,
+  EventSeat as EventSeatIcon,
   Lock,
   LockOpen,
 } from '@mui/icons-material';
@@ -1887,6 +1888,13 @@ const Header: React.FC<HeaderProps> = ({
       icon: <BadgeIcon />,
       path: '/students/cards',
       color: '#8b5cf6'
+    },
+    {
+      title: 'Chair Tags',
+      description: 'Generate and print chair/desk tags for examinations',
+      icon: <EventSeatIcon />,
+      path: '/misc/chair-tags',
+      color: '#0ea5e9'
     }
   ];
 
@@ -1898,6 +1906,13 @@ const Header: React.FC<HeaderProps> = ({
       icon: <AssignmentIcon />,
       path: '/misc/notebook-tags',
       color: '#3b82f6'
+    },
+    {
+      title: 'Chair Tags',
+      description: 'Generate and print chair/desk tags for examinations',
+      icon: <EventSeatIcon />,
+      path: '/misc/chair-tags',
+      color: '#8b5cf6'
     }
   ];
 

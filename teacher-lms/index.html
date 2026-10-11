@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/patternLogo.png" />
+    <link rel="apple-touch-icon" href="/patternLogo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="GrowMore Teachers Portal — attendance, class timetable, homework diary, marks, and school communications." />
+    <meta name="theme-color" content="#0f172a" />
+    <title>GrowMore Teachers Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: #0f172a;
+        min-height: 100%;
+        min-height: 100dvh;
+        font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 999999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        background: #0f172a;
+        color: #f8fafc;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+      }
+      #boot-splash.boot-splash--out {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      .boot-logo-wrapper {
+        width: 80px;
+        height: 80px;
+        border-radius: 20px;
+        background: #1e293b;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        animation: pulseLogo 2s infinite ease-in-out;
+      }
+      .boot-logo-img {
+        width: 52px;
+        height: 52px;
+        object-fit: contain;
+      }
+      @keyframes pulseLogo {
+        0%, 100% { transform: scale(1); filter: brightness(1); }
+        50% { transform: scale(1.04); filter: brightness(1.15); }
+      }
+      .boot-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: #ffffff;
+        margin: 0;
+      }
+      .boot-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        padding: 4px 12px;
+        border-radius: 9999px;
+        background: rgba(16, 185, 129, 0.15);
+        color: #34d399;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+      }
+      .boot-progress-track {
+        width: 180px;
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.1);
+        overflow: hidden;
+        margin-top: 0.5rem;
+      }
+      .boot-progress-bar {
+        height: 100%;
+        width: 45%;
+        border-radius: 999px;
+        background: #10b981;
+        animation: bootLoader 1.4s infinite ease-in-out;
+      }
+      @keyframes bootLoader {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(250%); }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="boot-splash" aria-hidden="true">
+      <div class="boot-logo-wrapper">
+        <img class="boot-logo-img" src="/patternLogo.png" alt="GrowMore" onerror="this.style.display='none'" />
+      </div>
+      <div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+        <h1 class="boot-title">GrowMore</h1>
+        <div class="boot-badge">Teachers Panel</div>
+      </div>
+      <div class="boot-progress-track">
+        <div class="boot-progress-bar"></div>
+      </div>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          const splash = document.getElementById('boot-splash');
+          if (splash) splash.classList.add('boot-splash--out');
+        }, 350);
+      });
+    </script>
+  </body>
+</html>

@@ -28,6 +28,7 @@ export const GlobalStyles = createGlobalStyle`
     overflow-x: hidden;
     background: ${({ theme }: any) => theme.BG};
     color: ${({ theme }: any) => theme.TEXT_PRIMARY};
+    color-scheme: ${({ theme }: any) => (isDark(theme) ? 'dark' : 'light')};
     font-family: 'Inter', -apple-system, system-ui, sans-serif;
     font-size: 16px;
     line-height: 1.5;
@@ -103,6 +104,15 @@ export const GlobalStyles = createGlobalStyle`
     background: none;
     border: none;
     color: inherit;
+  }
+
+  select {
+    color-scheme: ${({ theme }: any) => (isDark(theme) ? 'dark' : 'light')};
+  }
+
+  select option, select optgroup {
+    background-color: ${({ theme }: any) => (isDark(theme) ? '#182234' : '#ffffff')} !important;
+    color: ${({ theme }: any) => (isDark(theme) ? '#ffffff' : '#0f172a')} !important;
   }
 
   a {

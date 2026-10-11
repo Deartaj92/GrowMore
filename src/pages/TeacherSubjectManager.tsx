@@ -27,7 +27,8 @@ import {
   Groups,
   Edit,
   CheckCircle,
-  Cancel
+  Cancel,
+  DeleteSweep
 } from '@mui/icons-material';
 import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -147,13 +148,101 @@ const Subtitle = styled.p`
 `;
 
 const SearchWrapper = styled.div`
-  min-width: 240px;
-  max-width: 320px;
+  min-width: 200px;
+  max-width: 280px;
   width: 100%;
   
   @media (max-width: 768px) {
     min-width: 100%;
     max-width: 100%;
+  }
+`;
+
+const HeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+`;
+
+const FilterSelect = styled.select`
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1.5px solid ${({ theme }) => theme.BORDER};
+  background: ${({ theme }) => theme.CARD};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  font-size: 0.8rem;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  height: 38px;
+  min-width: 160px;
+  
+  &:hover {
+    border-color: ${({ theme }) => theme.ACCENT};
+    background: ${({ theme }) => theme.FIELD_BG};
+  }
+  
+  &:focus {
+    border-color: ${({ theme }) => theme.ACCENT};
+    box-shadow: 0 0 0 2px ${({ theme }) => theme.ACCENT}15;
+  }
+
+  option, optgroup {
+    background: ${({ theme }) => theme.CARD};
+    color: ${({ theme }) => theme.TEXT_PRIMARY};
+    padding: 8px 12px;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-width: 100%;
+  }
+`;
+
+const ClearAllButton = styled.button`
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1.5px solid #ef4444;
+  background: transparent;
+  color: #ef4444;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  
+  &:hover:not(:disabled) {
+    background: #ef4444;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
   }
 `;
 
@@ -358,14 +447,14 @@ const TeacherBadges = styled.div`
   margin-top: 6px;
 `;
 
-const BadgeChip = styled.span<{ variant?: 'primary' | 'success' | 'default' }>`
+const BadgeChip = styled.span<{ variant?: 'primary' | 'success' | 'warning' | 'danger' | 'default' }>`
   display: inline-flex;
   align-items: center;
   gap: 3px;
   padding: 3px 8px;
   border-radius: 5px;
   font-size: 0.7rem;
-    font-weight: 600;
+  font-weight: 600;
   
   ${({ variant, theme }) => {
     if (variant === 'primary') {
@@ -379,6 +468,18 @@ const BadgeChip = styled.span<{ variant?: 'primary' | 'success' | 'default' }>`
         background: #10b98115;
         color: #10b981;
         border: 1px solid #10b98130;
+      `;
+    } else if (variant === 'warning') {
+      return `
+        background: #f59e0b15;
+        color: #d97706;
+        border: 1px solid #f59e0b30;
+      `;
+    } else if (variant === 'danger') {
+      return `
+        background: #ef444415;
+        color: #ef4444;
+        border: 1px solid #ef444430;
       `;
     } else {
       return `
@@ -773,10 +874,29 @@ const ModalSubjectName = styled.div`
   color: ${({ theme }) => theme.TEXT_PRIMARY};
 `;
 
-const ModalSubjectCode = styled.div`
+const ModalSubjectMeta = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 0.75rem;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   margin-top: 3px;
+  flex-wrap: wrap;
+`;
+
+const ModalSubjectCode = styled.span`
+  color: ${({ theme }) => theme.TEXT_SECONDARY};
+`;
+
+const ModalSubjectMarks = styled.span`
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  background: ${({ theme }) => theme.BG === '#252525' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'};
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
 `;
 
 const ModalSectionsContainer = styled.div`
@@ -822,6 +942,7 @@ interface Teacher {
   id: number;
   name: string;
   role: string;
+  status?: string;
   section?: { class_name: string; section_name: string }[] | null;
 }
 
@@ -829,6 +950,7 @@ interface ClassSubject {
   id: string;
   class_id: string;
   subject_id: string;
+  total_marks?: number;
   classes: { name: string; has_sections: boolean };
   subjects: { name: string; code: string };
 }
@@ -840,6 +962,7 @@ interface TeacherClassSubject {
   section_id?: string | null;
   class_subjects: {
     id: string;
+    total_marks?: number;
     classes: { name: string; has_sections: boolean };
     subjects: { name: string; code: string };
   };
@@ -864,6 +987,7 @@ const TeacherSubjectManager = () => {
   const [classes, setClasses] = useState<{ id: number; name: string; has_sections: boolean }[]>([]);
   const [sections, setSections] = useState<{ id: number; name: string; class_id: number }[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('active');
   const [activeTab, setActiveTab] = useState(0);
   const [initialLoading, setInitialLoading] = useState(true);
 
@@ -888,11 +1012,11 @@ const TeacherSubjectManager = () => {
             .eq('school_id', user.school_id),
           supabase
             .from('class_subjects')
-            .select('id, class_id, subject_id, classes (name, has_sections), subjects (name, code)')
+            .select('id, class_id, subject_id, total_marks, classes (name, has_sections), subjects (name, code)')
             .eq('school_id', user.school_id),
           supabase
             .from('teacher_class_subjects')
-            .select('*, class_subjects (id, classes (name, has_sections), subjects (name, code)), staff (name)')
+            .select('*, class_subjects (id, total_marks, classes (name, has_sections), subjects (name, code)), staff (name)')
             .eq('school_id', user.school_id)
         ]);
 
@@ -933,10 +1057,10 @@ const TeacherSubjectManager = () => {
               id,
               name,
               role,
+              status,
               sections:sections(id, name, class_id, teacher_id, classes(id, name))
             `)
             .eq('role', 'Teacher')
-            .eq('status', 'active')
             .eq('school_id', user.school_id)
             .order('name');
 
@@ -944,6 +1068,7 @@ const TeacherSubjectManager = () => {
             const getClassName = (id: number) => classesResult.data.find(c => c.id === id)?.name || 'Unknown';
             const transformedData = teachersData.map(teacher => ({
               ...teacher,
+              status: teacher.status || 'active',
               section: Array.isArray(teacher.sections)
                 ? teacher.sections
                   .filter(sec => sec.teacher_id === teacher.id)
@@ -972,7 +1097,7 @@ const TeacherSubjectManager = () => {
     if (!user?.school_id) return;
     const { data, error } = await supabase
       .from('teacher_class_subjects')
-      .select('*, class_subjects (id, classes (name, has_sections), subjects (name, code)), staff (name)')
+      .select('*, class_subjects (id, total_marks, classes (name, has_sections), subjects (name, code)), staff (name)')
       .eq('school_id', user.school_id);
     if (error) {
       showToast('Error fetching assignments', 'error');
@@ -981,13 +1106,71 @@ const TeacherSubjectManager = () => {
     setTeacherClassSubjects(data || []);
   };
 
+  // Status options with counts
+  const statusOptions = useMemo(() => {
+    const counts: Record<string, number> = {};
+    teachers.forEach(t => {
+      const s = (t.status || 'active').toLowerCase();
+      counts[s] = (counts[s] || 0) + 1;
+    });
+
+    const options = [
+      { value: 'all', label: `All Statuses (${teachers.length})` },
+      { value: 'active', label: `Active (${counts['active'] || 0})` },
+    ];
+
+    const knownStatuses = [
+      { value: 'contract_ended', label: 'Contract Ended' },
+      { value: 'terminated', label: 'Terminated' },
+      { value: 'inactive', label: 'Inactive' },
+      { value: 'suspended', label: 'Suspended' },
+      { value: 'left', label: 'Left / Absent' },
+    ];
+
+    knownStatuses.forEach(st => {
+      const count = counts[st.value] || 0;
+      if (count > 0) {
+        options.push({
+          value: st.value,
+          label: `${st.label} (${count})`,
+        });
+      }
+    });
+
+    // Add any unexpected status in the dataset
+    const addedKeys = new Set(options.map(o => o.value));
+    Object.keys(counts).forEach(k => {
+      if (!addedKeys.has(k)) {
+        const label = k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        options.push({
+          value: k,
+          label: `${label} (${counts[k]})`,
+        });
+      }
+    });
+
+    return options;
+  }, [teachers]);
+
   const filteredTeachers = useMemo(() => {
-    if (!searchQuery.trim()) return teachers;
-    const query = searchQuery.toLowerCase();
-    return teachers.filter(teacher =>
-      teacher.name.toLowerCase().includes(query)
-    );
-  }, [teachers, searchQuery]);
+    return teachers.filter(teacher => {
+      // Status filter
+      if (statusFilter !== 'all') {
+        const teacherStatus = (teacher.status || 'active').toLowerCase();
+        if (teacherStatus !== statusFilter.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // Search query filter
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        return teacher.name.toLowerCase().includes(query);
+      }
+
+      return true;
+    });
+  }, [teachers, statusFilter, searchQuery]);
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -1276,6 +1459,42 @@ const TeacherSubjectManager = () => {
     }
   };
 
+  const handleClearAllAssignments = async () => {
+    if (!user?.school_id) return;
+    if (teacherClassSubjects.length === 0) {
+      showToast('No assignments to clear.', 'info');
+      return;
+    }
+
+    const confirmMsg = `Are you sure you want to clear ALL subject assignments for all teachers? This will remove all ${teacherClassSubjects.length} subject assignment${teacherClassSubjects.length === 1 ? '' : 's'} across the school. This action cannot be undone.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const { error } = await supabase
+        .from('teacher_class_subjects')
+        .delete()
+        .eq('school_id', user.school_id);
+
+      if (error) throw error;
+
+      showToast('All teacher assignments cleared successfully.', 'success');
+
+      try {
+        await logSubjectAssignmentActivity(
+          'delete',
+          'All Teachers',
+          0,
+          0
+        );
+      } catch (activityError) { }
+
+      fetchTeacherClassSubjects();
+    } catch (error) {
+      console.error('Error clearing all assignments:', error);
+      showToast('Error clearing all assignments.', 'error');
+    }
+  };
+
   // Group classSubjects by class
   const classMap: { [className: string]: ClassSubject[] } = {};
   classSubjects.forEach(cs => {
@@ -1451,52 +1670,124 @@ const TeacherSubjectManager = () => {
               Manage subject and class assignments for all teachers in your school
             </Subtitle>
           </TitleSection>
-          <SearchWrapper>
-            <SearchInput
-              fullWidth
-              placeholder="Search teachers..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search style={{ color: '#888' }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </SearchWrapper>
+          <HeaderActions>
+            <FilterSelect
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              title="Filter by teacher status"
+            >
+              {statusOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </FilterSelect>
+            <SearchWrapper>
+              <SearchInput
+                fullWidth
+                placeholder="Search teachers..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search style={{ color: '#888' }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </SearchWrapper>
+            {teacherClassSubjects.length > 0 && (
+              <ClearAllButton
+                onClick={handleClearAllAssignments}
+                title="Clear all teacher subject assignments across the school"
+              >
+                <DeleteSweep style={{ fontSize: '1.15rem' }} />
+                Clear All Assignments
+              </ClearAllButton>
+            )}
+          </HeaderActions>
         </HeaderTop>
       </PageHeader>
 
       <MainContent>
-        <TeachersGrid>
-          {filteredTeachers.map(teacher => {
-            const assignments = getTeacherAssignmentsGrouped(teacher.id);
-            const assignmentCount = Object.keys(assignments).length;
+        {filteredTeachers.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '48px 24px',
+            color: '#888',
+            background: 'rgba(0, 0, 0, 0.02)',
+            borderRadius: '12px',
+            border: '1px dashed #ccc',
+            margin: '20px 0'
+          }}>
+            <Person style={{ fontSize: '3rem', opacity: 0.4, marginBottom: '8px' }} />
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', color: '#555' }}>No Teachers Found</h3>
+            <p style={{ margin: 0, fontSize: '0.85rem' }}>
+              No teachers found matching {statusFilter !== 'all' ? `status "${statusFilter}"` : ''} {searchQuery ? `search "${searchQuery}"` : ''}.
+            </p>
+            {(statusFilter !== 'active' || searchQuery) && (
+              <button
+                onClick={() => {
+                  setStatusFilter('active');
+                  setSearchQuery('');
+                }}
+                style={{
+                  marginTop: '12px',
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  border: '1px solid #4a6cf7',
+                  background: 'transparent',
+                  color: '#4a6cf7',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.8rem'
+                }}
+              >
+                Reset Filters
+              </button>
+            )}
+          </div>
+        ) : (
+          <TeachersGrid>
+            {filteredTeachers.map(teacher => {
+              const assignments = getTeacherAssignmentsGrouped(teacher.id);
+              const assignmentCount = Object.keys(assignments).length;
 
-            return (
-              <TeacherCard key={teacher.id}>
-                <TeacherHeader>
-                  <TeacherInfo>
-                    <TeacherName>
-                      <div className="avatar">{getInitials(teacher.name)}</div>
-                      {teacher.name}
-                    </TeacherName>
-                    <TeacherBadges>
-                      {teacher.section && teacher.section.length > 0 && (
-                        <BadgeChip variant="primary">
-                          <Groups style={{ fontSize: '0.9rem' }} />
-                          Class Teacher
-                        </BadgeChip>
-                      )}
-                      {assignmentCount > 0 && (
-                        <BadgeChip variant="success">
-                          <CheckCircle style={{ fontSize: '0.9rem' }} />
-                          {assignmentCount} Assignment{assignmentCount !== 1 ? 's' : ''}
-                        </BadgeChip>
-                      )}
-                    </TeacherBadges>
+              return (
+                <TeacherCard key={teacher.id}>
+                  <TeacherHeader>
+                    <TeacherInfo>
+                      <TeacherName>
+                        <div className="avatar">{getInitials(teacher.name)}</div>
+                        {teacher.name}
+                      </TeacherName>
+                      <TeacherBadges>
+                        {teacher.status && (
+                          <BadgeChip
+                            variant={
+                              teacher.status === 'active' ? 'success' :
+                              teacher.status === 'terminated' ? 'danger' :
+                              teacher.status === 'contract_ended' ? 'warning' :
+                              'default'
+                            }
+                          >
+                            {teacher.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </BadgeChip>
+                        )}
+                        {teacher.section && teacher.section.length > 0 && (
+                          <BadgeChip variant="primary">
+                            <Groups style={{ fontSize: '0.9rem' }} />
+                            Class Teacher
+                          </BadgeChip>
+                        )}
+                        {assignmentCount > 0 && (
+                          <BadgeChip variant="success">
+                            <CheckCircle style={{ fontSize: '0.9rem' }} />
+                            {assignmentCount} Assignment{assignmentCount !== 1 ? 's' : ''}
+                          </BadgeChip>
+                        )}
+                      </TeacherBadges>
                     {teacher.section && teacher.section.length > 0 && (
                       <div style={{ marginTop: '12px', fontSize: '0.85rem', color: '#888' }}>
                         {teacher.section.map((s, idx) => (
@@ -1557,6 +1848,7 @@ const TeacherSubjectManager = () => {
             );
           })}
         </TeachersGrid>
+        )}
       </MainContent>
 
       {/* Assignment Modal */}
@@ -1637,7 +1929,13 @@ const TeacherSubjectManager = () => {
                             <ModalSubjectHeader>
                               <div>
                                 <ModalSubjectName>{cs.subjects.name}</ModalSubjectName>
-                                <ModalSubjectCode>Code: {cs.subjects.code}</ModalSubjectCode>
+                                <ModalSubjectMeta>
+                                  <ModalSubjectCode>Code: {cs.subjects.code}</ModalSubjectCode>
+                                  <span style={{ opacity: 0.4 }}>•</span>
+                                  <ModalSubjectMarks>
+                                    Total Marks: {cs.total_marks != null ? cs.total_marks : 100}
+                                  </ModalSubjectMarks>
+                                </ModalSubjectMeta>
                               </div>
                               <Checkbox
                                 checked={isSelected}

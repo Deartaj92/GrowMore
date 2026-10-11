@@ -1,0 +1,114 @@
+.announcements-widget {
+  padding: 1.5rem;
+  border-radius: var(--radius-xl);
+}
+
+.announcements-widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.95rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.announcements-widget-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.announcements-icon-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--amber-500);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.announcements-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.announcements-subtitle {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.announcements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.announcement-item {
+  padding: 1.15rem 1.25rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  transition: all var(--transition-fast);
+}
+
+.announcement-item:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-medium);
+}
+
+.announcement-item.urgent {
+  border-left: 3px solid var(--rose-500);
+}
+
+.announcement-item.important {
+  border-left: 3px solid var(--amber-500);
+}
+
+.announcement-item.normal {
+  border-left: 3px solid var(--emerald-500);
+}
+
+.announcement-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.announcement-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.announcement-item-title {
+  margin: 0 0 6px 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.announcement-item-content {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.announcement-target-tag {
+  margin-top: 10px;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.announcement-target-tag span {
+  font-weight: 600;
+  color: var(--indigo-500);
+}

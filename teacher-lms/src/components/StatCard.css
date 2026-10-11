@@ -1,0 +1,132 @@
+.stat-card {
+  padding: 1.35rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 142px;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+}
+
+.stat-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+}
+
+.stat-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--transition-spring);
+}
+
+.stat-card:hover .stat-icon-box {
+  transform: scale(1.1) rotate(-4deg);
+}
+
+.stat-icon-box--emerald {
+  background: rgba(16, 185, 129, 0.16);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.stat-icon-box--indigo {
+  background: rgba(99, 102, 241, 0.16);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+
+.stat-icon-box--amber {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+}
+
+.stat-icon-box--cyan {
+  background: rgba(6, 182, 212, 0.16);
+  color: #22d3ee;
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2);
+}
+
+.stat-icon-box--rose {
+  background: rgba(244, 63, 94, 0.16);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.2);
+}
+
+.stat-trend-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+}
+
+.stat-trend-pill.positive {
+  background: rgba(16, 185, 129, 0.14);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+}
+
+.stat-trend-pill.neutral {
+  background: var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.stat-card-body {
+  position: relative;
+  z-index: 1;
+}
+
+.stat-card-value {
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.stat-card-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.stat-card-subtext {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+.stat-card-glow {
+  position: absolute;
+  right: -30px;
+  bottom: -30px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(40px);
+  opacity: 0.35;
+  transition: opacity var(--transition-normal);
+}
+
+.stat-card:hover .stat-card-glow {
+  opacity: 0.65;
+}
+
+.stat-card-glow--emerald { background: var(--emerald-500); }
+.stat-card-glow--indigo { background: var(--indigo-500); }
+.stat-card-glow--amber { background: var(--amber-500); }
+.stat-card-glow--cyan { background: var(--cyan-500); }
+.stat-card-glow--rose { background: var(--rose-500); }

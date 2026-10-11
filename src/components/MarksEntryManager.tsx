@@ -269,6 +269,14 @@ const SegmentedSelect = styled.select<{ first?: boolean; last?: boolean }>`
   background-repeat: no-repeat;
   background-position: right 0.8em center;
   background-size: 1em 1em;
+  color-scheme: ${({ theme }) => theme.palette?.mode === 'dark' ? 'dark' : 'light'};
+  cursor: pointer;
+
+  option {
+    background: ${({ theme }) => theme.palette?.mode === 'dark' ? '#252525' : '#ffffff'};
+    color: ${({ theme }) => theme.palette?.mode === 'dark' ? '#e0e0e0' : '#1a1a1a'};
+    padding: 0.5rem;
+  }
   @media (max-width: 700px) {
     width: 100%;
     min-width: 0;

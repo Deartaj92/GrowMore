@@ -1,0 +1,790 @@
+/* =========================================================
+   GROWMORE TEACHER LMS - TIMETABLE MODULE STYLES
+   Full Support for Executive Dark Mode & Crisp Clean Light Mode
+   ========================================================= */
+
+.timetable-module-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-bottom: 4rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* =========================================================
+   1. STREAMLINED EXECUTIVE HEADER & TAB NAVIGATION
+   ========================================================= */
+.tt-header {
+  border-radius: var(--radius-lg);
+  padding: 1.2rem 1.6rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--card-shadow);
+}
+
+.tt-header-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.tt-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.tt-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.tt-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--emerald-600);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+}
+
+.tt-session-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0.22rem 0.6rem;
+  border-radius: var(--radius-sm);
+}
+
+.tt-heading {
+  font-size: 1.55rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.tt-subtext {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Tabs Navigation */
+.tt-tabs-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--bg-surface);
+  padding: 0.3rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
+.tt-tab-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.52rem 0.95rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.tt-tab-link:hover {
+  color: var(--text-main);
+  background: var(--bg-card-hover);
+}
+
+.tt-tab-link.active {
+  background: var(--bg-card-solid);
+  color: var(--emerald-600);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* Header Action Buttons (PDF, Print) */
+.tt-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.tt-export-pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.52rem 1.15rem;
+  background: #2563eb;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+  transition: all var(--transition-fast);
+}
+
+.tt-export-pdf-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.5);
+  transform: translateY(-1px);
+}
+
+.tt-export-pdf-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tt-print-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.52rem 0.95rem;
+  background: var(--bg-surface);
+  color: var(--text-main);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.tt-print-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-focus);
+}
+
+/* =========================================================
+   2. EXECUTIVE KPI RIBBON
+   ========================================================= */
+.tt-kpi-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.4rem;
+  border-radius: var(--radius-lg);
+  flex-wrap: wrap;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  box-shadow: var(--card-shadow);
+}
+
+.tt-kpi-item {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.tt-kpi-icon-box {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tt-kpi-icon-box.blue {
+  background: rgba(37, 99, 235, 0.12);
+  color: #3b82f6;
+  border: 1px solid rgba(37, 99, 235, 0.25);
+}
+
+.tt-kpi-icon-box.emerald {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.tt-kpi-icon-box.amber {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.tt-kpi-icon-box.purple {
+  background: rgba(168, 85, 247, 0.12);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.25);
+}
+
+.tt-kpi-icon-box.rose {
+  background: rgba(244, 63, 94, 0.12);
+  color: #f43f5e;
+  border: 1px solid rgba(244, 63, 94, 0.25);
+}
+
+.tt-kpi-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.tt-kpi-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.tt-kpi-val {
+  font-size: 1.28rem;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.tt-kpi-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* =========================================================
+   3. TAB 1: TODAY'S LIVE ROUTINE
+   ========================================================= */
+.today-routine-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.routine-banner-card {
+  padding: 1.1rem 1.4rem;
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.routine-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.routine-day-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #059669;
+  color: #ffffff;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+  text-align: center;
+  min-width: 65px;
+}
+
+.routine-day-short {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.9;
+}
+
+.routine-day-date {
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.routine-info-col h3 {
+  margin: 0 0 0.2rem 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.routine-info-col p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.routine-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.95rem;
+  border-radius: 9999px;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.routine-status-pill.active {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--emerald-600);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.routine-status-pill.break {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--amber-500);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.routine-status-pill.free {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.routine-status-pill.done {
+  background: var(--bg-surface);
+  color: var(--text-dim);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Timeline Cards Grid */
+.timeline-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 1rem;
+}
+
+.period-card {
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.period-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--card-shadow-hover);
+}
+
+/* Live period highlight */
+.period-card.card-live {
+  border: 2px solid var(--emerald-500);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2), var(--card-shadow);
+}
+
+.period-card.card-break {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: var(--bg-card);
+}
+
+.period-card.card-completed {
+  opacity: 0.78;
+}
+
+.period-card.card-free {
+  border-style: dashed;
+  background: var(--bg-card-row);
+}
+
+/* Card Header */
+.period-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--bg-card-row);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.period-badge-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 0.22rem 0.6rem;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.period-badge-chip.teaching {
+  background: rgba(37, 99, 235, 0.12);
+  color: #3b82f6;
+  border: 1px solid rgba(37, 99, 235, 0.25);
+}
+
+.period-badge-chip.break-badge {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--amber-500);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.period-badge-chip.free-badge {
+  background: var(--bg-surface);
+  color: var(--text-dim);
+  border: 1px solid var(--border-subtle);
+}
+
+.period-time-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Card Body */
+.period-card-body {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  flex: 1;
+}
+
+.period-subject-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.period-class-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.period-class-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--bg-surface);
+  color: var(--text-main);
+  border: 1px solid var(--border-subtle);
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.period-room-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
+.period-live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--emerald-600);
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.76rem;
+  font-weight: 700;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.period-free-note {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+}
+
+/* Card Footer Actions */
+.period-card-footer {
+  padding: 0.75rem 1rem;
+  background: var(--bg-card-row);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.card-action-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--emerald-600);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem 0.4rem;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.card-action-link:hover {
+  background: rgba(16, 185, 129, 0.12);
+}
+
+/* =========================================================
+   4. TAB 2: WEEKLY MASTER MATRIX
+   ========================================================= */
+.weekly-matrix-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.weekly-matrix-table-wrap {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  box-shadow: var(--card-shadow);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.weekly-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 880px;
+}
+
+.weekly-table th {
+  background: var(--bg-table-header);
+  color: var(--text-dim);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 0.85rem;
+  border-bottom: 2px solid var(--border-subtle);
+  border-right: 1px solid var(--border-subtle);
+  text-align: center;
+}
+
+.weekly-table th:first-child {
+  text-align: left;
+  width: 120px;
+}
+
+.weekly-table td {
+  padding: 0.7rem 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-subtle);
+  text-align: center;
+  vertical-align: middle;
+}
+
+.weekly-table tr:hover td {
+  background: var(--bg-card-row);
+}
+
+.day-header-cell {
+  font-weight: 800;
+  font-size: 0.86rem;
+  color: var(--text-main);
+  text-align: left !important;
+  background: var(--bg-card-row) !important;
+}
+
+.matrix-slot-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  text-align: center;
+  transition: all var(--transition-fast);
+}
+
+.matrix-slot-box:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.matrix-slot-box.teaching {
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.25);
+}
+
+.matrix-slot-box.free {
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--border-subtle);
+}
+
+.matrix-slot-box.break-slot {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.slot-subject-name {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.slot-class-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--emerald-600);
+}
+
+.slot-free-text {
+  font-size: 0.74rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* =========================================================
+   5. TAB 3: CLASS-WISE TIMETABLE EXPLORER
+   ========================================================= */
+.class-explorer-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.class-picker-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.4rem;
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--card-shadow);
+  flex-wrap: wrap;
+}
+
+.class-picker-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.class-picker-select {
+  padding: 0.5rem 2.2rem 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  background-color: var(--bg-card-solid);
+  color: var(--text-main);
+  border: 1px solid var(--border-medium);
+  font-weight: 700;
+  font-size: 0.86rem;
+  cursor: pointer;
+  outline: none;
+  color-scheme: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2310b981' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 0.95rem;
+}
+
+.class-picker-select:focus {
+  border-color: var(--emerald-500);
+  box-shadow: 0 0 0 2px var(--emerald-glow);
+}
+
+.class-picker-select option {
+  background-color: var(--bg-card-solid);
+  color: var(--text-main);
+  padding: 0.45rem;
+}
+
+/* =========================================================
+   6. PRINT STYLES
+   ========================================================= */
+@media print {
+  @page {
+    size: landscape;
+    margin: 8mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 9pt !important;
+  }
+
+  .no-print,
+  .tt-tabs-nav,
+  .tt-actions-row,
+  .tt-kpi-bar,
+  .sidebar,
+  .top-navbar,
+  .card-action-link {
+    display: none !important;
+  }
+
+  .timetable-module-page {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .tt-header {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 0 10px 0 !important;
+    border-bottom: 2px solid #000000 !important;
+    border-radius: 0 !important;
+  }
+
+  .weekly-matrix-table-wrap {
+    border: 1px solid #000000 !important;
+    box-shadow: none !important;
+  }
+
+  .weekly-table th {
+    background: #f0f0f0 !important;
+    color: #000000 !important;
+    border: 1px solid #000000 !important;
+  }
+
+  .weekly-table td {
+    border: 1px solid #000000 !important;
+  }
+
+  .matrix-slot-box {
+    border: none !important;
+    background: transparent !important;
+  }
+}
