@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTeacherAuth } from '../contexts/TeacherAuthContext';
+import { useToast } from '../hooks/useToast';
 import { supabase } from '../services/supabase';
 import {
   LayoutDashboard,
@@ -59,6 +60,20 @@ interface HeaderNotification {
   hide_dont_show?: boolean;
 }
 
+interface LayoutNavItem {
+  path: string;
+  label: string;
+  icon: any;
+  isProminent?: boolean;
+  badge?: string;
+}
+
+interface LayoutNavGroup {
+  id: string;
+  title: string;
+  items: LayoutNavItem[];
+}
+
 const formatRelativeTime = (dateStr?: string | null): string => {
   if (!dateStr) return 'Recently';
   try {
@@ -82,6 +97,7 @@ const formatRelativeTime = (dateStr?: string | null): string => {
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { teacher, logout } = useTeacherAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -155,50 +171,63 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
         const items: HeaderNotification[] = [];
 
-        // 1. Fetch official broadcast announcements from announcements table
+        // 1. Fetch recent announcements for this school (to display and to hydrate broadcast notifications)
         const { data: dbAnnouncements } = await supabase
           .from('announcements')
           .select('*')
           .eq('school_id', schoolId)
-          .eq('is_active', true)
-          .in('audience_group', ['staff', 'all', 'teachers'])
-          .order('created_at', { ascending: false })
-          .limit(8);
+          .order('id', { ascending: false })
+          .limit(25);
 
-        if (dbAnnouncements && dbAnnouncements.length > 0) {
-          dbAnnouncements.forEach((a: any) => {
-            const notifId = `announcement-${a.id}`;
-            if (dismissedIdsSet.has(notifId)) return;
+        const allAnnouncements = dbAnnouncements || [];
 
-            const cleanTitle = stripHtml(a.title) || 'Official Announcement';
-            const cleanMsg = stripHtml(a.message) || '';
-            const isRead = readIdsSet.has(notifId);
+        // Map of announcements for instant lookup
+        const announcementMap = new Map<string, any>();
+        allAnnouncements.forEach((a: any) => {
+          announcementMap.set(String(a.id), a);
+          const clean = stripHtml(a.title).toLowerCase().trim();
+          if (clean && !announcementMap.has(clean)) {
+            announcementMap.set(clean, a);
+          }
+        });
 
-            items.push({
-              id: notifId,
-              title: cleanTitle,
-              raw_title: a.title,
-              message: cleanMsg ? cleanMsg.substring(0, 85) + (cleanMsg.length > 85 ? '…' : '') : '',
-              raw_message: a.message,
-              footer_text: a.footer_text || null,
-              time: formatRelativeTime(a.created_at),
-              priority: 'urgent',
-              type: 'announcement',
-              is_read: isRead,
-              created_at: a.created_at,
-              hide_dont_show: a.hide_dont_show,
-            });
+        // Add active announcements targeted to staff/all
+        allAnnouncements.forEach((a: any) => {
+          const audience = a.audience_group || 'all';
+          const isStaffTarget = ['staff', 'all', 'teachers', 'all_users', 'students_staff'].includes(audience);
+          if (!isStaffTarget || a.is_active === false) return;
+
+          const notifId = `announcement-${a.id}`;
+          if (dismissedIdsSet.has(notifId)) return;
+
+          const cleanTitle = stripHtml(a.title) || 'Official Announcement';
+          const cleanMsg = stripHtml(a.message) || '';
+          const isRead = readIdsSet.has(notifId);
+
+          items.push({
+            id: notifId,
+            title: cleanTitle,
+            raw_title: a.title,
+            message: cleanMsg ? cleanMsg.substring(0, 85) + (cleanMsg.length > 85 ? '…' : '') : '',
+            raw_message: a.message,
+            footer_text: a.footer_text || null,
+            time: formatRelativeTime(a.created_at),
+            priority: 'urgent',
+            type: 'announcement',
+            is_read: isRead,
+            created_at: a.created_at,
+            hide_dont_show: a.hide_dont_show,
           });
-        }
+        });
 
-        // 2. Fetch from notifications table
+        // 2. Fetch from notifications table and hydrate truncated messages with full announcements if available
         const { data: dbNotifs } = await supabase
           .from('notifications')
           .select('*')
           .eq('school_id', schoolId)
           .or(`recipient_id.eq.${teacherUserId || -1},recipient_id.eq.${teacherStaffId}`)
           .order('created_at', { ascending: false })
-          .limit(10);
+          .limit(15);
 
         if (dbNotifs && dbNotifs.length > 0) {
           dbNotifs.forEach((n: any) => {
@@ -209,18 +238,32 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             const cleanMsg = stripHtml(n.message) || '';
             const isRead = n.is_read || readIdsSet.has(notifId);
 
+            // Look up full matching announcement to prevent truncated text
+            const lookupKey = cleanTitle.toLowerCase().trim();
+            const matchedAnn = announcementMap.get(lookupKey) ||
+              allAnnouncements.find((a: any) => {
+                const aClean = stripHtml(a.title).toLowerCase().trim();
+                return aClean && (aClean === lookupKey || aClean.includes(lookupKey) || lookupKey.includes(aClean));
+              });
+
+            const fullMessage = (matchedAnn && matchedAnn.message) ? matchedAnn.message : n.message;
+            const fullTitle = (matchedAnn && matchedAnn.title) ? matchedAnn.title : n.title;
+            const fullFooter = (matchedAnn && matchedAnn.footer_text) ? matchedAnn.footer_text : (n.footer_text || null);
+            const hideDontShow = matchedAnn ? matchedAnn.hide_dont_show : false;
+
             items.push({
               id: notifId,
               title: cleanTitle,
-              raw_title: n.title,
+              raw_title: fullTitle,
               message: cleanMsg ? cleanMsg.substring(0, 85) + (cleanMsg.length > 85 ? '…' : '') : '',
-              raw_message: n.message,
-              footer_text: n.footer_text || null,
+              raw_message: fullMessage,
+              footer_text: fullFooter,
               time: formatRelativeTime(n.created_at),
-              priority: n.is_important ? 'important' : 'normal',
-              type: 'notification',
+              priority: n.is_important ? 'important' : (matchedAnn ? 'urgent' : 'normal'),
+              type: (matchedAnn || n.notification_type === 'announcement') ? 'announcement' : 'notification',
               is_read: isRead,
               created_at: n.created_at,
+              hide_dont_show: hideDontShow,
             });
           });
         }
@@ -340,11 +383,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     const allIds = notifications.map((n) => n.id);
     localStorage.setItem(readIdsKey, JSON.stringify(allIds));
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    showToast('All notifications marked as read', 'info');
   };
 
   // Dynamic Semantic Navigation Groups
-  const navGroups = useMemo(() => {
-    const groups = [
+  const navGroups = useMemo<LayoutNavGroup[]>(() => {
+    const groups: LayoutNavGroup[] = [
       {
         id: 'academics',
         title: 'ACADEMICS',
@@ -381,6 +425,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         label: 'Exam Marks',
         icon: Award,
         isProminent: true,
+        badge: 'Active',
       });
     }
 
@@ -414,6 +459,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const handleLogout = () => {
     logout();
+    showToast('Signed out successfully', 'info');
     navigate('/login');
   };
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTeacherAuth } from '../contexts/TeacherAuthContext';
+import { useToast } from '../hooks/useToast';
 import { supabase } from '../services/supabase';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -42,6 +43,7 @@ const DAYS_OF_WEEK = [
 
 export const Timetable: React.FC = () => {
   const { teacher } = useTeacherAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   // Active view tab
@@ -410,9 +412,10 @@ export const Timetable: React.FC = () => {
 
       const fileName = `Faculty_Timetable_${teacherName.replace(/\s+/g, '_')}_(${dateStr.replace(/\//g, '-')}).pdf`;
       doc.save(fileName);
+      showToast('Faculty timetable PDF exported successfully!', 'success');
     } catch (err) {
       console.error('Failed to export timetable PDF:', err);
-      alert('Could not export PDF. Please try again.');
+      showToast('Could not export PDF. Please try again.', 'error');
     } finally {
       setExportingPdf(false);
     }
@@ -636,7 +639,9 @@ export const Timetable: React.FC = () => {
                         <h4 className="period-subject-title">
                           <span>{item.slot?.subjects?.name || 'Assigned Subject'}</span>
                           {isCompleted && (
-                            <CheckCircle2 size={16} className="text-emerald" title="Lecture completed" />
+                            <span title="Lecture completed" style={{ display: 'inline-flex' }}>
+                              <CheckCircle2 size={16} className="text-emerald" />
+                            </span>
                           )}
                         </h4>
                         <div className="period-class-meta">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTeacherAuth } from '../contexts/TeacherAuthContext';
+import { useToast } from '../hooks/useToast';
 import { supabase } from '../services/supabase';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -72,6 +73,7 @@ export const ExamMarksManager: React.FC<{
   onSwitchToTests?: () => void;
 }> = ({ onSwitchToTests }) => {
   const { teacher } = useTeacherAuth();
+  const { showToast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [activeSessionId, setActiveSessionId] = useState<number>(6);
@@ -96,7 +98,6 @@ export const ExamMarksManager: React.FC<{
   // Saving / Deleting states
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
 
   const mainTableRef = useRef<HTMLDivElement>(null);
@@ -119,11 +120,10 @@ export const ExamMarksManager: React.FC<{
     return { grade, isPassed };
   }, []);
 
-  // Show status feedback helper
+  // Show status feedback helper (routed to global Toast)
   const showFeedback = useCallback((text: string, type: 'success' | 'error' = 'success') => {
-    setStatusMessage({ text, type });
-    setTimeout(() => setStatusMessage(null), 4000);
-  }, []);
+    showToast(text, type);
+  }, [showToast]);
 
   // 1. Fetch Lookups, Published Exams, and Teacher's Linked Subjects
   const fetchExamLookups = useCallback(async () => {
@@ -316,11 +316,21 @@ export const ExamMarksManager: React.FC<{
   const availableSubjects = useMemo(() => {
     if (!selectedClassId) return [];
 
-    return allocations.filter((a) => {
+    const filtered = allocations.filter((a) => {
       const matchClass = a.class_id === selectedClassId;
       const matchSection = selectedSectionId === null || a.section_id === null || a.section_id === selectedSectionId;
       return matchClass && matchSection;
     });
+
+    // Deduplicate by subject_id so each subject only appears once
+    const subMap = new Map<number, LinkedSubjectAllocation>();
+    filtered.forEach((item) => {
+      if (!subMap.has(item.subject_id)) {
+        subMap.set(item.subject_id, item);
+      }
+    });
+
+    return Array.from(subMap.values());
   }, [allocations, selectedClassId, selectedSectionId]);
 
   // Active selected allocation
@@ -341,7 +351,6 @@ export const ExamMarksManager: React.FC<{
     }
 
     setLoadingStudents(true);
-    setStatusMessage(null);
 
     try {
       const schoolId = teacher.school_id || 2;
@@ -418,6 +427,8 @@ export const ExamMarksManager: React.FC<{
           isPassed = computed.isPassed;
         }
 
+        const hasMarksOrAbsent = isAbsent || (existing && typeof existing.obtained_marks === 'number');
+
         return {
           student_id: st.id,
           student_name: st.name,
@@ -432,7 +443,7 @@ export const ExamMarksManager: React.FC<{
           grade,
           is_passed: isPassed,
           remarks: existing?.remarks || '',
-          is_selected: false,
+          is_selected: hasMarksOrAbsent,
           has_error: false,
         };
       });
@@ -482,6 +493,7 @@ export const ExamMarksManager: React.FC<{
             is_passed: false,
             has_error: false,
             remarks: row.remarks || 'Absent',
+            is_selected: true,
           };
         }
 
@@ -495,6 +507,7 @@ export const ExamMarksManager: React.FC<{
             grade: 'F',
             is_passed: false,
             has_error: false,
+            is_selected: false,
           };
         }
 
@@ -525,6 +538,7 @@ export const ExamMarksManager: React.FC<{
           is_passed: isPassed,
           has_error: false,
           remarks: row.remarks === 'Absent' ? '' : row.remarks,
+          is_selected: true,
         };
       })
     );
@@ -584,6 +598,7 @@ export const ExamMarksManager: React.FC<{
             grade: 'F',
             is_passed: false,
             remarks: 'Absent',
+            is_selected: true,
           };
         }
         return row;
@@ -604,6 +619,7 @@ export const ExamMarksManager: React.FC<{
         grade: 'A+',
         is_passed: true,
         remarks: row.remarks === 'Absent' ? '' : row.remarks,
+        is_selected: true,
       }))
     );
     showFeedback(`Filled all students with full marks (${maxMarks}).`, 'success');
@@ -621,6 +637,7 @@ export const ExamMarksManager: React.FC<{
         grade: 'F',
         is_passed: false,
         remarks: '',
+        is_selected: false,
       }))
     );
   };
@@ -694,7 +711,6 @@ export const ExamMarksManager: React.FC<{
     }
 
     setSaving(true);
-    setStatusMessage(null);
 
     try {
       const schoolId = teacher.school_id || 2;
@@ -729,7 +745,7 @@ export const ExamMarksManager: React.FC<{
 
       await deleteQuery;
 
-      // 2. Prepare payload
+      // 2. Prepare payload (omitting 'percentage' since it is a PostgreSQL generated column)
       const payloads = marksToSave.map((row) => ({
         exam_id: selectedExamId,
         subject_id: selectedSubjectId,
@@ -740,7 +756,6 @@ export const ExamMarksManager: React.FC<{
         school_id: schoolId,
         obtained_marks: row.is_absent ? 0 : (row.obtained_marks as number),
         max_marks: maxMarks,
-        percentage: row.is_absent ? 0 : row.percentage,
         grade: row.is_absent ? 'F' : row.grade,
         remarks: row.is_absent ? 'Absent' : (row.remarks || null),
         entered_by: teacher.user_id || teacher.id,
@@ -749,11 +764,14 @@ export const ExamMarksManager: React.FC<{
         updated_at: new Date().toISOString(),
       }));
 
-      // 3. Insert new records
-      const { error: insErr } = await supabase.from('exam_results').insert(payloads);
+      // 3. Upsert records on unique constraint (exam_id, student_id, subject_id, school_id)
+      const { error: insErr } = await supabase.from('exam_results').upsert(payloads, {
+        onConflict: 'exam_id,student_id,subject_id,school_id',
+      });
       if (insErr) throw insErr;
 
       showFeedback(`Saved examination marks for ${payloads.length} students successfully!`, 'success');
+      await loadExamStudentsAndMarks();
     } catch (err: any) {
       console.error('Error saving exam marks:', err);
       showFeedback(`Failed to save marks: ${err.message || 'Database error'}`, 'error');
@@ -1083,8 +1101,8 @@ export const ExamMarksManager: React.FC<{
               value={selectedSubjectId || ''}
               onChange={(e) => setSelectedSubjectId(Number(e.target.value))}
             >
-              {availableSubjects.map((sub) => (
-                <option key={sub.subject_id} value={sub.subject_id}>
+              {availableSubjects.map((sub, idx) => (
+                <option key={`${sub.subject_id}-${idx}`} value={sub.subject_id}>
                   {sub.subject_name} (Max: {sub.max_marks})
                 </option>
               ))}
@@ -1145,28 +1163,6 @@ export const ExamMarksManager: React.FC<{
           </div>
         </div>
       </div>
-
-      {/* Status Feedback Toast */}
-      {statusMessage && (
-        <div
-          className="glass-panel"
-          style={{
-            padding: '0.85rem 1.25rem',
-            borderRadius: 'var(--radius-md)',
-            background:
-              statusMessage.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-            border: `1px solid ${statusMessage.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
-            color: statusMessage.type === 'success' ? '#10b981' : '#ef4444',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.65rem',
-            fontWeight: 700,
-          }}
-        >
-          {statusMessage.type === 'success' ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
-          <span>{statusMessage.text}</span>
-        </div>
-      )}
 
       {/* 3. TOOLBAR CONTROLS */}
       <div className="exam-toolbar glass-panel no-print">
@@ -1268,15 +1264,28 @@ export const ExamMarksManager: React.FC<{
             <table className="exam-marksheet-table" aria-label="Official Examination Marksheet">
               <thead>
                 <tr>
-                  <th style={{ width: '40px' }} className="center">
-                    <input
-                      type="checkbox"
-                      checked={students.length > 0 && students.every((s) => s.is_selected)}
-                      onChange={(e) => handleToggleSelectAll(e.target.checked)}
+                  <th style={{ width: '56px' }} className="center">
+                    <label
+                      className={`exam-serial-checkbox header ${
+                        students.length > 0 && students.every((s) => s.is_selected) ? 'checked' : ''
+                      }`}
                       title="Select / Deselect All"
-                    />
+                    >
+                      <input
+                        type="checkbox"
+                        checked={students.length > 0 && students.every((s) => s.is_selected)}
+                        onChange={(e) => handleToggleSelectAll(e.target.checked)}
+                        className="exam-serial-checkbox-input"
+                      />
+                      <span className="exam-serial-checkbox-inner">
+                        {students.length > 0 && students.every((s) => s.is_selected) ? (
+                          <Check size={12} strokeWidth={3.2} />
+                        ) : (
+                          '#'
+                        )}
+                      </span>
+                    </label>
                   </th>
-                  <th style={{ width: '45px' }} className="center">#</th>
                   <th style={{ width: '85px' }}>Roll No</th>
                   <th>Student Name & Details</th>
                   <th className="center" style={{ width: '130px' }}>
@@ -1298,15 +1307,28 @@ export const ExamMarksManager: React.FC<{
                       }`}
                     >
                       <td className="center">
-                        <input
-                          type="checkbox"
-                          checked={row.is_selected}
-                          onChange={() => handleToggleSelectStudent(row.student_id)}
-                        />
-                      </td>
-
-                      <td className="center" style={{ color: 'var(--text-dim)', fontWeight: 600 }}>
-                        {idx + 1}
+                        <label
+                          className={`exam-serial-checkbox ${row.is_selected ? 'checked' : ''}`}
+                          title={
+                            row.is_selected
+                              ? `Student #${idx + 1} (Marked / Selected - Click to toggle)`
+                              : `Student #${idx + 1} (Click to select)`
+                          }
+                        >
+                          <input
+                            type="checkbox"
+                            checked={row.is_selected}
+                            onChange={() => handleToggleSelectStudent(row.student_id)}
+                            className="exam-serial-checkbox-input"
+                          />
+                          <span className="exam-serial-checkbox-inner">
+                            {row.is_selected ? (
+                              <Check size={12} strokeWidth={3.2} className="check-icon" />
+                            ) : (
+                              <span className="serial-text">{idx + 1}</span>
+                            )}
+                          </span>
+                        </label>
                       </td>
 
                       <td style={{ fontWeight: 700, color: 'var(--text-muted)' }}>

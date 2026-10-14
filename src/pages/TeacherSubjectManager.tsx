@@ -191,7 +191,7 @@ const FilterSelect = styled.select`
     background: ${({ theme }) => theme.FIELD_BG};
   }
   
-  &:focus {
+  &:focus { 
     border-color: ${({ theme }) => theme.ACCENT};
     box-shadow: 0 0 0 2px ${({ theme }) => theme.ACCENT}15;
   }

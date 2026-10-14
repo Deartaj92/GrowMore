@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, Clock, EyeOff, ExternalLink, AlertCircle, Bell, Calendar } from 'lucide-react';
+import { X, Clock, EyeOff, ExternalLink, Sparkles, Megaphone, Bell, CalendarCheck } from 'lucide-react';
 import './AnnouncementPreviewModal.css';
 
 export interface AnnouncementModalData {
@@ -66,103 +66,132 @@ export const AnnouncementPreviewModal: React.FC<AnnouncementPreviewModalProps> =
     }
   };
 
+  const getBadgeIcon = () => {
+    switch (notification.type) {
+      case 'announcement':
+        return <Sparkles size={13} className="text-amber" />;
+      case 'notice':
+        return <Megaphone size={13} className="text-emerald" />;
+      case 'leave':
+        return <CalendarCheck size={13} className="text-indigo" />;
+      default:
+        return <Bell size={13} className="text-emerald" />;
+    }
+  };
+
+  const getBadgeLabel = () => {
+    switch (notification.type) {
+      case 'announcement':
+        return 'Official Announcement';
+      case 'notice':
+        return 'Faculty Circular';
+      case 'leave':
+        return 'Leave Update';
+      default:
+        return 'Notification';
+    }
+  };
+
   return (
-    <div className="announcement-preview-overlay" onClick={onClose} role="dialog" aria-modal="true">
+    <div
+      className="announcement-preview-overlay"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
       <div className="announcement-preview-box" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
+        {/* Top Gradient Accent Strip */}
+        <div className="announcement-top-glow-bar" />
+
+        {/* Header Bar */}
         <div className="announcement-preview-header">
-          <div
-            className="announcement-preview-title ql-editor"
-            dangerouslySetInnerHTML={{ __html: displayTitle }}
-          />
+          <div className="announcement-tag-row">
+            <span className={`announcement-pill pill-${notification.type || 'announcement'}`}>
+              {getBadgeIcon()}
+              <span>{getBadgeLabel()}</span>
+            </span>
+            {notification.time && (
+              <span className="announcement-time-tag">
+                <Clock size={11} />
+                <span>{notification.time}</span>
+              </span>
+            )}
+          </div>
           <button
             type="button"
             className="announcement-preview-close-btn"
             onClick={onClose}
-            aria-label="Close notification preview"
+            aria-label="Close preview modal"
           >
-            <X size={18} />
+            <X size={17} />
           </button>
         </div>
 
-        {/* Scrollable Body */}
-        <div className="announcement-preview-body">
-          {/* Metadata pill bar */}
-          <div className="announcement-preview-meta">
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Calendar size={12} />
-              {notification.time || 'Recent'}
-            </span>
-            <span
-              className={`badge ${
-                notification.priority === 'urgent'
-                  ? 'badge-rose'
-                  : notification.priority === 'important'
-                  ? 'badge-amber'
-                  : 'badge-emerald'
-              }`}
-              style={{ fontSize: '0.68rem', padding: '1px 7px', textTransform: 'capitalize' }}
-            >
-              {notification.type || 'Notice'}
-            </span>
-          </div>
-
-          {/* Rich Body Content */}
+        {/* Title Container */}
+        <div className="announcement-title-wrapper">
           <div
-            className="ql-editor"
-            dangerouslySetInnerHTML={{ __html: displayBody }}
+            className="announcement-preview-title ql-editor"
+            dangerouslySetInnerHTML={{ __html: displayTitle }}
           />
         </div>
 
-        {/* Optional Footer Highlight */}
-        {displayFooter && (
-          <div className="announcement-preview-footer">
-            <div
-              className="announcement-preview-footer-highlight ql-editor"
-              dangerouslySetInnerHTML={{ __html: displayFooter }}
-            />
-          </div>
-        )}
+        {/* Scrollable Body Content */}
+        <div className="announcement-preview-body">
+          <div
+            className="announcement-rich-content ql-editor"
+            dangerouslySetInnerHTML={{ __html: displayBody }}
+          />
 
-        {/* Actions matching main app: Remind me later & Don't show again */}
+          {/* Celebration / Callout Footer if provided */}
+          {displayFooter && (
+            <div className="announcement-celebration-card">
+              <div
+                className="announcement-celebration-content ql-editor"
+                dangerouslySetInnerHTML={{ __html: displayFooter }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Actions Area */}
         <div className="announcement-preview-actions">
           {notification.link ? (
             <>
               <button
                 type="button"
-                className="announcement-preview-btn secondary"
+                className="announcement-btn announcement-btn-secondary"
                 onClick={handleRemindMeLater}
               >
-                <Clock size={14} />
-                Remind me later
+                <Clock size={15} />
+                <span>Remind me later</span>
               </button>
               <button
                 type="button"
-                className="announcement-preview-btn primary"
+                className="announcement-btn announcement-btn-primary"
                 onClick={handleOpenPage}
               >
-                <ExternalLink size={14} />
-                Open Details
+                <ExternalLink size={15} />
+                <span>Open Details</span>
               </button>
             </>
           ) : (
             <>
               <button
                 type="button"
-                className="announcement-preview-btn secondary"
+                className="announcement-btn announcement-btn-primary"
                 onClick={handleRemindMeLater}
               >
-                <Clock size={14} />
-                Remind me later
+                <Clock size={15} />
+                <span>Remind me later</span>
               </button>
               {!notification.hide_dont_show && (
                 <button
                   type="button"
-                  className="announcement-preview-btn primary"
+                  className="announcement-btn announcement-btn-secondary"
                   onClick={handleDontShowAgain}
                 >
-                  <EyeOff size={14} />
-                  Don't show again
+                  <EyeOff size={15} />
+                  <span>Don't show again</span>
                 </button>
               )}
             </>

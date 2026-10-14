@@ -37,6 +37,7 @@ export interface TeacherPeriod {
   section_name: string;
   subject_name: string;
   room?: string;
+  room_number?: string;
   is_current?: boolean;
   is_completed?: boolean;
 }

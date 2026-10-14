@@ -20,7 +20,8 @@ export const TeacherLoader: React.FC<LoaderProps> = ({
   // If centered is explicitly provided, use it; otherwise default to fullScreen
   const isCentered = centered !== undefined ? centered : fullScreen;
 
-  const base = import.meta.env.BASE_URL ? import.meta.env.BASE_URL.replace(/\/$/, '') : '';
+  const metaEnv = (import.meta as any).env;
+  const base = metaEnv?.BASE_URL ? String(metaEnv.BASE_URL).replace(/\/$/, '') : '';
   const primaryLogo = `${base}/patternLogo.png`;
   const fallbackLogo = `${base}/icon-192.png`;
   const finalFallbackLogo = `${base}/notification-icon.png`;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTeacherAuth } from '../contexts/TeacherAuthContext';
+import { useToast } from '../hooks/useToast';
 import { supabase } from '../services/supabase';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -49,6 +50,7 @@ interface TeacherAssignmentSlot {
 
 export const Tests: React.FC = () => {
   const { teacher } = useTeacherAuth();
+  const { showToast } = useToast();
 
   // Active view tab for class tests
   const [activeTab, setActiveTab] = useState<'tests' | 'marksheet' | 'analytics'>('tests');
@@ -85,7 +87,6 @@ export const Tests: React.FC = () => {
   const [studentRows, setStudentRows] = useState<StudentTestResultRow[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [savingResults, setSavingResults] = useState(false);
-  const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
 
   // New Test Modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -279,7 +280,6 @@ export const Tests: React.FC = () => {
   const loadTestMarksheet = useCallback(async (test: TestRecordItem) => {
     if (!teacher || !test) return;
     setLoadingStudents(true);
-    setSaveSuccessMsg(null);
 
     try {
       const schoolId = teacher.school_id || 2;
@@ -350,6 +350,8 @@ export const Tests: React.FC = () => {
           else grade = 'F';
         }
 
+        const hasMarksOrAbsent = isAbsent || typeof obtained === 'number';
+
         return {
           student_id: st.id,
           student_name: st.name,
@@ -365,6 +367,7 @@ export const Tests: React.FC = () => {
           remarks,
           is_absent: isAbsent,
           is_passed: isPassed,
+          is_selected: hasMarksOrAbsent,
         };
       });
 
@@ -399,6 +402,7 @@ export const Tests: React.FC = () => {
             grade: 'F',
             is_passed: false,
             is_absent: false,
+            is_selected: false,
           };
         }
 
@@ -421,6 +425,7 @@ export const Tests: React.FC = () => {
           grade,
           is_passed: isPassed,
           is_absent: false,
+          is_selected: true,
         };
       })
     );
@@ -437,6 +442,7 @@ export const Tests: React.FC = () => {
           remarks,
           is_absent: isAbsent,
           obtained_marks: isAbsent ? 0 : row.obtained_marks,
+          is_selected: isAbsent ? true : row.is_selected,
         };
       })
     );
@@ -453,6 +459,7 @@ export const Tests: React.FC = () => {
         grade: 'A+',
         is_passed: true,
         is_absent: false,
+        is_selected: true,
       }))
     );
   };
@@ -467,6 +474,7 @@ export const Tests: React.FC = () => {
         is_passed: false,
         remarks: '',
         is_absent: false,
+        is_selected: false,
       }))
     );
   };
@@ -475,7 +483,6 @@ export const Tests: React.FC = () => {
   const handleSaveMarksheet = async () => {
     if (!selectedTest || !teacher) return;
     setSavingResults(true);
-    setSaveSuccessMsg(null);
 
     try {
       const schoolId = teacher.school_id || 2;
@@ -518,11 +525,10 @@ export const Tests: React.FC = () => {
         }
       }
 
-      setSaveSuccessMsg('Test marks saved and synchronized successfully!');
-      setTimeout(() => setSaveSuccessMsg(null), 4000);
+      showToast('Test marks saved and synchronized successfully!', 'success');
     } catch (err) {
       console.error('Error saving marksheet:', err);
-      alert('Failed to save test results. Please try again.');
+      showToast('Failed to save test results. Please try again.', 'error');
     } finally {
       setSavingResults(false);
     }
@@ -580,7 +586,7 @@ export const Tests: React.FC = () => {
       }
     } catch (err) {
       console.error('Error creating test:', err);
-      alert('Failed to create test record.');
+      showToast('Failed to create test record.', 'error');
     } finally {
       setCreatingTest(false);
     }
@@ -600,14 +606,14 @@ export const Tests: React.FC = () => {
       }
     } catch (err) {
       console.error('Error deleting test:', err);
-      alert('Failed to delete test.');
+      showToast('Failed to delete test.', 'error');
     }
   };
 
   // 10. Official Landscape PDF Marksheet Export (jsPDF + autoTable)
   const handleExportPDF = async () => {
     if (!selectedTest || studentRows.length === 0) {
-      alert('No student marks available to export.');
+      showToast('No student marks available to export.', 'warning');
       return;
     }
 
@@ -753,7 +759,7 @@ export const Tests: React.FC = () => {
       doc.save(fileName);
     } catch (err) {
       console.error('Error exporting PDF marksheet:', err);
-      alert('Failed to generate marksheet PDF.');
+      showToast('Failed to generate marksheet PDF.', 'error');
     } finally {
       setExportingPdf(false);
     }
@@ -1293,14 +1299,6 @@ export const Tests: React.FC = () => {
             </div>
           </div>
 
-          {/* Feedback Success Message */}
-          {saveSuccessMsg && (
-            <div className="att-success-alert glass-panel" style={{ padding: '0.85rem 1.25rem', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#10b981', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <CheckCircle2 size={18} />
-              <span style={{ fontWeight: 700 }}>{saveSuccessMsg}</span>
-            </div>
-          )}
-
           {/* SpreadSheet Marks Table */}
           {loadingStudents ? (
             <TeacherLoader message="Loading student roster and existing scores…" />
@@ -1317,7 +1315,31 @@ export const Tests: React.FC = () => {
               <table className="marksheet-table" aria-label="Student Test Marksheet">
                 <thead>
                   <tr>
-                    <th style={{ width: '45px' }}>#</th>
+                    <th style={{ width: '56px' }} className="center">
+                      <label
+                        className={`exam-serial-checkbox header ${
+                          studentRows.length > 0 && studentRows.every((s) => s.is_selected) ? 'checked' : ''
+                        }`}
+                        title="Select / Deselect All"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={studentRows.length > 0 && studentRows.every((s) => s.is_selected)}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setStudentRows((prev) => prev.map((s) => ({ ...s, is_selected: checked })));
+                          }}
+                          className="exam-serial-checkbox-input"
+                        />
+                        <span className="exam-serial-checkbox-inner">
+                          {studentRows.length > 0 && studentRows.every((s) => s.is_selected) ? (
+                            <Check size={12} strokeWidth={3.2} />
+                          ) : (
+                            '#'
+                          )}
+                        </span>
+                      </label>
+                    </th>
                     <th style={{ width: '80px' }}>Roll No</th>
                     <th>Student Details</th>
                     <th className="center" style={{ width: '130px' }}>
@@ -1340,8 +1362,37 @@ export const Tests: React.FC = () => {
                     const gradeClass = row.grade.toLowerCase().replace('+', '-plus');
 
                     return (
-                      <tr key={row.student_id}>
-                        <td style={{ color: 'var(--text-dim)', fontWeight: 600 }}>{idx + 1}</td>
+                      <tr key={row.student_id} className={row.is_selected ? 'row-selected' : ''}>
+                        <td className="center">
+                          <label
+                            className={`exam-serial-checkbox ${row.is_selected ? 'checked' : ''}`}
+                            title={
+                              row.is_selected
+                                ? `Student #${idx + 1} (Score entered / Selected - Click to toggle)`
+                                : `Student #${idx + 1} (Click to select)`
+                            }
+                          >
+                            <input
+                              type="checkbox"
+                              checked={!!row.is_selected}
+                              onChange={() => {
+                                setStudentRows((prev) =>
+                                  prev.map((s) =>
+                                    s.student_id === row.student_id ? { ...s, is_selected: !s.is_selected } : s
+                                  )
+                                );
+                              }}
+                              className="exam-serial-checkbox-input"
+                            />
+                            <span className="exam-serial-checkbox-inner">
+                              {row.is_selected ? (
+                                <Check size={12} strokeWidth={3.2} className="check-icon" />
+                              ) : (
+                                <span className="serial-text">{idx + 1}</span>
+                              )}
+                            </span>
+                          </label>
+                        </td>
                         <td style={{ fontWeight: 700, color: 'var(--text-muted)' }}>
                           {row.roll_number || row.student_id}
                         </td>

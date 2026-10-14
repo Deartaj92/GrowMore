@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase } from '../services/supabase';
+import { useToast } from '../hooks/useToast';
 import {
   CalendarRange,
   ChevronLeft,
@@ -39,6 +40,7 @@ interface MonthlyStudentRow {
   name: string;
   roll_number: string | null;
   father_name: string | null;
+  gender?: string | null;
   picture_url: string | null;
 }
 
@@ -71,6 +73,7 @@ export const MonthlyAttendanceRegister: React.FC<MonthlyAttendanceRegisterProps>
   initialSectionId,
   activeSessionId,
 }) => {
+  const { showToast } = useToast();
   // Current date defaults
   const today = useMemo(() => new Date(), []);
   const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
@@ -290,6 +293,7 @@ export const MonthlyAttendanceRegister: React.FC<MonthlyAttendanceRegisterProps>
       }
     } catch (err) {
       console.error('Error updating cell status:', err);
+      showToast('Failed to update attendance status.', 'error');
     } finally {
       setUpdatingCell(null);
       setEditingCell(null);
@@ -401,7 +405,7 @@ export const MonthlyAttendanceRegister: React.FC<MonthlyAttendanceRegisterProps>
   // PDF Export Handler - IDENTICAL ARCHITECTURE & DESIGN AS @AttendanceReport
   const handleExportPDF = async () => {
     if (!selectedSectionId || students.length === 0) {
-      alert('No student records available to export.');
+      showToast('No student records available to export.', 'warning');
       return;
     }
 
@@ -636,9 +640,10 @@ export const MonthlyAttendanceRegister: React.FC<MonthlyAttendanceRegisterProps>
       const fileName = `Attendance Report (${day}-${monthStr}-${yearStr}).pdf`;
 
       doc.save(fileName);
+      showToast('Attendance report PDF exported successfully!', 'success');
     } catch (err) {
       console.error('Error generating PDF:', err);
-      alert('Failed to generate PDF. Please try again.');
+      showToast('Failed to generate PDF. Please try again.', 'error');
     } finally {
       setExportingPdf(false);
     }

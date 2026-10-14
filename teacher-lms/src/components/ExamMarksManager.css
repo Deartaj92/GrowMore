@@ -632,3 +632,72 @@
     justify-content: center;
   }
 }
+
+/* ============================================================
+   SERIAL NUMBER INSIDE CHECKBOX BADGE
+   ============================================================ */
+.exam-serial-checkbox {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  vertical-align: middle;
+}
+
+.exam-serial-checkbox-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.exam-serial-checkbox-inner {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1.5px solid var(--border-medium, rgba(255, 255, 255, 0.16));
+  background: var(--bg-surface, rgba(255, 255, 255, 0.04));
+  color: var(--text-dim, #94a3b8);
+  font-size: 0.76rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.exam-serial-checkbox:hover .exam-serial-checkbox-inner {
+  border-color: var(--emerald-500, #10b981);
+  color: var(--emerald-400, #34d399);
+  background: rgba(16, 185, 129, 0.08);
+  transform: scale(1.06);
+}
+
+.exam-serial-checkbox.checked .exam-serial-checkbox-inner {
+  border-color: #10b981;
+  background: #10b981;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+  transform: scale(1.02);
+}
+
+.exam-serial-checkbox.header .exam-serial-checkbox-inner {
+  width: 26px;
+  height: 26px;
+  font-size: 0.72rem;
+  background: var(--bg-card);
+  border-color: var(--border-medium, rgba(255, 255, 255, 0.2));
+}
+
+.exam-serial-checkbox .serial-text {
+  line-height: 1;
+}
+
+.exam-serial-checkbox .check-icon {
+  stroke-width: 3.2px;
+}
+

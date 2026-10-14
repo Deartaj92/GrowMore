@@ -1,6 +1,7 @@
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { TeacherAuthProvider, useTeacherAuth } from './contexts/TeacherAuthContext';
+import { ToastProvider } from './hooks/useToast';
 import { Layout } from './components/Layout';
 import { TeacherLoader } from './components/TeacherLoader';
 import { Login } from './pages/Login';
@@ -45,9 +46,10 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 export function App() {
   return (
-    <TeacherAuthProvider>
-      <HashRouter>
-        <Routes>
+    <ToastProvider>
+      <TeacherAuthProvider>
+        <HashRouter>
+          <Routes>
           <Route
             path="/login"
             element={
@@ -151,6 +153,7 @@ export function App() {
         </Routes>
       </HashRouter>
     </TeacherAuthProvider>
+  </ToastProvider>
   );
 }
 

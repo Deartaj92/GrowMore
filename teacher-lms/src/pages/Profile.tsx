@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTeacherAuth } from '../contexts/TeacherAuthContext';
+import { useToast } from '../hooks/useToast';
 import { supabase } from '../services/supabase';
 import {
   User,
@@ -51,16 +52,13 @@ interface StaffFullData {
 
 export const Profile: React.FC = () => {
   const { teacher, logout, updateLocalProfile, refreshProfile } = useTeacherAuth();
+  const { showToast } = useToast();
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('teacher-theme') as 'dark' | 'light') || 'dark';
   });
 
   const [staffData, setStaffData] = useState<StaffFullData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<{
-    type: 'success' | 'error';
-    text: string;
-  } | null>(null);
 
   // Edit Profile Modal State
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -155,12 +153,12 @@ export const Profile: React.FC = () => {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      setStatusMessage({ type: 'error', text: 'Please select a valid image file (PNG, JPG, WebP).' });
+      showToast('Please select a valid image file (PNG, JPG, WebP).', 'error');
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setStatusMessage({ type: 'error', text: 'Image file size must be less than 5MB.' });
+      showToast('Image file size must be less than 5MB.', 'error');
       return;
     }
 
@@ -175,17 +173,16 @@ export const Profile: React.FC = () => {
     if (!teacher) return;
 
     if (!editForm.name.trim()) {
-      setStatusMessage({ type: 'error', text: 'Full Name is required.' });
+      showToast('Full Name is required.', 'error');
       return;
     }
 
     if (!editForm.mobile.trim()) {
-      setStatusMessage({ type: 'error', text: 'Mobile Number is required for faculty records.' });
+      showToast('Mobile Number is required for faculty records.', 'error');
       return;
     }
 
     setIsSaving(true);
-    setStatusMessage(null);
 
     try {
       let finalPhotoUrl = editForm.photo_url || null;
@@ -252,14 +249,13 @@ export const Profile: React.FC = () => {
       setStaffData((prev) => (prev ? { ...prev, ...updatePayload } : null));
 
       setIsEditOpen(false);
-      setStatusMessage({ type: 'success', text: 'Faculty profile updated successfully!' });
-      setTimeout(() => setStatusMessage(null), 4500);
+      showToast('Faculty profile updated successfully!', 'success');
 
       // Background refresh
       refreshProfile();
     } catch (err: any) {
       console.error('Failed to update profile:', err);
-      setStatusMessage({ type: 'error', text: err?.message || 'Failed to update profile. Please try again.' });
+      showToast(err?.message || 'Failed to update profile. Please try again.', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -271,17 +267,16 @@ export const Profile: React.FC = () => {
     if (!teacher) return;
 
     if (!newPassword || newPassword.length < 6) {
-      setStatusMessage({ type: 'error', text: 'Password must be at least 6 characters long.' });
+      showToast('Password must be at least 6 characters long.', 'error');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setStatusMessage({ type: 'error', text: 'New password and confirmation do not match.' });
+      showToast('New password and confirmation do not match.', 'error');
       return;
     }
 
     setIsSavingPassword(true);
-    setStatusMessage(null);
 
     try {
       // Find matching user in users table
@@ -317,11 +312,10 @@ export const Profile: React.FC = () => {
       setIsPasswordOpen(false);
       setNewPassword('');
       setConfirmPassword('');
-      setStatusMessage({ type: 'success', text: 'Portal security password updated successfully!' });
-      setTimeout(() => setStatusMessage(null), 4500);
+      showToast('Portal security password updated successfully!', 'success');
     } catch (err: any) {
       console.error('Failed to update password:', err);
-      setStatusMessage({ type: 'error', text: err?.message || 'Could not update password. Please contact the administrator.' });
+      showToast(err?.message || 'Could not update password. Please contact the administrator.', 'error');
     } finally {
       setIsSavingPassword(false);
     }
@@ -334,23 +328,6 @@ export const Profile: React.FC = () => {
 
   return (
     <div className="profile-module-page">
-      {/* STATUS TOAST FEEDBACK */}
-      {statusMessage && (
-        <div className={`profile-toast-banner ${statusMessage.type}`}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            {statusMessage.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-            <span>{statusMessage.text}</span>
-          </div>
-          <button
-            type="button"
-            className="btn btn-icon btn-ghost"
-            style={{ width: '24px', height: '24px' }}
-            onClick={() => setStatusMessage(null)}
-          >
-            <X size={15} />
-          </button>
-        </div>
-      )}
 
       {/* 1. HERO IDENTITY CARD */}
       <div className="profile-hero-card">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTeacherAuth } from '../contexts/TeacherAuthContext';
+import { useToast } from '../hooks/useToast';
 import { supabase } from '../services/supabase';
 import {
   BookOpenCheck,
@@ -64,6 +65,7 @@ const DEFAULT_HOMEWORK: HomeworkEntry[] = [
 
 export const Homework: React.FC = () => {
   const { teacher } = useTeacherAuth();
+  const { showToast } = useToast();
   const [entries, setEntries] = useState<HomeworkEntry[]>(() => {
     try {
       const saved = localStorage.getItem('growmore_teacher_homework');
@@ -86,7 +88,10 @@ export const Homework: React.FC = () => {
 
   const handleCreateHw = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newHw.title.trim()) return;
+    if (!newHw.title.trim()) {
+      showToast('Please enter a homework task title.', 'warning');
+      return;
+    }
 
     const created: HomeworkEntry = {
       id: `hw-${Date.now()}`,
@@ -103,6 +108,7 @@ export const Homework: React.FC = () => {
     const updated = [created, ...entries];
     setEntries(updated);
     localStorage.setItem('growmore_teacher_homework', JSON.stringify(updated));
+    showToast('Homework assignment published successfully!', 'success');
     setIsModalOpen(false);
     setNewHw({
       class_name: 'Class 10',

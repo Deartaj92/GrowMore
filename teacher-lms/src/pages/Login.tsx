@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTeacherAuth } from '../contexts/TeacherAuthContext';
+import { useToast } from '../hooks/useToast';
 import {
   Lock,
   User,
@@ -32,6 +33,7 @@ export const Login: React.FC = () => {
   const [error, setError] = useState('');
 
   const { login } = useTeacherAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,11 +58,12 @@ export const Login: React.FC = () => {
       }
 
       await login(identifier, password);
+      showToast('Welcome to GrowMore Faculty Portal!', 'success');
       navigate('/');
     } catch (err: any) {
-      setError(
-        err?.message || 'Invalid credentials. Please verify your staff username and password.'
-      );
+      const msg = err?.message || 'Invalid credentials. Please verify your staff username and password.';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setLoading(false);
     }

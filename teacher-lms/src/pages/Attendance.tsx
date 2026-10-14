@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTeacherAuth } from '../contexts/TeacherAuthContext';
+import { useToast } from '../hooks/useToast';
 import { supabase } from '../services/supabase';
 import {
   CalendarCheck,
@@ -34,6 +35,7 @@ import './Attendance.css';
 
 export const Attendance: React.FC = () => {
   const { teacher } = useTeacherAuth();
+  const { showToast } = useToast();
 
   // Active view tab
   const [activeTab, setActiveTab] = useState<'mark' | 'monthly' | 'history' | 'my-log'>('mark');
@@ -51,8 +53,6 @@ export const Attendance: React.FC = () => {
   const [students, setStudents] = useState<StudentAttendanceItem[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
-  const [saveErrorMsg, setSaveErrorMsg] = useState<string | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
 
   // History Tab Data & Filters
@@ -128,8 +128,6 @@ export const Attendance: React.FC = () => {
     if (!selectedSectionId || !teacher) return;
 
     setLoadingStudents(true);
-    setSaveSuccessMsg(null);
-    setSaveErrorMsg(null);
 
     try {
       const schoolId = teacher.school_id || 2;
@@ -203,7 +201,7 @@ export const Attendance: React.FC = () => {
       setStudents(mappedStudents);
     } catch (err: any) {
       console.error('Error loading students:', err);
-      setSaveErrorMsg('Failed to load student roster for selected section.');
+      showToast('Failed to load student roster for selected section.', 'error');
     } finally {
       setLoadingStudents(false);
     }
@@ -237,8 +235,6 @@ export const Attendance: React.FC = () => {
     if (!selectedSectionId || !teacher || students.length === 0) return;
 
     setSaving(true);
-    setSaveSuccessMsg(null);
-    setSaveErrorMsg(null);
 
     try {
       const schoolId = teacher.school_id || 2;
@@ -266,15 +262,16 @@ export const Attendance: React.FC = () => {
 
       if (upsertErr) throw upsertErr;
 
-      setSaveSuccessMsg(
-        `Attendance saved successfully! Recorded ${students.length} students for ${currentSec?.class_name} (${currentSec?.name}) on ${selectedDate}.`
+      showToast(
+        `Attendance saved successfully! Recorded ${students.length} students for ${currentSec?.class_name} (${currentSec?.name}) on ${selectedDate}.`,
+        'success'
       );
 
       // Reload to ensure IDs are synced
       await loadSectionStudentsAndAttendance();
     } catch (err: any) {
       console.error('Error saving attendance:', err);
-      setSaveErrorMsg(err?.message || 'Failed to save attendance records. Please try again.');
+      showToast(err?.message || 'Failed to save attendance records. Please try again.', 'error');
     } finally {
       setSaving(false);
     }
@@ -600,20 +597,6 @@ export const Attendance: React.FC = () => {
               </button>
             </div>
           </div>
-
-          {/* STATUS NOTIFICATIONS */}
-          {saveSuccessMsg && (
-            <div className="att-alert-banner success glass-panel animate-fade-in">
-              <CheckCircle2 size={18} />
-              <span>{saveSuccessMsg}</span>
-            </div>
-          )}
-          {saveErrorMsg && (
-            <div className="att-alert-banner error glass-panel animate-fade-in">
-              <AlertCircle size={18} />
-              <span>{saveErrorMsg}</span>
-            </div>
-          )}
 
           {/* KPI COUNTERS BAR */}
           <div className="attendance-kpi-bar glass-panel">

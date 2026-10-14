@@ -44,8 +44,14 @@ export const sanitizeAvatarUrl = (rawUrl?: string | null): string | null => {
   if (trimmed.startsWith('student-avatars/')) {
     return `${SUPABASE_BASE}${trimmed}`;
   }
+  if (trimmed.startsWith('student-pictures/')) {
+    return `${SUPABASE_BASE}${trimmed}`;
+  }
   if (trimmed.startsWith('storage/v1/object/public/')) {
     return `https://seeeczoigcxwvpazfydj.supabase.co/${trimmed}`;
+  }
+  if (trimmed.startsWith('students/')) {
+    return `${SUPABASE_BASE}student-avatars/${trimmed}`;
   }
 
   // Raw file key in student-avatars bucket
@@ -97,21 +103,18 @@ export const StudentAvatar: React.FC<StudentAvatarProps> = ({
   showGenderDot = false,
 }) => {
   const [hasError, setHasError] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
-
   const cleanUrl = sanitizeAvatarUrl(src);
 
-  // Reset load state if src changes
+  // Reset error state if src changes
   useEffect(() => {
     setHasError(false);
-    setIsLoaded(false);
   }, [cleanUrl]);
 
   const initials = getStudentInitials(name);
   const bgColor = getAvatarBgColor(name, gender);
   const fontSize = Math.max(10, Math.round(size * 0.38));
 
-  const shouldRenderImg = !!cleanUrl && !hasError;
+  const shouldRenderImg = Boolean(cleanUrl) && !hasError;
 
   return (
     <div
@@ -126,9 +129,9 @@ export const StudentAvatar: React.FC<StudentAvatarProps> = ({
       }}
       title={title || name}
     >
-      {/* Fallback Initials Badge */}
+      {/* Fallback Initials Badge (placed at z-index: 1) */}
       <div
-        className={`student-avatar-fallback ${shouldRenderImg && isLoaded ? 'fade-out' : ''}`}
+        className="student-avatar-fallback"
         style={{
           backgroundColor: bgColor,
           fontSize: `${fontSize}px`,
@@ -137,15 +140,13 @@ export const StudentAvatar: React.FC<StudentAvatarProps> = ({
         {initials}
       </div>
 
-      {/* Real Image */}
+      {/* Real Image (placed at z-index: 2, renders directly on top) */}
       {shouldRenderImg && (
         <img
           src={cleanUrl!}
           alt={name}
-          className={`student-avatar-img ${isLoaded ? 'loaded' : ''}`}
-          loading="lazy"
+          className="student-avatar-img"
           referrerPolicy="no-referrer"
-          onLoad={() => setIsLoaded(true)}
           onError={() => setHasError(true)}
         />
       )}
@@ -154,8 +155,9 @@ export const StudentAvatar: React.FC<StudentAvatarProps> = ({
       {showGenderDot && gender && (
         <span
           className={`student-avatar-gender-indicator ${
-            gender.toLowerCase() === 'female' ? 'female' : 'male'
+            gender.toLowerCase() === 'female' || gender.toLowerCase() === 'girl' ? 'female' : 'male'
           }`}
+          title={gender}
         />
       )}
     </div>

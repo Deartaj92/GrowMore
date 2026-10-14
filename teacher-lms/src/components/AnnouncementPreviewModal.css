@@ -1,23 +1,23 @@
 /* =========================================================
-   ANNOUNCEMENT / NOTIFICATION PREVIEW MODAL
-   Pixel-matched to main app's UserAnnouncements preview modal
+   GROWMORE FACULTY LMS - ANNOUNCEMENT & NOTIFICATION MODAL
+   Ultra-modern, high-polish layout with Nastaleeq Urdu support
    ========================================================= */
 
 .announcement-preview-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  background: rgba(10, 14, 23, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 12000;
   padding: 1rem;
-  animation: previewFadeIn 0.18s ease-out;
+  animation: modalOverlayFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes previewFadeIn {
+@keyframes modalOverlayFadeIn {
   from {
     opacity: 0;
   }
@@ -27,22 +27,26 @@
 }
 
 .announcement-preview-box {
-  background: var(--bg-card, #252525);
-  border-radius: 18px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
-  border: 1px solid var(--border-subtle, #383838);
-  max-width: 440px;
-  width: min(440px, calc(100vw - 32px));
+  background: #181c24;
+  color: #f1f5f9;
+  border-radius: 20px;
+  box-shadow: 
+    0 24px 64px -12px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  max-width: 480px;
+  width: min(480px, calc(100vw - 32px));
   max-height: 85vh;
+  height: min(560px, 85vh);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: previewPopIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  animation: modalBoxPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes previewPopIn {
+@keyframes modalBoxPopIn {
   from {
-    transform: scale(0.93) translateY(8px);
+    transform: scale(0.94) translateY(10px);
     opacity: 0;
   }
   to {
@@ -51,200 +55,291 @@
   }
 }
 
+/* Glowing Top Accent Bar */
+.announcement-top-glow-bar {
+  height: 3px;
+  width: 100%;
+  background: linear-gradient(90deg, #10b981 0%, #6366f1 50%, #f59e0b 100%);
+  flex-shrink: 0;
+}
+
+/* Header Bar */
 .announcement-preview-header {
-  padding: 12px 18px 10px 18px;
-  border-bottom: 1px solid var(--border-subtle, #383838);
+  padding: 12px 18px 8px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: rgba(255, 255, 255, 0.025);
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
 }
 
-.announcement-preview-title {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--text-main, #ffffff);
-  width: 100%;
-  line-height: 1.35;
+.announcement-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
+.announcement-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.73rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.pill-announcement {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.pill-notice {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.pill-leave {
+  background: rgba(99, 102, 241, 0.12);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+.pill-notification {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.announcement-time-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+/* Sleek Round Close Button */
 .announcement-preview-close-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-muted, #9ca3af);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: all 0.18s ease;
   flex-shrink: 0;
 }
 
 .announcement-preview-close-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-main, #ffffff);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  transform: rotate(90deg);
 }
 
+/* Title Container */
+.announcement-title-wrapper {
+  padding: 14px 20px 8px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.015);
+  flex-shrink: 0;
+}
+
+.announcement-preview-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #ffffff;
+  width: 100%;
+}
+
+/* Scrollable Content Body */
 .announcement-preview-body {
-  padding: 16px 20px;
+  padding: 18px 22px;
   flex: 1;
   overflow-y: auto;
-  font-size: 0.95rem;
-  color: var(--text-main, #f3f4f6);
-  line-height: 1.6;
-  background: rgba(255, 255, 255, 0.015);
-  min-height: 160px;
+  font-size: 0.98rem;
+  color: #e2e8f0;
+  line-height: 2.1;
+  background: rgba(0, 0, 0, 0.12);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
-/* Quill Editor Styles & Multilingual / Urdu Nastaleeq typography */
-.announcement-preview-body .ql-editor,
-.announcement-preview-title.ql-editor,
-.announcement-preview-footer .ql-editor {
-  font-family: 'JameelNooriNastaleeq', 'Inter', 'Plus Jakarta Sans', -apple-system, sans-serif;
-  color: inherit;
-}
-
-.announcement-preview-body p {
-  margin: 6px 0;
-}
-
-.announcement-preview-body h1,
-.announcement-preview-body h2,
-.announcement-preview-body h3,
-.announcement-preview-body h4 {
-  margin: 8px 0 4px 0;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-.announcement-preview-body ul,
-.announcement-preview-body ol {
-  margin: 6px 0 6px 1.2rem;
-  padding-left: 1rem;
-}
-
-.announcement-preview-body li {
-  margin: 2px 0;
-}
-
-.announcement-preview-body code {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: monospace;
-  font-size: 0.88em;
-}
-
-.announcement-preview-body img {
-  max-width: 100%;
-  height: auto;
-  border-radius: 8px;
-  margin: 8px 0;
-}
-
-.announcement-preview-body blockquote {
-  border-left: 3px solid var(--emerald-500, #10b981);
-  margin: 8px 0;
-  padding: 4px 12px;
-  color: var(--text-muted, #9ca3af);
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 0 6px 6px 0;
-}
-
-.announcement-preview-body [dir="rtl"] {
-  direction: rtl;
-  text-align: right;
-}
-
-/* Custom scrollbar */
 .announcement-preview-body::-webkit-scrollbar {
   width: 6px;
 }
+
 .announcement-preview-body::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .announcement-preview-body::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.16);
   border-radius: 999px;
 }
+
 .announcement-preview-body::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.28);
 }
 
-.announcement-preview-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 0 10px 0;
-  margin-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  font-size: 0.76rem;
-  color: var(--text-muted, #9ca3af);
+/* Urdu Nastaleeq & Rich Quill Styling */
+.announcement-preview-title.ql-editor,
+.announcement-rich-content.ql-editor,
+.announcement-celebration-content.ql-editor {
+  font-family: 'JameelNooriNastaleeq', 'Noto Nastaliq Urdu', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-.announcement-preview-footer {
-  padding: 10px 18px 12px 18px;
-  border-top: 1px solid var(--border-subtle, #383838);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.85rem;
-  color: var(--text-secondary, #9ca3af);
-  background: rgba(255, 255, 255, 0.02);
-  min-height: 40px;
-  justify-content: center;
+.announcement-rich-content p {
+  margin: 8px 0;
 }
 
-.announcement-preview-footer-highlight {
-  font-weight: 600;
-  color: var(--text-main, #ffffff);
-  width: 100%;
-}
-
-.announcement-preview-actions {
-  display: flex;
-  gap: 10px;
-  padding: 14px 18px;
-  border-top: 1px solid var(--border-subtle, #383838);
-  background: var(--bg-card, #252525);
-}
-
-.announcement-preview-btn {
-  flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 9px 14px;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 0.86rem;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.18s ease;
-}
-
-.announcement-preview-btn.secondary {
-  background: var(--bg-surface, #1e1e1e);
-  color: var(--text-main, #ffffff);
-  border-color: var(--border-subtle, #383838);
-}
-
-.announcement-preview-btn.secondary:hover {
-  background: var(--bg-surface-hover, #2c2c2c);
-  border-color: var(--border-medium, #4b5563);
-}
-
-.announcement-preview-btn.primary {
-  background: var(--emerald-600, #059669);
+.announcement-rich-content h1,
+.announcement-rich-content h2,
+.announcement-rich-content h3 {
+  margin: 12px 0 6px 0;
+  font-weight: 700;
   color: #ffffff;
 }
 
-.announcement-preview-btn.primary:hover {
-  background: var(--emerald-500, #10b981);
+.announcement-rich-content ul,
+.announcement-rich-content ol {
+  margin: 8px 0 8px 1.4rem;
+  padding-left: 1rem;
+}
+
+.announcement-rich-content li {
+  margin: 3px 0;
+}
+
+.announcement-rich-content code {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.88em;
+}
+
+.announcement-rich-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  margin: 10px 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Celebration / Highlight Callout Card */
+.announcement-celebration-card {
+  margin-top: 16px;
+  margin-bottom: 4px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.09) 0%, rgba(99, 102, 241, 0.08) 100%);
+  border: 1px dashed rgba(16, 185, 129, 0.3);
+  border-radius: 14px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.announcement-celebration-content {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #34d399;
+  width: 100%;
+  margin: 0;
+}
+
+.announcement-celebration-content p {
+  margin: 0;
+}
+
+/* Actions Footer */
+.announcement-preview-actions {
+  display: flex;
+  gap: 12px;
+  padding: 14px 20px 16px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  background: #151820;
+  flex-shrink: 0;
+}
+
+.announcement-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid transparent;
+  user-select: none;
+}
+
+/* Primary Button (Remind me later / Open Details) */
+.announcement-btn-primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #032b17;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.28);
+}
+
+.announcement-btn-primary:hover {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.38);
+}
+
+.announcement-btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Secondary Button (Don't show again) */
+.announcement-btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.announcement-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.announcement-btn-secondary:active {
+  transform: translateY(0);
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .announcement-preview-box {
+    width: calc(100vw - 24px);
+    max-height: 88vh;
+    border-radius: 16px;
+  }
+  
+  .announcement-preview-body {
+    padding: 14px 16px;
+  }
+
+  .announcement-preview-actions {
+    flex-direction: column;
+    padding: 12px 16px;
+  }
 }

@@ -44,6 +44,7 @@ export interface StudentTestResultRow {
   remarks: string;
   is_absent: boolean;
   is_passed: boolean;
+  is_selected?: boolean;
 }
 
 export interface NewTestPayload {
