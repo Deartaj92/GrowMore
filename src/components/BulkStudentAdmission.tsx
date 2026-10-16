@@ -8,6 +8,7 @@ import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoading } from '../contexts/LoadingContext';
+import { genderLearningService } from '../utils/genderLearningService';
 import { usePageFooter } from './Layout/contexts/PageFooterContext';
 import { Box, Grid } from '@mui/material';
 import * as XLSX from 'xlsx';
@@ -184,7 +185,7 @@ const StudentRowHeader = styled.div`
 
 const StudentRowMain = styled.div`
   display: grid;
-  grid-template-columns: 52px minmax(160px, 1.2fr) minmax(160px, 1.2fr) minmax(140px, 1fr) minmax(140px, 1fr) minmax(140px, 1fr) minmax(120px, 0.8fr) minmax(150px, 1fr) auto;
+  grid-template-columns: 52px minmax(160px, 1.2fr) minmax(160px, 1.2fr) minmax(140px, 1fr) minmax(140px, 1fr) minmax(140px, 1fr) minmax(130px, 0.8fr) minmax(150px, 1fr) auto;
   gap: 10px 12px;
   align-items: start;
 
@@ -506,6 +507,62 @@ const FieldCaption = styled.label`
   font-size: 0.78rem;
   font-weight: 600;
   color: ${({ theme }) => theme.TEXT_SECONDARY};
+`;
+
+const GenderButtonGroup = styled.div`
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 42px;
+  height: 42px;
+  background: ${({ theme }) => getLayoutPalette(theme).surfaceBg};
+  border: 1px solid ${({ theme }) => getLayoutPalette(theme).surfaceBorder};
+  border-radius: ${CARD_RADIUS_MD};
+  padding: 3px;
+  gap: 3px;
+  box-sizing: border-box;
+  box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceShadow};
+  @media (max-width: 700px) {
+    min-height: 40px;
+    height: 40px;
+  }
+`;
+
+const GenderButton = styled.button<{ $active?: boolean; $variant?: 'male' | 'female' }>`
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: calc(${CARD_RADIUS_MD} - 2px);
+  border: none;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: ${({ $active }) => ($active ? 700 : 500)};
+  transition: all 0.2s ease;
+  background: ${({ $active, $variant, theme }) => {
+    if (!$active) return 'transparent';
+    if ($variant === 'female') return 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)';
+    return theme.ACCENT;
+  }};
+  color: ${({ $active, theme }) => ($active ? '#ffffff' : theme.TEXT_PRIMARY)};
+  box-shadow: ${({ $active, $variant }) => {
+    if (!$active) return 'none';
+    if ($variant === 'female') return '0 2px 8px rgba(249, 115, 22, 0.4)';
+    return '0 2px 6px rgba(0,0,0,0.18)';
+  }};
+
+  &:hover {
+    background: ${({ $active, $variant, theme }) => {
+      if (!$active) return getLayoutPalette(theme).navHoverBg;
+      if ($variant === 'female') return '#ea580c';
+      return theme.ACCENT;
+    }};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${({ $variant, theme }) => ($variant === 'female' ? '#f97316' : theme.ACCENT)};
+  }
 `;
 
 const FieldHint = styled.div<{ $error?: boolean }>`
@@ -863,6 +920,7 @@ interface StudentData {
   name: string;
   fatherName: string;
   gender: string;
+  genderManual?: boolean;
   classId?: string;
   className?: string;
   sectionId?: string;
@@ -1007,6 +1065,7 @@ const createStudent = (overrides: Partial<StudentData> = {}): StudentData => ({
   name: '',
   fatherName: '',
   gender: 'Male',
+  genderManual: false,
   admissionDate: getTodayDisplay(),
   notificationChannel: 'whatsapp',
   dob: '01-01-2000',
@@ -1038,7 +1097,6 @@ const getRowValue = (row: Record<string, unknown>, aliases: string[]): string =>
 const normalizeGender = (value: string) => {
   const normalized = value.trim().toLowerCase();
   if (normalized === 'f' || normalized === 'female') return 'Female';
-  if (normalized === 'o' || normalized === 'other') return 'Other';
   return 'Male';
 };
 
@@ -1092,6 +1150,13 @@ const BulkStudentAdmission: React.FC = () => {
   useEffect(() => {
     studentsRef.current = students;
   }, [students]);
+
+  // Initialize gender learning model with existing school student records
+  useEffect(() => {
+    if (user?.school_id) {
+      genderLearningService.init(user.school_id);
+    }
+  }, [user?.school_id]);
 
   const showToast = useCallback((msg: string, type: 'error' | 'success' | 'warning' = 'success') => {
     const id = toastId.current++;
@@ -1237,16 +1302,32 @@ const BulkStudentAdmission: React.FC = () => {
     });
   };
 
-  const updateStudent = (id: string, field: keyof StudentData, value: string) => {
-    setStudents(students.map(student => 
-      student.id === id
-        ? {
-            ...student,
-            [field]: value,
-            ...(field === 'classId' ? { sectionId: '', sectionName: '' } : {})
+  const updateStudent = (id: string, field: keyof StudentData, value: string, isManualGenderChange: boolean = false) => {
+    setStudents(prevStudents => prevStudents.map(student => {
+      if (student.id !== id) return student;
+
+      const updated = {
+        ...student,
+        [field]: value,
+        ...(field === 'classId' ? { sectionId: '', sectionName: '' } : {})
+      };
+
+      if (field === 'gender') {
+        updated.genderManual = isManualGenderChange;
+        if (student.name?.trim()) {
+          genderLearningService.learn(student.name, value);
+        }
+      } else if (field === 'name') {
+        if (!student.genderManual && value.trim().length >= 2) {
+          const predicted = genderLearningService.predict(value);
+          if (predicted) {
+            updated.gender = predicted;
           }
-        : student
-    ));
+        }
+      }
+
+      return updated;
+    }));
   };
 
   const toggleStudentExpanded = useCallback((id: string) => {
@@ -1411,12 +1492,27 @@ const BulkStudentAdmission: React.FC = () => {
         const sectionMatch = classMatch ? findSectionMatch(Number(classMatch.id), rawSection) : null;
         const rawFamily = getRowValue(row, ['familyid', 'family', 'familyname']);
         const familyMatch = findFamilyMatch(rawFamily);
+        const studentName = getRowValue(row, ['name', 'studentname', 'student']);
+        const rawGender = getRowValue(row, ['gender', 'sex']);
+        let studentGender = 'Male';
+        let genderIsManual = false;
+
+        if (rawGender) {
+          studentGender = normalizeGender(rawGender);
+          genderIsManual = true;
+          if (studentName) {
+            genderLearningService.learn(studentName, studentGender);
+          }
+        } else if (studentName) {
+          studentGender = genderLearningService.predict(studentName);
+        }
 
         return createStudent({
           id: `csv-${timestamp}-${index}`,
-          name: getRowValue(row, ['name', 'studentname', 'student']),
+          name: studentName,
           fatherName: getRowValue(row, ['fathername', 'father', 'parentname']),
-          gender: normalizeGender(getRowValue(row, ['gender', 'sex']) || 'Male'),
+          gender: studentGender,
+          genderManual: genderIsManual,
           classId: classMatch ? String(classMatch.id) : '',
           className: rawClass,
           sectionId: sectionMatch ? String(sectionMatch.id) : '',
@@ -1641,6 +1737,14 @@ const BulkStudentAdmission: React.FC = () => {
         return missingRequiredFields || failedIds.has(student.id);
       });
 
+      // Learn from all successfully admitted students
+      const studentsToLearn = currentStudents
+        .filter(s => !failedIds.has(s.id) && s.name?.trim() && s.gender)
+        .map(s => ({ name: s.name, gender: s.gender }));
+      if (studentsToLearn.length > 0) {
+        genderLearningService.learnBatch(studentsToLearn);
+      }
+
       setProgress(100);
 
       if (successCount > 0 && remainingStudents.length === 0) {
@@ -1727,13 +1831,13 @@ const BulkStudentAdmission: React.FC = () => {
 
         e.preventDefault();
         if (focusedStudentId) {
-          updateStudent(focusedStudentId, 'gender', e.key.toLowerCase() === 'm' ? 'Male' : 'Female');
+          updateStudent(focusedStudentId, 'gender', e.key.toLowerCase() === 'm' ? 'Male' : 'Female', true);
         } else {
           // If no focused student, find the first student and set gender
           const firstStudent = students[0];
           if (firstStudent) {
             setFocusedStudentId(firstStudent.id);
-            updateStudent(firstStudent.id, 'gender', e.key.toLowerCase() === 'm' ? 'Male' : 'Female');
+            updateStudent(firstStudent.id, 'gender', e.key.toLowerCase() === 'm' ? 'Male' : 'Female', true);
           }
         }
       }
@@ -1931,13 +2035,13 @@ const BulkStudentAdmission: React.FC = () => {
                         <div style={{ fontWeight: 700, color: (theme === 'dark' ? darkTheme : lightTheme).TEXT_PRIMARY }}>
                           {student.name || `Student Row ${index + 1}`}
                         </div>
-                        <FieldHint $error={unresolvedClass || unresolvedSection}>
-                          {unresolvedClass
-                            ? `CSV class "${student.className}" could not be matched.`
-                            : unresolvedSection
-                              ? `CSV section "${student.sectionName}" could not be matched.`
-                              : 'Edit any row fields before saving.'}
-                        </FieldHint>
+                        {(unresolvedClass || unresolvedSection) && (
+                          <FieldHint $error>
+                            {unresolvedClass
+                              ? `CSV class "${student.className}" could not be matched.`
+                              : `CSV section "${student.sectionName}" could not be matched.`}
+                          </FieldHint>
+                        )}
                       </div>
                     </StudentRowMeta>
                     <ButtonContainer>
@@ -2059,17 +2163,27 @@ const BulkStudentAdmission: React.FC = () => {
                     </RowField>
                     <RowField>
                       <FieldCaption>Gender</FieldCaption>
-                      <Select
-                        value={student.gender || 'Male'}
-                        onChange={(e) => updateStudent(student.id, 'gender', e.target.value)}
-                        onFocus={() => handleFieldFocus(student.id)}
-                        onKeyDown={(e) => handleTabKey(e, student.id, isLastRow, 'gender')}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                      </Select>
+                      <GenderButtonGroup onClick={(e) => e.stopPropagation()}>
+                        <GenderButton
+                          type="button"
+                          $variant="male"
+                          $active={(student.gender || 'Male') === 'Male'}
+                          onClick={() => updateStudent(student.id, 'gender', 'Male', true)}
+                          onFocus={() => handleFieldFocus(student.id)}
+                        >
+                          Male
+                        </GenderButton>
+                        <GenderButton
+                          type="button"
+                          $variant="female"
+                          $active={student.gender === 'Female'}
+                          onClick={() => updateStudent(student.id, 'gender', 'Female', true)}
+                          onFocus={() => handleFieldFocus(student.id)}
+                          onKeyDown={(e) => handleTabKey(e, student.id, isLastRow, 'gender')}
+                        >
+                          Female
+                        </GenderButton>
+                      </GenderButtonGroup>
                     </RowField>
                     <RowField>
                       <FieldCaption>Phone</FieldCaption>

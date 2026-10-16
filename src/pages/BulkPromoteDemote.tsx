@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
+import ReactDOM from 'react-dom';
 import styled, { useTheme, keyframes, css } from 'styled-components';
 import { supabase } from '../supabaseClient';
 import { useToast } from '../components/useToast';
@@ -645,14 +646,18 @@ const SessionInfo = styled.div`
 // Modal components
 const ModalOverlay = styled.div`
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
   background: ${({ theme }) => getLayoutPalette(theme).shellOverlay};
   backdrop-filter: blur(8px);
   WebkitBackdropFilter: blur(8px);
-  z-index: 4000;
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
   animation: fade-in 0.2s ease-out;
   @keyframes fade-in {
     from { opacity: 0; backdrop-filter: blur(0); }
@@ -670,19 +675,18 @@ const ModalBox = styled.div`
   flex-direction: column;
   box-shadow: ${({ theme }) => getLayoutPalette(theme).surfaceHoverShadow};
   border: 1px solid ${({ theme }) => getLayoutPalette(theme).shellBorder};
-  margin: 32px 16px;
+  margin: 0;
   position: relative;
-  z-index: 1301;
+  z-index: 10000;
   animation: slide-up 0.3s cubic-bezier(0.2, 0.9, 0.4, 1);
   @keyframes slide-up {
     from { transform: translateY(20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
   @media (max-width: 768px) {
-    width: calc(100% - 32px);
-    height: calc(100% - 64px);
-    margin: 32px 16px;
-    max-height: calc(100% - 64px);
+    width: 100%;
+    max-height: 90vh;
+    margin: 0;
   }
 `;
 
@@ -1311,68 +1315,6 @@ const BulkPromoteDemote: React.FC = () => {
     setSelectedStudents(newSet);
   };
 
-  // Helper function to update student_class_history (same as StudentStatusManager)
-  const updateStudentClassHistory = async (studentId: string, sessionId: string, newClassId: number, newSectionId: number | null) => {
-
-    // First, get the original admission class from the first record (minimum id) for this student
-    // This preserves the admission class which should never change
-    const { data: admissionRecord, error: admissionError } = await supabase
-      .from('student_class_history')
-      .select('adm_class_id, adm_section_id')
-      .eq('student_id', studentId)
-      .eq('school_id', user?.school_id)
-      .order('id', { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    // If no admission record exists, use the new class as admission (shouldn't happen for promotions, but handle it)
-    const admClassId = admissionRecord?.adm_class_id || newClassId;
-    const admSectionId = admissionRecord?.adm_section_id !== null ? admissionRecord?.adm_section_id : newSectionId;
-
-
-    // Check if an entry exists for this student in this session
-    const { data: existingEntry, error: checkError } = await supabase
-      .from('student_class_history')
-      .select('id')
-      .eq('student_id', studentId)
-      .eq('session_id', sessionId)
-      .eq('school_id', user?.school_id)
-      .maybeSingle();
-
-    if (existingEntry) {
-      // Update existing entry - preserve admission class, update only new/current class
-      const { error: schError } = await supabase
-        .from('student_class_history')
-        .update({
-          adm_class_id: admClassId, // Preserve admission class (never change)
-          adm_section_id: admSectionId, // Preserve admission section (never change)
-          new_class_id: newClassId, // Update current class to promoted class
-          new_section_id: newSectionId // Update current section to promoted section
-        })
-        .eq('id', existingEntry.id);
-
-      if (schError) {
-        // Failed to update student_class_history
-      }
-    } else {
-      // Create new entry - preserve admission class, set new class to promoted class
-      const { error: schError } = await supabase
-        .from('student_class_history')
-        .insert({
-          student_id: studentId,
-          session_id: sessionId,
-          adm_class_id: admClassId, // Preserve admission class (never change)
-          adm_section_id: admSectionId, // Preserve admission section (never change)
-          new_class_id: newClassId, // Set current class to promoted class
-          new_section_id: newSectionId, // Set current section to promoted section
-          school_id: user?.school_id
-        });
-
-      if (schError) {
-        // Failed to create student_class_history entry
-      }
-    }
-  };
 
   // Check if target class has existing students
   const checkTargetClassStudents = useCallback(async () => {
@@ -1433,44 +1375,47 @@ const BulkPromoteDemote: React.FC = () => {
       const sourceHasSections = sourceClassObj?.has_sections ?? true;
       if (sourceHasSections && !sourceSection) return;
 
-      const minDuration = 2000;
-      const start = Date.now();
       setProcessing(true);
       setLoading(true);
       try {
         const studentIds = Array.from(selectedStudents);
-        let processedCount = 0;
 
-        for (const studentId of studentIds) {
-          try {
-            const student = sourceStudents.find(s => s.id === studentId);
-            const oldClassId = student?.class_id;
-            const oldStatus = student?.status;
-
-            // Only update status to 'passout'; keep class/section unchanged
-            await supabase.from('students').update({
-              status: 'passout'
-            }).eq('id', studentId);
-
-            // Record in student_status_history
-            await supabase.from('student_status_history').insert({
-              student_id: studentId,
-              school_id: user?.school_id,
-              action: 'passout',
-              old_status: oldStatus,
-              new_status: 'passout',
-              old_class_id: oldClassId,
-              new_class_id: oldClassId,
-              reason: null,
-              performed_by: user?.id || null,
-              new_section_id: student?.section_id || null
-            });
-
-            processedCount++;
-          } catch (error) { }
+        // 1. Bulk update students table: set status to 'passout'
+        for (let i = 0; i < studentIds.length; i += 100) {
+          const chunk = studentIds.slice(i, i + 100);
+          const { error: updateErr } = await supabase
+            .from('students')
+            .update({ status: 'passout' })
+            .in('id', chunk);
+          if (updateErr) throw updateErr;
         }
 
-        toast.showToast(`Successfully marked ${processedCount} students as Passed Out`, 'success');
+        // 2. Bulk insert status history
+        const passoutEntries = studentIds.map(studentId => {
+          const student = sourceStudents.find(s => s.id === studentId);
+          return {
+            student_id: studentId,
+            school_id: user?.school_id,
+            action: 'passout',
+            old_status: student?.status,
+            new_status: 'passout',
+            old_class_id: student?.class_id,
+            new_class_id: student?.class_id,
+            reason: null,
+            performed_by: user?.id || null,
+            new_section_id: student?.section_id || null
+          };
+        });
+
+        for (let i = 0; i < passoutEntries.length; i += 100) {
+          const chunk = passoutEntries.slice(i, i + 100);
+          const { error: histErr } = await supabase
+            .from('student_status_history')
+            .insert(chunk);
+          if (histErr) throw histErr;
+        }
+
+        toast.showToast(`Successfully marked ${studentIds.length} students as Passed Out`, 'success');
 
         // Reset form
         setSourceClass('');
@@ -1482,12 +1427,7 @@ const BulkPromoteDemote: React.FC = () => {
         toast.showToast(err.message, 'error');
       } finally {
         setProcessing(false);
-        const elapsed = Date.now() - start;
-        if (elapsed < minDuration) {
-          setTimeout(() => setLoading(false), minDuration - elapsed);
-        } else {
-          setLoading(false);
-        }
+        setLoading(false);
       }
       return;
     }
@@ -1504,60 +1444,167 @@ const BulkPromoteDemote: React.FC = () => {
     if (!sourceClass || !targetClass || selectedStudents.size === 0) return;
     if (sourceHasSections && !sourceSection) return;
     if (targetHasSections && !targetSection) return;
-    const minDuration = 2000;
-    const start = Date.now();
+
     setProcessing(true);
     setLoading(true);
     try {
       const studentIds = Array.from(selectedStudents);
-      const totalStudents = studentIds.length;
-      let processedCount = 0;
+      const targetClassId = parseInt(targetClass);
+      const finalSectionId = targetHasSections ? parseInt(targetSection) : null;
 
-      for (const studentId of studentIds) {
-        try {
-          const student = sourceStudents.find(s => s.id === studentId);
-          const oldClassId = student?.class_id;
-          const oldSectionId = student?.section_id;
-          const oldStatus = student?.status;
+      // 1. Fetch class history for active session & admission preservation in a single query
+      if (activeSession) {
+        const { data: allHistory, error: historyErr } = await supabase
+          .from('student_class_history')
+          .select('id, student_id, session_id, adm_class_id, adm_section_id')
+          .in('student_id', studentIds)
+          .eq('school_id', user?.school_id)
+          .order('id', { ascending: true });
 
-          // Check if the new class has sections
-          const selectedClass = classes.find(c => c.id === parseInt(targetClass));
-          const hasSections = selectedClass?.has_sections ?? true;
-          const finalSectionId = hasSections ? parseInt(targetSection) : null;
-          const finalStatus = targetStatus === 'retain' ? oldStatus : targetStatus;
+        if (historyErr) {
+          console.error('Error fetching student class history:', historyErr);
+        }
 
-          // Update or create student_class_history for the active session
-          if (activeSession) {
-            await updateStudentClassHistory(studentId, activeSession.id, parseInt(targetClass), finalSectionId);
+        const historyByStudent = new Map<string, Array<{ id: any; adm_class_id: any; adm_section_id: any; session_id: any }>>();
+        (allHistory || []).forEach(row => {
+          const sid = String(row.student_id);
+          const list = historyByStudent.get(sid) || [];
+          list.push(row);
+          historyByStudent.set(sid, list);
+        });
+
+        const schToInsert: any[] = [];
+        const schToUpdate: any[] = [];
+
+        studentIds.forEach(studentId => {
+          const records = historyByStudent.get(String(studentId)) || [];
+          const admissionRecord = records[0];
+          const admClassId = admissionRecord?.adm_class_id || targetClassId;
+          const admSectionId = admissionRecord?.adm_section_id !== undefined && admissionRecord?.adm_section_id !== null
+            ? admissionRecord.adm_section_id
+            : finalSectionId;
+
+          const existingEntry = records.find(r => String(r.session_id) === String(activeSession.id));
+
+          if (existingEntry) {
+            schToUpdate.push({
+              id: existingEntry.id,
+              adm_class_id: admClassId,
+              adm_section_id: admSectionId,
+              new_class_id: targetClassId,
+              new_section_id: finalSectionId
+            });
+          } else {
+            schToInsert.push({
+              student_id: studentId,
+              session_id: activeSession.id,
+              adm_class_id: admClassId,
+              adm_section_id: admSectionId,
+              new_class_id: targetClassId,
+              new_section_id: finalSectionId,
+              school_id: user?.school_id
+            });
           }
+        });
 
-          // **Crucial**: Update students table to reflect their new current class/section 
-          await supabase.from('students').update({
-            class_id: parseInt(targetClass),
-            section_id: finalSectionId,
-            status: finalStatus
-          }).eq('id', studentId);
+        // Insert new class history entries in bulk
+        if (schToInsert.length > 0) {
+          for (let i = 0; i < schToInsert.length; i += 100) {
+            const chunk = schToInsert.slice(i, i + 100);
+            const { error: insErr } = await supabase.from('student_class_history').insert(chunk);
+            if (insErr) console.error('Error inserting student class history:', insErr);
+          }
+        }
 
-          // 2. Record in student_status_history
-          await supabase.from('student_status_history').insert({
-            student_id: studentId,
-            school_id: user?.school_id,
-            action: action,
-            old_status: oldStatus,
-            new_status: finalStatus,
-            old_class_id: oldClassId,
-            new_class_id: parseInt(targetClass),
-            reason: null,
-            performed_by: user?.id || null,
-            new_section_id: finalSectionId
-          });
-
-          processedCount++;
-        } catch (error) {
+        // Update existing class history entries in parallel chunks
+        if (schToUpdate.length > 0) {
+          const chunkSize = 20;
+          for (let i = 0; i < schToUpdate.length; i += chunkSize) {
+            const chunk = schToUpdate.slice(i, i + chunkSize);
+            await Promise.all(
+              chunk.map(entry =>
+                supabase
+                  .from('student_class_history')
+                  .update({
+                    adm_class_id: entry.adm_class_id,
+                    adm_section_id: entry.adm_section_id,
+                    new_class_id: entry.new_class_id,
+                    new_section_id: entry.new_section_id
+                  })
+                  .eq('id', entry.id)
+              )
+            );
+          }
         }
       }
 
-      toast.showToast(`Successfully ${action}d ${processedCount} students`, 'success');
+      // 2. Bulk update students table
+      if (targetStatus !== 'retain') {
+        for (let i = 0; i < studentIds.length; i += 100) {
+          const chunk = studentIds.slice(i, i + 100);
+          const { error: stErr } = await supabase
+            .from('students')
+            .update({
+              class_id: targetClassId,
+              section_id: finalSectionId,
+              status: targetStatus
+            })
+            .in('id', chunk);
+          if (stErr) throw stErr;
+        }
+      } else {
+        // Retain current status: group student IDs by their existing status
+        const byStatus = new Map<string, string[]>();
+        studentIds.forEach(id => {
+          const st = sourceStudents.find(s => s.id === id)?.status || 'active';
+          const list = byStatus.get(st) || [];
+          list.push(id);
+          byStatus.set(st, list);
+        });
+
+        await Promise.all(
+          Array.from(byStatus.entries()).map(([st, ids]) =>
+            supabase
+              .from('students')
+              .update({
+                class_id: targetClassId,
+                section_id: finalSectionId,
+                status: st
+              })
+              .in('id', ids)
+          )
+        );
+      }
+
+      // 3. Bulk insert student_status_history
+      const statusHistoryEntries = studentIds.map(studentId => {
+        const student = sourceStudents.find(s => s.id === studentId);
+        const oldClassId = student?.class_id;
+        const oldStatus = student?.status;
+        const finalStatus = targetStatus === 'retain' ? oldStatus : targetStatus;
+        return {
+          student_id: studentId,
+          school_id: user?.school_id,
+          action: action,
+          old_status: oldStatus,
+          new_status: finalStatus,
+          old_class_id: oldClassId,
+          new_class_id: targetClassId,
+          reason: null,
+          performed_by: user?.id || null,
+          new_section_id: finalSectionId
+        };
+      });
+
+      for (let i = 0; i < statusHistoryEntries.length; i += 100) {
+        const chunk = statusHistoryEntries.slice(i, i + 100);
+        const { error: histErr } = await supabase
+          .from('student_status_history')
+          .insert(chunk);
+        if (histErr) throw histErr;
+      }
+
+      toast.showToast(`Successfully ${action}d ${studentIds.length} students`, 'success');
 
       // Reset form
       setSourceClass('');
@@ -1573,12 +1620,7 @@ const BulkPromoteDemote: React.FC = () => {
       toast.showToast(err.message, 'error');
     } finally {
       setProcessing(false);
-      const elapsed = Date.now() - start;
-      if (elapsed < minDuration) {
-        setTimeout(() => setLoading(false), minDuration - elapsed);
-      } else {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   };
 
@@ -1877,15 +1919,9 @@ const BulkPromoteDemote: React.FC = () => {
                           setTargetClass(e.target.value);
                         }} disabled={!sourceClass}>
                           <option value="">Select Class</option>
-                          {classes
-                            .filter((cls, idx) => {
-                              const currentIdx = classes.findIndex(c => String(c.id) === sourceClass);
-                              const targetIdx = action === 'promote' ? currentIdx + 1 : currentIdx - 1;
-                              return targetIdx >= 0 && targetIdx < classes.length && classes[targetIdx].id === cls.id;
-                            })
-                            .map(cls => (
-                              <option key={cls.id} value={cls.id}>{cls.name}</option>
-                            ))}
+                          {classes.map(cls => (
+                            <option key={cls.id} value={cls.id}>{cls.name}</option>
+                          ))}
                         </Select>
                       </ControlField>
 
@@ -2106,7 +2142,7 @@ const BulkPromoteDemote: React.FC = () => {
       </MainContent>
 
       {/* Confirmation Modal */}
-      {showConfirmModal && (
+      {showConfirmModal && typeof document !== 'undefined' && ReactDOM.createPortal(
         <ModalOverlay>
           <ModalBox>
             <ModalHeader>
@@ -2186,7 +2222,8 @@ const BulkPromoteDemote: React.FC = () => {
               </ModalButton>
             </ModalFooter>
           </ModalBox>
-        </ModalOverlay>
+        </ModalOverlay>,
+        document.body
       )}
     </Container>
   );
