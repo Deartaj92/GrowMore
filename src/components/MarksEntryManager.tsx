@@ -2454,6 +2454,32 @@ const MarksEntryManager: React.FC = () => {
       // Get student IDs from student_class_history
       const currentStudentIds = (schData || []).map(sch => sch.student_id);
 
+      // Fallback: also fetch active students from students table assigned to this class and section
+      let directStudentsQuery = supabase
+        .from('students')
+        .select('id')
+        .eq('school_id', user?.school_id)
+        .eq('status', 'active')
+        .eq('class_id', classId);
+
+      if (activeSessionId) {
+        directStudentsQuery = directStudentsQuery.eq('session_id', activeSessionId);
+      }
+      if (sectionId === null) {
+        directStudentsQuery = directStudentsQuery.is('section_id', null);
+      } else {
+        directStudentsQuery = directStudentsQuery.eq('section_id', sectionId);
+      }
+
+      const { data: directStudents } = await directStudentsQuery;
+      if (directStudents) {
+        directStudents.forEach(ds => {
+          if (!currentStudentIds.includes(ds.id)) {
+            currentStudentIds.push(ds.id);
+          }
+        });
+      }
+
       // Fetch student IDs that already have marks stored for this class (and section) in the selected exam
       let examResultStudentIds: number[] = [];
       if (selectedExam) {

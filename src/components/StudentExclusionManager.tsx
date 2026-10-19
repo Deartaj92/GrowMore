@@ -17,6 +17,8 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import Loader from './Loader';
+import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
+import { fetchAllRows } from '../utils/paginationHelper';
 
 // --- Animations ---
 const fadeIn = keyframes`
@@ -636,20 +638,34 @@ const StudentExclusionManager: React.FC = () => {
       try {
         setLoading(true);
 
-        let query = supabase
-          .from('students')
-          .select('id, name, father_name, roll_number')
-          .eq('school_id', user?.school_id)
-          .eq('class_id', selectedClassId)
-          .eq('status', 'active');
+        let studentsData: any[] = [];
 
-        if (selectedSectionId) {
-          query = query.eq('section_id', selectedSectionId);
+        if (selectedClassId === 'all') {
+          studentsData = await fetchAllRows(async (from, to) => {
+            return await supabase
+              .from('students')
+              .select('id, name, father_name, roll_number, class_id, section_id, classes:class_id(id, name), sections:section_id(id, name)')
+              .eq('school_id', user?.school_id)
+              .eq('status', 'active')
+              .order('name')
+              .range(from, to);
+          });
+        } else {
+          let query = supabase
+            .from('students')
+            .select('id, name, father_name, roll_number, class_id, section_id, classes:class_id(id, name), sections:section_id(id, name)')
+            .eq('school_id', user?.school_id)
+            .eq('class_id', selectedClassId)
+            .eq('status', 'active');
+
+          if (selectedSectionId) {
+            query = query.eq('section_id', selectedSectionId);
+          }
+
+          const { data, error: studentError } = await query;
+          if (studentError) throw studentError;
+          studentsData = data || [];
         }
-
-        const { data: studentsData, error: studentError } = await query;
-
-        if (studentError) throw studentError;
 
         const { data: exclusionsData, error: exclusionError } = await supabase
           .from('exam_exclusions')
@@ -661,8 +677,18 @@ const StudentExclusionManager: React.FC = () => {
         }
 
         if (studentsData) {
-          // Sort students by ID (user request)
-          const sortedStudents = studentsData.sort((a, b) => a.id - b.id);
+          // Sort students by student display ID (sequence number from roll_number, or fallback to numeric id)
+          const sortedStudents = [...studentsData].sort((a, b) => {
+            const getSortId = (s: any) => {
+              const displayId = getStudentDisplayId(s);
+              const num = parseInt(String(displayId), 10);
+              return isNaN(num) ? (Number(s.id) || 0) : num;
+            };
+            const idA = getSortId(a);
+            const idB = getSortId(b);
+            if (idA !== idB) return idA - idB;
+            return Number(a.id) - Number(b.id);
+          });
           setStudents(sortedStudents);
         }
 
@@ -727,11 +753,27 @@ const StudentExclusionManager: React.FC = () => {
     }
   };
 
-  const filteredStudents = students.filter(student =>
-    student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.roll_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (student.father_name && student.father_name.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredStudents = students.filter(student => {
+    if (!searchQuery.trim()) return true;
+    const term = searchQuery.trim().toLowerCase();
+
+    // Check ID match using studentUtils matchesStudentSearch
+    const idMatch = matchesStudentSearch(student, term);
+    if (idMatch.matches) return true;
+
+    // Check display ID and raw ID string
+    const displayId = String(getStudentDisplayId(student)).toLowerCase();
+    const rawId = String(student.id);
+    if (displayId.includes(term) || rawId.includes(term)) return true;
+
+    // Check name, roll number, father name, class name
+    return (
+      student.name?.toLowerCase().includes(term) ||
+      student.roll_number?.toLowerCase().includes(term) ||
+      (student.father_name && student.father_name.toLowerCase().includes(term)) ||
+      (student.classes?.name && student.classes.name.toLowerCase().includes(term))
+    );
+  });
 
   return (
     <PageContainer>
@@ -765,6 +807,7 @@ const StudentExclusionManager: React.FC = () => {
             }}
           >
             <option value="">Choose Class...</option>
+            <option value="all">All Classes</option>
             {classes.map(cls => (
               <option key={cls.id} value={cls.id}>{cls.name}</option>
             ))}
@@ -773,7 +816,7 @@ const StudentExclusionManager: React.FC = () => {
           <SectionSelect
             value={selectedSectionId}
             onChange={(e) => setSelectedSectionId(e.target.value)}
-            disabled={!selectedClassId || sections.length === 0}
+            disabled={!selectedClassId || selectedClassId === 'all' || sections.length === 0}
           >
             <option value="">All Sections</option>
             {sections.map(section => (
@@ -786,7 +829,7 @@ const StudentExclusionManager: React.FC = () => {
               <SearchIcon style={{ fontSize: '1.1rem' }} />
             </SearchIconWrapper>
             <ResponsiveSearchInput
-              placeholder="Search Student..."
+              placeholder="Search by ID, Name, Roll No..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -802,7 +845,7 @@ const StudentExclusionManager: React.FC = () => {
             <EmptyState>
               <FilterListIcon style={{ fontSize: '4rem', opacity: 0.2 }} />
               <h3>Ready to Filter</h3>
-              <p>Please select both an examination and a class to view the student list.</p>
+              <p>Please select both an examination and a class (or All Classes) to view the student list.</p>
             </EmptyState>
           ) : filteredStudents.length === 0 ? (
             <EmptyState>
@@ -819,6 +862,7 @@ const StudentExclusionManager: React.FC = () => {
               <div style={{ padding: '0 12px 12px 12px' }}>
                 {filteredStudents.map(student => {
                   const isExcluded = excludedStudentIds.has(student.id);
+                  const displayId = getStudentDisplayId(student);
                   return (
                     <StudentItem key={student.id} isExcluded={isExcluded}>
                       <StudentInfo>
@@ -828,15 +872,27 @@ const StudentExclusionManager: React.FC = () => {
                         <StudentDetails>
                           <StudentName isExcluded={isExcluded}>
                             {student.name}
+                            <span style={{ fontSize: '0.85rem', color: '#6366f1', fontWeight: 700, marginLeft: '6px' }}>
+                              #{displayId}
+                            </span>
                             {isExcluded && <span style={{ fontSize: '0.8em', marginLeft: '6px', opacity: 0.7 }}>(Excluded)</span>}
                           </StudentName>
                           <StudentMeta>
+                            <MetaItem>
+                              <span className="meta-label">ID: </span>
+                              <strong style={{ color: '#6366f1', fontWeight: 700 }}>{displayId}</strong>
+                            </MetaItem>
                             <MetaItem>
                               <span className="meta-label">Roll No: </span>{student.roll_number || 'N/A'}
                             </MetaItem>
                             <MetaItem>
                               <span className="meta-label">Father: </span>{student.father_name || 'N/A'}
                             </MetaItem>
+                            {student.classes?.name && (
+                              <MetaItem>
+                                <span className="meta-label">Class: </span>{student.classes.name}{student.sections?.name ? ` (${student.sections.name})` : ''}
+                              </MetaItem>
+                            )}
                           </StudentMeta>
                         </StudentDetails>
                       </StudentInfo>

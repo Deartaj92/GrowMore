@@ -2210,7 +2210,7 @@ const StudentList: React.FC = () => {
       setProgress(30);
       const { data: studentsData, error: studentsError } = await supabase
         .from('students')
-        .select('*')
+        .select('*, classes:class_id(id, name), sections:section_id(id, name)')
         .eq('school_id', user.school_id)
         .order('id', { ascending: false });
 
@@ -2294,14 +2294,18 @@ const StudentList: React.FC = () => {
       // Merge student data with current class from history
       const studentsWithCurrentClass = studentsData.map((student: any) => {
         const currentClass = currentClassMap.get(student.id);
+        const resolvedClassId = currentClass?.class_id || student.class_id || null;
+        const resolvedSectionId = currentClass?.section_id !== undefined ? currentClass.section_id : (student.section_id || null);
+        const fallbackClass = classOptions.find(c => String(c.id) === String(resolvedClassId));
+        const fallbackSection = sectionOptions.find(s => String(s.id) === String(resolvedSectionId));
 
-        // Use current class from history if available, otherwise fall back to students table
+        // Use current class from history if available, otherwise fall back to joined class or classOptions
         return {
           ...student,
-          classes: currentClass?.class || null,
-          sections: currentClass?.section || null,
-          class_id: currentClass?.class_id || student.class_id || null,
-          section_id: currentClass?.section_id || student.section_id || null,
+          classes: currentClass?.class || student.classes || (fallbackClass ? { id: fallbackClass.id, name: fallbackClass.name } : null),
+          sections: currentClass?.section || student.sections || (fallbackSection ? { id: fallbackSection.id, name: fallbackSection.name } : null),
+          class_id: resolvedClassId,
+          section_id: resolvedSectionId,
           session_id: currentClass?.session_id || student.session_id || null
         };
       });
@@ -2545,26 +2549,65 @@ const StudentList: React.FC = () => {
         .update(cleanedForm)
         .eq('id', editingStudent.id)
         .eq('school_id', user.school_id)
-        .select('*, classes(name), sections(name)')
+        .select('*, classes:class_id(id, name), sections:section_id(id, name)')
         .single();
-      // --- Update student_class_history: Always update adm_class_id and adm_section_id in ALL records ---
-      // Note: We do NOT update new_class_id and new_section_id - those are only changed by promotion/demotion
-      // Update admission class and section in ALL student_class_history records for this student
-      // This query will update ALL entries for this student (across all sessions) because we filter only by student_id
-      const { error: historyError, data: updatedHistory } = await supabase
-        .from('student_class_history')
-        .update({
-          adm_class_id: cleanedForm.class_id,
-          adm_section_id: cleanedForm.section_id,
-          admission_date: cleanedForm.admission_date
-        })
-        .eq('student_id', editingStudent.id)
-        .eq('school_id', user.school_id)
-        .select('id');
 
-      if (historyError) {
-        // Don't fail the entire operation
+      // Ensure student_class_history is kept in sync
+      const parsedClassId = cleanedForm.class_id ? Number(cleanedForm.class_id) : null;
+      const parsedSectionId = cleanedForm.section_id ? Number(cleanedForm.section_id) : null;
+
+      try {
+        const { data: existingHistories } = await supabase
+          .from('student_class_history')
+          .select('id, session_id')
+          .eq('student_id', editingStudent.id)
+          .eq('school_id', user.school_id)
+          .order('id', { ascending: false });
+
+        if (!existingHistories || existingHistories.length === 0) {
+          // No history record existed - insert one so student is properly tracked in sessions, marks, and attendance
+          await supabase
+            .from('student_class_history')
+            .insert([{
+              student_id: editingStudent.id,
+              adm_class_id: parsedClassId,
+              adm_section_id: parsedSectionId,
+              new_class_id: parsedClassId,
+              new_section_id: parsedSectionId,
+              session_id: cleanedForm.session_id ? Number(cleanedForm.session_id) : (editingStudent.session_id || (sessionFilter ? Number(sessionFilter) : (activeSessionId ? Number(activeSessionId) : null))),
+              school_id: user.school_id,
+              admission_date: cleanedForm.admission_date,
+              status: cleanedForm.status || 'active'
+            }]);
+        } else {
+          // Update admission class and section across all history records
+          await supabase
+            .from('student_class_history')
+            .update({
+              adm_class_id: parsedClassId,
+              adm_section_id: parsedSectionId,
+              admission_date: cleanedForm.admission_date
+            })
+            .eq('student_id', editingStudent.id)
+            .eq('school_id', user.school_id);
+
+          // Also update new_class_id and new_section_id for the current session (or latest history record)
+          const targetSessionId = sessionFilter || activeSessionId;
+          const targetHistory = (targetSessionId ? existingHistories.find((h: any) => String(h.session_id) === String(targetSessionId)) : null) || existingHistories[0];
+          if (targetHistory) {
+            await supabase
+              .from('student_class_history')
+              .update({
+                new_class_id: parsedClassId,
+                new_section_id: parsedSectionId
+              })
+              .eq('id', targetHistory.id);
+          }
+        }
+      } catch (historyErr) {
+        console.warn('Failed to sync student_class_history:', historyErr);
       }
+
       setEditLoading(false);
       if (error) {
         showToast('Failed to update student: ' + error.message, 'error');
@@ -2582,14 +2625,19 @@ const StudentList: React.FC = () => {
 
       // Update local state with the complete updated student data including class and section names
       if (updatedStudent) {
+        const matchedClass = classOptions.find(c => String(c.id) === String(updatedStudent.class_id));
+        const matchedSection = sectionOptions.find(s => String(s.id) === String(updatedStudent.section_id));
+        const studentClasses = updatedStudent.classes || (matchedClass ? { id: matchedClass.id, name: matchedClass.name } : null);
+        const studentSections = updatedStudent.sections || (matchedSection ? { id: matchedSection.id, name: matchedSection.name } : null);
+
         setStudents(prev => prev.map(stu =>
           stu.id === editingStudent.id
-            ? { ...stu, ...updatedStudent, classes: updatedStudent.classes, sections: updatedStudent.sections }
+            ? { ...stu, ...updatedStudent, classes: studentClasses, sections: studentSections }
             : stu
         ));
         setFiltered(prev => prev.map(stu =>
           stu.id === editingStudent.id
-            ? { ...stu, ...updatedStudent, classes: updatedStudent.classes, sections: updatedStudent.sections }
+            ? { ...stu, ...updatedStudent, classes: studentClasses, sections: studentSections }
             : stu
         ));
       }

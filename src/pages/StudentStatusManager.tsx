@@ -2266,35 +2266,6 @@ const StudentStatusManager: React.FC = () => {
     setSectionFilter('');
   }, [classFilter]);
 
-  useEffect(() => {
-    const fetchReasons = async () => {
-      const inactiveStudents = students.filter(s => s.status !== 'active');
-      if (inactiveStudents.length === 0) return;
-      const { data: historyData, error } = await supabase
-        .from('student_status_history')
-        .select('student_id, new_status, reason, created_at')
-        .in('student_id', inactiveStudents.map(s => s.id))
-        .order('created_at', { ascending: false });
-      if (!error && historyData) {
-        const reasonMap: Record<string, string> = {};
-        inactiveStudents.forEach(stu => {
-          const entry = historyData.find(
-            h => h.student_id === stu.id && h.new_status === stu.status && h.reason
-          );
-          if (entry) reasonMap[stu.id] = entry.reason;
-        });
-        setStudents(prev =>
-          prev.map(stu =>
-            stu.status !== 'active'
-              ? { ...stu, status_reason: reasonMap[stu.id] }
-              : stu
-          )
-        );
-      }
-    };
-    if (students.length > 0) fetchReasons();
-  }, [students]);
-
   const fetchSessions = async () => {
     try {
       const { data, error } = await supabase
@@ -2337,19 +2308,22 @@ const StudentStatusManager: React.FC = () => {
   };
 
   const fetchStudents = async () => {
-    try {
-      // Always fetch all students from students table
-      const { data: studentsData, error: studentsError } = await supabase
-        .from('students')
-        .select(`
-          *,
-          classes:class_id(name),
-          sections:section_id(name)
-        `)
-        .eq('school_id', user?.school_id)
-        .order('name');
+    if (!user?.school_id) return;
 
-      if (studentsError) throw studentsError;
+    try {
+      // Always fetch all students from students table using fetchAllRows to bypass Supabase 1000-row limit
+      const studentsData = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('students')
+          .select(`
+            *,
+            classes:class_id(name),
+            sections:section_id(name)
+          `)
+          .eq('school_id', user?.school_id)
+          .order('name')
+          .range(from, to);
+      });
 
       if (!studentsData || studentsData.length === 0) {
         setStudents([]);
@@ -2358,24 +2332,23 @@ const StudentStatusManager: React.FC = () => {
         return;
       }
 
-      // Get current class from student_class_history for each student
-      const studentIds = studentsData.map((s: any) => s.id);
-
-      // Fetch class history for all students - get latest record for each student
-      const { data: historyData } = await supabase
-        .from('student_class_history')
-        .select(`
-          id,
-          student_id,
-          session_id,
-          new_class_id,
-          new_section_id,
-          new_classes:new_class_id(id, name),
-          new_sections:new_section_id(id, name)
-        `)
-        .in('student_id', studentIds)
-        .eq('school_id', user?.school_id)
-        .order('id', { ascending: true });
+      // Fetch class history for all students using fetchAllRows to bypass Supabase 1000-row limit
+      const historyData = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('student_class_history')
+          .select(`
+            id,
+            student_id,
+            session_id,
+            new_class_id,
+            new_section_id,
+            new_classes:new_class_id(id, name),
+            new_sections:new_section_id(id, name)
+          `)
+          .eq('school_id', user?.school_id)
+          .order('id', { ascending: true })
+          .range(from, to);
+      });
 
       // Create a map of current class for each student
       const currentClassMap = new Map();
@@ -2406,7 +2379,37 @@ const StudentStatusManager: React.FC = () => {
         });
       }
 
-      // Merge student data with current class from history
+      // Fetch status reasons for inactive students using fetchAllRows
+      const hasInactive = studentsData.some((s: any) => s.status !== 'active');
+      const reasonMap: Record<string, string> = {};
+
+      if (hasInactive) {
+        try {
+          const statusHistoryData = await fetchAllRows(async (from, to) => {
+            return await supabase
+              .from('student_status_history')
+              .select('student_id, new_status, reason, created_at')
+              .eq('school_id', user?.school_id)
+              .order('created_at', { ascending: false })
+              .range(from, to);
+          });
+
+          if (statusHistoryData && statusHistoryData.length > 0) {
+            studentsData.forEach((stu: any) => {
+              if (stu.status !== 'active') {
+                const entry = statusHistoryData.find(
+                  (h: any) => h.student_id === stu.id && h.new_status === stu.status && h.reason
+                );
+                if (entry) reasonMap[stu.id] = entry.reason;
+              }
+            });
+          }
+        } catch (e) {
+          console.error('Failed to fetch status history reasons:', e);
+        }
+      }
+
+      // Merge student data with current class from history and status reasons
       const studentsWithCurrentClass = studentsData.map((student: any) => {
         const currentClass = currentClassMap.get(student.id);
 
@@ -2416,7 +2419,8 @@ const StudentStatusManager: React.FC = () => {
           classes: currentClass?.class || student.classes || null,
           sections: currentClass?.section || student.sections || null,
           class_id: currentClass?.class_id || student.class_id || null,
-          section_id: currentClass?.section_id || student.section_id || null
+          section_id: currentClass?.section_id || student.section_id || null,
+          status_reason: student.status !== 'active' ? (reasonMap[student.id] || student.status_reason) : undefined
         };
       });
 
