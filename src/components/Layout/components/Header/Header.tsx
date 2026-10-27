@@ -58,6 +58,7 @@ import {
   QrCodeScanner as QrCodeScannerIcon,
   QrCode2 as QrCode2Icon,
   CreditCard as CreditCardIcon,
+  Payment as PaymentIcon,
   EventSeat as EventSeatIcon,
   Lock,
   LockOpen,
@@ -2068,107 +2069,64 @@ const Header: React.FC<HeaderProps> = ({
     }
   ];
 
-  // Enterprise Ledger Fee System menu items
-  const feeMenuItems1 = [
+  // Enterprise Unified Fee System menu items
+  const feeMenuItems = [
     {
-      title: 'Fee Counter (POS)',
-      description: 'Point of sale collection, cashier shifts & receipts',
-      icon: <CreditCardIcon />,
-      path: '/fee-counter',
-      color: '#2563eb'
-    },
-    {
-      title: 'Fee Demands (Challans)',
-      description: 'Bulk generation and management of fee demands',
+      title: 'Fee Management Hub',
+      description: 'Unified POS counter, billing challans, ledger & defaulters',
       icon: <ReceiptIcon />,
-      path: '/fee-demands',
-      color: '#059669'
+      path: '/fee-hub',
+      color: '#3b82f6'
     },
     {
-      title: 'Fee Catalog & Policies',
-      description: 'Fee heads, class rate cards & late fine rules',
-      icon: <AccountBalanceIcon />,
-      path: '/fee-catalog',
-      color: '#4f46e5'
+      title: 'POS Fee Counter',
+      description: 'Collect fees, manage cashier shifts & issue instant receipts',
+      icon: <PaymentIcon />,
+      path: '/fee-hub?tab=counter',
+      color: '#10b981'
+    },
+    {
+      title: 'Monthly Challans & Demands',
+      description: 'Generate monthly batch billing, print 3-copy bank challans',
+      icon: <DescriptionIcon />,
+      path: '/fee-hub?tab=demands',
+      color: '#f59e0b'
+    },
+    {
+      title: 'Student Fee Plans',
+      description: 'Configure student monthly fee packages & class-wide bulk assignments',
+      icon: <PersonIcon />,
+      path: '/fee-hub?tab=plans',
+      color: '#0284c7'
+    },
+    {
+      title: 'Rate Card & Fee Catalog',
+      description: 'Fee heads, monthly tuition rates, late fine assessment rules',
+      icon: <CalculateIcon />,
+      path: '/fee-hub?tab=catalog',
+      color: '#8b5cf6'
     },
     {
       title: 'Concessions & Scholarships',
-      description: 'Discounts, sibling concessions & scholarships',
-      icon: <DescriptionIcon />,
-      path: '/fee-concessions',
-      color: '#ec4899'
+      description: 'Manage sibling discounts, scholarships and student overrides',
+      icon: <BadgeIcon />,
+      path: '/fee-hub?tab=concessions',
+      color: '#06b6d4'
     },
     {
-      title: 'Student Financial Ledger',
-      description: 'Double-entry subledger statement & payment reversals',
-      icon: <AccountBalanceWallet />,
-      path: '/fee-ledger',
-      color: '#0d9488'
-    }
-  ];
-
-  // Payroll menu items
-  const payrollMenuItems = [
-    {
-      title: 'Payroll Management',
-      description: 'Manage employee salaries, payments, and payroll operations',
-      icon: <CalculateIcon />,
-      path: '/payroll',
-      color: '#3b82f6'
-    }
-  ];
-
-  const feeMenuItems2 = [
-    {
-      title: 'Fee Analytics',
-      description: 'Comprehensive fee analytics dashboard',
-      icon: <AssessmentIcon />,
-      path: '/fee-analytics',
-      color: '#059669'
-    },
-    {
-      title: 'Payment History',
-      description: 'View complete payment history',
-      icon: <ListAltIcon />,
-      path: '/payment-history',
-      color: '#3b82f6'
-    },
-    {
-      title: 'Payments Analytics',
-      description: 'Track payment trends, methods, and collection performance',
-      icon: <AssessmentIcon />,
-      path: '/payments-analytics',
-      color: '#0d9488'
-    },
-    {
-      title: 'Fee Ledger',
-      description: 'View comprehensive fee ledger',
-      icon: <AccountBalanceIcon />,
-      path: '/ledger',
-      color: '#14b8a6'
-    },
-    {
-      title: 'Fee Increments',
-      description: 'Apply increments to fee plans and structures',
+      title: 'Overdue Aging & Defaulters',
+      description: 'Track 30/60/90+ day overdue fee balances with direct recovery links',
       icon: <TrendingUpIcon />,
-      path: '/fee-increments',
-      color: '#f97316'
+      path: '/fee-hub?tab=aging',
+      color: '#ef4444'
     },
     {
-      title: 'Other Incomes',
-      description: 'Record and track non-fee income sources',
-      icon: <AttachMoneyIcon />,
-      path: '/other-income-manager',
-      color: '#16a34a'
-    },
-    {
-      title: 'Fee Audit Logs',
-      description: 'Track all fee-related changes',
-      icon: <ListAltIcon />,
-      path: '/fee-audit-logs',
-      color: '#6b7280'
-    },
-    ...payrollMenuItems
+      title: 'Approvals & Adjustments',
+      description: 'Maker-checker approval queue for waivers, voids & refunds',
+      icon: <AdminPanelSettingsIcon />,
+      path: '/fee-hub?tab=approvals',
+      color: '#ec4899'
+    }
   ];
 
   // Expense menu items
@@ -2666,11 +2624,7 @@ const Header: React.FC<HeaderProps> = ({
       menuItems: [
         {
           title: 'Fee Management',
-          items: feeMenuItems1
-        },
-        {
-          title: 'Fee Record',
-          items: feeMenuItems2
+          items: feeMenuItems
         },
         {
           title: 'Expense Management',

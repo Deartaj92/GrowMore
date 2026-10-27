@@ -126,11 +126,15 @@ export const pathToPermissionKey: Record<string, string> = {
   '/user': 'dashboard', // User dashboard uses dashboard permission
 
   // Enterprise Ledger Fee System
+  '/fee-hub': 'fee-counter-pos',
   '/fee-counter': 'fee-counter-pos',
   '/fee-demands': 'fee-demands-generate',
   '/fee-catalog': 'fee-catalog-manage',
   '/fee-concessions': 'fee-concessions-manage',
   '/fee-ledger': 'fee-ledger-dashboard',
+  '/fee-aging': 'fee-ledger-dashboard',
+  '/fee-approvals': 'fee-concessions-manage',
+  '/fee-shifts': 'fee-counter-pos',
 
   // Additional routes
   '/employees': 'employees-list',

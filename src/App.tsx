@@ -70,6 +70,7 @@ const StudentProfile = React.lazy(() =>
 const TeacherProfile = React.lazy(() =>
   import('./pages/TeacherProfile').then((module) => ({ default: module.TeacherProfile }))
 );
+const FeeHubPage = React.lazy(() => import('./pages/FeeHub/FeeHubPage'));
 
 import SchoolsManagement from './pages/SchoolsManagement';
 import SchoolWelcomeScreen from './pages/SchoolWelcomeScreen';
@@ -126,12 +127,7 @@ import RFIDCardAssignmentPage from './pages/RFIDCardAssignmentPage';
 import StudentAttendanceQrPrintPage from './pages/StudentAttendanceQrPrintPage';
 // Finance Management Components
 import FinanceDashboard from './components/FinanceDashboard';
-// Enterprise Fee Ledger Components
-import FeeCatalogPage from './pages/FeeLedger/FeeCatalogPage';
-import FeeConcessionsPage from './pages/FeeLedger/FeeConcessionsPage';
-import FeeDemandsPage from './pages/FeeLedger/FeeDemandsPage';
-import FeeCounterPage from './pages/FeeLedger/FeeCounterPage';
-import FeeStudentLedgerPage from './pages/FeeLedger/FeeStudentLedgerPage';
+
 // Communication Management Components
 import CommunicationDashboard from './components/CommunicationDashboard';
 // Settings Management Components
@@ -655,47 +651,49 @@ const App: React.FC = () => {
                               }
                             />
 
-                            {/* Enterprise Ledger Fee Routes */}
+                            {/* Enterprise Unified Fee Management Hub */}
                             <Route
-                              path="fee-counter"
+                              path="fee-hub"
                               element={
                                 <ProtectedRoute requiredPermission="fee-counter-pos">
-                                  <FeeCounterPage />
+                                  <FeeHubPage />
                                 </ProtectedRoute>
                               }
+                            />
+                            <Route
+                              path="fee-counter"
+                              element={<Navigate to="/fee-hub?tab=counter" replace />}
                             />
                             <Route
                               path="fee-demands"
-                              element={
-                                <ProtectedRoute requiredPermission="fee-demands-generate">
-                                  <FeeDemandsPage />
-                                </ProtectedRoute>
-                              }
+                              element={<Navigate to="/fee-hub?tab=demands" replace />}
                             />
                             <Route
                               path="fee-catalog"
-                              element={
-                                <ProtectedRoute requiredPermission="fee-catalog-manage">
-                                  <FeeCatalogPage />
-                                </ProtectedRoute>
-                              }
+                              element={<Navigate to="/fee-hub?tab=catalog" replace />}
                             />
                             <Route
                               path="fee-concessions"
-                              element={
-                                <ProtectedRoute requiredPermission="fee-concessions-manage">
-                                  <FeeConcessionsPage />
-                                </ProtectedRoute>
-                              }
+                              element={<Navigate to="/fee-hub?tab=concessions" replace />}
                             />
                             <Route
                               path="fee-ledger"
-                              element={
-                                <ProtectedRoute requiredPermission="fee-ledger-dashboard">
-                                  <FeeStudentLedgerPage />
-                                </ProtectedRoute>
-                              }
+                              element={<Navigate to="/fee-hub?tab=ledger" replace />}
                             />
+                            <Route
+                              path="fee-aging"
+                              element={<Navigate to="/fee-hub?tab=aging" replace />}
+                            />
+                            <Route
+                              path="fee-approvals"
+                              element={<Navigate to="/fee-hub?tab=approvals" replace />}
+                            />
+                            <Route
+                              path="fee-shifts"
+                              element={<Navigate to="/fee-hub?tab=shifts" replace />}
+                            />
+
+
 
                             {/* Fine Dashboard */}
                             <Route

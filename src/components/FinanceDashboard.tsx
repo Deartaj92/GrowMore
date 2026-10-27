@@ -329,18 +329,25 @@ const CardAction = styled.div<{ $color?: string }>`
 // Finance Management menu items
 const financeManagementItems = [
   {
+    title: 'Fee Management',
+    description: 'Enterprise fee hub: POS counter collection, monthly challan generation, fee catalog & rate cards, concessions, ledger statements, and defaulters aging',
+    icon: <AttachMoneyIcon />,
+    path: '/fee-hub',
+    color: '#10b981'
+  },
+  {
     title: 'Expense Management',
     description: 'Track and manage all school expenditures, categorize expenses, monitor spending, and generate expense reports',
     icon: <ReceiptIcon />,
     path: '/expense-management',
-    color: '#3b82f6' // Blue
+    color: '#3b82f6'
   },
   {
     title: 'Fine Management',
     description: 'Manage student fines, track fine collections, view fine statistics, and handle fine-related operations',
     icon: <GavelIcon />,
     path: '/fine-dashboard',
-    color: '#ef4444' // Red
+    color: '#ef4444'
   }
 ];
 

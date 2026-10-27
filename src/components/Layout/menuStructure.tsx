@@ -499,6 +499,76 @@ export const fineMenuItems: MenuItem[] = [
   }
 ];
 
+// Fee Management menu items
+export const feeMenuItems: MenuItem[] = [
+  {
+    title: 'Fee Management Hub',
+    description: 'Unified POS counter, billing challans, ledger & defaulters',
+    icon: React.createElement(ReceiptIcon),
+    path: '/fee-hub',
+    color: '#3b82f6'
+  },
+  {
+    title: 'POS Fee Counter',
+    description: 'Collect fees, manage cashier shifts & issue instant receipts',
+    icon: React.createElement(PaymentIcon),
+    path: '/fee-hub?tab=counter',
+    color: '#10b981'
+  },
+  {
+    title: 'Payment History & Receipts',
+    description: 'View all past collections, filter transactions & reprint thermal/A4 receipts',
+    icon: React.createElement(ReceiptIcon),
+    path: '/fee-hub?tab=payments',
+    color: '#059669'
+  },
+  {
+    title: 'Monthly Challans & Demands',
+    description: 'Generate monthly batch billing, print 3-copy bank challans',
+    icon: React.createElement(DescriptionIcon),
+    path: '/fee-hub?tab=demands',
+    color: '#f59e0b'
+  },
+  {
+    title: 'Student Fee Plans',
+    description: 'Configure student monthly fee packages & class-wide bulk assignments',
+    icon: React.createElement(PersonIcon),
+    path: '/fee-hub?tab=plans',
+    color: '#0284c7'
+  },
+  {
+    title: 'Rate Card & Fee Catalog',
+    description: 'Fee heads, monthly tuition rates, late fine assessment rules',
+    icon: React.createElement(CalculateIcon),
+    path: '/fee-hub?tab=catalog',
+    color: '#8b5cf6'
+  },
+  {
+    title: 'Concessions & Scholarships',
+    description: 'Manage sibling discounts, scholarships and student overrides',
+    icon: React.createElement(BadgeIcon),
+    path: '/fee-hub?tab=concessions',
+    color: '#06b6d4'
+  },
+  {
+    title: 'Overdue Aging & Defaulters',
+    description: 'Track 30/60/90+ day overdue fee balances with direct recovery links',
+    icon: React.createElement(TrendingUpIcon),
+    path: '/fee-hub?tab=aging',
+    color: '#ef4444'
+  },
+  {
+    title: 'Approvals & Adjustments',
+    description: 'Maker-checker approval queue for waivers, voids & refunds',
+    icon: React.createElement(AdminPanelSettingsIcon),
+    path: '/fee-hub?tab=approvals',
+    color: '#ec4899'
+  }
+];
+
+
+
+
 // Assets & Liabilities menu items
 export const assetsLiabilitiesMenuItems: MenuItem[] = [
   {
@@ -797,6 +867,10 @@ export const menuStructure: MainMenuItem[] = [
     hasDropdown: true,
     menuItems: [
       {
+        title: 'Fee Management',
+        items: feeMenuItems
+      },
+      {
         title: 'Expense Management',
         items: expenseMenuItems
       },
@@ -805,7 +879,7 @@ export const menuStructure: MainMenuItem[] = [
         items: fineMenuItems
       }
     ],
-    columns: 2
+    columns: 3
   },
   {
     icon: React.createElement(AccountBalanceWalletIcon),
