@@ -1171,6 +1171,7 @@ const MarksEntryManager: React.FC = () => {
         }
       } else {
         // Reached end of list - show save modal
+        (e.target as HTMLInputElement)?.blur();
         setShowSaveModal(true);
       }
     }
@@ -1278,17 +1279,6 @@ const MarksEntryManager: React.FC = () => {
     }
   };
 
-  // Modal handlers
-  const handleSaveFromModal = async () => {
-    setShowSaveModal(false);
-    // Auto-select all students for saving
-    setSelectedStudents(new Set(students.map(s => s.id)));
-    await handleSaveMarks();
-  };
-
-  const handleCancelModal = () => {
-    setShowSaveModal(false);
-  };
 
   // Handle "A" button click for absent students
   const handleAbsentButton = useCallback((e: React.MouseEvent) => {
@@ -2008,6 +1998,42 @@ const MarksEntryManager: React.FC = () => {
       setSaving(false);
     }
   }, [selectedExam, selectedSubject, hasActiveSession, activeSessionId, selectedStudents, saving, marksData, selectedClass, selectedSection, user?.school_id, logExaminationMarksActivity, showToast]);
+
+  // Modal handlers
+  const handleSaveFromModal = useCallback(async () => {
+    setShowSaveModal(false);
+    // Auto-select all students for saving
+    setSelectedStudents(new Set(students.map(s => s.id)));
+    await handleSaveMarks();
+  }, [students, handleSaveMarks]);
+
+  const handleCancelModal = useCallback(() => {
+    setShowSaveModal(false);
+  }, []);
+
+  // Allow Enter to save and Escape to cancel while modal is open
+  useEffect(() => {
+    if (!showSaveModal) return;
+
+    const handleModalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!saving) {
+          handleSaveFromModal();
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        handleCancelModal();
+      }
+    };
+
+    window.addEventListener('keydown', handleModalKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', handleModalKeyDown, true);
+    };
+  }, [showSaveModal, saving, handleSaveFromModal, handleCancelModal]);
 
   // Delete marks for selected students
   const handleDeleteMarks = useCallback(async () => {
@@ -3056,7 +3082,7 @@ const MarksEntryManager: React.FC = () => {
                 <ModalButton variant="secondary" onClick={handleCancelModal}>
                   Cancel
                 </ModalButton>
-                <ModalButton variant="primary" onClick={handleSaveFromModal} disabled={saving}>
+                <ModalButton variant="primary" onClick={handleSaveFromModal} disabled={saving} autoFocus>
                   {saving ? (
                     <>
                       <Spinner />
