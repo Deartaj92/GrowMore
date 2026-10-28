@@ -53,8 +53,8 @@ const enrichExaminationData = async (examinations: any[]): Promise<Examination[]
         .in('id', userIds) : { data: [] };
 
     // Create lookup maps
-    const sessionMap = new Map(sessions?.map(s => [s.id, s]) || []);
-    const userMap = new Map(users?.map(u => [u.id, u]) || []);
+    const sessionMap = new Map((sessions?.map(s => [s.id, s]) || []) as [any, any][]);
+    const userMap = new Map((users?.map(u => [u.id, u]) || []) as [any, any][]);
 
     // Enrich examinations with related data
     return examinations.map(exam => ({

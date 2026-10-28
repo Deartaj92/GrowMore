@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useMemo, useCallback, memo, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import styled, { keyframes, DefaultTheme, css } from 'styled-components';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId } from '../utils/studentUtils';
@@ -950,28 +951,61 @@ const ToTopButton = styled.button`
 `;
 
 // Modal Components
-const ModalOverlay = styled.div`
+const ModalBackdropWrapper = styled.div`
   position: fixed;
+  inset: 0;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.78);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
-  padding: 20px;
+  z-index: 999999;
+  padding: 1.25rem;
+  box-sizing: border-box;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 `;
+
+const ModalOverlay: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ children, ...props }) => {
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
+
+  if (typeof document === 'undefined') return null;
+
+  return ReactDOM.createPortal(
+    <ModalBackdropWrapper {...props}>
+      {children}
+    </ModalBackdropWrapper>,
+    document.body
+  );
+};
 
 const ModalContent = styled.div`
   background: ${({ theme }) => theme.palette?.mode === 'dark' ? '#2a2a2a' : '#ffffff'};
   border-radius: 16px;
   padding: 24px;
-  max-width: 400px;
+  max-width: 420px;
   width: 100%;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-  border: 1px solid ${({ theme }) => theme.palette?.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
+  max-height: 90vh;
+  margin: auto;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(0, 0, 0, 0.1);
+  border: 1px solid ${({ theme }) => theme.palette?.mode === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.1)'};
+  position: relative;
+  z-index: 1000000;
+  box-sizing: border-box;
 `;
 
 const ModalTitle = styled.h3`
