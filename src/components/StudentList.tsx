@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { sortClasses } from '../utils/classUtils';
 import { getStudentDisplayId, matchesStudentSearch } from '../utils/studentUtils';
 import { formatAppDate, formatAppDateForFilename } from '../utils/dateUtils';
+import { fetchAllRows } from '../utils/paginationHelper';
 import { ThemeContext, darkTheme, lightTheme, useProgress } from './Layout';
 import { useNavigate } from 'react-router-dom';
 import { EditStudentForm } from './students/EditStudentForm';
@@ -2206,15 +2207,19 @@ const StudentList: React.FC = () => {
       startProgress(false);
       setProgress(10);
 
-      // Always fetch all students from students table
+      // Always fetch all students from students table using fetchAllRows to bypass Supabase 1000-row limit
       setProgress(30);
-      const { data: studentsData, error: studentsError } = await supabase
-        .from('students')
-        .select('*, classes:class_id(id, name), sections:section_id(id, name)')
-        .eq('school_id', user.school_id)
-        .order('id', { ascending: false });
-
-      if (studentsError) {
+      let studentsData: any[] = [];
+      try {
+        studentsData = await fetchAllRows(async (from, to) => {
+          return await supabase
+            .from('students')
+            .select('*, classes:class_id(id, name), sections:section_id(id, name)')
+            .eq('school_id', user.school_id)
+            .order('id', { ascending: false })
+            .range(from, to);
+        });
+      } catch (studentsError) {
         showToast('Failed to load students', 'error');
         setLoading(false);
         completeProgress();
@@ -2233,31 +2238,36 @@ const StudentList: React.FC = () => {
       setProgress(50);
 
       // Get current class from student_class_history for each student
-      const studentIds = studentsData.map((s: any) => s.id);
-
       setProgress(70);
 
-      // Fetch class history for all students - get latest record for each student
-      let historyQuery = supabase
-        .from('student_class_history')
-        .select(`
-          id,
-          student_id,
-          session_id,
-          new_class_id,
-          new_section_id,
-          new_classes:new_class_id(id, name),
-          new_sections:new_section_id(id, name)
-        `)
-        .in('student_id', studentIds)
-        .eq('school_id', user.school_id)
-        .order('id', { ascending: true });
+      // Fetch class history for all students using fetchAllRows to bypass Supabase 1000-row limit
+      let historyData: any[] = [];
+      try {
+        historyData = await fetchAllRows(async (from, to) => {
+          let historyQuery = supabase
+            .from('student_class_history')
+            .select(`
+              id,
+              student_id,
+              session_id,
+              new_class_id,
+              new_section_id,
+              new_classes:new_class_id(id, name),
+              new_sections:new_section_id(id, name)
+            `)
+            .eq('school_id', user.school_id)
+            .order('id', { ascending: true })
+            .range(from, to);
 
-      if (sessionFilter) {
-        historyQuery = historyQuery.eq('session_id', sessionFilter);
+          if (sessionFilter) {
+            historyQuery = historyQuery.eq('session_id', sessionFilter);
+          }
+
+          return await historyQuery;
+        });
+      } catch (historyErr) {
+        console.error('Failed to load student class history:', historyErr);
       }
-
-      const { data: historyData } = await historyQuery;
 
       setProgress(90);
 
