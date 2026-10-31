@@ -8,6 +8,7 @@ import {
   Visibility,
   Refresh,
   CheckCircle,
+  FamilyRestroom,
 } from '@mui/icons-material';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../components/useToast';
@@ -15,13 +16,16 @@ import { supabase } from '../../../supabaseClient';
 import {
   FeeDemand,
   FeeDemandLine,
-  GenerateDemandsParams,
+  FamilyFeeSummary,
 } from '../../../types/feeLedger';
 import {
   fetchDemands,
   fetchDemandLines,
   generateDemands,
+  generateFamilyDemands,
   cancelDemand,
+  fetchFamiliesWithFeeSummary,
+  fetchSingleFamilyFeeSummary,
 } from '../../../services/feeLedgerService';
 import {
   HubCard,
@@ -38,6 +42,7 @@ import {
   formatFeeDate,
 } from '../FeeHubStyles';
 import PrintChallanModal from '../components/PrintChallanModal';
+import PrintFamilyChallanModal from '../components/PrintFamilyChallanModal';
 
 export const DemandsTab: React.FC = () => {
   const { user } = useAuth();
@@ -53,6 +58,8 @@ export const DemandsTab: React.FC = () => {
   const [selectedSessionId, setSelectedSessionId] = useState<number | ''>('');
   const [classes, setClasses] = useState<{ id: number; name: string }[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<number | ''>('');
+  const [families, setFamilies] = useState<FamilyFeeSummary[]>([]);
+  const [selectedFamilyId, setSelectedFamilyId] = useState<number | ''>('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -65,18 +72,23 @@ export const DemandsTab: React.FC = () => {
     year: number;
     issueDate: string;
     dueDate: string;
+    targetMode: 'school_or_class' | 'family';
     classId: number | '';
+    familyId: number | '';
   }>({
     sessionId: 0,
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
     issueDate: new Date().toISOString().split('T')[0],
     dueDate: new Date(Date.now() + 10 * 86400000).toISOString().split('T')[0],
+    targetMode: 'school_or_class',
     classId: '',
+    familyId: '',
   });
 
   // Print & Details Modal
   const [activeChallan, setActiveChallan] = useState<{ demand: FeeDemand; lines: FeeDemandLine[] } | null>(null);
+  const [activeFamilyChallan, setActiveFamilyChallan] = useState<FamilyFeeSummary | null>(null);
 
   // Cancel Modal
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
@@ -107,16 +119,33 @@ export const DemandsTab: React.FC = () => {
         .eq('school_id', schoolId)
         .order('name');
       setClasses(cData || []);
+
+      const famList = await fetchFamiliesWithFeeSummary(schoolId);
+      setFamilies(famList);
     } catch (err: any) {
       console.error('Error loading filters:', err);
     }
   };
 
+  const studentToFamilyMap = useMemo(() => {
+    const map: Record<number, FamilyFeeSummary> = {};
+    families.forEach((f) => {
+      f.members.forEach((s) => {
+        map[s.student_id] = f;
+      });
+    });
+    return map;
+  }, [families]);
+
   const loadDemands = async () => {
     try {
       setLoading(true);
-      const data = await fetchDemands(schoolId, { limit: 250 });
+      const [data, famList] = await Promise.all([
+        fetchDemands(schoolId, { limit: 250 }),
+        fetchFamiliesWithFeeSummary(schoolId),
+      ]);
       setDemands(data);
+      setFamilies(famList);
     } catch (err: any) {
       showToast(err.message || 'Failed to load demands.', 'error');
     } finally {
@@ -134,22 +163,45 @@ export const DemandsTab: React.FC = () => {
 
     try {
       setGenerating(true);
-      const res = await generateDemands(
-        { schoolId, userId },
-        {
-          sessionId: genForm.sessionId,
-          month: Number(genForm.month),
-          year: Number(genForm.year),
-          issueDate: genForm.issueDate,
-          dueDate: genForm.dueDate,
-          classId: genForm.classId ? Number(genForm.classId) : null,
+      if (genForm.targetMode === 'family') {
+        if (!genForm.familyId) {
+          showToast('Please select a target family.', 'error');
+          setGenerating(false);
+          return;
         }
-      );
+        const res = await generateFamilyDemands(
+          { schoolId, userId },
+          {
+            familyId: Number(genForm.familyId),
+            sessionId: genForm.sessionId,
+            month: Number(genForm.month),
+            year: Number(genForm.year),
+            issueDate: genForm.issueDate,
+            dueDate: genForm.dueDate,
+          }
+        );
+        showToast(
+          `Family Billing Complete: Generated ${res.generated_count} sibling demands (${res.already_exists_count} already existed).`,
+          'success'
+        );
+      } else {
+        const res = await generateDemands(
+          { schoolId, userId },
+          {
+            sessionId: genForm.sessionId,
+            month: Number(genForm.month),
+            year: Number(genForm.year),
+            issueDate: genForm.issueDate,
+            dueDate: genForm.dueDate,
+            classId: genForm.classId ? Number(genForm.classId) : null,
+          }
+        );
 
-      showToast(
-        `Generated ${res.generated_count} demands (${res.already_exists_count} already existed).`,
-        'success'
-      );
+        showToast(
+          `Generated ${res.generated_count} demands (${res.already_exists_count} already existed).`,
+          'success'
+        );
+      }
       setGenModalOpen(false);
       loadDemands();
     } catch (err: any) {
@@ -167,6 +219,19 @@ export const DemandsTab: React.FC = () => {
       setActiveChallan({ demand, lines });
     } catch (err: any) {
       showToast('Failed to load challan lines.', 'error');
+    }
+  };
+
+  const handleOpenFamilyChallan = async (familyId: number) => {
+    try {
+      const fam = await fetchSingleFamilyFeeSummary(schoolId, familyId);
+      if (!fam) {
+        showToast('Family not found.', 'error');
+        return;
+      }
+      setActiveFamilyChallan(fam);
+    } catch (err: any) {
+      showToast('Failed to load consolidated family challan.', 'error');
     }
   };
 
@@ -195,6 +260,10 @@ export const DemandsTab: React.FC = () => {
     return demands.filter((d) => {
       if (selectedSessionId && d.session_id !== Number(selectedSessionId)) return false;
       if (selectedClassId && d.snapshot?.class_id !== Number(selectedClassId)) return false;
+      if (selectedFamilyId) {
+        const fam = studentToFamilyMap[d.student_id];
+        if (!fam || fam.family_id !== Number(selectedFamilyId)) return false;
+      }
       if (statusFilter !== 'ALL' && d.pay_status !== statusFilter) return false;
 
       if (searchQuery.trim()) {
@@ -202,11 +271,13 @@ export const DemandsTab: React.FC = () => {
         const matchesChallan = d.challan_no.toLowerCase().includes(q);
         const matchesStudent = d.snapshot?.student_name?.toLowerCase().includes(q);
         const matchesRoll = d.snapshot?.roll_number?.toLowerCase().includes(q);
-        if (!matchesChallan && !matchesStudent && !matchesRoll) return false;
+        const fam = studentToFamilyMap[d.student_id];
+        const matchesFamily = fam?.family_name?.toLowerCase().includes(q);
+        if (!matchesChallan && !matchesStudent && !matchesRoll && !matchesFamily) return false;
       }
       return true;
     });
-  }, [demands, selectedSessionId, selectedClassId, statusFilter, searchQuery]);
+  }, [demands, selectedSessionId, selectedClassId, selectedFamilyId, statusFilter, searchQuery, studentToFamilyMap]);
 
   return (
     <div>
@@ -215,11 +286,19 @@ export const DemandsTab: React.FC = () => {
         <div>
           <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>Fee Demands & Challans Registry</h2>
           <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
-            Batch monthly billing generation, line item breakdowns, and 3-copy standard bank challans.
+            Batch monthly billing generation, family-wise billing, line item breakdowns, and 3-copy standard bank challans.
           </span>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {selectedFamilyId && (
+            <ModernButton
+              $variant="secondary"
+              onClick={() => handleOpenFamilyChallan(Number(selectedFamilyId))}
+            >
+              <Print fontSize="small" /> Print Consolidated Family Challan
+            </ModernButton>
+          )}
           <ModernButton $variant="primary" onClick={() => setGenModalOpen(true)}>
             <Add fontSize="small" /> Generate Monthly Demands
           </ModernButton>
@@ -262,6 +341,21 @@ export const DemandsTab: React.FC = () => {
         </div>
 
         <div className="filter-item">
+          <label>Family:</label>
+          <ModernSelect
+            value={selectedFamilyId}
+            onChange={(e) => setSelectedFamilyId(e.target.value ? Number(e.target.value) : '')}
+          >
+            <option value="">All Families</option>
+            {families.map((f) => (
+              <option key={f.family_id} value={f.family_id}>
+                {f.family_name} ({f.members.length} Siblings)
+              </option>
+            ))}
+          </ModernSelect>
+        </div>
+
+        <div className="filter-item">
           <label>Status:</label>
           <ModernSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="ALL">All Statuses</option>
@@ -276,7 +370,7 @@ export const DemandsTab: React.FC = () => {
           <label>Search:</label>
           <ModernInput
             type="text"
-            placeholder="Challan #, Student Name, Roll..."
+            placeholder="Challan #, Student, Family..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{ width: '100%' }}
@@ -314,13 +408,31 @@ export const DemandsTab: React.FC = () => {
                 const isPaid = d.pay_status === 'paid';
                 const isCancelled = d.doc_status === 'cancelled';
                 const canCancel = !isPaid && !isCancelled && d.paid_amount === 0;
+                const linkedFamily = studentToFamilyMap[d.student_id];
 
                 return (
                   <tr key={d.demand_id}>
                     <td style={{ fontFamily: 'monospace', fontWeight: 800 }}>#{d.challan_no}</td>
                     <td>
-                      <div style={{ fontWeight: 700 }}>
+                      <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
                         {d.snapshot?.student_name || `Student #${d.student_id}`}
+                        {linkedFamily && (
+                          <span
+                            onClick={() => setSelectedFamilyId(linkedFamily.family_id)}
+                            title="Filter by this family"
+                            style={{
+                              fontSize: '0.62rem',
+                              fontWeight: 800,
+                              padding: '0.1rem 0.4rem',
+                              borderRadius: '999px',
+                              background: 'rgba(124, 58, 237, 0.12)',
+                              color: '#6d28d9',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {linkedFamily.family_name}
+                          </span>
+                        )}
                       </div>
                       <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
                         s/o {d.snapshot?.father_name || '—'}
@@ -373,6 +485,17 @@ export const DemandsTab: React.FC = () => {
                           <Print fontSize="inherit" /> Challan
                         </ModernButton>
 
+                        {linkedFamily && (
+                          <ModernButton
+                            $size="sm"
+                            $variant="ghost"
+                            onClick={() => handleOpenFamilyChallan(linkedFamily.family_id)}
+                            title="Print Consolidated Family Challan"
+                          >
+                            <FamilyRestroom fontSize="inherit" /> Family
+                          </ModernButton>
+                        )}
+
                         {canCancel && (
                           <ModernButton
                             $size="sm"
@@ -401,13 +524,50 @@ export const DemandsTab: React.FC = () => {
       {/* Modal: Generate Demands */}
       {genModalOpen && (
         <ModalBackdrop onClick={() => setGenModalOpen(false)}>
-          <ModalDialog onClick={(e) => e.stopPropagation()} $width="520px">
+          <ModalDialog onClick={(e) => e.stopPropagation()} $width="540px">
             <h3 className="modal-title">Generate Monthly Fee Demands</h3>
             <p className="modal-subtitle">
               Calculates fee lines based on catalog rate cards, student concessions, and negotiated overrides. Race-free & idempotent.
             </p>
 
             <form onSubmit={handleGenerateDemands} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              {/* Target Scope Toggle */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.35rem', color: '#64748b' }}>
+                  BILLING TARGET SCOPE:
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <div
+                    onClick={() => setGenForm((prev) => ({ ...prev, targetMode: 'school_or_class' }))}
+                    style={{
+                      padding: '0.55rem 0.75rem',
+                      borderRadius: '8px',
+                      border: `2px solid ${genForm.targetMode === 'school_or_class' ? '#2563eb' : 'rgba(148,163,184,0.25)'}`,
+                      background: genForm.targetMode === 'school_or_class' ? 'rgba(37,99,235,0.08)' : 'transparent',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    Whole School / Specific Class
+                  </div>
+                  <div
+                    onClick={() => setGenForm((prev) => ({ ...prev, targetMode: 'family' }))}
+                    style={{
+                      padding: '0.55rem 0.75rem',
+                      borderRadius: '8px',
+                      border: `2px solid ${genForm.targetMode === 'family' ? '#7c3aed' : 'rgba(148,163,184,0.25)'}`,
+                      background: genForm.targetMode === 'family' ? 'rgba(124,58,237,0.08)' : 'transparent',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    Specific Family (All Siblings)
+                  </div>
+                </div>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.25rem', color: '#64748b' }}>
@@ -431,28 +591,54 @@ export const DemandsTab: React.FC = () => {
                   </ModernSelect>
                 </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.25rem', color: '#64748b' }}>
-                    TARGET CLASS (OPTIONAL):
-                  </label>
-                  <ModernSelect
-                    value={genForm.classId}
-                    onChange={(e) =>
-                      setGenForm((prev) => ({
-                        ...prev,
-                        classId: e.target.value ? Number(e.target.value) : '',
-                      }))
-                    }
-                    style={{ width: '100%' }}
-                  >
-                    <option value="">All Classes (Whole School)</option>
-                    {classes.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </ModernSelect>
-                </div>
+                {genForm.targetMode === 'school_or_class' ? (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.25rem', color: '#64748b' }}>
+                      TARGET CLASS (OPTIONAL):
+                    </label>
+                    <ModernSelect
+                      value={genForm.classId}
+                      onChange={(e) =>
+                        setGenForm((prev) => ({
+                          ...prev,
+                          classId: e.target.value ? Number(e.target.value) : '',
+                        }))
+                      }
+                      style={{ width: '100%' }}
+                    >
+                      <option value="">All Classes (Whole School)</option>
+                      {classes.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </ModernSelect>
+                  </div>
+                ) : (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.25rem', color: '#64748b' }}>
+                      SELECT TARGET FAMILY:
+                    </label>
+                    <ModernSelect
+                      value={genForm.familyId}
+                      onChange={(e) =>
+                        setGenForm((prev) => ({
+                          ...prev,
+                          familyId: e.target.value ? Number(e.target.value) : '',
+                        }))
+                      }
+                      style={{ width: '100%' }}
+                      required
+                    >
+                      <option value="">Select Family...</option>
+                      {families.map((f) => (
+                        <option key={f.family_id} value={f.family_id}>
+                          {f.family_name} ({f.members.length} Siblings)
+                        </option>
+                      ))}
+                    </ModernSelect>
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
@@ -571,6 +757,14 @@ export const DemandsTab: React.FC = () => {
           demand={activeChallan.demand}
           lines={activeChallan.lines}
           onClose={() => setActiveChallan(null)}
+        />
+      )}
+
+      {/* Print Consolidated Family Challan Modal */}
+      {activeFamilyChallan && (
+        <PrintFamilyChallanModal
+          family={activeFamilyChallan}
+          onClose={() => setActiveFamilyChallan(null)}
         />
       )}
     </div>

@@ -305,6 +305,22 @@ export interface CollectPaymentResult {
   roll_number?: string;
 }
 
+export interface FeePlanRevisionEntry {
+  id: string;
+  fee_head_id: number;
+  head_title?: string;
+  head_code?: string;
+  previous_amount: number;
+  new_amount: number;
+  delta_amount: number;
+  change_mode: 'initial_plan' | 'manual_revision' | 'increment_percent' | 'increment_fixed';
+  change_value: number;
+  effective_from: string;
+  applied_at: string;
+  applied_by: number;
+  reason: string;
+}
+
 export interface StudentPlanHeadDetail {
   fee_head_id: number;
   head_title: string;
@@ -312,6 +328,11 @@ export interface StudentPlanHeadDetail {
   standard_amount: number;
   custom_amount: number | null;
   has_override: boolean;
+  base_amount?: number;
+  increment_amount?: number;
+  effective_from?: string | null;
+  clean_reason?: string;
+  revisions?: FeePlanRevisionEntry[];
 }
 
 export interface StudentFeePlanRow {
@@ -324,11 +345,19 @@ export interface StudentFeePlanRow {
   section_id: number | null;
   section_name: string | null;
   standard_monthly: number;
+  base_monthly?: number;
+  increment_monthly?: number;
+  last_increment_effective_from?: string | null;
+  last_increment_label?: string | null;
   custom_monthly: number;
   concession_monthly: number;
   net_monthly: number;
   plan_status: string;
   heads_detail: StudentPlanHeadDetail[];
+  concessions_list?: FeeConcession[];
+  revisions_history?: FeePlanRevisionEntry[];
+  past_demands_count?: number;
+  past_demands_total?: number;
 }
 
 export interface SetStudentFeePlanParams {
@@ -336,6 +365,7 @@ export interface SetStudentFeePlanParams {
   sessionId: number;
   items: Array<{ fee_head_id: number; amount: number; reason?: string }>;
   notes?: string;
+  effectiveFrom?: string;
 }
 
 export interface BulkSetClassFeePlanParams {
@@ -343,4 +373,151 @@ export interface BulkSetClassFeePlanParams {
   sessionId: number;
   items: Array<{ fee_head_id: number; amount: number; reason?: string }>;
   overwriteCustom?: boolean;
+  effectiveFrom?: string;
 }
+
+export interface ApplyFeeIncrementParams {
+  sessionId: number;
+  studentIds: number[];
+  targetHeadIds: number[];
+  incrementType: 'percent' | 'fixed';
+  incrementValue: number;
+  roundingMode?: 'exact' | 'nearest_10' | 'nearest_50' | 'nearest_100';
+  effectiveFrom: string;
+  reason: string;
+}
+
+export interface GrantStudentConcessionParams {
+  studentIds: number[];
+  feeHeadId: number | null;
+  kind: ConcessionKind;
+  valueType: 'percent' | 'fixed';
+  value: number;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  reason: string;
+  autoApprove?: boolean;
+}
+
+// ---------------- Family-Wise Fee & Payment Types ----------------
+
+export interface FamilySiblingFeeProfile {
+  student_id: number;
+  name: string;
+  father_name: string | null;
+  roll_number: string | null;
+  class_id: number | null;
+  class_name: string | null;
+  section_id: number | null;
+  section_name: string | null;
+  status: string | null;
+  is_primary_contact: boolean;
+  total_billed: number;
+  total_paid: number;
+  balance_due: number;
+  overdue_amount: number;
+  wallet_balance: number;
+  unpaid_demands: FeeDemand[];
+  all_demands: FeeDemand[];
+  receipts: FeeReceipt[];
+}
+
+export interface FamilyFeeSummary {
+  family_id: number;
+  school_id: number;
+  family_name: string;
+  contact_person: string | null;
+  contact_number: string | null;
+  address: string | null;
+  avatar_url: string | null;
+  members: FamilySiblingFeeProfile[];
+  active_siblings_count: number;
+  total_billed: number;
+  total_paid: number;
+  total_due: number;
+  total_overdue: number;
+  total_wallet: number;
+  unpaid_challans_count: number;
+  receipts_count: number;
+  last_payment_date: string | null;
+  last_payment_amount: number;
+}
+
+export interface FamilyMemberPaymentAllocation {
+  studentId: number;
+  studentName: string;
+  fatherName?: string | null;
+  rollNumber?: string | null;
+  className?: string | null;
+  amount: number;
+  balanceBefore?: number;
+  demandIds?: number[] | null;
+}
+
+export interface CollectFamilyPaymentParams {
+  familyId: number;
+  familyName: string;
+  contactNumber?: string | null;
+  address?: string | null;
+  allocations: FamilyMemberPaymentAllocation[];
+  method: PaymentMethod;
+  idempotencyKey: string;
+  shiftId?: number | null;
+  referenceNo?: string | null;
+  bankName?: string | null;
+  payerName?: string | null;
+  instrumentDate?: string | null;
+}
+
+export interface FamilyMemberReceiptItem
+  extends Omit<CollectPaymentResult, 'student_name' | 'father_name' | 'class_name' | 'roll_number'> {
+  student_id: number;
+  student_name: string;
+  father_name?: string | null;
+  class_name?: string | null;
+  roll_number?: string | null;
+  balance_before?: number;
+}
+
+export interface CollectFamilyPaymentResult {
+  success: boolean;
+  batch_ref: string;
+  family_id: number;
+  family_name: string;
+  contact_number?: string | null;
+  address?: string | null;
+  paid_at: string;
+  payment_method: PaymentMethod | string;
+  payer_name: string | null;
+  reference_no: string | null;
+  total_amount: number;
+  total_allocated: number;
+  total_wallet: number;
+  total_balance_after: number;
+  member_receipts: FamilyMemberReceiptItem[];
+}
+
+export interface FamilyStatementEntry extends StatementEntry {
+  student_id: number;
+  student_name: string;
+  roll_number?: string | null;
+  class_name?: string | null;
+  family_running_balance: number;
+}
+
+export interface FamilyAgingRow {
+  family_id: number;
+  family_name: string;
+  contact_number: string | null;
+  address: string | null;
+  siblings_count: number;
+  siblings_summary: string;
+  members: AgingRow[];
+  not_due: number;
+  d1_30: number;
+  d31_60: number;
+  d61_90: number;
+  d90_plus: number;
+  total_due: number;
+}
+

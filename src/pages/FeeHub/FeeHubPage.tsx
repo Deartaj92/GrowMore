@@ -12,6 +12,7 @@ import {
   AccountBalanceWallet,
   AssignmentInd,
   Receipt,
+  FamilyRestroom,
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../supabaseClient';
@@ -25,6 +26,7 @@ import {
   formatFeeCurrency,
 } from './FeeHubStyles';
 import CounterTab from './tabs/CounterTab';
+import FamilyFeeTab from './tabs/FamilyFeeTab';
 import PaymentsTab from './tabs/PaymentsTab';
 import DemandsTab from './tabs/DemandsTab';
 import StudentPlansTab from './tabs/StudentPlansTab';
@@ -37,6 +39,7 @@ import ShiftsTab from './tabs/ShiftsTab';
 
 export type FeeHubTabKey =
   | 'counter'
+  | 'families'
   | 'payments'
   | 'demands'
   | 'plans'
@@ -75,50 +78,50 @@ export const FeeHubPage: React.FC = () => {
 
   useEffect(() => {
     loadHubMetrics();
-  }, [schoolId, activeTab]);
+  }, [schoolId]);
 
   const loadHubMetrics = async () => {
     try {
-      // 1. Demand balances aggregation (Billed & Balance)
-      const { data: demands, error: dErr } = await supabase
-        .from('v_fee_demand_balances')
-        .select('net_amount, balance_amount')
-        .eq('school_id', schoolId)
-        .neq('doc_status', 'cancelled');
+      const [
+        { data: demands, error: dErr },
+        { data: receipts, error: rErr },
+        { count: adjCount },
+        { count: concCount },
+        { count: overCount },
+      ] = await Promise.all([
+        supabase
+          .from('v_fee_demand_balances')
+          .select('net_amount, balance_amount')
+          .eq('school_id', schoolId)
+          .neq('doc_status', 'cancelled'),
+        supabase
+          .from('fee_receipts')
+          .select('amount')
+          .eq('school_id', schoolId)
+          .eq('status', 'posted'),
+        supabase
+          .from('fee_adjustments')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_id', schoolId)
+          .eq('status', 'pending'),
+        supabase
+          .from('fee_concessions')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_id', schoolId)
+          .eq('status', 'pending'),
+        supabase
+          .from('student_fee_overrides')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_id', schoolId)
+          .eq('status', 'pending'),
+      ]);
 
       if (dErr) throw dErr;
-
-      // 2. Collections from receipts
-      const { data: receipts, error: rErr } = await supabase
-        .from('fee_receipts')
-        .select('amount')
-        .eq('school_id', schoolId)
-        .eq('status', 'posted');
-
       if (rErr) throw rErr;
 
       const billed = (demands || []).reduce((s, r) => s + Number(r.net_amount || 0), 0);
       const collected = (receipts || []).reduce((s, r) => s + Number(r.amount || 0), 0);
       const due = (demands || []).reduce((s, r) => s + Number(r.balance_amount || 0), 0);
-
-      // 3. Pending approvals count
-      const { count: adjCount } = await supabase
-        .from('fee_adjustments')
-        .select('*', { count: 'exact', head: true })
-        .eq('school_id', schoolId)
-        .eq('status', 'pending');
-
-      const { count: concCount } = await supabase
-        .from('fee_concessions')
-        .select('*', { count: 'exact', head: true })
-        .eq('school_id', schoolId)
-        .eq('status', 'pending');
-
-      const { count: overCount } = await supabase
-        .from('student_fee_overrides')
-        .select('*', { count: 'exact', head: true })
-        .eq('school_id', schoolId)
-        .eq('status', 'pending');
 
       setMetrics({
         totalBilled: billed,
@@ -133,7 +136,20 @@ export const FeeHubPage: React.FC = () => {
 
   const handleTabChange = (key: FeeHubTabKey) => {
     setActiveTab(key);
-    setSearchParams({ tab: key });
+    try {
+      const url = new URL(window.location.href);
+      if (url.hash && url.hash.includes('?')) {
+        const [hashPath] = url.hash.split('?');
+        url.hash = `${hashPath}?tab=${key}`;
+      } else if (url.hash) {
+        url.hash = `${url.hash}?tab=${key}`;
+      } else {
+        url.searchParams.set('tab', key);
+      }
+      window.history.replaceState(window.history.state, '', url.toString());
+    } catch {
+      // Fallback if URL parsing fails
+    }
   };
 
   return (
@@ -194,6 +210,14 @@ export const FeeHubPage: React.FC = () => {
           onClick={() => handleTabChange('counter')}
         >
           <PointOfSale fontSize="small" /> POS Counter
+        </HubTabBtn>
+
+        <HubTabBtn
+          $active={activeTab === 'families'}
+          $color="#7c3aed"
+          onClick={() => handleTabChange('families')}
+        >
+          <FamilyRestroom fontSize="small" /> Family Billing & History
         </HubTabBtn>
 
         <HubTabBtn
@@ -275,6 +299,7 @@ export const FeeHubPage: React.FC = () => {
       {/* Active Tab View */}
       <div>
         {activeTab === 'counter' && <CounterTab onPaymentCollected={loadHubMetrics} />}
+        {activeTab === 'families' && <FamilyFeeTab onPaymentCollected={loadHubMetrics} />}
         {activeTab === 'payments' && <PaymentsTab />}
         {activeTab === 'demands' && <DemandsTab />}
         {activeTab === 'plans' && <StudentPlansTab />}

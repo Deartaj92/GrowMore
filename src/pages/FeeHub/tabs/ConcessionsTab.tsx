@@ -1,12 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  CardGiftcard,
   Add,
   CheckCircle,
   Cancel,
   Block,
-  Tune,
-  Search,
 } from '@mui/icons-material';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../components/useToast';
@@ -19,12 +16,13 @@ import {
 } from '../../../types/feeLedger';
 import {
   fetchConcessions,
-  requestConcession,
+  grantStudentConcession,
   decideConcession,
   fetchOverrides,
   requestOverride,
   decideOverride,
   fetchFeeHeads,
+  parseOverrideReasonAndRevisions,
 } from '../../../services/feeLedgerService';
 import {
   HubCard,
@@ -38,8 +36,12 @@ import {
   ModalBackdrop,
   ModalDialog,
   formatFeeCurrency,
-  formatFeeDate,
 } from '../FeeHubStyles';
+
+const firstDayOfCurrentMonth = (): string => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+};
 
 export const ConcessionsTab: React.FC = () => {
   const { user } = useAuth();
@@ -79,14 +81,16 @@ export const ConcessionsTab: React.FC = () => {
     valid_from: string;
     valid_to: string;
     reason: string;
+    auto_approve: boolean;
   }>({
     kind: 'sibling',
     fee_head_id: null,
     value_type: 'percent',
     value: 20,
-    valid_from: new Date().toISOString().split('T')[0],
+    valid_from: firstDayOfCurrentMonth(),
     valid_to: '',
     reason: '',
+    auto_approve: true,
   });
 
   const [overForm, setOverForm] = useState<{
@@ -180,22 +184,29 @@ export const ConcessionsTab: React.FC = () => {
     }
 
     try {
-      await requestConcession(schoolId, userId, {
-        student_id: selectedStudent.id,
-        fee_head_id: concForm.fee_head_id ? Number(concForm.fee_head_id) : null,
-        kind: concForm.kind,
-        value_type: concForm.value_type,
-        value: Number(concForm.value),
-        valid_from: concForm.valid_from,
-        valid_to: concForm.valid_to || null,
-        reason: concForm.reason.trim(),
-      });
-      showToast('Concession policy requested successfully.', 'success');
+      await grantStudentConcession(
+        { schoolId, userId },
+        {
+          studentIds: [selectedStudent.id],
+          feeHeadId: concForm.fee_head_id ? Number(concForm.fee_head_id) : null,
+          kind: concForm.kind,
+          valueType: concForm.value_type,
+          value: Number(concForm.value),
+          effectiveFrom: concForm.valid_from,
+          effectiveTo: concForm.valid_to || null,
+          reason: concForm.reason.trim(),
+          autoApprove: concForm.auto_approve,
+        }
+      );
+      showToast(
+        `Concession policy ${concForm.auto_approve ? 'granted & approved' : 'requested'} effective from ${concForm.valid_from}. Past amounts are unaffected.`,
+        'success'
+      );
       setIsConcModalOpen(false);
       setSelectedStudent(null);
       loadConcessionsData();
     } catch (err: any) {
-      showToast(err.message || 'Failed to request concession.', 'error');
+      showToast(err.message || 'Failed to grant concession.', 'error');
     }
   };
 
@@ -283,7 +294,16 @@ export const ConcessionsTab: React.FC = () => {
   return (
     <div>
       {/* Sub-nav row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '1rem',
+          flexWrap: 'wrap',
+          gap: '0.5rem',
+        }}
+      >
         <div style={{ display: 'flex', gap: '0.4rem' }}>
           <ModernButton
             $variant={subTab === 'concessions' ? 'primary' : 'ghost'}
@@ -302,7 +322,7 @@ export const ConcessionsTab: React.FC = () => {
         <div>
           {subTab === 'concessions' ? (
             <ModernButton $variant="primary" onClick={() => setIsConcModalOpen(true)}>
-              <Add fontSize="small" /> Request Concession
+              <Add fontSize="small" /> Grant / Request Concession
             </ModernButton>
           ) : (
             <ModernButton $variant="primary" onClick={() => setIsOverModalOpen(true)}>
@@ -344,101 +364,108 @@ export const ConcessionsTab: React.FC = () => {
           <HubCard style={{ padding: '0.5rem' }}>
             <TableWrapper>
               <ModernTable>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Student</th>
-                  <th>Policy Kind</th>
-                  <th>Applicable Head</th>
-                  <th style={{ textAlign: 'right' }}>Discount Value</th>
-                  <th>Validity Window</th>
-                  <th>Reason</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredConcessions.length === 0 ? (
+                <thead>
                   <tr>
-                    <td colSpan={9} style={{ textAlign: 'center', padding: '2.5rem', opacity: 0.6 }}>
-                      No concessions found. Click "Request Concession" to grant scholarship.
-                    </td>
+                    <th>ID</th>
+                    <th>Student</th>
+                    <th>Policy Kind</th>
+                    <th>Applicable Head</th>
+                    <th style={{ textAlign: 'right' }}>Discount Value</th>
+                    <th>Effective Window (Non-Retroactive)</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
                   </tr>
-                ) : (
-                  filteredConcessions.map((c) => {
-                    const isPending = c.status === 'pending';
-                    const canDecide = isPending && c.requested_by !== userId;
-                    const canRevoke = c.status === 'approved';
+                </thead>
+                <tbody>
+                  {filteredConcessions.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={9}
+                        style={{ textAlign: 'center', padding: '2.5rem', opacity: 0.6 }}
+                      >
+                        No concessions found. Click "Grant / Request Concession" to grant a scholarship or discount.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredConcessions.map((c) => {
+                      const isPending = c.status === 'pending';
+                      const canRevoke = c.status === 'approved';
 
-                    return (
-                      <tr key={c.id}>
-                        <td style={{ fontFamily: 'monospace', fontWeight: 800 }}>#{c.id}</td>
-                        <td style={{ fontWeight: 700 }}>{c.student_name || `ID #${c.student_id}`}</td>
-                        <td style={{ textTransform: 'capitalize' }}>
-                          <ModernBadge $variant="info">{c.kind.replace('_', ' ')}</ModernBadge>
-                        </td>
-                        <td>{c.head_title || 'All eligible heads'}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 800, color: '#ec4899' }}>
-                          {c.value_type === 'percent' ? `${c.value}% Off` : formatFeeCurrency(c.value)}
-                        </td>
-                        <td style={{ fontSize: '0.75rem', fontFamily: 'monospace' }}>
-                          {c.valid_during.replace(/[\[\(\)\]]/g, '').replace(',', ' → ') || 'Open-ended'}
-                        </td>
-                        <td style={{ fontSize: '0.78rem', maxWidth: '200px' }}>{c.reason}</td>
-                        <td>
-                          <ModernBadge
-                            $variant={
-                              c.status === 'approved'
-                                ? 'success'
-                                : c.status === 'pending'
-                                ? 'warning'
-                                : c.status === 'rejected'
-                                ? 'danger'
-                                : 'neutral'
-                            }
-                          >
-                            {c.status.toUpperCase()}
-                          </ModernBadge>
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <div style={{ display: 'inline-flex', gap: '0.3rem' }}>
-                            {canDecide && (
-                              <>
+                      return (
+                        <tr key={c.id}>
+                          <td style={{ fontFamily: 'monospace', fontWeight: 800 }}>#{c.id}</td>
+                          <td style={{ fontWeight: 700 }}>
+                            {c.student_name || `ID #${c.student_id}`}
+                          </td>
+                          <td style={{ textTransform: 'capitalize' }}>
+                            <ModernBadge $variant="info">{c.kind.replace('_', ' ')}</ModernBadge>
+                          </td>
+                          <td>{c.head_title || 'All eligible heads'}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 800, color: '#ec4899' }}>
+                            {c.value_type === 'percent'
+                              ? `${c.value}% Off`
+                              : formatFeeCurrency(c.value)}
+                          </td>
+                          <td style={{ fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                            {c.valid_during.replace(/[\[\(\)\]]/g, '').replace(',', ' → ') ||
+                              'Open-ended'}
+                          </td>
+                          <td style={{ fontSize: '0.78rem', maxWidth: '200px' }}>{c.reason}</td>
+                          <td>
+                            <ModernBadge
+                              $variant={
+                                c.status === 'approved'
+                                  ? 'success'
+                                  : c.status === 'pending'
+                                  ? 'warning'
+                                  : c.status === 'rejected'
+                                  ? 'danger'
+                                  : 'neutral'
+                              }
+                            >
+                              {c.status.toUpperCase()}
+                            </ModernBadge>
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <div style={{ display: 'inline-flex', gap: '0.3rem' }}>
+                              {isPending && (
+                                <>
+                                  <ModernButton
+                                    $size="sm"
+                                    $variant="success"
+                                    onClick={() => handleDecideConcession(c.id, 'approve')}
+                                  >
+                                    <CheckCircle fontSize="inherit" /> Approve
+                                  </ModernButton>
+                                  <ModernButton
+                                    $size="sm"
+                                    $variant="danger"
+                                    onClick={() => handleDecideConcession(c.id, 'reject')}
+                                  >
+                                    <Cancel fontSize="inherit" /> Reject
+                                  </ModernButton>
+                                </>
+                              )}
+                              {canRevoke && (
                                 <ModernButton
                                   $size="sm"
-                                  $variant="success"
-                                  onClick={() => handleDecideConcession(c.id, 'approve')}
+                                  $variant="ghost"
+                                  onClick={() => handleDecideConcession(c.id, 'revoke')}
                                 >
-                                  <CheckCircle fontSize="inherit" /> Approve
+                                  <Block fontSize="inherit" /> Revoke
                                 </ModernButton>
-                                <ModernButton
-                                  $size="sm"
-                                  $variant="danger"
-                                  onClick={() => handleDecideConcession(c.id, 'reject')}
-                                >
-                                  <Cancel fontSize="inherit" /> Reject
-                                </ModernButton>
-                              </>
-                            )}
-                            {canRevoke && (
-                              <ModernButton
-                                $size="sm"
-                                $variant="ghost"
-                                onClick={() => handleDecideConcession(c.id, 'revoke')}
-                              >
-                                <Block fontSize="inherit" /> Revoke
-                              </ModernButton>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </ModernTable>
-          </TableWrapper>
-        </HubCard>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </ModernTable>
+            </TableWrapper>
+          </HubCard>
         </>
       )}
 
@@ -473,94 +500,111 @@ export const ConcessionsTab: React.FC = () => {
           <HubCard style={{ padding: '0.5rem' }}>
             <TableWrapper>
               <ModernTable>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Student</th>
-                  <th>Fee Head</th>
-                  <th>Session</th>
-                  <th style={{ textAlign: 'right' }}>Fixed Monthly Rate</th>
-                  <th>Reason / Justification</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredOverrides.length === 0 ? (
+                <thead>
                   <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', padding: '2.5rem', opacity: 0.6 }}>
-                      No custom rate overrides found.
-                    </td>
+                    <th>ID</th>
+                    <th>Student</th>
+                    <th>Fee Head</th>
+                    <th>Session</th>
+                    <th style={{ textAlign: 'right' }}>Fixed Monthly Rate</th>
+                    <th>Reason / Justification</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
                   </tr>
-                ) : (
-                  filteredOverrides.map((o) => {
-                    const isPending = o.status === 'pending';
-                    const canDecide = isPending && o.requested_by !== userId;
+                </thead>
+                <tbody>
+                  {filteredOverrides.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={8}
+                        style={{ textAlign: 'center', padding: '2.5rem', opacity: 0.6 }}
+                      >
+                        No custom rate overrides found.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredOverrides.map((o) => {
+                      const isPending = o.status === 'pending';
+                      const { cleanReason } = parseOverrideReasonAndRevisions(o.reason);
 
-                    return (
-                      <tr key={o.id}>
-                        <td style={{ fontFamily: 'monospace', fontWeight: 800 }}>#{o.id}</td>
-                        <td style={{ fontWeight: 700 }}>{o.student_name || `ID #${o.student_id}`}</td>
-                        <td>{o.head_title}</td>
-                        <td>Session #{o.session_id}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 800, color: '#2563eb' }}>
-                          {formatFeeCurrency(o.amount)}
-                        </td>
-                        <td style={{ fontSize: '0.78rem', maxWidth: '240px' }}>{o.reason}</td>
-                        <td>
-                          <ModernBadge
-                            $variant={
-                              o.status === 'approved'
-                                ? 'success'
-                                : o.status === 'pending'
-                                ? 'warning'
-                                : 'danger'
-                            }
-                          >
-                            {o.status.toUpperCase()}
-                          </ModernBadge>
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          {canDecide && (
-                            <div style={{ display: 'inline-flex', gap: '0.3rem' }}>
-                              <ModernButton
-                                $size="sm"
-                                $variant="success"
-                                onClick={() => handleDecideOverride(o.id, true)}
-                              >
-                                <CheckCircle fontSize="inherit" /> Approve
-                              </ModernButton>
-                              <ModernButton
-                                $size="sm"
-                                $variant="danger"
-                                onClick={() => handleDecideOverride(o.id, false)}
-                              >
-                                <Cancel fontSize="inherit" /> Reject
-                              </ModernButton>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </ModernTable>
-          </TableWrapper>
-        </HubCard>
-      </>
-    )}
+                      return (
+                        <tr key={o.id}>
+                          <td style={{ fontFamily: 'monospace', fontWeight: 800 }}>#{o.id}</td>
+                          <td style={{ fontWeight: 700 }}>
+                            {o.student_name || `ID #${o.student_id}`}
+                          </td>
+                          <td>{o.head_title}</td>
+                          <td>Session #{o.session_id}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 800, color: '#2563eb' }}>
+                            {formatFeeCurrency(o.amount)}
+                          </td>
+                          <td style={{ fontSize: '0.78rem', maxWidth: '260px' }}>{cleanReason}</td>
+                          <td>
+                            <ModernBadge
+                              $variant={
+                                o.status === 'approved'
+                                  ? 'success'
+                                  : o.status === 'pending'
+                                  ? 'warning'
+                                  : 'danger'
+                              }
+                            >
+                              {o.status.toUpperCase()}
+                            </ModernBadge>
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            {isPending && (
+                              <div style={{ display: 'inline-flex', gap: '0.3rem' }}>
+                                <ModernButton
+                                  $size="sm"
+                                  $variant="success"
+                                  onClick={() => handleDecideOverride(o.id, true)}
+                                >
+                                  <CheckCircle fontSize="inherit" /> Approve
+                                </ModernButton>
+                                <ModernButton
+                                  $size="sm"
+                                  $variant="danger"
+                                  onClick={() => handleDecideOverride(o.id, false)}
+                                >
+                                  <Cancel fontSize="inherit" /> Reject
+                                </ModernButton>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </ModernTable>
+            </TableWrapper>
+          </HubCard>
+        </>
+      )}
 
-      {/* Modal: Request Concession */}
+      {/* Modal: Grant / Request Concession */}
       {isConcModalOpen && (
         <ModalBackdrop onClick={() => setIsConcModalOpen(false)}>
-          <ModalDialog onClick={(e) => e.stopPropagation()} $width="560px">
-            <h3 className="modal-title">Request Concession Policy</h3>
-            <p className="modal-subtitle">Configure scholarships, sibling discounts, or special fee waivers.</p>
+          <ModalDialog onClick={(e) => e.stopPropagation()} $width="580px">
+            <h3 className="modal-title">Grant / Request Concession Policy</h3>
+            <p className="modal-subtitle">
+              Configure scholarships, sibling discounts, or special fee waivers effective from a chosen date without affecting past challans.
+            </p>
 
-            <form onSubmit={handleCreateConcession} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            <form
+              onSubmit={handleCreateConcession}
+              style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
+            >
               <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, marginBottom: '0.25rem' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    marginBottom: '0.25rem',
+                  }}
+                >
                   STUDENT:
                 </label>
                 {selectedStudent ? (
@@ -576,9 +620,15 @@ export const ConcessionsTab: React.FC = () => {
                     }}
                   >
                     <div>
-                      <strong>{selectedStudent.name}</strong> (Roll: {selectedStudent.roll_number || 'N/A'}, Class: {selectedStudent.classes?.name || '—'})
+                      <strong>{selectedStudent.name}</strong> (Roll:{' '}
+                      {selectedStudent.roll_number || 'N/A'}, Class:{' '}
+                      {selectedStudent.classes?.name || '—'})
                     </div>
-                    <ModernButton $size="sm" $variant="ghost" onClick={() => setSelectedStudent(null)}>
+                    <ModernButton
+                      $size="sm"
+                      $variant="ghost"
+                      onClick={() => setSelectedStudent(null)}
+                    >
                       Change
                     </ModernButton>
                   </div>
@@ -600,6 +650,7 @@ export const ConcessionsTab: React.FC = () => {
                           maxHeight: '140px',
                           overflowY: 'auto',
                           background: '#fff',
+                          color: '#0f172a',
                         }}
                       >
                         {students.map((s) => (
@@ -617,7 +668,8 @@ export const ConcessionsTab: React.FC = () => {
                               fontSize: '0.8rem',
                             }}
                           >
-                            <strong>{s.name}</strong> s/o {s.father_name} (Class: {s.classes?.name || '—'})
+                            <strong>{s.name}</strong> s/o {s.father_name} (Class:{' '}
+                            {s.classes?.name || '—'})
                           </div>
                         ))}
                       </div>
@@ -628,12 +680,21 @@ export const ConcessionsTab: React.FC = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, marginBottom: '0.25rem' }}>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      marginBottom: '0.25rem',
+                    }}
+                  >
                     POLICY KIND:
                   </label>
                   <ModernSelect
                     value={concForm.kind}
-                    onChange={(e) => setConcForm((p) => ({ ...p, kind: e.target.value as ConcessionKind }))}
+                    onChange={(e) =>
+                      setConcForm((p) => ({ ...p, kind: e.target.value as ConcessionKind }))
+                    }
                     style={{ width: '100%' }}
                   >
                     <option value="sibling">Sibling Discount</option>
@@ -646,7 +707,14 @@ export const ConcessionsTab: React.FC = () => {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, marginBottom: '0.25rem' }}>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      marginBottom: '0.25rem',
+                    }}
+                  >
                     APPLICABLE HEAD:
                   </label>
                   <ModernSelect
@@ -671,12 +739,24 @@ export const ConcessionsTab: React.FC = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, marginBottom: '0.25rem' }}>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      marginBottom: '0.25rem',
+                    }}
+                  >
                     DISCOUNT TYPE:
                   </label>
                   <ModernSelect
                     value={concForm.value_type}
-                    onChange={(e) => setConcForm((p) => ({ ...p, value_type: e.target.value as 'percent' | 'fixed' }))}
+                    onChange={(e) =>
+                      setConcForm((p) => ({
+                        ...p,
+                        value_type: e.target.value as 'percent' | 'fixed',
+                      }))
+                    }
                     style={{ width: '100%' }}
                   >
                     <option value="percent">Percentage Off (%)</option>
@@ -685,7 +765,14 @@ export const ConcessionsTab: React.FC = () => {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, marginBottom: '0.25rem' }}>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      marginBottom: '0.25rem',
+                    }}
+                  >
                     {concForm.value_type === 'percent' ? 'PERCENT (%)' : 'AMOUNT (RS)'}:
                   </label>
                   <ModernInput
@@ -693,15 +780,65 @@ export const ConcessionsTab: React.FC = () => {
                     min="1"
                     max={concForm.value_type === 'percent' ? 100 : 1000000}
                     value={concForm.value}
-                    onChange={(e) => setConcForm((p) => ({ ...p, value: parseFloat(e.target.value) || 0 }))}
+                    onChange={(e) =>
+                      setConcForm((p) => ({ ...p, value: parseFloat(e.target.value) || 0 }))
+                    }
                     style={{ width: '100%' }}
                     required
                   />
                 </div>
               </div>
 
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <div>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      marginBottom: '0.25rem',
+                    }}
+                  >
+                    EFFECTIVE FROM DATE (NON-RETROACTIVE):
+                  </label>
+                  <ModernInput
+                    type="date"
+                    value={concForm.valid_from}
+                    onChange={(e) => setConcForm((p) => ({ ...p, valid_from: e.target.value }))}
+                    style={{ width: '100%' }}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      marginBottom: '0.25rem',
+                    }}
+                  >
+                    EFFECTIVE TO DATE (OPTIONAL):
+                  </label>
+                  <ModernInput
+                    type="date"
+                    value={concForm.valid_to}
+                    onChange={(e) => setConcForm((p) => ({ ...p, valid_to: e.target.value }))}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              </div>
+
               <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, marginBottom: '0.25rem' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    marginBottom: '0.25rem',
+                  }}
+                >
                   REASON / BOARD RESOLUTION (MANDATORY):
                 </label>
                 <ModernInput
@@ -714,12 +851,43 @@ export const ConcessionsTab: React.FC = () => {
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <ModernButton type="button" $variant="ghost" onClick={() => setIsConcModalOpen(false)}>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={concForm.auto_approve}
+                  onChange={(e) =>
+                    setConcForm((p) => ({ ...p, auto_approve: e.target.checked }))
+                  }
+                />
+                Approve & activate immediately for billing on/after {concForm.valid_from}
+              </label>
+
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: '0.5rem',
+                  marginTop: '0.5rem',
+                }}
+              >
+                <ModernButton
+                  type="button"
+                  $variant="ghost"
+                  onClick={() => setIsConcModalOpen(false)}
+                >
                   Cancel
                 </ModernButton>
                 <ModernButton type="submit" $variant="primary">
-                  Submit Request
+                  {concForm.auto_approve ? 'Grant & Approve Concession' : 'Submit Request'}
                 </ModernButton>
               </div>
             </form>
@@ -732,11 +900,23 @@ export const ConcessionsTab: React.FC = () => {
         <ModalBackdrop onClick={() => setIsOverModalOpen(false)}>
           <ModalDialog onClick={(e) => e.stopPropagation()} $width="540px">
             <h3 className="modal-title">Request Custom Rate Override</h3>
-            <p className="modal-subtitle">Sets an exact flat monthly rate for an individual student.</p>
+            <p className="modal-subtitle">
+              Sets an exact flat monthly rate for an individual student.
+            </p>
 
-            <form onSubmit={handleCreateOverride} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            <form
+              onSubmit={handleCreateOverride}
+              style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
+            >
               <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, marginBottom: '0.25rem' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    marginBottom: '0.25rem',
+                  }}
+                >
                   STUDENT:
                 </label>
                 {selectedStudent ? (
@@ -752,9 +932,15 @@ export const ConcessionsTab: React.FC = () => {
                     }}
                   >
                     <div>
-                      <strong>{selectedStudent.name}</strong> (Roll: {selectedStudent.roll_number || 'N/A'}, Class: {selectedStudent.classes?.name || '—'})
+                      <strong>{selectedStudent.name}</strong> (Roll:{' '}
+                      {selectedStudent.roll_number || 'N/A'}, Class:{' '}
+                      {selectedStudent.classes?.name || '—'})
                     </div>
-                    <ModernButton $size="sm" $variant="ghost" onClick={() => setSelectedStudent(null)}>
+                    <ModernButton
+                      $size="sm"
+                      $variant="ghost"
+                      onClick={() => setSelectedStudent(null)}
+                    >
                       Change
                     </ModernButton>
                   </div>
@@ -776,6 +962,7 @@ export const ConcessionsTab: React.FC = () => {
                           maxHeight: '140px',
                           overflowY: 'auto',
                           background: '#fff',
+                          color: '#0f172a',
                         }}
                       >
                         {students.map((s) => (
@@ -793,7 +980,8 @@ export const ConcessionsTab: React.FC = () => {
                               fontSize: '0.8rem',
                             }}
                           >
-                            <strong>{s.name}</strong> s/o {s.father_name} (Class: {s.classes?.name || '—'})
+                            <strong>{s.name}</strong> s/o {s.father_name} (Class:{' '}
+                            {s.classes?.name || '—'})
                           </div>
                         ))}
                       </div>
@@ -804,12 +992,21 @@ export const ConcessionsTab: React.FC = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, marginBottom: '0.25rem' }}>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      marginBottom: '0.25rem',
+                    }}
+                  >
                     ACADEMIC SESSION:
                   </label>
                   <ModernSelect
                     value={overForm.session_id}
-                    onChange={(e) => setOverForm((p) => ({ ...p, session_id: Number(e.target.value) }))}
+                    onChange={(e) =>
+                      setOverForm((p) => ({ ...p, session_id: Number(e.target.value) }))
+                    }
                     style={{ width: '100%' }}
                   >
                     {sessions.map((s) => (
@@ -821,12 +1018,21 @@ export const ConcessionsTab: React.FC = () => {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, marginBottom: '0.25rem' }}>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      marginBottom: '0.25rem',
+                    }}
+                  >
                     FEE HEAD:
                   </label>
                   <ModernSelect
                     value={overForm.fee_head_id}
-                    onChange={(e) => setOverForm((p) => ({ ...p, fee_head_id: Number(e.target.value) }))}
+                    onChange={(e) =>
+                      setOverForm((p) => ({ ...p, fee_head_id: Number(e.target.value) }))
+                    }
                     style={{ width: '100%' }}
                   >
                     {feeHeads.map((h) => (
@@ -839,7 +1045,14 @@ export const ConcessionsTab: React.FC = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, marginBottom: '0.25rem' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    marginBottom: '0.25rem',
+                  }}
+                >
                   OVERRIDE MONTHLY AMOUNT (RS):
                 </label>
                 <ModernInput
@@ -847,14 +1060,23 @@ export const ConcessionsTab: React.FC = () => {
                   min="0"
                   step="0.01"
                   value={overForm.amount}
-                  onChange={(e) => setOverForm((p) => ({ ...p, amount: parseFloat(e.target.value) || 0 }))}
+                  onChange={(e) =>
+                    setOverForm((p) => ({ ...p, amount: parseFloat(e.target.value) || 0 }))
+                  }
                   style={{ width: '100%', fontSize: '1.1rem', fontWeight: 800 }}
                   required
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, marginBottom: '0.25rem' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    marginBottom: '0.25rem',
+                  }}
+                >
                   JUSTIFICATION / SPECIAL BOARD APPROVAL:
                 </label>
                 <ModernInput
@@ -867,8 +1089,19 @@ export const ConcessionsTab: React.FC = () => {
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <ModernButton type="button" $variant="ghost" onClick={() => setIsOverModalOpen(false)}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: '0.5rem',
+                  marginTop: '0.5rem',
+                }}
+              >
+                <ModernButton
+                  type="button"
+                  $variant="ghost"
+                  onClick={() => setIsOverModalOpen(false)}
+                >
                   Cancel
                 </ModernButton>
                 <ModernButton type="submit" $variant="primary">
