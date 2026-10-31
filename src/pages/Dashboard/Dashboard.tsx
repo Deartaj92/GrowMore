@@ -64,6 +64,7 @@ import { fetchEmployeeAbsentees } from './services/employeeAttendanceService';
 import { fetchAccountsData, AccountsData } from './services/accountsService';
 import TabNavigation from './components/shared/TabNavigation';
 import DeleteModal from './components/shared/DeleteModal';
+import DashboardOverviewTab from './components/DashboardTab/DashboardTab';
 import AttendanceTab from './components/AttendanceTab/AttendanceTab';
 import BirthdaysTab from './components/BirthdaysTab/BirthdaysTab';
 import AdmissionsTab from './components/AdmissionsTab/AdmissionsTab';
@@ -136,7 +137,7 @@ const Dashboard: React.FC = () => {
   const [accountsDateTo, setAccountsDateTo] = useState(() => new Date().toISOString().slice(0, 10));
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<DashboardTab>('attendance');
+  const [activeTab, setActiveTab] = useState<DashboardTab>('dashboard');
   const prevActiveTabRef = useRef<DashboardTab | null>(null);
   const [allowedTabs, setAllowedTabs] = useState<Set<DashboardTab>>(new Set());
   const [userPerms, setUserPerms] = useState<Set<string>>(new Set());
@@ -158,6 +159,7 @@ const Dashboard: React.FC = () => {
         setUserPerms(perms);
 
         const tabPermissionMap: Record<string, DashboardTab> = {
+          'dashboard-tab-overview': 'dashboard',
           'dashboard-tab-attendance': 'attendance',
           'dashboard-tab-admissions': 'admissions',
           'dashboard-tab-homework': 'homework',
@@ -167,8 +169,8 @@ const Dashboard: React.FC = () => {
           'dashboard-tab-birthdays': 'birthdays',
         };
 
-        const allowed = new Set<DashboardTab>();
-        let hasAnyTabPermission = false;
+        const allowed = new Set<DashboardTab>(['dashboard']);
+        let hasAnyTabPermission = perms.has('dashboard');
 
         for (const [permKey, tabId] of Object.entries(tabPermissionMap)) {
           if (perms.has(permKey)) {
@@ -554,11 +556,21 @@ const Dashboard: React.FC = () => {
     setHasActiveSession(true);
 
     setProgress(40);
-    const { data: schData, error: schError } = await supabase
-      .from('student_class_history')
-      .select('student_id')
-      .eq('session_id', sessionDataResult.id)
-      .eq('school_id', user.school_id);
+    let schData: any[] = [];
+    let schError: any = null;
+    try {
+      schData = await fetchAllRows(async (from, to) => {
+        return await supabase
+          .from('student_class_history')
+          .select('id, student_id, new_class_id, new_section_id')
+          .eq('session_id', sessionDataResult.id)
+          .eq('school_id', user.school_id)
+          .order('id', { ascending: true })
+          .range(from, to);
+      });
+    } catch (err) {
+      schError = err;
+    }
 
     if (schError || !schData || schData.length === 0) {
       setStudents([]);
@@ -582,7 +594,15 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-    const studentIds = schData.map(sch => sch.student_id);
+    const sessionStudentClassMap = new Map<number, { class_id: any; section_id: any }>();
+    schData.forEach((sch: any) => {
+      if (sch.student_id !== null && sch.student_id !== undefined) {
+        sessionStudentClassMap.set(Number(sch.student_id), {
+          class_id: sch.new_class_id,
+          section_id: sch.new_section_id,
+        });
+      }
+    });
     setProgress(60);
 
     // Use fetchAllRows for all queries to handle 1000+ records
@@ -616,19 +636,40 @@ const Dashboard: React.FC = () => {
       }),
       fetchAllRows(async (from, to) => {
         return await supabase.from('staff')
-          .select('id, name, role')
+          .select('id, name, role, status, attendance_enabled')
           .eq('school_id', user.school_id)
+          .eq('status', 'active')
           .range(from, to);
       }),
     ]);
 
+    const activeSessionStudents = (studentsData || [])
+      .filter((s: any) =>
+        sessionStudentClassMap.has(Number(s.id)) &&
+        String(s.status || 'active').toLowerCase() === 'active'
+      )
+      .map((s: any) => {
+        const sessionClass = sessionStudentClassMap.get(Number(s.id));
+        return {
+          ...s,
+          class_id: sessionClass?.class_id ?? s.class_id,
+          section_id: sessionClass?.section_id ?? s.section_id,
+        };
+      });
+
+    const activeAttendanceStaff = (staffData || []).filter(
+      (st: any) =>
+        String(st.status || 'active').toLowerCase() === 'active' &&
+        st.attendance_enabled !== false
+    );
+
     setProgress(80);
-    setStudents(studentsData);
+    setStudents(activeSessionStudents);
     setStudentClassHistory(schData || []);
     setClasses(classesData);
     setSections(sectionsData);
     setAttendanceToday(attendanceData);
-    setStaff(staffData);
+    setStaff(activeAttendanceStaff);
 
     setProgress(90);
     setLoadingStudents(false);
@@ -667,7 +708,7 @@ const Dashboard: React.FC = () => {
 
   // Fetch attendance for date
   useEffect(() => {
-    if (activeTab !== 'attendance') return;
+    if (activeTab !== 'attendance' && activeTab !== 'dashboard') return;
 
     const fetchAttendanceForDate = async () => {
       if (!user?.school_id || !dashboardDate) return;
@@ -1379,7 +1420,7 @@ const Dashboard: React.FC = () => {
 
   // Fetch employee attendance for date
   useEffect(() => {
-    if (activeTab !== 'employeeAttendance') return;
+    if (activeTab !== 'employeeAttendance' && activeTab !== 'dashboard') return;
 
     const fetchEmployeeAttendanceForDate = async () => {
       if (!user?.school_id || !dashboardDate) return;
@@ -1427,14 +1468,25 @@ const Dashboard: React.FC = () => {
     fetchEmployeeAttendanceForDate();
   }, [activeTab, dashboardDate, user?.school_id, sessionData?.id, getCachedSession, employeeAttendanceLiveVersion]);
 
-  // Calculate employee attendance stats
+  // Calculate employee attendance stats (only for active staff with attendance_enabled !== false)
   // Present count includes both 'present' and 'late' statuses
-  const employeePresentToday = employeeAttendanceDataForDate.filter(a => a.status === 'present' || a.status === 'late').length;
-  const employeeLeaveToday = employeeAttendanceDataForDate.filter(a => a.status === 'leave').length;
-  const employeeLateToday = employeeAttendanceDataForDate.filter(a => a.status === 'late').length;
-  const employeeHalfDayCount = employeeAttendanceDataForDate.filter(a => a.status === 'half_day').length;
-  const employeeAbsentToday = employeeAttendanceDataForDate.filter(a => a.status === 'absent').length;
-  const employeeTotalMarked = employeeAttendanceDataForDate.length;
+  const attendanceEnabledStaffIds = useMemo(
+    () => new Set((staff || []).filter((s: any) => s.attendance_enabled !== false).map((s: any) => Number(s.id))),
+    [staff]
+  );
+  const filteredEmployeeAttendanceForDate = useMemo(
+    () =>
+      attendanceEnabledStaffIds.size > 0
+        ? employeeAttendanceDataForDate.filter((a: any) => attendanceEnabledStaffIds.has(Number(a.staff_id)))
+        : employeeAttendanceDataForDate,
+    [employeeAttendanceDataForDate, attendanceEnabledStaffIds]
+  );
+  const employeePresentToday = filteredEmployeeAttendanceForDate.filter(a => a.status === 'present' || a.status === 'late').length;
+  const employeeLeaveToday = filteredEmployeeAttendanceForDate.filter(a => a.status === 'leave').length;
+  const employeeLateToday = filteredEmployeeAttendanceForDate.filter(a => a.status === 'late').length;
+  const employeeHalfDayCount = filteredEmployeeAttendanceForDate.filter(a => a.status === 'half_day').length;
+  const employeeAbsentToday = filteredEmployeeAttendanceForDate.filter(a => a.status === 'absent').length;
+  const employeeTotalMarked = filteredEmployeeAttendanceForDate.length;
   const employeePresentPercent = employeeTotalMarked ? Math.round((employeePresentToday / employeeTotalMarked) * 1000) / 10 : 0;
   const employeeAbsentPercent = employeeTotalMarked ? Math.round((employeeAbsentToday / employeeTotalMarked) * 1000) / 10 : 0;
   const employeeLeavePercent = employeeTotalMarked ? Math.round((employeeLeaveToday / employeeTotalMarked) * 1000) / 10 : 0;
@@ -3345,7 +3397,7 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (activeTab === 'birthdays' && !birthdaysTabVisible) {
-      setActiveTab('attendance');
+      setActiveTab('dashboard');
     }
   }, [activeTab, birthdaysTabVisible]);
 
@@ -3444,6 +3496,40 @@ const Dashboard: React.FC = () => {
         <Loader />
       ) : (
         <>
+          {activeTab === 'dashboard' && (
+            <DashboardOverviewTab
+              students={students}
+              staff={staff}
+              classes={classes}
+              sections={sections}
+              dashboardDate={dashboardDate}
+              presentToday={presentToday}
+              absentToday={absentToday}
+              leaveToday={leaveToday}
+              lateToday={lateToday}
+              halfLeaveCount={halfLeaveCount}
+              presentPercent={presentPercent}
+              attendanceDataForDate={attendanceDataForDate}
+              employeePresentToday={employeePresentToday}
+              employeeAbsentToday={employeeAbsentToday}
+              employeeLeaveToday={employeeLeaveToday}
+              employeeLateToday={employeeLateToday}
+              employeeHalfDayCount={employeeHalfDayCount}
+              employeePresentPercent={employeePresentPercent}
+              employeeAttendanceDataForDate={employeeAttendanceDataForDate}
+              absentees={absentees}
+              lateComers={lateComers}
+              studentDetails={studentDetails}
+              birthdaysToday={birthdaysToday}
+              birthdaysTabVisible={birthdaysTabVisible}
+              allowedTabs={allowedTabs}
+              onSelectTab={handleTabChange}
+              canAccessShortcut={canAccessFooterShortcut as any}
+              getClassName={getClassName}
+              getSectionName={getSectionName}
+            />
+          )}
+
           {activeTab === 'attendance' && (
             <AttendanceTab
               presentToday={presentToday}

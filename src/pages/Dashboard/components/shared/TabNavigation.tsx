@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import ReactDOM from 'react-dom';
 import {
   MoreVert,
+  Dashboard as DashboardIcon,
   EventNote,
   AccountBalanceWallet,
   PersonAdd,
@@ -54,6 +55,7 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const allTabs: TabInfo[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
     { id: 'attendance', label: 'Attendance', icon: <EventNote /> },
     { id: 'admissions', label: 'Admissions', icon: <PersonAdd /> },
     { id: 'homework', label: 'Homework Diary', icon: <Assignment /> },

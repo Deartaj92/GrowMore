@@ -136,11 +136,11 @@ const NetworkModal: React.FC<NetworkModalProps> = ({
         <Divider>
           <span>or</span>
         </Divider>
-        <OfflineHint>QR and RFID attendance work without internet</OfflineHint>
+        <OfflineHint>Face/QR and RFID attendance work without internet</OfflineHint>
         <ScannerButtonWrap>
           <ScannerButton $variant="qr" onClick={handleGoToQR}>
             <QrCodeScannerIcon />
-            Open QR Scanner
+            Open Face/QR Scanner
           </ScannerButton>
           <ScannerButton $variant="rfid" onClick={handleGoToRFID}>
             <NfcIcon />
