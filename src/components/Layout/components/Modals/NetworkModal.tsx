@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { WifiOff as WifiOffIcon, Nfc as NfcIcon } from '@mui/icons-material';
+import { WifiOff as WifiOffIcon, Nfc as NfcIcon, QrCodeScanner as QrCodeScannerIcon } from '@mui/icons-material';
 import styled from 'styled-components';
 import {
   NetworkModal as NetworkModalStyled,
@@ -12,49 +12,47 @@ import {
   NetworkButton,
 } from '../../styles';
 
-const RFIDButton = styled.button`
+const ScannerButton = styled.button<{ $variant?: 'qr' | 'rfid' }>`
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-width: 120px;
-  padding: 0.55rem 1.3rem;
+  min-width: 140px;
+  padding: 0.55rem 1.2rem;
   border-radius: 8px;
-  border: 2px solid #a855f7;
-  background: rgba(168, 85, 247, 0.12);
-  color: #a855f7;
+  border: 2px solid ${({ $variant }) => ($variant === 'rfid' ? '#3b82f6' : '#a855f7')};
+  background: ${({ $variant }) =>
+    $variant === 'rfid' ? 'rgba(59, 130, 246, 0.12)' : 'rgba(168, 85, 247, 0.12)'};
+  color: ${({ $variant }) => ($variant === 'rfid' ? '#3b82f6' : '#a855f7')};
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.95rem;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    background: rgba(168, 85, 247, 0.22);
-    box-shadow: 0 0 16px rgba(168, 85, 247, 0.3);
+    background: ${({ $variant }) =>
+      $variant === 'rfid' ? 'rgba(59, 130, 246, 0.22)' : 'rgba(168, 85, 247, 0.22)'};
+    box-shadow: 0 0 16px
+      ${({ $variant }) =>
+        $variant === 'rfid' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(168, 85, 247, 0.3)'};
   }
 
   svg { font-size: 20px; }
 `;
 
-const RFIDButtonWrap = styled.div`
+const ScannerButtonWrap = styled.div`
   width: 100%;
   display: flex;
   justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 `;
 
 const OfflineHint = styled.p`
   color: ${({ theme }) => theme.TEXT_SECONDARY};
   font-size: 0.85rem;
-  margin: 0 0 0.5rem 0;
-  opacity: 0.8;
-  text-align: center;
-`;
-
-const CountdownText = styled.p`
-  color: ${({ theme }) => theme.TEXT_SECONDARY};
-  font-size: 0.8rem;
   margin: 0 0 0.8rem 0;
-  opacity: 0.9;
+  opacity: 0.8;
   text-align: center;
 `;
 
@@ -96,7 +94,6 @@ const NetworkModal: React.FC<NetworkModalProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [secondsRemaining, setSecondsRemaining] = useState(10);
 
   const isOnRFIDPage =
     location.pathname.includes('/attendance/rfid-scanner') ||
@@ -104,40 +101,14 @@ const NetworkModal: React.FC<NetworkModalProps> = ({
     location.pathname.includes('/attendance/rfid-cards') ||
     location.pathname.includes('/attendance/student-qr-labels');
 
-  const shouldShowModal = isOpen && !isOnRFIDPage;
-
-  const countdownLabel = useMemo(
-    () => (secondsRemaining === 1 ? '1 second' : `${secondsRemaining} seconds`),
-    [secondsRemaining]
-  );
-
-  useEffect(() => {
-    if (!shouldShowModal) {
-      setSecondsRemaining(10);
-      return;
-    }
-
-    setSecondsRemaining(10);
-
-    const intervalId = window.setInterval(() => {
-      setSecondsRemaining(prev => {
-        if (prev <= 1) {
-          window.clearInterval(intervalId);
-          navigate('/attendance/qr-scanner');
-          return 0;
-        }
-
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => window.clearInterval(intervalId);
-  }, [navigate, shouldShowModal]);
-
   if (!isOpen || isOnRFIDPage) return null;
 
-  const handleGoToRFID = () => {
+  const handleGoToQR = () => {
     navigate('/attendance/qr-scanner');
+  };
+
+  const handleGoToRFID = () => {
+    navigate('/attendance/rfid-scanner');
   };
 
   return (
@@ -166,13 +137,16 @@ const NetworkModal: React.FC<NetworkModalProps> = ({
           <span>or</span>
         </Divider>
         <OfflineHint>QR and RFID attendance work without internet</OfflineHint>
-        <CountdownText>Opening QR Scanner automatically in {countdownLabel}</CountdownText>
-        <RFIDButtonWrap>
-          <RFIDButton onClick={handleGoToRFID}>
-            <NfcIcon />
+        <ScannerButtonWrap>
+          <ScannerButton $variant="qr" onClick={handleGoToQR}>
+            <QrCodeScannerIcon />
             Open QR Scanner
-          </RFIDButton>
-        </RFIDButtonWrap>
+          </ScannerButton>
+          <ScannerButton $variant="rfid" onClick={handleGoToRFID}>
+            <NfcIcon />
+            Open RFID Scanner
+          </ScannerButton>
+        </ScannerButtonWrap>
       </NetworkModalContent>
     </NetworkModalStyled>
   );

@@ -1815,31 +1815,41 @@ const RFIDAttendancePage: React.FC = () => {
         }
     }, [user?.school_id]);
 
+    const applyHistoryToFeed = useCallback((history: CachedAttendanceHistoryItem[]) => {
+        const historyByKey = new Map(history.map(item => [item.key, item]));
+        const historyFeed = history
+            .flatMap(buildFeedItemFromHistory)
+            .sort((a, b) => {
+                const keyA = a.id.replace(/^history-(?:out|in)-/, '');
+                const keyB = b.id.replace(/^history-(?:out|in)-/, '');
+                const itemA = historyByKey.get(keyA);
+                const itemB = historyByKey.get(keyB);
+                const timeA = a.id.startsWith('history-out-') ? (itemA?.check_out_time || '') : (itemA?.check_in_time || '');
+                const timeB = b.id.startsWith('history-out-') ? (itemB?.check_out_time || '') : (itemB?.check_in_time || '');
+                return timeB.localeCompare(timeA);
+            })
+            .map(item => ({ ...item, isNew: false }));
+
+        setFeed(historyFeed);
+        setPresentCount(history.filter(item => !!item.check_in_time).length);
+        setUnknownCount(0);
+        setDupCount(0);
+    }, []);
+
     const loadHistoryFeed = useCallback(async (date: string) => {
         if (!user?.school_id) return;
 
         try {
-            const history = isOnline
-                ? await rfidOfflineService.cacheDailyAttendanceHistory(user.school_id, date)
-                : await rfidOfflineService.getCachedDailyAttendanceHistory(user.school_id, date);
+            // Render cached daily history immediately for instant UI response
+            const cachedHistory = await rfidOfflineService.getCachedDailyAttendanceHistory(user.school_id, date);
+            if (cachedHistory.length > 0 || !isOnline) {
+                applyHistoryToFeed(cachedHistory);
+            }
 
-            const historyFeed = history
-                .flatMap(buildFeedItemFromHistory)
-                .sort((a, b) => {
-                    const timeA = history.find(item => `history-out-${item.key}` === a.id)?.check_out_time
-                        || history.find(item => `history-in-${item.key}` === a.id)?.check_in_time
-                        || '';
-                    const timeB = history.find(item => `history-out-${item.key}` === b.id)?.check_out_time
-                        || history.find(item => `history-in-${item.key}` === b.id)?.check_in_time
-                        || '';
-                    return timeB.localeCompare(timeA);
-                })
-                .map(item => ({ ...item, isNew: false }));
-
-            setFeed(historyFeed);
-            setPresentCount(history.filter(item => !!item.check_in_time).length);
-            setUnknownCount(0);
-            setDupCount(0);
+            if (isOnline) {
+                const freshHistory = await rfidOfflineService.cacheDailyAttendanceHistory(user.school_id, date);
+                applyHistoryToFeed(freshHistory);
+            }
         } catch (error) {
             console.error('Failed to load RFID attendance history:', error);
             setFeed([]);
@@ -1847,7 +1857,7 @@ const RFIDAttendancePage: React.FC = () => {
             setUnknownCount(0);
             setDupCount(0);
         }
-    }, [isOnline, user?.school_id]);
+    }, [applyHistoryToFeed, isOnline, user?.school_id]);
 
     useEffect(() => {
         if (!user?.school_id) return;
@@ -2079,7 +2089,7 @@ const RFIDAttendancePage: React.FC = () => {
         return now.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     };
 
-    const addFeedItem = useCallback((item: Omit<ScanResult, 'id' | 'isNew'>) => {
+    const addFeedItem = useCallback((item: Omit<ScanResult, 'id' | 'isNew'>): string => {
         const entry: ScanResult = {
             ...item,
             id: crypto.randomUUID(),
@@ -2089,17 +2099,12 @@ const RFIDAttendancePage: React.FC = () => {
         setTimeout(() => {
             setFeed(prev => prev.map(f => f.id === entry.id ? { ...f, isNew: false } : f));
         }, 400);
+        return entry.id;
     }, []);
 
     const fetchSession = useCallback(async () => {
         if (!user?.school_id) return null;
-        const { data } = await supabase
-            .from('sessions')
-            .select('id')
-            .eq('school_id', user.school_id)
-            .eq('is_active', true)
-            .single();
-        return data?.id ?? null;
+        return rfidOfflineService.getActiveSessionId(user.school_id);
     }, [user?.school_id]);
 
     const fetchPersonMonthlyLateCount = useCallback(async (
@@ -2109,6 +2114,9 @@ const RFIDAttendancePage: React.FC = () => {
     ) => {
         if (!user?.school_id || !selectedDate || !personId) {
             return 0;
+        }
+        if (!navigator.onLine) {
+            return options?.includePendingToday ? 1 : 0;
         }
 
         try {
@@ -2132,7 +2140,12 @@ const RFIDAttendancePage: React.FC = () => {
                 query = query.eq('session_id', sessionId);
             }
 
-            const { count, error } = await query;
+            const result = await Promise.race([
+                query,
+                new Promise<null>(resolve => setTimeout(() => resolve(null), 1000)),
+            ]);
+            if (!result) return options?.includePendingToday ? 1 : 0;
+            const { count, error } = result;
             if (error) throw error;
 
             return (count || 0) + (options?.includePendingToday ? 1 : 0);
@@ -2259,17 +2272,12 @@ const RFIDAttendancePage: React.FC = () => {
             return;
         }
 
-        let waitCount = 0;
-        while (!isCacheReadyRef.current && waitCount < 30) {
-            await new Promise(r => setTimeout(r, 100));
-            waitCount++;
-        }
-
         setScanStatus('idle');
         setStatusMsg('Processing...');
 
         try {
             const result = await rfidOfflineService.markAttendance(cleanUID, user.school_id!, selectedDate);
+            void rfidOfflineService.getQueue().then(q => setQueueCount(q.length));
 
             const time = result.recorded_time
                 ? new Date(result.recorded_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
@@ -2402,9 +2410,15 @@ const RFIDAttendancePage: React.FC = () => {
                 speak(`${p.name}, ${statusText}`);
                 setPresentCount(c => c + 1);
 
-                const lateCount = isLate ? await fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: true }) : 0;
+                triggerPopup({
+                    name: p.name,
+                    subInfo: '',
+                    status: isCheckout ? 'checked_out' : result.attendance_status as any,
+                    time,
+                    picture_url: p.picture_url
+                });
 
-                addFeedItem({
+                const feedId = addFeedItem({
                     type: 'success',
                     name: p.name,
                     sub: isCheckout ? 'Checked Out' : (isLate ? 'Attendance marked Late' : 'Attendance marked Present'),
@@ -2413,17 +2427,17 @@ const RFIDAttendancePage: React.FC = () => {
                     isOffline,
                     personId: p.person_id,
                     attendanceStatus: result.attendance_status,
-                    attendanceLateCount: lateCount,
+                    attendanceLateCount: isLate ? 1 : 0,
                     fatherName: (p as any).father_name
                 });
 
-                triggerPopup({
-                    name: p.name,
-                    subInfo: '',
-                    status: isCheckout ? 'checked_out' : result.attendance_status as any,
-                    time,
-                    picture_url: p.picture_url
-                });
+                if (isLate) {
+                    void fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: isOffline }).then(lateCount => {
+                        if (lateCount > 0) {
+                            setFeed(prev => prev.map(item => item.id === feedId ? { ...item, attendanceLateCount: lateCount } : item));
+                        }
+                    });
+                }
             }
         } catch (error) {
             console.error('RFID processing error:', error);
@@ -2515,7 +2529,7 @@ const RFIDAttendancePage: React.FC = () => {
                 const uid = normalizeDesktopScannerUid(bufferRef.current);
                 bufferRef.current = '';
                 processUID(uid);
-            }, 100);
+            }, 50);
         }
     }, [processUID]);
 
@@ -2584,23 +2598,6 @@ const RFIDAttendancePage: React.FC = () => {
                 const statusText = isCheckout ? 'Checked Out' : (isLate ? 'Marked Late' : 'Marked Present');
                 speak(`${p.name}, ${statusText}`);
                 setPresentCount(c => c + 1);
-                
-                let lateCount = 0;
-                if (!isOffline && isLate) {
-                    lateCount = await fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: true });
-                }
-
-                addFeedItem({
-                    type: 'success',
-                    name: p.name,
-                    sub: isCheckout ? 'Checked Out' : (isLate ? 'Attendance marked Late' : 'Attendance marked Present'),
-                    time,
-                    personType,
-                    isOffline,
-                    attendanceStatus: result.attendance_status,
-                    attendanceLateCount: lateCount > 0 ? lateCount : undefined,
-                    fatherName: (p as any).father_name
-                });
 
                 triggerPopup({
                     name: p.name,
@@ -2609,6 +2606,26 @@ const RFIDAttendancePage: React.FC = () => {
                     time,
                     picture_url: p.picture_url
                 });
+
+                const feedId = addFeedItem({
+                    type: 'success',
+                    name: p.name,
+                    sub: isCheckout ? 'Checked Out' : (isLate ? 'Attendance marked Late' : 'Attendance marked Present'),
+                    time,
+                    personType,
+                    isOffline,
+                    attendanceStatus: result.attendance_status,
+                    attendanceLateCount: isLate ? 1 : undefined,
+                    fatherName: (p as any).father_name
+                });
+
+                if (isLate) {
+                    void fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: isOffline }).then(lateCount => {
+                        if (lateCount > 0) {
+                            setFeed(prev => prev.map(item => item.id === feedId ? { ...item, attendanceLateCount: lateCount } : item));
+                        }
+                    });
+                }
             }
 
             if (resetTimerRef.current) clearTimeout(resetTimerRef.current);

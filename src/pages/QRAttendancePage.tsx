@@ -14,7 +14,7 @@ declare global {
 import { useTheme } from '../components/Layout/contexts/ThemeContext';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import * as faceapi from '@vladmandic/face-api';
-import { RFIDMapping } from '../services/rfidOfflineService';
+import { CachedAttendanceHistoryItem, RFIDMapping, rfidOfflineService } from '../services/rfidOfflineService';
 import {
     loadFaceRecognitionModels,
     parseFaceEmbedding,
@@ -54,7 +54,6 @@ import {
     LightMode as SunIcon,
     Delete as DeleteIcon,
 } from '@mui/icons-material';
-import { CachedAttendanceHistoryItem, rfidOfflineService } from '../services/rfidOfflineService';
 import {
     clayCardStyle,
     clayButtonStyle,
@@ -1648,7 +1647,7 @@ const QRAttendancePage: React.FC = () => {
     const cameraRegionId = 'qr-camera-reader-region';
     const [isCameraScanning, setIsCameraScanning] = useState(false);
     const [cameraError, setCameraError] = useState('');
-    const [cameraStatus, setCameraStatus] = useState('Initializing camera...');
+    const [cameraStatus, setCameraStatus] = useState('Camera stopped');
     const [lastDetectedQr, setLastDetectedQr] = useState('');
     const lastCameraScanRef = useRef<{ value: string; time: number } | null>(null);
 
@@ -1847,31 +1846,41 @@ const QRAttendancePage: React.FC = () => {
         }
     }, [user?.school_id]);
 
+    const applyHistoryToFeed = useCallback((history: CachedAttendanceHistoryItem[]) => {
+        const historyByKey = new Map(history.map(item => [item.key, item]));
+        const historyFeed = history
+            .flatMap(buildFeedItemFromHistory)
+            .sort((a, b) => {
+                const keyA = a.id.replace(/^history-(?:out|in)-/, '');
+                const keyB = b.id.replace(/^history-(?:out|in)-/, '');
+                const itemA = historyByKey.get(keyA);
+                const itemB = historyByKey.get(keyB);
+                const timeA = a.id.startsWith('history-out-') ? (itemA?.check_out_time || '') : (itemA?.check_in_time || '');
+                const timeB = b.id.startsWith('history-out-') ? (itemB?.check_out_time || '') : (itemB?.check_in_time || '');
+                return timeB.localeCompare(timeA);
+            })
+            .map(item => ({ ...item, isNew: false }));
+
+        setFeed(historyFeed);
+        setPresentCount(history.filter(item => !!item.check_in_time).length);
+        setUnknownCount(0);
+        setDupCount(0);
+    }, []);
+
     const loadHistoryFeed = useCallback(async (date: string) => {
         if (!user?.school_id) return;
 
         try {
-            const history = isOnline
-                ? await rfidOfflineService.cacheDailyAttendanceHistory(user.school_id, date)
-                : await rfidOfflineService.getCachedDailyAttendanceHistory(user.school_id, date);
+            // Render cached daily history immediately for instant UI response
+            const cachedHistory = await rfidOfflineService.getCachedDailyAttendanceHistory(user.school_id, date);
+            if (cachedHistory.length > 0 || !isOnline) {
+                applyHistoryToFeed(cachedHistory);
+            }
 
-            const historyFeed = history
-                .flatMap(buildFeedItemFromHistory)
-                .sort((a, b) => {
-                    const timeA = history.find(item => `history-out-${item.key}` === a.id)?.check_out_time
-                        || history.find(item => `history-in-${item.key}` === a.id)?.check_in_time
-                        || '';
-                    const timeB = history.find(item => `history-out-${item.key}` === b.id)?.check_out_time
-                        || history.find(item => `history-in-${item.key}` === b.id)?.check_in_time
-                        || '';
-                    return timeB.localeCompare(timeA);
-                })
-                .map(item => ({ ...item, isNew: false }));
-
-            setFeed(historyFeed);
-            setPresentCount(history.filter(item => !!item.check_in_time).length);
-            setUnknownCount(0);
-            setDupCount(0);
+            if (isOnline) {
+                const freshHistory = await rfidOfflineService.cacheDailyAttendanceHistory(user.school_id, date);
+                applyHistoryToFeed(freshHistory);
+            }
         } catch (error) {
             console.error('Failed to load RFID attendance history:', error);
             setFeed([]);
@@ -1879,7 +1888,7 @@ const QRAttendancePage: React.FC = () => {
             setUnknownCount(0);
             setDupCount(0);
         }
-    }, [isOnline, user?.school_id]);
+    }, [applyHistoryToFeed, isOnline, user?.school_id]);
 
     useEffect(() => {
         if (!user?.school_id) return;
@@ -2083,7 +2092,7 @@ const QRAttendancePage: React.FC = () => {
         return now.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     };
 
-    const addFeedItem = useCallback((item: Omit<ScanResult, 'id' | 'isNew'>) => {
+    const addFeedItem = useCallback((item: Omit<ScanResult, 'id' | 'isNew'>): string => {
         const entry: ScanResult = {
             ...item,
             id: crypto.randomUUID(),
@@ -2093,17 +2102,12 @@ const QRAttendancePage: React.FC = () => {
         setTimeout(() => {
             setFeed(prev => prev.map(f => f.id === entry.id ? { ...f, isNew: false } : f));
         }, 400);
+        return entry.id;
     }, []);
 
     const fetchSession = useCallback(async () => {
         if (!user?.school_id) return null;
-        const { data } = await supabase
-            .from('sessions')
-            .select('id')
-            .eq('school_id', user.school_id)
-            .eq('is_active', true)
-            .single();
-        return data?.id ?? null;
+        return rfidOfflineService.getActiveSessionId(user.school_id);
     }, [user?.school_id]);
 
     const fetchPersonMonthlyLateCount = useCallback(async (
@@ -2113,6 +2117,9 @@ const QRAttendancePage: React.FC = () => {
     ) => {
         if (!user?.school_id || !selectedDate || !personId) {
             return 0;
+        }
+        if (!navigator.onLine) {
+            return options?.includePendingToday ? 1 : 0;
         }
 
         try {
@@ -2136,7 +2143,12 @@ const QRAttendancePage: React.FC = () => {
                 query = query.eq('session_id', sessionId);
             }
 
-            const { count, error } = await query;
+            const result = await Promise.race([
+                query,
+                new Promise<null>(resolve => setTimeout(() => resolve(null), 1000)),
+            ]);
+            if (!result) return options?.includePendingToday ? 1 : 0;
+            const { count, error } = result;
             if (error) throw error;
 
             return (count || 0) + (options?.includePendingToday ? 1 : 0);
@@ -2272,17 +2284,12 @@ const QRAttendancePage: React.FC = () => {
             return;
         }
 
-        let waitCount = 0;
-        while (!isCacheReadyRef.current && waitCount < 4 && !navigator.onLine) {
-            await new Promise(r => setTimeout(r, 50));
-            waitCount++;
-        }
-
         setScanStatus('idle');
         setStatusMsg('Processing...');
 
         try {
             const result = await rfidOfflineService.markAttendance(uid, user.school_id!, selectedDate);
+            void rfidOfflineService.getQueue().then(q => setQueueCount(q.length));
 
             const time = result.recorded_time
                 ? new Date(result.recorded_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
@@ -2399,9 +2406,15 @@ const QRAttendancePage: React.FC = () => {
                 speak(`${p.name}, ${statusText}`);
                 setPresentCount(c => c + 1);
 
-                const lateCount = isLate ? await fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: true }) : 0;
+                triggerPopup({
+                    name: p.name,
+                    subInfo: '',
+                    status: isCheckout ? 'checked_out' : result.attendance_status as any,
+                    time,
+                    picture_url: p.picture_url
+                });
 
-                addFeedItem({
+                const feedId = addFeedItem({
                     type: 'success',
                     name: p.name,
                     sub: isCheckout ? 'Checked Out' : (isLate ? 'Attendance marked Late' : 'Attendance marked Present'),
@@ -2410,17 +2423,17 @@ const QRAttendancePage: React.FC = () => {
                     isOffline,
                     personId: p.person_id,
                     attendanceStatus: result.attendance_status,
-                    attendanceLateCount: lateCount,
+                    attendanceLateCount: isLate ? 1 : 0,
                     fatherName: (p as any).father_name
                 });
 
-                triggerPopup({
-                    name: p.name,
-                    subInfo: '',
-                    status: isCheckout ? 'checked_out' : result.attendance_status as any,
-                    time,
-                    picture_url: p.picture_url
-                });
+                if (isLate) {
+                    void fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: isOffline }).then(lateCount => {
+                        if (lateCount > 0) {
+                            setFeed(prev => prev.map(item => item.id === feedId ? { ...item, attendanceLateCount: lateCount } : item));
+                        }
+                    });
+                }
             }
         } catch (error) {
             console.error('QR processing error:', error);
@@ -2514,7 +2527,7 @@ const QRAttendancePage: React.FC = () => {
                 const uid = normalizeDesktopScannerUid(bufferRef.current);
                 bufferRef.current = '';
                 processUID(uid);
-            }, 100);
+            }, 50);
         }
     }, [processUID]);
 
@@ -2544,9 +2557,8 @@ const QRAttendancePage: React.FC = () => {
         try {
             const result = await rfidOfflineService.markAttendanceWithPerson(person, user.school_id!, selectedDate, !navigator.onLine);
             
-            // Refresh queue count
-            const q = await rfidOfflineService.getQueue();
-            setQueueCount(q.length);
+            // Refresh queue count non-blockingly
+            void rfidOfflineService.getQueue().then(q => setQueueCount(q.length));
 
             const time = result.recorded_time
                 ? new Date(result.recorded_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
@@ -2658,9 +2670,15 @@ const QRAttendancePage: React.FC = () => {
                 speak(`${p.name}, ${statusText}`);
                 setPresentCount(c => c + 1);
 
-                const lateCount = isLate ? await fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: true }) : 0;
+                triggerPopup({
+                    name: p.name,
+                    subInfo: '',
+                    status: isCheckout ? 'checked_out' : result.attendance_status as any,
+                    time,
+                    picture_url: p.picture_url
+                });
 
-                addFeedItem({
+                const feedId = addFeedItem({
                     type: 'success',
                     name: p.name,
                     sub: isCheckout ? 'Checked Out' : (isLate ? 'Attendance marked Late' : 'Attendance marked Present'),
@@ -2669,17 +2687,17 @@ const QRAttendancePage: React.FC = () => {
                     isOffline,
                     personId: p.person_id,
                     attendanceStatus: result.attendance_status,
-                    attendanceLateCount: lateCount,
+                    attendanceLateCount: isLate ? 1 : 0,
                     fatherName: (p as any).father_name
                 });
 
-                triggerPopup({
-                    name: p.name,
-                    subInfo: '',
-                    status: isCheckout ? 'checked_out' : result.attendance_status as any,
-                    time,
-                    picture_url: p.picture_url
-                });
+                if (isLate) {
+                    void fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: isOffline }).then(lateCount => {
+                        if (lateCount > 0) {
+                            setFeed(prev => prev.map(item => item.id === feedId ? { ...item, attendanceLateCount: lateCount } : item));
+                        }
+                    });
+                }
             }
         } catch (error) {
             console.error('Face scan mark attendance failed:', error);
@@ -2831,11 +2849,11 @@ const QRAttendancePage: React.FC = () => {
             }
 
             if (faceStreamRef.current && faceStreamRef.current.active) {
-                faceLoopRef.current = setTimeout(runDetection, 60);
+                faceLoopRef.current = setTimeout(runDetection, 30);
             }
         };
 
-        faceLoopRef.current = setTimeout(runDetection, 100);
+        faceLoopRef.current = setTimeout(runDetection, 40);
     }, [executeFaceProcess, faceMatchThreshold]);
 
     const stopFaceRecognition = useCallback(() => {
@@ -2963,7 +2981,7 @@ const QRAttendancePage: React.FC = () => {
                 return;
             }
             const config = {
-                fps: 12,
+                fps: 20,
                 aspectRatio: 1.333334,
                 rememberLastUsedCamera: true,
                 formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
@@ -3054,57 +3072,31 @@ const QRAttendancePage: React.FC = () => {
         stopCameraScannerRef.current = stopCameraScanner;
     });
 
-    // Single unified camera mode switcher — avoids getUserMedia race conditions
-    // in non-incognito / production where extensions delay hardware camera release.
+    // Single unified camera mode switcher — stops active camera on mode change;
+    // camera is started manually by the user via the Start button.
     useEffect(() => {
-        let cancelled = false;
-        let timer: any;
-
         const run = async () => {
             if (scannerMode === 'face') {
-                // 1. Stop QR scanner and WAIT for it to fully release the camera hardware
                 stopFaceRecognitionRef.current();
                 await stopCameraScannerRef.current();
                 qrCameraPageActiveRef.current = false;
                 setCameraStatus('Camera stopped');
-
-                // 2. Give the OS/browser time to fully release the camera device.
-                //    In non-incognito Chrome, extensions hook the media pipeline and
-                //    delay hardware unlock by 500–1500ms. Without this wait,
-                //    getUserMedia either hangs or returns the still-locked device.
-                await new Promise<void>(resolve => { timer = setTimeout(resolve, 600); });
-                if (cancelled) return;
-
-                // 3. Now safe to acquire the camera for face recognition
-                setModelsStatus('Initializing face models...');
-                await startFaceRecognitionRef.current(selectedFaceCameraId);
             } else {
-                // Switching away from face — stop face, start QR scanner
                 stopFaceRecognitionRef.current();
-
                 qrCameraPageActiveRef.current = true;
-                if (readQrCameraEnabled() && scannerMode === 'qr') {
-                    setCameraStatus('Preparing camera...');
-                    await new Promise<void>(resolve => { timer = setTimeout(resolve, 150); });
-                    if (cancelled) return;
-                    void startCameraScannerRef.current();
-                } else {
-                    setCameraStatus('Camera stopped');
-                    void stopCameraScannerRef.current();
-                }
+                setCameraStatus('Camera stopped');
+                await stopCameraScannerRef.current();
             }
         };
 
         void run();
 
         return () => {
-            cancelled = true;
-            if (timer) clearTimeout(timer);
             stopFaceRecognitionRef.current();
             qrCameraPageActiveRef.current = false;
             void stopCameraScannerRef.current();
         };
-    }, [scannerMode, selectedFaceCameraId]);
+    }, [scannerMode]);
 
     useEffect(() => {
         document.addEventListener('keydown', handleKeyDown);
@@ -3242,20 +3234,6 @@ const QRAttendancePage: React.FC = () => {
                 speak(`${p.name}, ${statusText}`);
                 setPresentCount(c => c + 1);
 
-                const lateCount = isLate ? await fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: true }) : 0;
-
-                addFeedItem({
-                    type: 'success',
-                    name: p.name,
-                    sub: isCheckout ? 'Checked Out' : (isLate ? 'Attendance marked Late' : 'Attendance marked Present'),
-                    time,
-                    personType,
-                    isOffline,
-                    attendanceStatus: result.attendance_status,
-                    attendanceLateCount: lateCount,
-                    fatherName: (p as any).father_name
-                });
-
                 triggerPopup({
                     name: p.name,
                     subInfo: '',
@@ -3263,6 +3241,26 @@ const QRAttendancePage: React.FC = () => {
                     time,
                     picture_url: p.picture_url
                 });
+
+                const feedId = addFeedItem({
+                    type: 'success',
+                    name: p.name,
+                    sub: isCheckout ? 'Checked Out' : (isLate ? 'Attendance marked Late' : 'Attendance marked Present'),
+                    time,
+                    personType,
+                    isOffline,
+                    attendanceStatus: result.attendance_status,
+                    attendanceLateCount: isLate ? 1 : 0,
+                    fatherName: (p as any).father_name
+                });
+
+                if (isLate) {
+                    void fetchPersonMonthlyLateCount(p.person_id, personType, { includePendingToday: isOffline }).then(lateCount => {
+                        if (lateCount > 0) {
+                            setFeed(prev => prev.map(item => item.id === feedId ? { ...item, attendanceLateCount: lateCount } : item));
+                        }
+                    });
+                }
             }
 
             scheduleScanReset();
