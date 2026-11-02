@@ -1938,31 +1938,31 @@ const TimeTableManager: React.FC = () => {
 
         // Slip Header
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8.8);
+        doc.setFontSize(8.4);
         doc.setTextColor(30, 41, 59);
         doc.text(
           schoolName || 'SCHOOL',
           startX + slipWidth / 2,
-          startY + 6.5,
+          startY + 5.2,
           { align: 'center' }
         );
 
         const teacherName = getTeacherNameWithPrefix(tId);
-        doc.setFontSize(7.6);
+        doc.setFontSize(7.2);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(15, 23, 42);
-        doc.text(`TEACHER TIMETABLE SLIP · ${teacherName}`, startX + slipWidth / 2, startY + 11.2, {
+        doc.text(`TEACHER TIMETABLE SLIP · ${teacherName}`, startX + slipWidth / 2, startY + 9.2, {
           align: 'center'
         });
 
         const slipData = getTeacherSlipData(tId);
-        doc.setFontSize(6.8);
+        doc.setFontSize(6.2);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(100, 116, 139);
         doc.text(
           `Academic Session: ${sessionName}`,
           startX + slipWidth / 2,
-          startY + 15.5,
+          startY + 12.8,
           { align: 'center' }
         );
 
@@ -1985,42 +1985,107 @@ const TimeTableManager: React.FC = () => {
           return [`P${r.periodNum}`, ...r.dayValues, r.periodTime];
         });
 
-        // Calculate dynamic row height to fully and proportionally utilize vertical space (slipHeight = 136.5mm)
-        const totalRows = tableBody.length + 1;
-        const availableTableHeight = slipHeight - 30; // ~106.5mm between header (startY + 19) and footer (startY + 131)
-        const calculatedRowHeight = Math.min(11.5, Math.max(7.2, Math.floor((availableTableHeight / totalRows) * 10) / 10));
+        // 1. Calculate content density & multi-subject line load
+        let totalExtraLines = 0;
+        slipData.rows.forEach(r => {
+          if (!r.isBreak) {
+            let maxCellLines = 1;
+            r.dayValues.forEach(dv => {
+              if (dv && dv !== '—') {
+                const lines = dv.split('\n');
+                let cellLines = 0;
+                lines.forEach(l => {
+                  // In day columns (~28-31mm), ~21 chars wrap to next line
+                  cellLines += Math.max(1, Math.ceil(l.trim().length / 21));
+                });
+                if (cellLines > maxCellLines) maxCellLines = cellLines;
+              }
+            });
+            if (maxCellLines > 1) {
+              totalExtraLines += (maxCellLines - 1);
+            }
+          }
+        });
+
+        // 2. Responsive typography, cell padding, and row height solver
+        const totalRows = tableBody.length + 1; // Header + body rows
+        const targetTableHeight = 107.0; // mm available between header (startY + 15.2) and footer (startY + 131)
+
+        let tableFontSize = 6.8;
+        let headFontSize = 7.2;
+        let cellPadding = 1.5;
+        let lineSpacing = 2.3;
+
+        if (totalRows >= 12 || totalExtraLines >= 6) {
+          tableFontSize = 5.6;
+          headFontSize = 6.2;
+          cellPadding = 0.8;
+          lineSpacing = 1.8;
+        } else if (totalRows >= 10 || totalExtraLines >= 3) {
+          tableFontSize = 6.2;
+          headFontSize = 6.6;
+          cellPadding = 1.1;
+          lineSpacing = 2.0;
+        } else if (totalRows <= 7) {
+          tableFontSize = 7.2;
+          headFontSize = 7.6;
+          cellPadding = 2.0;
+          lineSpacing = 2.6;
+        }
+
+        const extraHeightConsumed = totalExtraLines * lineSpacing;
+        const availableForBase = Math.max(25, targetTableHeight - extraHeightConsumed);
+        const targetMinCellH = availableForBase / totalRows;
+        // Clamp minCellHeight: expands proportionally for fewer periods, contracts safely for more/dense periods
+        const calculatedRowHeight = Math.min(13.0, Math.max(4.2, Math.floor(targetMinCellH * 10) / 10));
+        const headRowHeight = Math.min(7.5, Math.max(4.5, calculatedRowHeight));
+
+        // 3. Proportional column widths
+        const numDayCols = Math.max(1, tableHeaders.length - 2);
+        const perColWidth = 8.5;
+        const timingColWidth = 16.5;
+        const totalTableWidth = slipWidth - 6;
+        const remainingForDays = totalTableWidth - perColWidth - timingColWidth;
+        const dayColWidth = Math.floor((remainingForDays / numDayCols) * 10) / 10;
+
+        const columnStylesConfig: Record<number, any> = {
+          0: { cellWidth: perColWidth, fontStyle: 'bold', halign: 'center' },
+          [tableHeaders.length - 1]: { cellWidth: timingColWidth, halign: 'center' }
+        };
+        for (let c = 1; c < tableHeaders.length - 1; c++) {
+          columnStylesConfig[c] = { cellWidth: dayColWidth, halign: 'center' };
+        }
 
         autoTable(doc, {
           head: [tableHeaders],
           body: tableBody as any,
-          startY: startY + 19,
+          startY: startY + 15.2,
           margin: { left: startX + 3, right: pageWidth - (startX + slipWidth - 3) },
-          tableWidth: slipWidth - 6,
+          tableWidth: totalTableWidth,
           theme: 'grid',
           styles: {
-            fontSize: 7.2,
-            cellPadding: 2.2,
+            fontSize: tableFontSize,
+            cellPadding: cellPadding,
             minCellHeight: calculatedRowHeight,
             halign: 'center',
             valign: 'middle',
             textColor: [30, 41, 59],
             lineWidth: 0.12,
-            lineColor: [210, 215, 225]
+            lineColor: [210, 215, 225],
+            overflow: 'linebreak'
           },
           headStyles: {
             fillColor: [241, 245, 249],
             textColor: [15, 23, 42],
             fontStyle: 'bold',
-            fontSize: 7.8,
-            minCellHeight: calculatedRowHeight,
+            fontSize: headFontSize,
+            minCellHeight: headRowHeight,
             halign: 'center',
+            valign: 'middle',
             lineWidth: 0.12,
             lineColor: [210, 215, 225]
           },
-          columnStyles: {
-            0: { cellWidth: 10, fontStyle: 'bold', halign: 'center' },
-            [tableHeaders.length - 1]: { cellWidth: 20, halign: 'center' }
-          },
+          columnStyles: columnStylesConfig,
           didParseCell: data => {
             if (data.row.section === 'body') {
               const val = String(data.cell.raw || '');
@@ -2038,8 +2103,13 @@ const TimeTableManager: React.FC = () => {
           }
         });
 
-        const footerY = startY + slipHeight - 5.5;
-        doc.setFontSize(6.8);
+        // 4. Safe responsive footer positioning
+        const tableEnd = (doc as any).lastAutoTable?.finalY || (startY + 15.2);
+        const defaultFooterY = startY + slipHeight - 5.0;
+        // Never overlap: sits at default bottom anchor, or at least 3.5mm below table if dynamic
+        const footerY = Math.min(startY + slipHeight - 3.5, Math.max(defaultFooterY, tableEnd + 3.5));
+
+        doc.setFontSize(6.4);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(100, 116, 139);
         doc.text(`Issued: ${new Date().toLocaleDateString('en-GB')}`, startX + 4, footerY);
