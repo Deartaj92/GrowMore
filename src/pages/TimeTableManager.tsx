@@ -27,6 +27,7 @@ import {
   CalendarToday,
   Schedule,
   Layers,
+  ContentCopy,
   ExpandMore,
   ExpandLess
 } from '@mui/icons-material';
@@ -37,7 +38,11 @@ import {
   DialogActions,
   TextField,
   IconButton,
-  Divider
+  Divider,
+  Select,
+  MenuItem,
+  Checkbox,
+  ListItemText
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import NoTeachersFound from '../components/NoTeachersFound';
@@ -717,7 +722,7 @@ const TimeTableManager: React.FC = () => {
   // Form State ("Assign Period to a Teacher")
   const [formDay, setFormDay] = useState<number>(1);
   const [formPeriodIndex, setFormPeriodIndex] = useState<string>('');
-  const [formSubjectId, setFormSubjectId] = useState<string>('');
+  const [formSubjectIds, setFormSubjectIds] = useState<string[]>([]);
   const [formTeacherId, setFormTeacherId] = useState<string>('');
   const [formRoom, setFormRoom] = useState<string>('No room');
   const [formSpans, setFormSpans] = useState<number>(1);
@@ -745,6 +750,11 @@ const TimeTableManager: React.FC = () => {
   // Teacher Slips Modal State
   const [slipsModalOpen, setSlipsModalOpen] = useState(false);
   const [selectedSlipTeacherId, setSelectedSlipTeacherId] = useState<number | 'all'>('all');
+
+  // Copy Day Schedule Modal State
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
+  const [copySourceDayId, setCopySourceDayId] = useState<number>(1);
+  const [copyTargetDayIds, setCopyTargetDayIds] = useState<number[]>([]);
 
   const [periods, setPeriods] = useState<any[]>([]);
   const [breakSettings, setBreakSettings] = useState({ start: '11:00', end: '11:15' });
@@ -1027,8 +1037,8 @@ const TimeTableManager: React.FC = () => {
       toast.showToast('Please select a Section / Class', 'warning');
       return;
     }
-    if (!formSubjectId) {
-      toast.showToast('Please select a Subject', 'warning');
+    if (!formSubjectIds || formSubjectIds.length === 0) {
+      toast.showToast('Please select at least one Subject', 'warning');
       return;
     }
     if (!formTeacherId) {
@@ -1048,7 +1058,6 @@ const TimeTableManager: React.FC = () => {
 
     const startPeriodIdx = Number(formPeriodIndex);
     const classId = Number(formClassId);
-    const subjectId = Number(formSubjectId);
     const spansCount = Number(formSpans) || 1;
     const roomStr = formRoom !== 'No room' ? formRoom : '';
 
@@ -1087,7 +1096,8 @@ const TimeTableManager: React.FC = () => {
       }
     }
 
-    // Assign periods into cellSelections state
+    // Assign periods into cellSelections state:
+    // Allows multiple subjects only if teacher is the same; replaces if teacher is different
     setCellSelections(prev => {
       const updated = { ...prev };
       for (let offset = 0; offset < spansCount; offset++) {
@@ -1095,9 +1105,25 @@ const TimeTableManager: React.FC = () => {
         if (pIdx >= periods.length) break;
 
         const cellKey = `${formDay}_${classId}_${pIdx}`;
-        const val = `${subjectId}_${finalTeacherVal}${roomStr ? `_${roomStr}` : ''}`;
-        
-        updated[cellKey] = [val];
+        const existingList = updated[cellKey] ? [...updated[cellKey]] : [];
+
+        // Check if existing assignments belong to a different teacher
+        // Format of each selection: `${subjectId}_${teacherId}_${room}`
+        const existingTeachers = existingList.map(item => item.split('_')[1]);
+        const hasDifferentTeacher =
+          existingTeachers.length > 0 && existingTeachers.some(tId => tId !== finalTeacherVal);
+
+        // If teacher is different, replace completely; if same teacher, merge multiple subjects
+        const targetList = hasDifferentTeacher ? [] : existingList;
+
+        formSubjectIds.forEach(sId => {
+          const val = `${sId}_${finalTeacherVal}${roomStr ? `_${roomStr}` : ''}`;
+          if (!targetList.includes(val)) {
+            targetList.push(val);
+          }
+        });
+
+        updated[cellKey] = targetList;
       }
       return updated;
     });
@@ -1113,7 +1139,7 @@ const TimeTableManager: React.FC = () => {
   // Clear Form Fields
   const handleClearForm = () => {
     setFormPeriodIndex('');
-    setFormSubjectId('');
+    setFormSubjectIds([]);
     setFormTeacherId('');
     setCustomTeacherName('');
     setFormRoom('No room');
@@ -1121,14 +1147,122 @@ const TimeTableManager: React.FC = () => {
     setFormClassId('');
   };
 
-  // Helper to remove selection from a specific cell
-  const handleRemoveCellAssignment = (cellKey: string) => {
+  // Helper to remove selection from a specific cell (or specific index if multiple)
+  const handleRemoveCellAssignment = (cellKey: string, indexToRemove?: number) => {
     setCellSelections(prev => {
+      const current = prev[cellKey] || [];
       const updated = { ...prev };
-      delete updated[cellKey];
+      if (indexToRemove === undefined || current.length <= 1) {
+        delete updated[cellKey];
+      } else {
+        updated[cellKey] = current.filter((_, idx) => idx !== indexToRemove);
+      }
       return updated;
     });
     toast.showToast('Period assignment removed', 'info');
+  };
+
+  // Open Copy Day Schedule Modal
+  const handleOpenCopyModal = (defaultSourceId?: number) => {
+    const src = defaultSourceId || activeDayTab;
+    setCopySourceDayId(src);
+    // Pre-select other working days (Mon-Sat, excluding source)
+    setCopyTargetDayIds(
+      DAYS_OF_WEEK.filter(d => d.id <= 6 && d.id !== src).map(d => d.id)
+    );
+    setCopyModalOpen(true);
+  };
+
+  // Toggle Target Day selection
+  const handleToggleCopyTargetDay = (dayId: number) => {
+    setCopyTargetDayIds(prev =>
+      prev.includes(dayId) ? prev.filter(id => id !== dayId) : [...prev, dayId]
+    );
+  };
+
+  // Quick Select Target Days
+  const handleQuickSelectTargetDays = (type: 'weekdays' | 'workdays' | 'all' | 'clear') => {
+    if (type === 'clear') {
+      setCopyTargetDayIds([]);
+    } else if (type === 'weekdays') {
+      setCopyTargetDayIds([1, 2, 3, 4, 5].filter(id => id !== copySourceDayId));
+    } else if (type === 'workdays') {
+      setCopyTargetDayIds([1, 2, 3, 4, 5, 6].filter(id => id !== copySourceDayId));
+    } else if (type === 'all') {
+      setCopyTargetDayIds([1, 2, 3, 4, 5, 6, 7].filter(id => id !== copySourceDayId));
+    }
+  };
+
+  // Execute Copy Day Schedule
+  const handleExecuteCopyDay = () => {
+    if (copyTargetDayIds.length === 0) {
+      toast.showToast('Please select at least one destination day', 'warning');
+      return;
+    }
+
+    // Collect all assignments for the source day
+    const sourceAssignments: Array<{ classId: number; periodIdx: number; selections: string[] }> = [];
+
+    classes.forEach(cls => {
+      periods.forEach((_, pIdx) => {
+        const key = `${copySourceDayId}_${cls.id}_${pIdx}`;
+        const legacyKey = `${cls.id}_${pIdx}`;
+        const sels =
+          cellSelections[key] ||
+          (copySourceDayId === 1 ? cellSelections[legacyKey] : []) ||
+          [];
+
+        if (sels.length > 0) {
+          sourceAssignments.push({
+            classId: cls.id,
+            periodIdx: pIdx,
+            selections: [...sels]
+          });
+        }
+      });
+    });
+
+    if (sourceAssignments.length === 0) {
+      const srcName = DAYS_OF_WEEK.find(d => d.id === copySourceDayId)?.name || 'selected day';
+      toast.showToast(`No period assignments found on ${srcName} to copy.`, 'warning');
+      return;
+    }
+
+    setCellSelections(prev => {
+      const updated = { ...prev };
+
+      copyTargetDayIds.forEach(targetDayId => {
+        // Clear existing target day entries
+        classes.forEach(cls => {
+          periods.forEach((_, pIdx) => {
+            const targetKey = `${targetDayId}_${cls.id}_${pIdx}`;
+            delete updated[targetKey];
+            if (targetDayId === 1) {
+              delete updated[`${cls.id}_${pIdx}`];
+            }
+          });
+        });
+
+        // Replicate source day assignments to target day
+        sourceAssignments.forEach(item => {
+          const targetKey = `${targetDayId}_${item.classId}_${item.periodIdx}`;
+          updated[targetKey] = [...item.selections];
+        });
+      });
+
+      return updated;
+    });
+
+    const srcName = DAYS_OF_WEEK.find(d => d.id === copySourceDayId)?.name || 'Day';
+    const destNames = copyTargetDayIds
+      .map(tId => DAYS_OF_WEEK.find(d => d.id === tId)?.short || '')
+      .join(', ');
+
+    toast.showToast(
+      `Successfully copied ${srcName}'s timetable (${sourceAssignments.length} periods) to: ${destNames}! Remember to save your timetable.`,
+      'success'
+    );
+    setCopyModalOpen(false);
   };
 
   // Save Timetable to Supabase
@@ -1513,10 +1647,19 @@ const TimeTableManager: React.FC = () => {
           });
 
           const isFree = assignedList.length === 0;
-          // Format without period number prefix (e.g. "Isl - 9th") since Period has its own column
-          const displayText = isFree
-            ? '—'
-            : assignedList.map(a => `${a.subjectName} - ${a.className}`).join('\n');
+          let displayText = '—';
+          if (!isFree) {
+            const byClass: Record<string, string[]> = {};
+            assignedList.forEach(a => {
+              if (!byClass[a.className]) byClass[a.className] = [];
+              if (!byClass[a.className].includes(a.subjectName)) {
+                byClass[a.className].push(a.subjectName);
+              }
+            });
+            displayText = Object.entries(byClass)
+              .map(([clsName, subjNames]) => `${subjNames.join(', ')} - ${clsName}`)
+              .join('\n');
+          }
 
           return {
             periodNum: period.num,
@@ -1795,31 +1938,31 @@ const TimeTableManager: React.FC = () => {
 
         // Slip Header
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7.8);
+        doc.setFontSize(8.8);
         doc.setTextColor(30, 41, 59);
         doc.text(
           schoolName || 'SCHOOL',
           startX + slipWidth / 2,
-          startY + 5.5,
+          startY + 6.5,
           { align: 'center' }
         );
 
         const teacherName = getTeacherNameWithPrefix(tId);
-        doc.setFontSize(7);
+        doc.setFontSize(7.6);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(15, 23, 42);
-        doc.text(`TEACHER TIMETABLE SLIP · ${teacherName}`, startX + slipWidth / 2, startY + 9.5, {
+        doc.text(`TEACHER TIMETABLE SLIP · ${teacherName}`, startX + slipWidth / 2, startY + 11.2, {
           align: 'center'
         });
 
         const slipData = getTeacherSlipData(tId);
-        doc.setFontSize(6.2);
+        doc.setFontSize(6.8);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(100, 116, 139);
         doc.text(
           `Academic Session: ${sessionName}`,
           startX + slipWidth / 2,
-          startY + 13.5,
+          startY + 15.5,
           { align: 'center' }
         );
 
@@ -1842,33 +1985,41 @@ const TimeTableManager: React.FC = () => {
           return [`P${r.periodNum}`, ...r.dayValues, r.periodTime];
         });
 
+        // Calculate dynamic row height to fully and proportionally utilize vertical space (slipHeight = 136.5mm)
+        const totalRows = tableBody.length + 1;
+        const availableTableHeight = slipHeight - 30; // ~106.5mm between header (startY + 19) and footer (startY + 131)
+        const calculatedRowHeight = Math.min(11.5, Math.max(7.2, Math.floor((availableTableHeight / totalRows) * 10) / 10));
+
         autoTable(doc, {
           head: [tableHeaders],
           body: tableBody as any,
-          startY: startY + 15.5,
-          margin: { left: startX + 2, right: pageWidth - (startX + slipWidth - 2) },
-          tableWidth: slipWidth - 4,
+          startY: startY + 19,
+          margin: { left: startX + 3, right: pageWidth - (startX + slipWidth - 3) },
+          tableWidth: slipWidth - 6,
           theme: 'grid',
           styles: {
-            fontSize: 6.2,
-            cellPadding: 1.3,
+            fontSize: 7.2,
+            cellPadding: 2.2,
+            minCellHeight: calculatedRowHeight,
             halign: 'center',
             valign: 'middle',
             textColor: [30, 41, 59],
-            lineWidth: 0.1,
-            lineColor: [220, 225, 230]
+            lineWidth: 0.12,
+            lineColor: [210, 215, 225]
           },
           headStyles: {
             fillColor: [241, 245, 249],
             textColor: [15, 23, 42],
             fontStyle: 'bold',
-            fontSize: 6.5,
+            fontSize: 7.8,
+            minCellHeight: calculatedRowHeight,
             halign: 'center',
-            lineWidth: 0.1
+            lineWidth: 0.12,
+            lineColor: [210, 215, 225]
           },
           columnStyles: {
-            0: { cellWidth: 10, fontStyle: 'bold' },
-            [tableHeaders.length - 1]: { cellWidth: 18 }
+            0: { cellWidth: 10, fontStyle: 'bold', halign: 'center' },
+            [tableHeaders.length - 1]: { cellWidth: 20, halign: 'center' }
           },
           didParseCell: data => {
             if (data.row.section === 'body') {
@@ -1888,9 +2039,10 @@ const TimeTableManager: React.FC = () => {
         });
 
         const footerY = startY + slipHeight - 5.5;
-        doc.setFontSize(6);
+        doc.setFontSize(6.8);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(100, 116, 139);
+        doc.text(`Issued: ${new Date().toLocaleDateString('en-GB')}`, startX + 4, footerY);
         doc.text('Principal Signature: _________', startX + slipWidth - 4, footerY, { align: 'right' });
       });
 
@@ -2186,16 +2338,16 @@ const TimeTableManager: React.FC = () => {
   }, [formClassId, classAssignments, subjects]);
 
   const availableClassSubjectTeachers = React.useMemo(() => {
-    if (!formClassId || !formSubjectId) return teachers;
+    if (!formClassId || formSubjectIds.length === 0) return teachers;
     const classId = Number(formClassId);
-    const subjectId = Number(formSubjectId);
+    const selectedSubjIdSet = new Set(formSubjectIds.map(Number));
     const assignedPairs = classAssignments[classId] || [];
     const teacherIdSet = new Set(
-      assignedPairs.filter(p => p.subjectId === subjectId).map(p => p.teacherId)
+      assignedPairs.filter(p => selectedSubjIdSet.has(p.subjectId)).map(p => p.teacherId)
     );
     const list = teachers.filter(t => teacherIdSet.has(t.id));
     return list.length > 0 ? list : teachers;
-  }, [formClassId, formSubjectId, classAssignments, teachers]);
+  }, [formClassId, formSubjectIds, classAssignments, teachers]);
 
   if (!user?.school_id) {
     return (
@@ -2336,7 +2488,7 @@ const TimeTableManager: React.FC = () => {
                 value={formClassId}
                 onChange={e => {
                   setFormClassId(e.target.value);
-                  setFormSubjectId('');
+                  setFormSubjectIds([]);
                   setFormTeacherId('');
                 }}
               >
@@ -2351,29 +2503,89 @@ const TimeTableManager: React.FC = () => {
               </FormSelect>
             </FormGroup>
 
-            {/* Subject (Step 2 - filtered by selected class) */}
+            {/* Subject (Step 2 - filtered by selected class, supports multi-selection) */}
             <FormGroup>
               <FormLabel theme={theme}>
-                Subject <span className="required">*</span>
+                Subject(s) <span className="required">*</span>
               </FormLabel>
-              <FormSelect
-                theme={theme}
-                value={formSubjectId}
+              <Select
+                multiple
+                size="small"
+                displayEmpty
+                value={formSubjectIds}
                 disabled={!formClassId}
                 onChange={e => {
-                  setFormSubjectId(e.target.value);
-                  setFormTeacherId('');
+                  const val = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+                  setFormSubjectIds(val);
+                }}
+                renderValue={selected => {
+                  if (selected.length === 0) {
+                    return (
+                      <span style={{ color: theme.TEXT_SECONDARY, fontSize: '0.85rem' }}>
+                        {formClassId ? 'Select Subject(s)' : 'Select Class First'}
+                      </span>
+                    );
+                  }
+                  return (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '100%', overflow: 'hidden' }}>
+                      {selected.map(sId => (
+                        <span
+                          key={sId}
+                          style={{
+                            background: theme.ACCENT + '25',
+                            color: theme.TEXT_PRIMARY,
+                            border: `1px solid ${theme.ACCENT}40`,
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            fontWeight: 600,
+                            fontSize: '0.74rem',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {getSubjectName(Number(sId))}
+                        </span>
+                      ))}
+                    </Box>
+                  );
+                }}
+                sx={{
+                  height: 40,
+                  borderRadius: '8px',
+                  backgroundColor: theme.FIELD_BG || theme.CARD,
+                  color: theme.TEXT_PRIMARY,
+                  fontSize: '0.875rem',
+                  border: `1px solid ${theme.BORDER}`,
+                  '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
+                  '& .MuiSelect-select': {
+                    padding: '6px 10px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      maxHeight: 280,
+                      backgroundColor: theme.CARD,
+                      color: theme.TEXT_PRIMARY,
+                      border: `1px solid ${theme.BORDER}`
+                    }
+                  }
                 }}
               >
-                <FormOption theme={theme} value="">
-                  {formClassId ? 'Select Subject' : 'Select Class First'}
-                </FormOption>
-                {availableClassSubjects.map(s => (
-                  <FormOption key={s.id} theme={theme} value={s.id}>
-                    {s.name}
-                  </FormOption>
-                ))}
-              </FormSelect>
+                {availableClassSubjects.map(s => {
+                  const isChecked = formSubjectIds.includes(String(s.id));
+                  return (
+                    <MenuItem key={s.id} value={String(s.id)} sx={{ fontSize: '0.875rem', py: 0.5 }}>
+                      <Checkbox size="small" checked={isChecked} sx={{ p: 0.5, mr: 1, color: theme.ACCENT }} />
+                      <ListItemText
+                        primary={s.name}
+                        primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: isChecked ? 700 : 400 }}
+                      />
+                    </MenuItem>
+                  );
+                })}
+              </Select>
             </FormGroup>
 
             {/* Teacher (Step 3 - Shows all active teachers + No teacher + Custom options) */}
@@ -2384,7 +2596,7 @@ const TimeTableManager: React.FC = () => {
               <FormSelect
                 theme={theme}
                 value={formTeacherId}
-                disabled={!formSubjectId}
+                disabled={!formClassId || formSubjectIds.length === 0}
                 onChange={e => {
                   setFormTeacherId(e.target.value);
                   if (e.target.value !== 'custom') {
@@ -2393,7 +2605,7 @@ const TimeTableManager: React.FC = () => {
                 }}
               >
                 <FormOption theme={theme} value="">
-                  {formSubjectId ? 'Select Teacher' : 'Select Subject First'}
+                  {formSubjectIds.length > 0 ? 'Select Teacher' : 'Select Subject(s) First'}
                 </FormOption>
                 <FormOption theme={theme} value="no_teacher">
                   🚫 No teacher
@@ -2405,9 +2617,9 @@ const TimeTableManager: React.FC = () => {
                   const cnt = getTeacherAssignmentCount(t.id);
                   const isPreAssigned =
                     formClassId &&
-                    formSubjectId &&
+                    formSubjectIds.length > 0 &&
                     (classAssignments[Number(formClassId)] || []).some(
-                      p => p.subjectId === Number(formSubjectId) && p.teacherId === t.id
+                      p => formSubjectIds.map(Number).includes(p.subjectId) && p.teacherId === t.id
                     );
                   return (
                     <FormOption key={t.id} theme={theme} value={t.id}>
@@ -2480,23 +2692,47 @@ const TimeTableManager: React.FC = () => {
           </FormActionsRow>
         </AssignCard>
 
-        {/* Day Navigation Tabs */}
-        <DayTabsContainer theme={theme}>
-          {DAYS_OF_WEEK.map(d => {
-            const cnt = getDayAssignmentCount(d.id);
-            return (
-              <DayTab
-                key={d.id}
-                theme={theme}
-                active={activeDayTab === d.id}
-                onClick={() => setActiveDayTab(d.id)}
-              >
-                <span>{d.name}</span>
-                {cnt > 0 && <span className="badge">{cnt}</span>}
-              </DayTab>
-            );
-          })}
-        </DayTabsContainer>
+        {/* Day Navigation Tabs & Copy Action */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+          <DayTabsContainer theme={theme} style={{ marginBottom: 0, flex: 1 }}>
+            {DAYS_OF_WEEK.map(d => {
+              const cnt = getDayAssignmentCount(d.id);
+              return (
+                <DayTab
+                  key={d.id}
+                  theme={theme}
+                  active={activeDayTab === d.id}
+                  onClick={() => setActiveDayTab(d.id)}
+                >
+                  <span>{d.name}</span>
+                  {cnt > 0 && <span className="badge">{cnt}</span>}
+                </DayTab>
+              );
+            })}
+          </DayTabsContainer>
+
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<ContentCopy />}
+            onClick={() => handleOpenCopyModal(activeDayTab)}
+            sx={{
+              borderColor: theme.BORDER,
+              color: theme.TEXT_PRIMARY,
+              fontWeight: 600,
+              textTransform: 'none',
+              borderRadius: '8px',
+              whiteSpace: 'nowrap',
+              height: '36px',
+              '&:hover': {
+                borderColor: theme.ACCENT,
+                backgroundColor: theme.ACCENT + '12'
+              }
+            }}
+          >
+            Copy Day Schedule
+          </Button>
+        </div>
 
         {/* Matrix Timetable Grid */}
         <TableWrapper theme={theme}>
@@ -2575,9 +2811,9 @@ const TimeTableManager: React.FC = () => {
                                     className="delete-icon"
                                     onClick={e => {
                                       e.stopPropagation();
-                                      handleRemoveCellAssignment(cellKey);
+                                      handleRemoveCellAssignment(cellKey, sIdx);
                                     }}
-                                    title="Remove Period"
+                                    title="Remove Subject"
                                   >
                                     ✕
                                   </div>
@@ -2710,6 +2946,176 @@ const TimeTableManager: React.FC = () => {
             }}
           >
             Yes, Clear All
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Copy Day Schedule Modal */}
+      <Dialog
+        open={copyModalOpen}
+        onClose={() => setCopyModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          style: {
+            backgroundColor: theme.CARD,
+            color: theme.TEXT_PRIMARY,
+            borderRadius: '12px'
+          }
+        }}
+      >
+        <DialogTitle
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottom: `1px solid ${theme.BORDER}`,
+            padding: '14px 20px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ContentCopy sx={{ color: theme.ACCENT }} />
+            <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>Copy Day Schedule</span>
+          </div>
+          <IconButton onClick={() => setCopyModalOpen(false)} size="small">
+            <Close />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent dividers style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ fontSize: '0.85rem', color: theme.TEXT_SECONDARY, lineHeight: 1.5 }}>
+            Replicate the complete period assignments from one day to any other days of the week in one click.
+          </div>
+
+          {/* Source Day Dropdown */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontWeight: 700, fontSize: '0.875rem' }}>
+              1. Copy From (Source Day):
+            </label>
+            <FormSelect
+              theme={theme}
+              value={copySourceDayId}
+              onChange={e => {
+                const newSrc = Number(e.target.value);
+                setCopySourceDayId(newSrc);
+                setCopyTargetDayIds(prev => prev.filter(id => id !== newSrc));
+              }}
+              style={{ fontWeight: 600, fontSize: '0.9rem' }}
+            >
+              {DAYS_OF_WEEK.map(d => {
+                const cnt = getDayAssignmentCount(d.id);
+                return (
+                  <FormOption key={d.id} theme={theme} value={d.id}>
+                    {d.name} {cnt > 0 ? `(${cnt} periods configured)` : '(Empty)'}
+                  </FormOption>
+                );
+              })}
+            </FormSelect>
+          </div>
+
+          <Divider style={{ margin: '4px 0' }} />
+
+          {/* Target Days Section */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+              <label style={{ fontWeight: 700, fontSize: '0.875rem' }}>
+                2. Copy To Destination Day(s):
+              </label>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => handleQuickSelectTargetDays('weekdays')}
+                  sx={{ fontSize: '0.72rem', py: 0.3, px: 1, borderColor: theme.BORDER, color: theme.TEXT_PRIMARY }}
+                >
+                  Mon - Fri
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => handleQuickSelectTargetDays('workdays')}
+                  sx={{ fontSize: '0.72rem', py: 0.3, px: 1, borderColor: theme.BORDER, color: theme.TEXT_PRIMARY }}
+                >
+                  Mon - Sat
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => handleQuickSelectTargetDays('all')}
+                  sx={{ fontSize: '0.72rem', py: 0.3, px: 1, borderColor: theme.BORDER, color: theme.TEXT_PRIMARY }}
+                >
+                  All Days
+                </Button>
+                <Button
+                  size="small"
+                  variant="text"
+                  onClick={() => handleQuickSelectTargetDays('clear')}
+                  sx={{ fontSize: '0.72rem', py: 0.3, px: 0.8, color: theme.TEXT_SECONDARY }}
+                >
+                  Clear
+                </Button>
+              </div>
+            </div>
+
+            {/* Target Days Checkbox List */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '8px' }}>
+              {DAYS_OF_WEEK.map(d => {
+                const isSource = d.id === copySourceDayId;
+                const isChecked = copyTargetDayIds.includes(d.id);
+                const cnt = getDayAssignmentCount(d.id);
+
+                return (
+                  <div
+                    key={d.id}
+                    onClick={() => {
+                      if (!isSource) handleToggleCopyTargetDay(d.id);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      border: `1.5px solid ${isSource ? theme.BORDER : isChecked ? theme.ACCENT : theme.BORDER}`,
+                      background: isSource ? theme.ACCENT + '08' : isChecked ? theme.ACCENT + '12' : theme.CARD,
+                      opacity: isSource ? 0.45 : 1,
+                      cursor: isSource ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <Checkbox
+                      size="small"
+                      checked={isChecked}
+                      disabled={isSource}
+                      sx={{ p: 0, color: theme.ACCENT }}
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontWeight: isChecked ? 700 : 500, fontSize: '0.85rem' }}>
+                        {d.name} {isSource && '(Source)'}
+                      </span>
+                      {!isSource && cnt > 0 && (
+                        <span style={{ fontSize: '0.7rem', color: theme.TEXT_SECONDARY }}>
+                          {cnt} periods will be replaced
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </DialogContent>
+
+        <DialogActions style={{ padding: '12px 20px', borderTop: `1px solid ${theme.BORDER}` }}>
+          <Button onClick={() => setCopyModalOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<ContentCopy />}
+            disabled={copyTargetDayIds.length === 0}
+            onClick={handleExecuteCopyDay}
+          >
+            Copy Schedule ({copyTargetDayIds.length} {copyTargetDayIds.length === 1 ? 'day' : 'days'})
           </Button>
         </DialogActions>
       </Dialog>
