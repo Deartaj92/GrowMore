@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useContext, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useContext, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
 import { sortClasses } from '../utils/classUtils';
 import { Box, Button, useMediaQuery, Tooltip } from '@mui/material';
@@ -15,6 +15,7 @@ import {
   Save,
   PictureAsPdf,
   Description,
+  Print,
   Settings,
   Close,
   CheckCircle,
@@ -528,6 +529,82 @@ const ActionButtonsGroup = styled.div`
   flex-wrap: wrap;
 `;
 
+const MinimalSlipCard = styled.div`
+  background: ${({ theme }) => theme.CARD};
+  color: ${({ theme }) => theme.TEXT_PRIMARY};
+  border: 1px solid ${({ theme }) => theme.BORDER};
+  border-radius: 8px;
+  padding: 14px 18px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  box-sizing: border-box;
+
+  @media print {
+    border: 1px solid #000 !important;
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    margin-bottom: 12mm !important;
+  }
+`;
+
+const SlipTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+
+  th {
+    background: ${({ theme }) => theme.ACCENT}15;
+    color: ${({ theme }) => theme.TEXT_PRIMARY};
+    border: 1px solid ${({ theme }) => theme.BORDER};
+    padding: 5px 6px;
+    font-weight: 700;
+    text-align: center;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+  }
+
+  td {
+    border: 1px solid ${({ theme }) => theme.BORDER};
+    padding: 5px 6px;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  tr.break-row td {
+    background: #fef3c7;
+    color: #92400e;
+    font-weight: 700;
+  }
+
+  tr.free-row td {
+    color: ${({ theme }) => theme.TEXT_SECONDARY};
+    font-style: italic;
+  }
+
+  @media print {
+    th {
+      background: #eee !important;
+      color: #000 !important;
+      border: 1px solid #000 !important;
+    }
+    td {
+      border: 1px solid #000 !important;
+      color: #000 !important;
+    }
+    tr.break-row td {
+      background: #f5f5f5 !important;
+      color: #000 !important;
+    }
+  }
+`;
+
 const NoAssignmentsContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -582,13 +659,13 @@ const AssignSubjectsButton = styled.button`
 
 // Days List Constant
 const DAYS_OF_WEEK = [
-  { id: 1, name: 'Monday' },
-  { id: 2, name: 'Tuesday' },
-  { id: 3, name: 'Wednesday' },
-  { id: 4, name: 'Thursday' },
-  { id: 5, name: 'Friday' },
-  { id: 6, name: 'Saturday' },
-  { id: 7, name: 'Sunday' }
+  { id: 1, name: 'Monday', short: 'Mon' },
+  { id: 2, name: 'Tuesday', short: 'Tue' },
+  { id: 3, name: 'Wednesday', short: 'Wed' },
+  { id: 4, name: 'Thursday', short: 'Thu' },
+  { id: 5, name: 'Friday', short: 'Fri' },
+  { id: 6, name: 'Saturday', short: 'Sat' },
+  { id: 7, name: 'Sunday', short: 'Sun' }
 ];
 
 const ROOM_OPTIONS = [
@@ -661,8 +738,13 @@ const TimeTableManager: React.FC = () => {
   const [breakIdx, setBreakIdx] = useState(4); // Default: after 5th period
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [sessionName, setSessionName] = useState<string>('');
+  const [schoolName, setSchoolName] = useState<string>('');
   const [exportLoading, setExportLoading] = useState(false);
   const [teacherSlipsLoading, setTeacherSlipsLoading] = useState(false);
+
+  // Teacher Slips Modal State
+  const [slipsModalOpen, setSlipsModalOpen] = useState(false);
+  const [selectedSlipTeacherId, setSelectedSlipTeacherId] = useState<number | 'all'>('all');
 
   const [periods, setPeriods] = useState<any[]>([]);
   const [breakSettings, setBreakSettings] = useState({ start: '11:00', end: '11:15' });
@@ -797,10 +879,24 @@ const TimeTableManager: React.FC = () => {
           })
         ]);
 
-        const [{ data: periodsData }, { data: settingsData }] = await Promise.all([
+        const [
+          { data: periodsData },
+          { data: settingsData },
+          instituteRes,
+          schoolRes
+        ] = await Promise.all([
           supabase.from('timetable_periods').select('*').eq('school_id', user?.school_id).order('period_index'),
-          supabase.from('timetable_settings').select('*').eq('school_id', user?.school_id).single()
+          supabase.from('timetable_settings').select('*').eq('school_id', user?.school_id).single(),
+          supabase.from('institute_profile').select('name').eq('school_id', user?.school_id).maybeSingle(),
+          supabase.from('schools').select('name').eq('id', user?.school_id).maybeSingle()
         ]);
+
+        const resolvedSchoolName =
+          (instituteRes?.data?.name || '').trim() ||
+          (schoolRes?.data?.name || '').trim();
+        if (resolvedSchoolName) {
+          setSchoolName(resolvedSchoolName);
+        }
 
         if (periodsData && periodsData.length > 0) {
           setPeriods(
@@ -1312,37 +1408,610 @@ const TimeTableManager: React.FC = () => {
     }
   }, [sessionId, sessionName, classes, classAssignments, periods, breakIdx, breakSettings, cellSelections, toast]);
 
-  // Export Teacher Slips PDF
-  const handleExportTeacherSlips = useCallback(async () => {
-    if (!sessionId) {
-      toast.showToast('Ensure a session is active to export teacher slips.', 'warning');
-      return;
+  // Determine which days of week are used in cellSelections
+  const usedDays = useMemo(() => {
+    const daysSet = new Set<number>();
+    Object.entries(cellSelections).forEach(([key, selections]) => {
+      if (selections && selections.length > 0) {
+        const parts = key.split('_');
+        const dayId = parts.length === 3 ? Number(parts[0]) : 1;
+        daysSet.add(dayId);
+      }
+    });
+    const sorted = Array.from(daysSet).sort((a, b) => a - b);
+    return sorted.length > 0 ? sorted : [1];
+  }, [cellSelections]);
+
+  // Get list of teacher IDs who have at least one period assigned
+  const getActiveTeacherIds = useCallback((): number[] => {
+    const ids = new Set<number>();
+    Object.values(cellSelections).forEach(selections => {
+      selections.forEach(sel => {
+        const parts = sel.split('_');
+        if (parts[1]) {
+          const tId = Number(parts[1]);
+          if (!isNaN(tId) && tId > 0) ids.add(tId);
+        }
+      });
+    });
+    return Array.from(ids).sort((a, b) => a - b);
+  }, [cellSelections]);
+
+  // Helper to format days list into concise labels (e.g. [Mon, Tue] => "Mon - Tue", [Mon, Sat] => "Mon - Sat", [Mon, Wed] => "Mon, Wed")
+  const formatDaysLabel = (days: Array<{ id: number; name: string; short: string }>): string => {
+    if (days.length === 0) return '';
+    if (days.length === 1) return days[0].short;
+
+    // Check if fully consecutive
+    const isConsecutive = days.every((d, i) => i === 0 || d.id === days[i - 1].id + 1);
+    if (isConsecutive) {
+      return `${days[0].short} - ${days[days.length - 1].short}`;
     }
 
-    setTeacherSlipsLoading(true);
-    setLoading(true);
-    toast.showToast('Generating teacher slips...', 'info');
+    // Break into consecutive segments (e.g. [Mon, Tue, Thu, Fri] => "Mon - Tue, Thu - Fri")
+    const segments: string[] = [];
+    let currentSegment: typeof days = [days[0]];
 
+    for (let i = 1; i < days.length; i++) {
+      if (days[i].id === days[i - 1].id + 1) {
+        currentSegment.push(days[i]);
+      } else {
+        if (currentSegment.length === 1) {
+          segments.push(currentSegment[0].short);
+        } else {
+          segments.push(`${currentSegment[0].short} - ${currentSegment[currentSegment.length - 1].short}`);
+        }
+        currentSegment = [days[i]];
+      }
+    }
+    if (currentSegment.length === 1) {
+      segments.push(currentSegment[0].short);
+    } else {
+      segments.push(`${currentSegment[0].short} - ${currentSegment[currentSegment.length - 1].short}`);
+    }
+
+    return segments.join(', ');
+  };
+
+  // Compute minimal schedule table for a teacher with day grouping
+  const getTeacherSlipData = useCallback(
+    (teacherId: number) => {
+      const hasSpecificOtherDays = Object.keys(cellSelections).some(k => {
+        const parts = k.split('_');
+        return parts.length === 3 && Number(parts[0]) > 1 && (cellSelections[k] || []).length > 0;
+      });
+
+      const operatingDays = DAYS_OF_WEEK.filter(d => {
+        if (d.id <= 6) return true;
+        return Object.keys(cellSelections).some(
+          k => k.startsWith('7_') && (cellSelections[k] || []).length > 0
+        );
+      });
+
+      // Compute slot array for each operating day
+      const daySignatures = operatingDays.map(d => {
+        const slots = periods.map((period, pIdx) => {
+          const assignedList: Array<{ className: string; subjectName: string }> = [];
+
+          classes.forEach(cls => {
+            const key = `${d.id}_${cls.id}_${pIdx}`;
+            const legacyKey = `${cls.id}_${pIdx}`;
+            const selections =
+              cellSelections[key] ||
+              (!hasSpecificOtherDays || d.id === 1 ? cellSelections[legacyKey] : []) ||
+              [];
+
+            selections.forEach(sel => {
+              const [subjId, tId] = sel.split('_');
+              if (Number(tId) === teacherId) {
+                assignedList.push({
+                  className: (cls.name || '').trim(),
+                  subjectName: (getSubjectName(Number(subjId)) || 'Subject').trim()
+                });
+              }
+            });
+          });
+
+          const isFree = assignedList.length === 0;
+          // Format without period number prefix (e.g. "Isl - 9th") since Period has its own column
+          const displayText = isFree
+            ? '—'
+            : assignedList.map(a => `${a.subjectName} - ${a.className}`).join('\n');
+
+          return {
+            periodNum: period.num,
+            periodTime: period.time,
+            displayText,
+            assignedList,
+            isFree
+          };
+        });
+
+        const signature = slots.map(s => s.displayText).join('||');
+        return { day: d, signature, slots };
+      });
+
+      // Group consecutive days with identical period schedules into ranges (e.g. Mon-Tue, Mon-Sat)
+      const rawGroups: Array<{
+        days: typeof operatingDays;
+        signature: string;
+        slots: Array<{
+          periodNum: number;
+          periodTime: string;
+          displayText: string;
+          assignedList: Array<{ className: string; subjectName: string }>;
+          isFree: boolean;
+        }>;
+      }> = [];
+
+      let curGroup: (typeof rawGroups)[0] | null = null;
+      for (const item of daySignatures) {
+        if (!curGroup) {
+          curGroup = { days: [item.day], signature: item.signature, slots: item.slots };
+        } else if (curGroup.signature === item.signature) {
+          curGroup.days.push(item.day);
+        } else {
+          rawGroups.push(curGroup);
+          curGroup = { days: [item.day], signature: item.signature, slots: item.slots };
+        }
+      }
+      if (curGroup) rawGroups.push(curGroup);
+
+      // Further combine any non-consecutive groups that share the exact same active schedule
+      const mergedGroups: typeof rawGroups = [];
+      rawGroups.forEach(group => {
+        const hasLectures = group.slots.some(s => !s.isFree);
+        if (hasLectures) {
+          const match = mergedGroups.find(m => m.signature === group.signature);
+          if (match) {
+            match.days.push(...group.days);
+            return;
+          }
+        }
+        mergedGroups.push({ ...group, days: [...group.days] });
+      });
+
+      // Format final day column headers
+      const dayGroups = mergedGroups.map(g => {
+        const sortedDays = [...g.days].sort((a, b) => a.id - b.id);
+        const label = formatDaysLabel(sortedDays);
+        return { label, days: sortedDays, slots: g.slots };
+      });
+
+      // Calculate total weekly lectures
+      let totalWeeklyLectures = 0;
+      daySignatures.forEach(d => {
+        d.slots.forEach(s => {
+          if (!s.isFree) totalWeeklyLectures++;
+        });
+      });
+
+      // Build rows for each period: [Period, ...DayColumns, Timing]
+      const rows: Array<{
+        periodNum: number;
+        periodTime: string;
+        isBreak: boolean;
+        dayValues: string[];
+      }> = [];
+
+      periods.forEach((period, pIdx) => {
+        rows.push({
+          periodNum: period.num,
+          periodTime: period.time,
+          isBreak: false,
+          dayValues: dayGroups.map(g => g.slots[pIdx]?.displayText || '—')
+        });
+
+        if (pIdx === breakIdx) {
+          rows.push({
+            periodNum: 0,
+            periodTime: `${breakSettings.start} - ${breakSettings.end}`,
+            isBreak: true,
+            dayValues: []
+          });
+        }
+      });
+
+      return {
+        dayGroups,
+        rows,
+        totalWeeklyLectures
+      };
+    },
+    [cellSelections, periods, classes, breakIdx, breakSettings, subjects]
+  );
+
+  // Export Single Teacher Slip PDF (Clean, Minimal & Print-Ready)
+  const handleExportSingleTeacherSlipPDF = useCallback(
+    (teacherId: number) => {
+      try {
+        setTeacherSlipsLoading(true);
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const displayName = schoolName || 'School';
+        const teacherName = getTeacherNameWithPrefix(teacherId);
+        const slipData = getTeacherSlipData(teacherId);
+
+        // Header
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.text(displayName, 105, 18, { align: 'center' });
+
+        doc.setFontSize(10.5);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TEACHER TIMETABLE SLIP', 105, 24, { align: 'center' });
+
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Academic Session: ${sessionName}`, 105, 29, { align: 'center' });
+
+        // Teacher Info Bar
+        doc.setDrawColor(210, 215, 225);
+        doc.setFillColor(248, 250, 252);
+        doc.roundedRect(14, 33, 182, 9.5, 1.5, 1.5, 'FD');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(30, 41, 59);
+        doc.text(`Teacher: ${teacherName}`, 105, 39.5, { align: 'center' });
+
+        // Headers: Period - [Days...] - Timing
+        const tableHeaders = ['Period', ...slipData.dayGroups.map(g => g.label), 'Timing'];
+
+        const tableBody = slipData.rows.map(r => {
+          if (r.isBreak) {
+            return [
+              {
+                content: `☕ BREAK (${r.periodTime})`,
+                colSpan: tableHeaders.length,
+                styles: {
+                  halign: 'center',
+                  fontStyle: 'bold',
+                  fillColor: [254, 243, 199],
+                  textColor: [180, 83, 9]
+                }
+              }
+            ];
+          }
+          return [`P${r.periodNum}`, ...r.dayValues, r.periodTime];
+        });
+
+        autoTable(doc, {
+          head: [tableHeaders],
+          body: tableBody as any,
+          startY: 48,
+          margin: { left: 14, right: 14 },
+          theme: 'grid',
+          styles: {
+            fontSize: 8,
+            cellPadding: 2.8,
+            halign: 'center',
+            valign: 'middle',
+            textColor: [30, 41, 59],
+            lineWidth: 0.15,
+            lineColor: [210, 215, 225]
+          },
+          headStyles: {
+            fillColor: [241, 245, 249],
+            textColor: [15, 23, 42],
+            fontStyle: 'bold',
+            fontSize: 8.5,
+            halign: 'center',
+            lineWidth: 0.15
+          },
+          columnStyles: {
+            0: { cellWidth: 16, fontStyle: 'bold' },
+            [tableHeaders.length - 1]: { cellWidth: 26, fontStyle: 'normal' }
+          },
+          didParseCell: data => {
+            if (data.row.section === 'body') {
+              const val = String(data.cell.raw || '');
+              if (val === '—') {
+                data.cell.styles.textColor = [160, 174, 192];
+              } else if (
+                val &&
+                data.column.index > 0 &&
+                data.column.index < tableHeaders.length - 1
+              ) {
+                data.cell.styles.textColor = [16, 50, 140];
+                data.cell.styles.fontStyle = 'bold';
+              }
+            }
+          }
+        });
+
+        const finalY = (doc as any).lastAutoTable.finalY + 14;
+
+        // Footer & Signatures
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Issued on: ${new Date().toLocaleDateString('en-GB')}`, 14, finalY);
+
+        doc.setDrawColor(180, 180, 180);
+        doc.line(148, finalY, 192, finalY);
+        doc.text('Principal Signature', 170, finalY + 4, { align: 'center' });
+
+        doc.save(`Teacher_Slip_${teacherName.replace(/\s+/g, '_')}.pdf`);
+        toast.showToast(`Teacher slip for ${teacherName} downloaded!`, 'success');
+      } catch (err: any) {
+        console.error('Failed to export single slip PDF:', err);
+        toast.showToast('Could not download slip PDF. Please try again.', 'error');
+      } finally {
+        setTeacherSlipsLoading(false);
+      }
+    },
+    [schoolName, sessionName, getTeacherNameWithPrefix, getTeacherSlipData, toast]
+  );
+
+  // Export All Teacher Slips (A4 Portrait - 4 Slips per page in 2x2 Grid with cut guidelines)
+  const handleExportAllTeacherSlipsPDF = useCallback(() => {
     try {
+      setTeacherSlipsLoading(true);
+      const activeTeacherIds = getActiveTeacherIds();
+      if (activeTeacherIds.length === 0) {
+        toast.showToast('No teacher timetable assignments found to export.', 'warning');
+        return;
+      }
+
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
       });
 
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
-      doc.text(`Teacher Timetable Slips - ${sessionName}`, 105, 15, { align: 'center' });
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = 8;
+      const gridCols = 2;
+      const gridRows = 2;
+      const slipsPerPage = gridCols * gridRows;
+      const colGap = 8;
+      const rowGap = 8;
+      const slipWidth = (pageWidth - 2 * margin - colGap) / gridCols;
+      const slipHeight = (pageHeight - 2 * margin - rowGap) / gridRows;
 
-      doc.save('Teacher_Schedules.pdf');
-      toast.showToast('Teacher slips generated successfully!', 'success');
-    } catch (error) {
-      toast.showToast('Failed to generate teacher slips', 'error');
+      activeTeacherIds.forEach((tId, index) => {
+        if (index > 0 && index % slipsPerPage === 0) {
+          doc.addPage();
+        }
+
+        const slotOnPage = index % slipsPerPage;
+        const col = slotOnPage % gridCols;
+        const row = Math.floor(slotOnPage / gridCols);
+
+        const startX = margin + col * (slipWidth + colGap);
+        const startY = margin + row * (slipHeight + rowGap);
+
+        // Draw cut guideline box around slip
+        doc.setDrawColor(215, 220, 228);
+        doc.setLineDashPattern([2, 2], 0);
+        doc.roundedRect(startX, startY, slipWidth, slipHeight, 2, 2, 'D');
+        doc.setLineDashPattern([], 0);
+
+        // Slip Header
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.8);
+        doc.setTextColor(30, 41, 59);
+        doc.text(
+          schoolName || 'SCHOOL',
+          startX + slipWidth / 2,
+          startY + 5.5,
+          { align: 'center' }
+        );
+
+        const teacherName = getTeacherNameWithPrefix(tId);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text(`TEACHER TIMETABLE SLIP · ${teacherName}`, startX + slipWidth / 2, startY + 9.5, {
+          align: 'center'
+        });
+
+        const slipData = getTeacherSlipData(tId);
+        doc.setFontSize(6.2);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text(
+          `Academic Session: ${sessionName}`,
+          startX + slipWidth / 2,
+          startY + 13.5,
+          { align: 'center' }
+        );
+
+        const tableHeaders = ['Per', ...slipData.dayGroups.map(g => g.label), 'Timing'];
+        const tableBody = slipData.rows.map(r => {
+          if (r.isBreak) {
+            return [
+              {
+                content: `BREAK (${r.periodTime})`,
+                colSpan: tableHeaders.length,
+                styles: {
+                  halign: 'center',
+                  fontStyle: 'bold',
+                  fillColor: [254, 243, 199],
+                  textColor: [180, 83, 9]
+                }
+              }
+            ];
+          }
+          return [`P${r.periodNum}`, ...r.dayValues, r.periodTime];
+        });
+
+        autoTable(doc, {
+          head: [tableHeaders],
+          body: tableBody as any,
+          startY: startY + 15.5,
+          margin: { left: startX + 2, right: pageWidth - (startX + slipWidth - 2) },
+          tableWidth: slipWidth - 4,
+          theme: 'grid',
+          styles: {
+            fontSize: 6.2,
+            cellPadding: 1.3,
+            halign: 'center',
+            valign: 'middle',
+            textColor: [30, 41, 59],
+            lineWidth: 0.1,
+            lineColor: [220, 225, 230]
+          },
+          headStyles: {
+            fillColor: [241, 245, 249],
+            textColor: [15, 23, 42],
+            fontStyle: 'bold',
+            fontSize: 6.5,
+            halign: 'center',
+            lineWidth: 0.1
+          },
+          columnStyles: {
+            0: { cellWidth: 10, fontStyle: 'bold' },
+            [tableHeaders.length - 1]: { cellWidth: 18 }
+          },
+          didParseCell: data => {
+            if (data.row.section === 'body') {
+              const val = String(data.cell.raw || '');
+              if (val === '—') {
+                data.cell.styles.textColor = [160, 174, 192];
+              } else if (
+                val &&
+                data.column.index > 0 &&
+                data.column.index < tableHeaders.length - 1
+              ) {
+                data.cell.styles.textColor = [16, 50, 140];
+                data.cell.styles.fontStyle = 'bold';
+              }
+            }
+          }
+        });
+
+        const footerY = startY + slipHeight - 5.5;
+        doc.setFontSize(6);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text('Principal Signature: _________', startX + slipWidth - 4, footerY, { align: 'right' });
+      });
+
+      doc.save(`All_Teacher_Slips_(${sessionName.replace(/\s+/g, '_')}).pdf`);
+      toast.showToast('All teacher slips exported successfully!', 'success');
+    } catch (err: any) {
+      console.error('Failed to export all slips PDF:', err);
+      toast.showToast('Could not export slips PDF. Please try again.', 'error');
     } finally {
       setTeacherSlipsLoading(false);
-      setLoading(false);
     }
-  }, [sessionId, sessionName, toast]);
+  }, [getActiveTeacherIds, schoolName, sessionName, getTeacherNameWithPrefix, getTeacherSlipData, toast]);
+
+  // Export Teacher Slips PDF Handler (defaults to all slips grid)
+  const handleExportTeacherSlips = useCallback(async () => {
+    if (!sessionId) {
+      toast.showToast('Ensure a session is active to export teacher slips.', 'warning');
+      return;
+    }
+    handleExportAllTeacherSlipsPDF();
+  }, [sessionId, handleExportAllTeacherSlipsPDF, toast]);
+
+  // Helper to render individual minimal slip preview
+  const renderSlipPreview = (teacherId: number) => {
+    const slipData = getTeacherSlipData(teacherId);
+    const teacherName = getTeacherNameWithPrefix(teacherId);
+    const tableHeaders = ['Period', ...slipData.dayGroups.map(g => g.label), 'Timing'];
+
+    return (
+      <MinimalSlipCard key={teacherId} theme={theme} className="minimal-slip-card">
+        <div style={{ textAlign: 'center', borderBottom: `1.5px solid ${theme.BORDER}`, paddingBottom: '6px' }}>
+          <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            {schoolName || 'School'}
+          </h4>
+          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: theme.ACCENT, marginTop: '2px', textTransform: 'uppercase' }}>
+            Teacher Timetable Slip
+          </div>
+          <div style={{ fontSize: '0.72rem', color: theme.TEXT_SECONDARY, marginTop: '1px' }}>
+            Academic Session: {sessionName || 'Current Session'}
+          </div>
+        </div>
+
+        <div
+          style={{
+            textAlign: 'center',
+            fontSize: '0.8rem',
+            padding: '5px 8px',
+            background: theme.ACCENT + '0d',
+            borderRadius: '4px',
+            border: `1px solid ${theme.BORDER}`
+          }}
+        >
+          Teacher: <strong>{teacherName}</strong>
+        </div>
+
+        <SlipTable theme={theme}>
+          <thead>
+            <tr>
+              <th style={{ width: '12%' }}>Period</th>
+              {slipData.dayGroups.map((g, gIdx) => (
+                <th key={gIdx}>{g.label}</th>
+              ))}
+              <th style={{ width: '22%' }}>Timing</th>
+            </tr>
+          </thead>
+          <tbody>
+            {slipData.rows.map((row, idx) => {
+              if (row.isBreak) {
+                return (
+                  <tr key={`break-${idx}`} className="break-row">
+                    <td colSpan={tableHeaders.length}>
+                      ☕ RECESS / BREAK ({row.periodTime})
+                    </td>
+                  </tr>
+                );
+              }
+              return (
+                <tr key={`p-${idx}`}>
+                  <td style={{ fontWeight: 700 }}>P{row.periodNum}</td>
+                  {row.dayValues.map((val, vIdx) => (
+                    <td
+                      key={vIdx}
+                      style={{
+                        fontWeight: val !== '—' ? 700 : 400,
+                        color: val !== '—' ? '#1d4ed8' : theme.TEXT_SECONDARY
+                      }}
+                    >
+                      {val}
+                    </td>
+                  ))}
+                  <td style={{ fontSize: '0.74rem', fontVariantNumeric: 'tabular-nums' }}>{row.periodTime}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </SlipTable>
+
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-end',
+            fontSize: '0.7rem',
+            color: theme.TEXT_SECONDARY,
+            borderTop: `1px dashed ${theme.BORDER}`,
+            paddingTop: '6px',
+            marginTop: '2px'
+          }}
+        >
+          <div>
+            Issued: {new Date().toLocaleDateString('en-GB')}
+          </div>
+          <div>
+            <div style={{ borderTop: `1px solid ${theme.BORDER}`, minWidth: '90px', textAlign: 'center', paddingTop: '2px' }}>
+              Principal Sign
+            </div>
+          </div>
+        </div>
+      </MinimalSlipCard>
+    );
+  };
 
   // Save Settings Modal Handler
   const handleSaveTimings = async () => {
@@ -1438,6 +2107,24 @@ const TimeTableManager: React.FC = () => {
             </Button>
             <Button
               variant="contained"
+              sx={{ backgroundColor: '#0284c7', '&:hover': { backgroundColor: '#0369a1' } }}
+              onClick={() => {
+                const ids = getActiveTeacherIds();
+                if (ids.length > 0) {
+                  setSelectedSlipTeacherId(ids[0]);
+                } else {
+                  setSelectedSlipTeacherId('all');
+                }
+                setSlipsModalOpen(true);
+              }}
+              disabled={loading || teacherSlipsLoading || !sessionId}
+              size={isMobile ? 'small' : 'medium'}
+              startIcon={<Description />}
+            >
+              Teacher Slips
+            </Button>
+            <Button
+              variant="contained"
               color="warning"
               onClick={() => {
                 setTempPeriods([...periods]);
@@ -1476,11 +2163,13 @@ const TimeTableManager: React.FC = () => {
     breakIdx,
     loading,
     exportLoading,
+    teacherSlipsLoading,
     sessionId,
     isMobile,
     theme,
     handleSaveTimetable,
     handleExportPDF,
+    getActiveTeacherIds,
     setFooterContent,
     periods,
     breakSettings
@@ -2024,6 +2713,184 @@ const TimeTableManager: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Teacher Slips Modal */}
+      <Dialog
+        open={slipsModalOpen}
+        onClose={() => setSlipsModalOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          style: {
+            backgroundColor: theme.CARD,
+            color: theme.TEXT_PRIMARY,
+            borderRadius: '12px'
+          }
+        }}
+      >
+        <DialogTitle
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottom: `1px solid ${theme.BORDER}`,
+            padding: '14px 20px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Description sx={{ color: theme.ACCENT }} />
+            <span style={{ fontWeight: 700, fontSize: '1.15rem' }}>Teacher Timetable Slips</span>
+          </div>
+          <IconButton onClick={() => setSlipsModalOpen(false)} size="small">
+            <Close />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent dividers style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Top selection strip */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              flexWrap: 'wrap',
+              background: theme.ACCENT + '0d',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              border: `1px solid ${theme.BORDER}`
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label htmlFor="slip-teacher-select" style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                Select Faculty Slip:
+              </label>
+              <select
+                id="slip-teacher-select"
+                value={selectedSlipTeacherId}
+                onChange={e => {
+                  const val = e.target.value;
+                  setSelectedSlipTeacherId(val === 'all' ? 'all' : Number(val));
+                }}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: `1px solid ${theme.BORDER}`,
+                  background: theme.CARD,
+                  color: theme.TEXT_PRIMARY,
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
+              >
+                {getActiveTeacherIds().map(tId => (
+                  <option key={tId} value={tId}>
+                    {getTeacherNameWithPrefix(tId)}
+                  </option>
+                ))}
+                <option value="all">── All Teachers (Grid / Batch Print) ──</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<Print />}
+                onClick={() => window.print()}
+                sx={{ borderColor: theme.BORDER, color: theme.TEXT_PRIMARY }}
+              >
+                Print Slip
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<PictureAsPdf />}
+                onClick={() => {
+                  if (selectedSlipTeacherId === 'all') {
+                    handleExportAllTeacherSlipsPDF();
+                  } else {
+                    handleExportSingleTeacherSlipPDF(selectedSlipTeacherId);
+                  }
+                }}
+                disabled={teacherSlipsLoading}
+                sx={{ backgroundColor: '#0284c7', '&:hover': { backgroundColor: '#0369a1' } }}
+              >
+                {teacherSlipsLoading
+                  ? 'Exporting...'
+                  : selectedSlipTeacherId === 'all'
+                  ? 'Download All (PDF)'
+                  : 'Download Slip (PDF)'}
+              </Button>
+              {selectedSlipTeacherId !== 'all' && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleExportAllTeacherSlipsPDF}
+                  disabled={teacherSlipsLoading}
+                  sx={{ borderColor: theme.BORDER, color: theme.ACCENT }}
+                >
+                  Download All (2x2 Grid)
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Slips preview container */}
+          <div id="printable-slips-area" style={{ maxHeight: '60vh', overflowY: 'auto', padding: '4px' }}>
+            {selectedSlipTeacherId === 'all' ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                {getActiveTeacherIds().map(tId => renderSlipPreview(tId))}
+              </div>
+            ) : typeof selectedSlipTeacherId === 'number' ? (
+              renderSlipPreview(selectedSlipTeacherId)
+            ) : getActiveTeacherIds().length > 0 ? (
+              renderSlipPreview(getActiveTeacherIds()[0])
+            ) : (
+              <div style={{ textAlign: 'center', padding: '24px', color: theme.TEXT_SECONDARY }}>
+                No teacher assignments found.
+              </div>
+            )}
+          </div>
+        </DialogContent>
+
+        <DialogActions style={{ padding: '10px 20px', borderTop: `1px solid ${theme.BORDER}` }}>
+          <Button onClick={() => setSlipsModalOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          #printable-slips-area, #printable-slips-area * {
+            visibility: visible !important;
+          }
+          #printable-slips-area {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            padding: 4mm !important;
+            margin: 0 !important;
+            max-height: none !important;
+            overflow: visible !important;
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 8mm !important;
+          }
+          .minimal-slip-card {
+            border: 1px dashed #333 !important;
+            box-shadow: none !important;
+            page-break-inside: avoid !important;
+            margin: 0 !important;
+            padding: 8px 12px !important;
+            background: #fff !important;
+            color: #000 !important;
+          }
+        }
+      `}</style>
     </Container>
   );
 };
