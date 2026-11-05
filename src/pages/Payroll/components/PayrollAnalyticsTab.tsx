@@ -334,33 +334,63 @@ const PayrollAnalyticsTab: React.FC = () => {
     return matchesMonth && matchesRole && matchesSearch;
   });
 
-  // Calculate Aggregates
-  const totalYearlyPayroll = filteredGenerations.reduce((sum, g) => sum + parseFloat(g.net_salary || '0'), 0);
+  // Helper to extract carried-forward arrears / old balance from a generation record
+  const getCarriedArrears = (g: any): number => {
+    let carried = parseFloat(g.old_balance || '0');
+    if (carried === 0 && g.calculation_details?.earningsItems) {
+      const item = g.calculation_details.earningsItems.find((e: any) =>
+        e.name && (e.name.toLowerCase().includes('arrear') || e.name.toLowerCase().includes('previous unpaid'))
+      );
+      if (item) {
+        carried = parseFloat(item.amount || '0');
+      }
+    }
+    return isNaN(carried) ? 0 : Math.max(0, carried);
+  };
 
-  const filteredGenIds = new Set(filteredGenerations.map(g => g.id));
-  const totalYearlyDisbursed = payments
-    .filter(p => filteredGenIds.has(p.generation_id))
-    .reduce((sum, p) => sum + parseFloat(p.amount || '0'), 0);
-
-  const pendingDisbursement = Math.max(0, totalYearlyPayroll - totalYearlyDisbursed);
-  
-  const activeLoansList = advances.filter(a => a.status === 'active' || a.status === 'approved');
-  const totalActiveLoans = activeLoansList.reduce((sum, a) => sum + (parseFloat(a.amount || '0') - parseFloat(a.repaid_amount || '0')), 0);
-
-  const disbursementPercentage = totalYearlyPayroll > 0 ? Math.min(100, Math.round((totalYearlyDisbursed / totalYearlyPayroll) * 100)) : 0;
-
-  // Roles list for dropdown
-  const uniqueRoles = Array.from(new Set(allStaff.map(s => s.role).filter(Boolean)));
-
-  // Per Staff Detailed Aggregation
+  // Per Staff Detailed Aggregation (Eliminates double-counting carried-over arrears across months)
   const staffSummaries: StaffSummary[] = allStaff
     .filter(s => roleFilter === 'ALL' || s.role === roleFilter)
     .filter(s => !searchStaff || s.name.toLowerCase().includes(searchStaff.toLowerCase()))
     .map(s => {
-      const sGens = generations.filter(g => g.staff_id === s.id && (selectedMonthFilter === 'ALL' || g.payroll_month === selectedMonthFilter));
+      const sGens = generations
+        .filter(g => g.staff_id === s.id && (selectedMonthFilter === 'ALL' || g.payroll_month === selectedMonthFilter))
+        .sort((a, b) => {
+          if (a.payroll_year !== b.payroll_year) return a.payroll_year - b.payroll_year;
+          return a.payroll_month - b.payroll_month;
+        });
+
       const sGenIds = new Set(sGens.map(g => g.id));
-      const sNet = sGens.reduce((sum, g) => sum + parseFloat(g.net_salary || '0'), 0);
-      const sPaid = payments.filter(p => sGenIds.has(p.generation_id)).reduce((sum, p) => sum + parseFloat(p.amount || '0'), 0);
+      const sPaid = payments
+        .filter(p => sGenIds.has(p.generation_id))
+        .reduce((sum, p) => sum + parseFloat(p.amount || '0'), 0);
+
+      let sNet = 0;
+      let sRemaining = 0;
+
+      if (sGens.length === 0) {
+        sNet = 0;
+        sRemaining = 0;
+      } else if (selectedMonthFilter !== 'ALL') {
+        // Single month selected: show that month's net payable and remaining balance
+        const singleGen = sGens[0];
+        sNet = parseFloat(singleGen.net_salary || '0');
+        sRemaining = Math.max(0, sNet - sPaid);
+      } else {
+        // Multi-month / Yearly view:
+        // Do not recount carried-forward arrears across consecutive months.
+        // Each month's own base net earned = net_salary minus carried_forward_arrears.
+        // Plus opening balance from the earliest generation in the year (if any).
+        const initialOpening = getCarriedArrears(sGens[0]);
+        const totalBaseEarned = sGens.reduce((sum, g) => {
+          const net = parseFloat(g.net_salary || '0');
+          const carried = getCarriedArrears(g);
+          return sum + Math.max(0, net - carried);
+        }, 0);
+
+        sNet = Math.round(initialOpening + totalBaseEarned);
+        sRemaining = Math.max(0, sNet - sPaid);
+      }
 
       return {
         staffId: s.id,
@@ -369,7 +399,7 @@ const PayrollAnalyticsTab: React.FC = () => {
         basicPay: parseFloat(s.basic_pay || '0'),
         totalNetSalary: sNet,
         totalPaid: sPaid,
-        remainingBalance: Math.max(0, sNet - sPaid),
+        remainingBalance: sRemaining,
         generatedMonthsCount: sGens.length,
       };
     })
@@ -380,15 +410,32 @@ const PayrollAnalyticsTab: React.FC = () => {
       return true;
     });
 
-  // Monthly distribution breakdown
+  // Calculate Aggregates directly from reconciled staff records
+  const totalYearlyPayroll = staffSummaries.reduce((sum, s) => sum + s.totalNetSalary, 0);
+  const totalYearlyDisbursed = staffSummaries.reduce((sum, s) => sum + s.totalPaid, 0);
+  const pendingDisbursement = staffSummaries.reduce((sum, s) => sum + s.remainingBalance, 0);
+
+  const activeLoansList = advances.filter(a => a.status === 'active' || a.status === 'approved');
+  const totalActiveLoans = activeLoansList.reduce((sum, a) => sum + (parseFloat(a.amount || '0') - parseFloat(a.repaid_amount || '0')), 0);
+
+  const disbursementPercentage = totalYearlyPayroll > 0 ? Math.min(100, Math.round((totalYearlyDisbursed / totalYearlyPayroll) * 100)) : 0;
+
+  // Roles list for dropdown
+  const uniqueRoles = Array.from(new Set(allStaff.map(s => s.role).filter(Boolean)));
+
+  // Monthly distribution breakdown (Base monthly salary expenditure, excluding carried-forward past debt)
   const monthlyData = MONTHS.map((m, idx) => {
     const monthNum = idx + 1;
     const monthGens = filteredGenerations.filter(g => g.payroll_month === monthNum);
-    const monthNet = monthGens.reduce((sum, g) => sum + parseFloat(g.net_salary || '0'), 0);
+    const monthNet = monthGens.reduce((sum, g) => {
+      const net = parseFloat(g.net_salary || '0');
+      const carried = getCarriedArrears(g);
+      return sum + Math.max(0, net - carried);
+    }, 0);
     const staffCount = monthGens.length;
     return {
       monthName: m,
-      netSalary: monthNet,
+      netSalary: Math.round(monthNet),
       staffCount,
     };
   });

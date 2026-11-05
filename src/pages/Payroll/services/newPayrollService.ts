@@ -488,12 +488,20 @@ export const newPayrollService = {
   },
 
   /**
-   * Calculate previous unpaid balance / arrears for a staff member prior to month & year
+   * Calculate previous unpaid balance / arrears for a staff member prior to month & year.
+   * To prevent duplicate/compounding arrears across consecutive months:
+   * 1. Sort prior generations chronologically.
+   * 2. For each prior generation, determine its month-specific base earned net
+   *    (i.e. net_salary minus any carried-forward arrears / old_balance).
+   * 3. An initial opening balance from the earliest generation (if any existed before digital payroll) is preserved.
+   * 4. Total entitled across all prior months = initial opening balance + sum(each month's own base net).
+   * 5. Total paid across all prior months = sum of all completed payments across prior generations.
+   * 6. Total arrears = max(0, totalEntitled - totalPaid).
    */
   async getPreviousUnpaidBalance(schoolId: number, staffId: number, month: number, year: number): Promise<number> {
     const { data: gens } = await supabase
       .from('payroll_generations')
-      .select('id, net_salary, payroll_month, payroll_year')
+      .select('id, net_salary, old_balance, calculation_details, payroll_month, payroll_year')
       .eq('school_id', schoolId)
       .eq('staff_id', staffId);
 
@@ -507,6 +515,12 @@ export const newPayrollService = {
 
     if (priorGens.length === 0) return 0;
 
+    // Sort chronologically from oldest to newest
+    priorGens.sort((a, b) => {
+      if (a.payroll_year !== b.payroll_year) return a.payroll_year - b.payroll_year;
+      return a.payroll_month - b.payroll_month;
+    });
+
     const genIds = priorGens.map(g => g.id);
 
     const { data: payments } = await supabase
@@ -516,23 +530,43 @@ export const newPayrollService = {
       .in('generation_id', genIds)
       .eq('status', 'completed');
 
-    const paymentsMap = new Map<number, number>();
+    let totalPaid = 0;
     if (payments) {
       payments.forEach(p => {
-        const cur = paymentsMap.get(p.generation_id) || 0;
-        paymentsMap.set(p.generation_id, cur + parseFloat(p.amount || '0'));
+        totalPaid += parseFloat(p.amount || '0');
       });
     }
 
-    let totalArrears = 0;
+    // Helper to get carried-forward arrears for a generation
+    const getCarriedArrears = (g: any): number => {
+      let carried = parseFloat(g.old_balance || '0');
+      if (carried === 0 && g.calculation_details?.earningsItems) {
+        const item = g.calculation_details.earningsItems.find((e: any) =>
+          e.name && (e.name.toLowerCase().includes('arrear') || e.name.toLowerCase().includes('previous unpaid'))
+        );
+        if (item) {
+          carried = parseFloat(item.amount || '0');
+        }
+      }
+      return isNaN(carried) ? 0 : Math.max(0, carried);
+    };
+
+    // Earliest prior generation may have an initial opening balance before digital system records
+    const initialOpeningBalance = getCarriedArrears(priorGens[0]);
+
+    let totalBaseEarned = 0;
     priorGens.forEach(g => {
       const net = parseFloat(g.net_salary || '0');
-      const paid = paymentsMap.get(g.id) || 0;
-      const unpaid = Math.max(0, net - paid);
-      totalArrears += unpaid;
+      const carried = getCarriedArrears(g);
+      // Own base net earned in this specific month (excluding carried forward arrears)
+      const monthBase = Math.max(0, net - carried);
+      totalBaseEarned += monthBase;
     });
 
-    return Math.round(totalArrears);
+    const totalEntitled = initialOpeningBalance + totalBaseEarned;
+    const unpaidBalance = Math.max(0, totalEntitled - totalPaid);
+
+    return Math.round(unpaidBalance);
   },
 
   /**
@@ -760,25 +794,26 @@ export const newPayrollService = {
       deductionItems,
     };
 
-    // If generation already exists, keep its frozen snapshot basicPay and figures unless overridden
+    // If generation already exists and basicPayInput was not specified, preserve frozen snapshot basicPay
     let finalBasicPay = basicPay;
+    if (existingGen?.plan_snapshot?.basicPay !== undefined && basicPayInput === undefined) {
+      finalBasicPay = existingGen.plan_snapshot.basicPay;
+    }
+
     let finalTotalEarnings = totalEarnings;
     let finalTotalDeductions = totalDeductions;
     let finalNetSalary = netSalary;
     let finalEarningsItems = earningsItems;
     let finalDeductionItems = deductionItems;
 
-    if (existingGen && existingGen.plan_snapshot) {
-      const snap = existingGen.plan_snapshot;
-      if (snap.basicPay !== undefined && !basicPayInput) {
-        finalBasicPay = snap.basicPay;
-        finalTotalEarnings = parseFloat(existingGen.total_earnings || String(totalEarnings));
-        finalTotalDeductions = parseFloat(existingGen.total_deductions || String(totalDeductions));
-        finalNetSalary = parseFloat(existingGen.net_salary || String(netSalary));
-        if (existingGen.calculation_details) {
-          finalEarningsItems = existingGen.calculation_details.earningsItems || earningsItems;
-          finalDeductionItems = existingGen.calculation_details.deductionItems || deductionItems;
-        }
+    // Only if previewing/inspecting without saving to DB, preserve the saved figures
+    if (!saveToDb && existingGen && existingGen.plan_snapshot) {
+      finalTotalEarnings = parseFloat(existingGen.total_earnings || String(totalEarnings));
+      finalTotalDeductions = parseFloat(existingGen.total_deductions || String(totalDeductions));
+      finalNetSalary = parseFloat(existingGen.net_salary || String(netSalary));
+      if (existingGen.calculation_details) {
+        finalEarningsItems = existingGen.calculation_details.earningsItems || earningsItems;
+        finalDeductionItems = existingGen.calculation_details.deductionItems || deductionItems;
       }
     }
 
@@ -801,7 +836,7 @@ export const newPayrollService = {
       advance_deductions: advanceDeductions,
       old_balance: oldBalanceAmount,
       plan_snapshot: existingGen?.plan_snapshot || planSnapshot,
-      calculation_details: existingGen?.calculation_details || calculationDetails,
+      calculation_details: calculationDetails,
       status: existingGen ? existingGen.status : 'approved',
     };
 
@@ -984,6 +1019,13 @@ export const newPayrollService = {
         else if (paidAmount > 0) status = 'partially_paid';
 
         const calcDetails = existingGen.calculation_details || {};
+        let existingOldBal = parseFloat(existingGen.old_balance || '0');
+        if (existingOldBal === 0 && calcDetails.earningsItems) {
+          const item = calcDetails.earningsItems.find((e: any) =>
+            e.name && (e.name.toLowerCase().includes('arrear') || e.name.toLowerCase().includes('previous unpaid'))
+          );
+          if (item) existingOldBal = parseFloat(item.amount || '0');
+        }
 
         results.push({
           id: existingGen.id,
@@ -1007,7 +1049,7 @@ export const newPayrollService = {
           absentDeductions: parseFloat(existingGen.absent_deductions || '0'),
           lateDeductions: parseFloat(existingGen.late_deductions || '0'),
           advanceDeductions: parseFloat(existingGen.advance_deductions || '0'),
-          oldBalanceAmount: 0,
+          oldBalanceAmount: existingOldBal,
           leaveBonusAmount: 0,
           status,
           earningsItems: calcDetails.earningsItems || prof.allowances,
@@ -1066,15 +1108,37 @@ export const newPayrollService = {
 
     if (!payments || payments.length === 0) return [];
 
-    // 2. Fetch staff info
-    const staffIds = Array.from(new Set(payments.map(p => p.staff_id).filter(Boolean)));
-    const staffMap = new Map<number, { name: string; role: string }>();
+    // 2. Fetch generation info for month/year and staff_id
+    const genIds = Array.from(new Set(payments.map(p => p.generation_id).filter(Boolean)));
+    const genMap = new Map<number, { staffId: number; month: number; year: number }>();
+    const staffIdsSet = new Set<number>();
 
-    if (staffIds.length > 0) {
+    // Collect any direct staff_id on payments if present
+    payments.forEach(p => {
+      if ((p as any).staff_id) staffIdsSet.add((p as any).staff_id);
+    });
+
+    if (genIds.length > 0) {
+      const { data: genList } = await supabase
+        .from('payroll_generations')
+        .select('id, staff_id, payroll_month, payroll_year')
+        .in('id', genIds);
+
+      if (genList) {
+        genList.forEach(g => {
+          genMap.set(g.id, { staffId: g.staff_id, month: g.payroll_month, year: g.payroll_year });
+          if (g.staff_id) staffIdsSet.add(g.staff_id);
+        });
+      }
+    }
+
+    // 3. Fetch staff info
+    const staffMap = new Map<number, { name: string; role: string }>();
+    if (staffIdsSet.size > 0) {
       const { data: staffList } = await supabase
         .from('staff')
         .select('id, name, role')
-        .in('id', staffIds);
+        .in('id', Array.from(staffIdsSet));
 
       if (staffList) {
         staffList.forEach(s => {
@@ -1083,41 +1147,33 @@ export const newPayrollService = {
       }
     }
 
-    // 3. Fetch generation info for month/year
-    const genIds = Array.from(new Set(payments.map(p => p.generation_id).filter(Boolean)));
-    const genMap = new Map<number, { month: number; year: number }>();
-
-    if (genIds.length > 0) {
-      const { data: genList } = await supabase
-        .from('payroll_generations')
-        .select('id, payroll_month, payroll_year')
-        .in('id', genIds);
-
-      if (genList) {
-        genList.forEach(g => {
-          genMap.set(g.id, { month: g.payroll_month, year: g.payroll_year });
-        });
-      }
-    }
-
     return payments.map(p => {
-      const st = staffMap.get(p.staff_id);
       const gn = genMap.get(p.generation_id);
+      const effectiveStaffId = (p as any).staff_id || gn?.staffId || 0;
+      const st = effectiveStaffId ? staffMap.get(effectiveStaffId) : null;
+
+      const rawMode = p.payment_mode || (p as any).payment_method || 'cash';
+      const formattedMode =
+        rawMode === 'cash' ? 'Cash' :
+        rawMode === 'bank_transfer' ? 'Bank Transfer' :
+        rawMode === 'cheque' ? 'Cheque' :
+        rawMode === 'easypaisa_jazzcash' ? 'EasyPaisa/JazzCash' :
+        rawMode;
 
       return {
         id: p.id,
         schoolId: p.school_id,
         generationId: p.generation_id,
-        staffId: p.staff_id,
-        staffName: st?.name || `Staff #${p.staff_id}`,
+        staffId: effectiveStaffId,
+        staffName: st?.name || (effectiveStaffId ? `Staff #${effectiveStaffId}` : 'Staff'),
         role: st?.role || 'Staff',
-        payrollMonth: gn?.month || p.payroll_month || 0,
-        payrollYear: gn?.year || p.payroll_year || 0,
+        payrollMonth: gn?.month || (p as any).payroll_month || 0,
+        payrollYear: gn?.year || (p as any).payroll_year || 0,
         amount: parseFloat(p.amount || '0'),
-        paymentDate: p.payment_date || p.created_at || new Date().toISOString(),
-        paymentMethod: p.payment_method || 'Cash',
-        referenceNumber: p.reference_number || '',
-        notes: p.notes || '',
+        paymentDate: p.payment_date || (p as any).created_at || new Date().toISOString(),
+        paymentMethod: formattedMode,
+        referenceNumber: p.reference_no || (p as any).reference_number || '',
+        notes: p.remarks || (p as any).notes || '',
         status: p.status || 'completed',
       };
     });
@@ -1188,6 +1244,13 @@ export const newPayrollService = {
       else if (paidAmount > 0) status = 'partially_paid';
 
       const calcDetails = g.calculation_details || {};
+      let genOldBal = parseFloat(g.old_balance || '0');
+      if (genOldBal === 0 && calcDetails.earningsItems) {
+        const item = calcDetails.earningsItems.find((e: any) =>
+          e.name && (e.name.toLowerCase().includes('arrear') || e.name.toLowerCase().includes('previous unpaid'))
+        );
+        if (item) genOldBal = parseFloat(item.amount || '0');
+      }
 
       return {
         id: g.id,
@@ -1209,7 +1272,7 @@ export const newPayrollService = {
         absentDeductions: parseFloat(g.absent_deductions || '0'),
         lateDeductions: parseFloat(g.late_deductions || '0'),
         advanceDeductions: parseFloat(g.advance_deductions || '0'),
-        oldBalanceAmount: parseFloat(g.old_balance || '0'),
+        oldBalanceAmount: genOldBal,
         leaveBonusAmount: 0,
         status,
         earningsItems: calcDetails.earningsItems || [],
@@ -1255,9 +1318,10 @@ export const newPayrollService = {
     paymentMode: 'cash' | 'bank_transfer' | 'cheque' | 'easypaisa_jazzcash' | 'other',
     referenceNo?: string,
     remarks?: string,
-    userId?: number
+    userId?: number,
+    paymentDate?: string
   ): Promise<void> {
-    const paymentDate = new Date().toISOString().split('T')[0];
+    const finalDate = paymentDate || new Date().toISOString().split('T')[0];
 
     const { error } = await supabase.from('payroll_payments').insert({
       school_id: schoolId,
@@ -1266,10 +1330,49 @@ export const newPayrollService = {
       payment_mode: paymentMode,
       reference_no: referenceNo || null,
       remarks: remarks || null,
-      payment_date: paymentDate,
+      payment_date: finalDate,
       status: 'completed',
       received_by: userId,
     });
+
+    if (error) throw error;
+  },
+
+  /**
+   * Update an existing salary payment installment
+   */
+  async updatePayment(
+    schoolId: number,
+    paymentId: number,
+    updates: {
+      amount?: number;
+      payment_mode?: 'cash' | 'bank_transfer' | 'cheque' | 'easypaisa_jazzcash' | 'other';
+      reference_no?: string | null;
+      remarks?: string | null;
+      payment_date?: string;
+    }
+  ): Promise<void> {
+    const { error } = await supabase
+      .from('payroll_payments')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', paymentId)
+      .eq('school_id', schoolId);
+
+    if (error) throw error;
+  },
+
+  /**
+   * Delete a salary payment installment
+   */
+  async deletePayment(schoolId: number, paymentId: number): Promise<void> {
+    const { error } = await supabase
+      .from('payroll_payments')
+      .delete()
+      .eq('id', paymentId)
+      .eq('school_id', schoolId);
 
     if (error) throw error;
   },

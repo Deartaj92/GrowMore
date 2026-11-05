@@ -19,6 +19,8 @@ import {
   History as HistoryIcon,
   CheckCircle as CheckIcon,
   Tune as AdjustmentsIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import {
   CircularProgress,
@@ -29,6 +31,10 @@ import {
   FormControl,
   InputLabel,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 
 import { clayCardStyle } from '../../../styles/DesignSystem';
@@ -203,10 +209,20 @@ const PayrollPaymentLedger: React.FC = () => {
 
   // Payment fields
   const [payAmount, setPayAmount] = useState<number>(0);
+  const [payDate, setPayDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [payMode, setPayMode] = useState<'cash' | 'bank_transfer' | 'cheque' | 'easypaisa_jazzcash'>('bank_transfer');
   const [refNo, setRefNo] = useState('');
   const [remarks, setRemarks] = useState('');
   const [submittingPay, setSubmittingPay] = useState(false);
+
+  // Edit disbursement modal
+  const [editingPayment, setEditingPayment] = useState<any | null>(null);
+  const [editAmount, setEditAmount] = useState<number>(0);
+  const [editDate, setEditDate] = useState<string>('');
+  const [editMode, setEditMode] = useState<'cash' | 'bank_transfer' | 'cheque' | 'easypaisa_jazzcash' | 'other'>('cash');
+  const [editRefNo, setEditRefNo] = useState('');
+  const [editRemarks, setEditRemarks] = useState('');
+  const [submittingEdit, setSubmittingEdit] = useState(false);
 
   // Payslip Modal
   const [selectedSlipGen, setSelectedSlipGen] = useState<NewPayrollGeneration | null>(null);
@@ -245,6 +261,7 @@ const PayrollPaymentLedger: React.FC = () => {
   useEffect(() => {
     if (selectedGen) {
       setPayAmount(selectedGen.remainingBalance);
+      setPayDate(new Date().toISOString().split('T')[0]);
       setPayMode('bank_transfer');
       setRefNo('');
       setRemarks('');
@@ -310,7 +327,8 @@ const PayrollPaymentLedger: React.FC = () => {
         payMode,
         refNo,
         remarks,
-        user.id
+        user.id,
+        payDate
       );
       showToast('Payment disbursement recorded successfully!', 'success');
       const staffId = selectedGen.staffId;
@@ -321,6 +339,70 @@ const PayrollPaymentLedger: React.FC = () => {
       showToast('Failed to record payment', 'error');
     } finally {
       setSubmittingPay(false);
+    }
+  };
+
+  const handleOpenEdit = (p: any) => {
+    setEditingPayment(p);
+    setEditAmount(parseFloat(p.amount || '0'));
+    setEditDate(p.payment_date || new Date().toISOString().split('T')[0]);
+    setEditMode(p.payment_mode || 'cash');
+    setEditRefNo(p.reference_no || '');
+    setEditRemarks(p.remarks || '');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingPayment || editAmount <= 0 || !user?.school_id) {
+      showToast('Please enter a valid disbursement amount', 'error');
+      return;
+    }
+    const oldAmount = parseFloat(editingPayment.amount || '0');
+    const maxAllowed = oldAmount + (selectedGen?.remainingBalance || 0);
+    if (editAmount > maxAllowed) {
+      showToast(`Amount cannot exceed ${formatCurrency(maxAllowed)}`, 'error');
+      return;
+    }
+
+    setSubmittingEdit(true);
+    try {
+      await newPayrollService.updatePayment(user.school_id, editingPayment.id, {
+        amount: editAmount,
+        payment_date: editDate,
+        payment_mode: editMode,
+        reference_no: editRefNo || null,
+        remarks: editRemarks || null,
+      });
+      showToast('Disbursement updated successfully!', 'success');
+      setEditingPayment(null);
+      const staffId = selectedGen?.staffId;
+      await loadGenerations();
+      if (staffId) {
+        setSelectedStaffId(staffId);
+      }
+    } catch (err: any) {
+      console.error('Error updating disbursement:', err);
+      showToast(err.message || 'Failed to update disbursement', 'error');
+    } finally {
+      setSubmittingEdit(false);
+    }
+  };
+
+  const handleDeletePayment = async (paymentId: number) => {
+    if (!user?.school_id) return;
+    if (!window.confirm("Are you sure you want to delete this disbursement record? This will restore the staff member's unpaid balance.")) {
+      return;
+    }
+    try {
+      await newPayrollService.deletePayment(user.school_id, paymentId);
+      showToast('Disbursement deleted and balance restored', 'success');
+      const staffId = selectedGen?.staffId;
+      await loadGenerations();
+      if (staffId) {
+        setSelectedStaffId(staffId);
+      }
+    } catch (err: any) {
+      console.error('Error deleting disbursement:', err);
+      showToast('Failed to delete disbursement', 'error');
     }
   };
 
@@ -335,15 +417,25 @@ const PayrollPaymentLedger: React.FC = () => {
               {selectedGen.staff?.name} — Remaining: <span style={{ color: '#ef4444' }}>{formatCurrency(selectedGen.remainingBalance)}</span>
             </span>
             <TextField
+              label="Date"
+              type="date"
+              size="small"
+              value={payDate}
+              onChange={e => setPayDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              style={{ width: 135 }}
+              InputProps={{ style: { fontSize: '0.82rem' } }}
+            />
+            <TextField
               label="Amount"
               type="number"
               size="small"
               value={payAmount}
               onChange={e => setPayAmount(Number(e.target.value))}
-              style={{ width: 120 }}
+              style={{ width: 110 }}
               InputProps={{ style: { fontSize: '0.82rem' } }}
             />
-            <FormControl size="small" style={{ minWidth: 130 }}>
+            <FormControl size="small" style={{ minWidth: 125 }}>
               <InputLabel style={{ fontSize: '0.82rem' }}>Mode</InputLabel>
               <Select
                 value={payMode}
@@ -362,7 +454,7 @@ const PayrollPaymentLedger: React.FC = () => {
               size="small"
               value={refNo}
               onChange={e => setRefNo(e.target.value)}
-              style={{ width: 120 }}
+              style={{ width: 110 }}
               InputProps={{ style: { fontSize: '0.82rem' } }}
             />
             <TextField
@@ -392,7 +484,7 @@ const PayrollPaymentLedger: React.FC = () => {
     return () => {
       setFooterContent(null);
     };
-  }, [selectedGen?.id, selectedGen?.remainingBalance, selectedGen?.isLocked, payAmount, payMode, refNo, remarks, submittingPay]);
+  }, [selectedGen?.id, selectedGen?.remainingBalance, selectedGen?.isLocked, payAmount, payDate, payMode, refNo, remarks, submittingPay, theme]);
 
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
@@ -655,6 +747,7 @@ const PayrollPaymentLedger: React.FC = () => {
                     <th>Mode</th>
                     <th>Reference</th>
                     <th>Remarks</th>
+                    <th style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -672,6 +765,26 @@ const PayrollPaymentLedger: React.FC = () => {
                       </td>
                       <td style={{ color: theme.TEXT_SECONDARY }}>{p.reference_no || '—'}</td>
                       <td style={{ color: theme.TEXT_SECONDARY }}>{p.remarks || '—'}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center' }}>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleOpenEdit(p)}
+                            title="Edit Disbursement"
+                            style={{ color: theme.ACCENT }}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeletePayment(p.id)}
+                            title="Delete Disbursement"
+                            style={{ color: '#ef4444' }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -707,6 +820,85 @@ const PayrollPaymentLedger: React.FC = () => {
           </div>
         </Card>
       )}
+
+      {/* Edit Disbursement Dialog */}
+      <Dialog
+        open={!!editingPayment}
+        onClose={() => !submittingEdit && setEditingPayment(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle style={{ fontWeight: 700, fontSize: '1.05rem', color: theme.TEXT_PRIMARY }}>
+          Edit Disbursement
+        </DialogTitle>
+        <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '0.5rem' }}>
+          <TextField
+            label="Disbursement Date"
+            type="date"
+            size="small"
+            fullWidth
+            value={editDate}
+            onChange={e => setEditDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            label="Amount (Rs.)"
+            type="number"
+            size="small"
+            fullWidth
+            value={editAmount}
+            onChange={e => setEditAmount(Number(e.target.value))}
+          />
+          <FormControl fullWidth size="small">
+            <InputLabel>Mode</InputLabel>
+            <Select
+              value={editMode}
+              label="Mode"
+              onChange={e => setEditMode(e.target.value as any)}
+            >
+              <MenuItem value="bank_transfer">Bank Transfer</MenuItem>
+              <MenuItem value="cash">Cash</MenuItem>
+              <MenuItem value="cheque">Cheque</MenuItem>
+              <MenuItem value="easypaisa_jazzcash">EasyPaisa / JazzCash</MenuItem>
+              <MenuItem value="other">Other</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            label="Reference No."
+            size="small"
+            fullWidth
+            value={editRefNo}
+            onChange={e => setEditRefNo(e.target.value)}
+          />
+          <TextField
+            label="Remarks"
+            size="small"
+            fullWidth
+            multiline
+            rows={2}
+            value={editRemarks}
+            onChange={e => setEditRemarks(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions style={{ padding: '0.75rem 1.25rem' }}>
+          <Button
+            onClick={() => setEditingPayment(null)}
+            disabled={submittingEdit}
+            style={{ textTransform: 'none', color: theme.TEXT_SECONDARY }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleSaveEdit}
+            disabled={submittingEdit || editAmount <= 0}
+            style={{ textTransform: 'none', fontWeight: 700 }}
+          >
+            {submittingEdit ? <CircularProgress size={16} color="inherit" /> : 'Save Changes'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Salary Statement Dialog */}
       <SalaryStatementDialog

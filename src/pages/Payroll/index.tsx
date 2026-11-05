@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import styled, { css } from 'styled-components';
 import { useTheme } from '../../components/Layout/contexts/ThemeContext';
 import { lightTheme, darkTheme } from '../../contexts/ThemeContext';
@@ -162,7 +163,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => {
 const PayrollDashboard: React.FC = () => {
   const { theme: themeMode } = useTheme();
   const theme = themeMode === 'dark' ? darkTheme : lightTheme;
-  const [activeTab, setActiveTab] = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const tabs = [
     { id: 0, label: 'Payroll Analytics', icon: AnalyticsIcon },
@@ -174,6 +175,26 @@ const PayrollDashboard: React.FC = () => {
     { id: 6, label: 'Advances & Loans', icon: LoanIcon },
     { id: 7, label: 'Settings', icon: SettingsIcon, iconOnly: true },
   ];
+
+  const tabParam = searchParams.get('tab');
+  const initialTab = tabParam !== null ? parseInt(tabParam, 10) : 0;
+  const [activeTab, setActiveTab] = useState(
+    !isNaN(initialTab) && initialTab >= 0 && initialTab < tabs.length ? initialTab : 0
+  );
+
+  useEffect(() => {
+    if (tabParam !== null) {
+      const parsed = parseInt(tabParam, 10);
+      if (!isNaN(parsed) && parsed >= 0 && parsed < tabs.length) {
+        setActiveTab(parsed);
+      }
+    }
+  }, [tabParam, tabs.length]);
+
+  const handleTabChange = (tabId: number) => {
+    setActiveTab(tabId);
+    setSearchParams(tabId === 0 ? {} : { tab: tabId.toString() });
+  };
 
   return (
     <PayrollDisplaySettingsProvider>
@@ -195,7 +216,7 @@ const PayrollDashboard: React.FC = () => {
                 $iconOnly={tab.iconOnly}
                 title={tab.iconOnly ? tab.label : undefined}
                 theme={theme}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
               >
                 <Icon style={{ fontSize: 18 }} />
                 {!tab.iconOnly && tab.label}
